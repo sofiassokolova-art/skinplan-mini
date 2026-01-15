@@ -12,7 +12,12 @@ import { PlanPageClient } from './plan-client';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
 import type { GeneratedPlan, ProfileResponse } from '@/lib/api-types';
 import { clientLogger } from '@/lib/client-logger';
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+// ОПТИМИЗАЦИЯ: Динамический импорт DotLottieReact для code splitting
+import dynamic from 'next/dynamic';
+const DotLottieReact = dynamic(() => import('@lottiefiles/dotlottie-react').then(mod => mod.DotLottieReact), { 
+  ssr: false,
+  loading: () => <div style={{ width: '200px', height: '200px' }} /> // Placeholder во время загрузки
+});
 import { PLAN_TIMEOUTS } from '@/lib/config/timeouts';
 
 // РЕФАКТОРИНГ P2: Локальный тип данных для страницы плана
@@ -1453,43 +1458,6 @@ export default function PlanPage() {
 
   // Остальная часть UI компонента
 
-  // ИСПРАВЛЕНО: Показываем только один лоадер - "Загружаем план" или "Подбираем уход под вашу кожу…"
-  // Приоритет: если generatingState === 'generating', показываем экран генерации
-  // Иначе показываем обычный лоадер "Загрузка плана..."
-  if (generatingState === 'generating') {
-    return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        minHeight: '100vh', 
-        flexDirection: 'column', 
-        gap: '32px',
-        padding: '20px',
-        background: '#FFFFFF',
-        color: '#000000'
-      }}>
-        <div style={{ width: '200px', height: '200px' }}>
-          <DotLottieReact
-            src="/loader 3.lottie"
-            loop
-            autoplay
-            style={{ width: '100%', height: '100%' }}
-          />
-        </div>
-        <div style={{ 
-          fontSize: '32px', 
-          fontWeight: 400, 
-          textAlign: 'center',
-          fontFamily: 'Inter, sans-serif',
-          letterSpacing: '-0.02em'
-        }}>
-          Интер
-        </div>
-      </div>
-    );
-  }
-
   // ИСПРАВЛЕНО: Показываем лоадер "Загрузка плана..." если loading = true
   // После проверки на строке 1391 generatingState уже не может быть 'generating'
   // Поэтому просто проверяем loading - если true, показываем лоадер
@@ -1499,10 +1467,11 @@ export default function PlanPage() {
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        height: '100vh',
+        minHeight: '100vh',
         flexDirection: 'column',
-        gap: '16px',
+        gap: '24px',
         background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        padding: '40px 20px',
       }}>
         <div style={{
           width: '48px',
@@ -1512,11 +1481,72 @@ export default function PlanPage() {
           borderRadius: '50%',
           animation: 'spin 1s linear infinite',
         }}></div>
-        <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка плана...</div>
+        <div style={{ color: '#0A5F59', fontSize: '16px', fontWeight: 600, marginBottom: '16px' }}>
+          Загрузка плана...
+        </div>
+        {/* Skeleton loader для предпросмотра плана */}
+        <div style={{ width: '100%', maxWidth: '800px' }}>
+          <div style={{
+            backgroundColor: '#E5E7EB',
+            height: '32px',
+            width: '40%',
+            borderRadius: '4px',
+            marginBottom: '24px',
+            animation: 'pulse 1.5s ease-in-out infinite',
+          }}></div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+            gap: '16px',
+          }}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                style={{
+                  backgroundColor: '#E5E7EB',
+                  height: '250px',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  animation: 'pulse 1.5s ease-in-out infinite',
+                }}
+              >
+                <div style={{
+                  backgroundColor: '#D1D5DB',
+                  height: '120px',
+                  borderRadius: '8px',
+                  width: '100%',
+                }}></div>
+                <div style={{
+                  backgroundColor: '#D1D5DB',
+                  height: '16px',
+                  borderRadius: '4px',
+                  width: '100%',
+                }}></div>
+                <div style={{
+                  backgroundColor: '#D1D5DB',
+                  height: '16px',
+                  borderRadius: '4px',
+                  width: '60%',
+                }}></div>
+              </div>
+            ))}
+          </div>
+        </div>
         <style>{`
           @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+          }
+          @keyframes pulse {
+            0%, 100% {
+              opacity: 1;
+            }
+            50% {
+              opacity: 0.5;
+            }
           }
         `}</style>
       </div>

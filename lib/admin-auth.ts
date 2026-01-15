@@ -56,7 +56,20 @@ export async function verifyAdmin(request: NextRequest): Promise<AdminAuthResult
         adminId: string | number;
         role?: string;
         telegramId?: string;
+        exp?: number; // Срок действия токена (Unix timestamp)
+        iat?: number; // Время выдачи токена
       };
+
+      // ОПТИМИЗАЦИЯ: Явная проверка срока действия токена (дополнительно к jwt.verify)
+      if (decoded.exp) {
+        const now = Math.floor(Date.now() / 1000);
+        if (decoded.exp < now) {
+          return {
+            valid: false,
+            error: 'Token expired',
+          };
+        }
+      }
 
       return {
         valid: true,

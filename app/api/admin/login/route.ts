@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { logger } from '@/lib/logger';
+import { rateLimit, getIdentifier } from '@/lib/rate-limit';
 
 // ИСПРАВЛЕНО: Убрали хардкод JWT секрета - теперь обязательная переменная
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -13,6 +14,41 @@ const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
 
 export async function POST(request: NextRequest) {
   try {
+    // ОПТИМИЗАЦИЯ: Rate limiting для защиты от brute force атак
+    const identifier = getIdentifier(request);
+    const rateLimitResult = await rateLimit(
+      `admin-login:${identifier}`,
+      {
+        interval: 60 * 1000, // 1 минута
+        maxRequests: 5, // Максимум 5 попыток в минуту
+      },
+      'admin-login'
+    );
+
+    if (!rateLimitResult.success) {
+      logger.warn('Admin login rate limit exceeded', {
+        identifier,
+        remaining: rateLimitResult.remaining,
+        resetAt: new Date(rateLimitResult.resetAt).toISOString(),
+      });
+      return NextResponse.json(
+        { 
+          error: 'Слишком много попыток входа. Попробуйте позже.',
+          code: 'RATE_LIMIT_EXCEEDED',
+          resetAt: rateLimitResult.resetAt,
+        },
+        { 
+          status: 429,
+          headers: {
+            'Retry-After': String(Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000)),
+            'X-RateLimit-Limit': '5',
+            'X-RateLimit-Remaining': String(rateLimitResult.remaining),
+            'X-RateLimit-Reset': String(rateLimitResult.resetAt),
+          },
+        }
+      );
+    }
+
     // ИСПРАВЛЕНО: Проверяем JWT_SECRET перед использованием
     if (!JWT_SECRET || JWT_SECRET === 'your-secret-key-change-in-production') {
       logger.error('JWT_SECRET not configured or using default value', {

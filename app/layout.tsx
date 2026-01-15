@@ -7,6 +7,7 @@ import { Analytics } from '@vercel/analytics/react';
 import localFont from 'next/font/local';
 import './globals.css';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { WebVitalsTracker } from './(miniapp)/components/WebVitals';
 import { Toaster } from '@/components/Toaster';
 import { GlobalErrorHandler } from '@/components/GlobalErrorHandler';
 import { QueryProvider } from '@/providers/QueryProvider';
@@ -158,6 +159,7 @@ export default function RootLayout({
         <ErrorBoundary>
           <QueryProvider>
             <GlobalErrorHandler />
+            <WebVitalsTracker />
             {children}
             <Toaster />
             <Analytics />

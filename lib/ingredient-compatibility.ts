@@ -175,6 +175,8 @@ export function extractActiveIngredients(product: {
     
     // Витамин C
     { pattern: /\bvitamin\s+c\b/i, ingredient: 'vitamin_c' },
+    { pattern: /\bvitamin_c\d+/i, ingredient: 'vitamin_c' }, // ИСПРАВЛЕНО: vitamin_c10, vitamin_c15, vitamin_c23 и т.д.
+    { pattern: /\bvitamin_c\b/i, ingredient: 'vitamin_c' }, // ИСПРАВЛЕНО: точное совпадение vitamin_c
     { pattern: /\bвитамин\s+[сc]\b/i, ingredient: 'vitamin_c' },
     { pattern: /\bascorbic\s+acid\b/i, ingredient: 'ascorbic_acid' },
     { pattern: /\bаскорбиновая\s+кислота\b/i, ingredient: 'ascorbic_acid' },

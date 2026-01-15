@@ -271,8 +271,15 @@ export function checkForDuplication(
   
   const productsForCheck = allProducts.map((p, index) => {
     // ИСПРАВЛЕНО: Используем единую функцию для определения активов
-    // Для alreadySelected stepCategory не применяется (они уже выбраны ранее)
-    const stepCategory = index >= context.alreadySelected.length ? context.stepCategory : undefined;
+    // Для alreadySelected используем сохраненный stepCategory, если он есть
+    let stepCategory: StepCategory | undefined = undefined;
+    if (index < context.alreadySelected.length) {
+      // Для уже выбранных продуктов используем сохраненный stepCategory
+      stepCategory = (p as any).stepCategory;
+    } else {
+      // Для новых продуктов используем stepCategory из контекста
+      stepCategory = context.stepCategory;
+    }
     const tempContext: ProductSelectionContext = {
       ...context,
       stepCategory,

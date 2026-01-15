@@ -7,12 +7,15 @@ import { prisma } from '@/lib/db';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { getCurrentProfile } from '@/lib/get-current-profile';
+import { addCacheHeaders, CachePresets } from '@/lib/utils/api-cache';
+import { getCorrelationId, addCorrelationIdToHeaders } from '@/lib/utils/correlation-id';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
   const method = 'GET';
   const path = '/api/questionnaire/active';
   let userId: string | null = null;
+  const correlationId = getCorrelationId(request);
   
   try {
     // ИСПРАВЛЕНО: Проверяем авторизацию и получаем userId
@@ -498,7 +501,7 @@ export async function GET(request: NextRequest) {
 
     // ИСПРАВЛЕНО: Возвращаем анкету с информацией о редиректе и preferences
     const duration = Date.now() - startTime;
-    const response = NextResponse.json({
+    let response = NextResponse.json({
       ...formatted,
       // Метаданные для фронтенда
       _meta: {
@@ -517,8 +520,16 @@ export async function GET(request: NextRequest) {
     });
     
     // ИСПРАВЛЕНО: Логируем успешный запрос в KV для мониторинга
-    logApiRequest(method, path, 200, duration, userId);
+    logApiRequest(method, path, 200, duration, userId, correlationId);
     
+    // Добавляем кэширование: анкета меняется редко, кэшируем на 1 час
+    // Но для персональных данных (shouldRedirectToPlan) не кэшируем
+    if (!shouldRedirectToPlan) {
+      response = addCacheHeaders(response, CachePresets.longCache());
+    } else {
+      response = addCacheHeaders(response, CachePresets.noCache());
+    }
+    addCorrelationIdToHeaders(correlationId, response.headers);
     return response;
   } catch (error: any) {
     const duration = Date.now() - startTime;
@@ -538,9 +549,9 @@ export async function GET(request: NextRequest) {
         suggestion: 'Необходимо применить миграции Prisma: npx prisma migrate deploy',
       });
       
-      logApiError(method, path, error, userId);
+      logApiError(method, path, error, userId, correlationId);
       
-      return NextResponse.json(
+      const errorResponse = NextResponse.json(
         { 
           error: 'Database schema not initialized',
           message: 'Анкета временно недоступна. Пожалуйста, попробуйте позже.',
@@ -552,6 +563,8 @@ export async function GET(request: NextRequest) {
         },
         { status: 500 }
       );
+      addCorrelationIdToHeaders(correlationId, errorResponse.headers);
+      return errorResponse;
     }
     
     logger.error('Error fetching active questionnaire', error, {
@@ -560,11 +573,13 @@ export async function GET(request: NextRequest) {
     });
     
     // ИСПРАВЛЕНО: Логируем ошибку в KV для мониторинга
-    logApiError(method, path, error, userId);
+    logApiError(method, path, error, userId, correlationId);
     
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       { error: 'Internal server error', details: process.env.NODE_ENV === 'development' ? error?.message : undefined },
       { status: 500 }
     );
+    addCorrelationIdToHeaders(correlationId, errorResponse.headers);
+    return errorResponse;
   }
 }

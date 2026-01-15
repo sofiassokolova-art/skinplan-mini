@@ -3,6 +3,13 @@
 
 import { clientLogger } from '@/lib/client-logger';
 import { INFO_SCREENS, getInitialInfoScreens, getInfoScreenAfterQuestion, getNextInfoScreenAfterScreen, type InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
+import { 
+  saveIndexToSessionStorage, 
+  saveProgressSafely, 
+  updateInfoScreenIndex, 
+  updateQuestionIndex,
+  canNavigate 
+} from './shared-utils';
 
 // Используем any для типов, так как в page.tsx используются локальные интерфейсы
 type Questionnaire = any;
@@ -167,18 +174,9 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         initialInfoScreensLength: initialInfoScreens.length,
       });
       // КРИТИЧНО: Обновляем ref СИНХРОННО перед установкой state
-      currentInfoScreenIndexRef.current = newIndex;
-      setCurrentInfoScreenIndex(newIndex);
+      updateInfoScreenIndex(newIndex, currentInfoScreenIndexRef, setCurrentInfoScreenIndex);
       // ФИКС: Сохраняем newIndex в sessionStorage для восстановления при перемонтировании
-      // Это предотвращает сброс currentInfoScreenIndex в 0 при ошибке React #310
-      if (typeof window !== 'undefined') {
-        try {
-          sessionStorage.setItem('quiz_currentInfoScreenIndex', String(newIndex));
-          clientLogger.log('💾 Сохранен currentInfoScreenIndex в sessionStorage', { newIndex });
-        } catch (err) {
-          clientLogger.warn('⚠️ Не удалось сохранить currentInfoScreenIndex в sessionStorage', err);
-        }
-      }
+      saveIndexToSessionStorage('quiz_currentInfoScreenIndex', newIndex, '💾 Сохранен currentInfoScreenIndex в sessionStorage');
       // ФИКС: Если после инкремента мы прошли все начальные экраны, очищаем pendingInfoScreen
       if (newIndex >= initialInfoScreens.length) {
         setPendingInfoScreen(null);
@@ -187,7 +185,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
           setCurrentQuestionIndex(0);
         }
       }
-      await saveProgress(answers, currentQuestionIndex, newIndex);
+      await saveProgressSafely(saveProgress, answers, currentQuestionIndex, newIndex);
       return;
     }
 
@@ -239,18 +237,9 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         allQuestionsLength: allQuestions.length,
       });
       // КРИТИЧНО: Обновляем ref СИНХРОННО перед установкой state, чтобы другие функции видели новое значение
-      currentInfoScreenIndexRef.current = newInfoIndex;
-      setCurrentInfoScreenIndex(newInfoIndex);
+      updateInfoScreenIndex(newInfoIndex, currentInfoScreenIndexRef, setCurrentInfoScreenIndex);
       // ФИКС: Сохраняем newInfoIndex в sessionStorage для восстановления при перемонтировании
-      // Это предотвращает сброс currentInfoScreenIndex в 0 при ошибке React #310
-      if (typeof window !== 'undefined') {
-        try {
-          sessionStorage.setItem('quiz_currentInfoScreenIndex', String(newInfoIndex));
-          clientLogger.log('💾 Сохранен currentInfoScreenIndex в sessionStorage', { newInfoIndex });
-        } catch (err) {
-          clientLogger.warn('⚠️ Не удалось сохранить currentInfoScreenIndex в sessionStorage', err);
-        }
-      }
+      saveIndexToSessionStorage('quiz_currentInfoScreenIndex', newInfoIndex, '💾 Сохранен currentInfoScreenIndex в sessionStorage при переходе к вопросам');
       
       // ИСПРАВЛЕНО: Не сбрасываем currentQuestionIndex на 0, если у пользователя уже есть ответы
       // Это предотвращает возврат к первому вопросу для пользователей, которые уже отвечали
@@ -325,16 +314,9 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         nextQuestionIndex = Math.max(0, Math.min(allQuestions.length - 1, 0));
       }
       
-      setCurrentQuestionIndex(nextQuestionIndex);
+      updateQuestionIndex(nextQuestionIndex, currentQuestionIndexRef, setCurrentQuestionIndex);
       // ФИКС: Сохраняем индекс в sessionStorage для восстановления при перемонтировании
-      if (typeof window !== 'undefined') {
-        try {
-          sessionStorage.setItem('quiz_currentQuestionIndex', String(nextQuestionIndex));
-          clientLogger.log('💾 Сохранен currentQuestionIndex в sessionStorage при переходе к вопросам', { nextQuestionIndex });
-        } catch (err) {
-          clientLogger.warn('⚠️ Не удалось сохранить currentQuestionIndex в sessionStorage', err);
-        }
-      }
+      saveIndexToSessionStorage('quiz_currentQuestionIndex', nextQuestionIndex, '💾 Сохранен currentQuestionIndex в sessionStorage при переходе к вопросам');
       // ФИКС: Принудительно очищаем pendingInfoScreen при переходе к вопросам
       // Это предотвращает застревание на info screens
       setPendingInfoScreen(null);
@@ -349,7 +331,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         showRetakeScreen,
         pendingInfoScreenCleared: true,
       });
-      await saveProgress(answers, nextQuestionIndex, newInfoIndex);
+      await saveProgressSafely(saveProgress, answers, nextQuestionIndex, newInfoIndex);
       return;
     }
 
@@ -447,7 +429,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         if (pendingInfoScreenRef) {
           pendingInfoScreenRef.current = nextInfoScreen;
         }
-        await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
+        await saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
         clientLogger.log('✅ Переход к следующему инфо-экрану в цепочке:', {
           from: currentPendingInfoScreen.id,
           to: nextInfoScreen.id,
@@ -480,7 +462,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       if (isLastQuestion) {
         // ИСПРАВЛЕНО: После закрытия последнего инфо-экрана (но не want_improve) увеличиваем индекс для запуска автоотправки
         // ВАЖНО: Сначала сохраняем прогресс, потом увеличиваем индекс, чтобы избежать проблем с редиректом
-        await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
+        await saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
         // ИСПРАВЛЕНО: Устанавливаем индекс синхронно, но с небольшой задержкой для безопасности
         // Это гарантирует, что автоотправка сработает после закрытия инфо-экрана
         setTimeout(() => {
@@ -495,16 +477,9 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       
       // Переходим к следующему вопросу
       const newIndex = currentQuestionIndex + 1;
-      setCurrentQuestionIndex(newIndex);
+      updateQuestionIndex(newIndex, currentQuestionIndexRef, setCurrentQuestionIndex);
       // ФИКС: Сохраняем newIndex в sessionStorage для восстановления при перемонтировании
-      if (typeof window !== 'undefined') {
-        try {
-          sessionStorage.setItem('quiz_currentQuestionIndex', String(newIndex));
-          clientLogger.log('💾 Сохранен currentQuestionIndex в sessionStorage', { newIndex });
-        } catch (err) {
-          clientLogger.warn('⚠️ Не удалось сохранить currentQuestionIndex в sessionStorage', err);
-        }
-      }
+      saveIndexToSessionStorage('quiz_currentQuestionIndex', newIndex, '💾 Сохранен currentQuestionIndex в sessionStorage');
       
       // КРИТИЧНО: После закрытия инфо-экрана просто переходим к следующему вопросу
       // НЕ проверяем инфо-экран для следующего вопроса сразу - он будет проверен ПОСЛЕ того, как пользователь ответит
@@ -526,7 +501,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
           // Игнорируем ошибки при сохранении
         }
       }
-      await saveProgress(answers, newIndex, currentInfoScreenIndex);
+      await saveProgressSafely(saveProgress, answers, newIndex, currentInfoScreenIndex);
       clientLogger.log('✅ Закрыт инфо-экран, переходим к следующему вопросу', {
         newIndex,
         allQuestionsLength: allQuestions.length,
@@ -622,7 +597,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
           // Но если пользователь уже ответил на этот вопрос ДО перехода к нему (например, из-за быстрых кликов),
           // то все равно показываем инфо-экран
           setPendingInfoScreen(infoScreen);
-          await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
+          await saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
           clientLogger.log('✅ Показан инфо-экран после вопроса:', {
             questionCode: currentQuestion.code,
             questionIndex: currentQuestionIndex,
@@ -654,7 +629,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
           setPendingInfoScreen(infoScreen);
           // ИСПРАВЛЕНО: НЕ увеличиваем currentQuestionIndex, чтобы не запустить автоотправку
           // Автоотправка запустится только после закрытия инфо-экрана или при нажатии кнопки "Получить план"
-          await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
+          await saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
           clientLogger.log('✅ Показан инфо-экран после последнего вопроса:', {
             questionCode: currentQuestion.code,
             infoScreenId: infoScreen.id,
@@ -666,7 +641,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       }
       // ВАЖНО: Если это последний вопрос и нет инфо-экрана, увеличиваем currentQuestionIndex
       // чтобы сработала автоматическая отправка ответов (проверка currentQuestionIndex >= allQuestions.length)
-      await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
+      await saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
       clientLogger.log('✅ Последний вопрос отвечен, нет инфо-экранов, увеличиваем индекс для автоотправки');
       // Увеличиваем индекс, чтобы выйти за пределы массива вопросов и запустить автоматическую отправку
       setCurrentQuestionIndex(allQuestions.length);
@@ -685,21 +660,10 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         nextQuestionCode: allQuestions[newIndex]?.code || null,
         hasAnsweredCurrent: allQuestions[currentQuestionIndex] && answers[allQuestions[currentQuestionIndex].id] !== undefined,
       });
-      setCurrentQuestionIndex(newIndex);
-      // КРИТИЧНО: Обновляем ref синхронно для других функций
-      if (currentQuestionIndexRef) {
-        currentQuestionIndexRef.current = newIndex;
-      }
+      updateQuestionIndex(newIndex, currentQuestionIndexRef, setCurrentQuestionIndex);
       // ФИКС: Сохраняем newIndex в sessionStorage для восстановления при перемонтировании
-      if (typeof window !== 'undefined') {
-        try {
-          sessionStorage.setItem('quiz_currentQuestionIndex', String(newIndex));
-          clientLogger.log('💾 Сохранен currentQuestionIndex в sessionStorage', { newIndex });
-        } catch (err) {
-          clientLogger.warn('⚠️ Не удалось сохранить currentQuestionIndex в sessionStorage', err);
-        }
-      }
-      await saveProgress(answers, newIndex, currentInfoScreenIndex);
+      saveIndexToSessionStorage('quiz_currentQuestionIndex', newIndex, '💾 Сохранен currentQuestionIndex в sessionStorage');
+      await saveProgressSafely(saveProgress, answers, newIndex, currentInfoScreenIndex);
     } else {
       // КРИТИЧНО: Логируем, если не переходим к следующему вопросу
       clientLogger.warn('⚠️ handleNext: не переходим к следующему вопросу', {

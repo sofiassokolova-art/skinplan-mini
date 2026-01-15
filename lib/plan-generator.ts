@@ -3342,6 +3342,23 @@ export async function generate28DayPlan(
     // Преобразуем evening steps
     // ИСПРАВЛЕНО: передаем фазу для фильтрации продуктов по этапу плана
     // ИСПРАВЛЕНО: Используем async цикл вместо map для поддержки await в fallback через БД
+    // ИСПРАВЛЕНО: Собираем уже выбранные продукты из утренних шагов для проверки дубликатов
+    // ВАЖНО: Сохраняем stepCategory для каждого продукта, чтобы правильно определять активные ингредиенты
+    const selectedProductsForDay: ProductWithBrand[] = [];
+    for (const morningStep of morningSteps) {
+      if (morningStep.productId) {
+        const product = selectedProducts.find(p => String(p.id) === morningStep.productId);
+        if (product) {
+          // ИСПРАВЛЕНО: Сохраняем stepCategory в продукте для правильного определения активных ингредиентов
+          const productWithStepCategory = {
+            ...product,
+            stepCategory: morningStep.stepCategory, // Временно сохраняем stepCategory для проверки дубликатов
+          } as ProductWithBrand & { stepCategory?: StepCategory };
+          selectedProductsForDay.push(productWithStepCategory as ProductWithBrand);
+        }
+      }
+    }
+    
     const eveningSteps: DayStep[] = [];
     for (const stepCategory of eveningStepsTemplate) {
       let stepProducts = getProductsForStep(stepCategory, phase);
@@ -3459,25 +3476,71 @@ export async function generate28DayPlan(
         continue; // Пропускаем шаг без продуктов
       }
       
-      // ИСПРАВЛЕНО: Выбираем разные продукты для разных фаз для разнообразия
+      // ИСПРАВЛЕНО: Применяем дерматологическую фильтрацию с проверкой дубликатов
+      // Это предотвращает добавление продуктов с дублирующими активными ингредиентами
       const baseStepEvening = getBaseStepFromStepCategory(stepCategory);
+      let filteredStepProducts = stepProducts;
+      
+      // Для обязательных шагов (cleanser) не применяем строгую фильтрацию
+      if (!isCleanserStep(stepCategory)) {
+        const context: ProductSelectionContext = {
+          timeOfDay: 'evening',
+          day: dayIndex,
+          week: weekNum,
+          alreadySelected: selectedProductsForDay,
+          protocol: dermatologyProtocol,
+          profileClassification,
+          stepCategory: stepCategory, // ИСПРАВЛЕНО: Передаем stepCategory для проверки дубликатов
+        };
+        
+        const filteredResults = filterProductsWithDermatologyLogic(stepProducts, context);
+        const compatibleProducts = filteredResults.filter(r => r.allowed);
+        
+        if (compatibleProducts.length > 0) {
+          filteredStepProducts = compatibleProducts.map(r => r.product);
+          logger.debug('Products filtered by dermatology logic (evening)', {
+            stepCategory,
+            dayIndex,
+            originalCount: stepProducts.length,
+            filteredCount: filteredStepProducts.length,
+            userId,
+          });
+        } else if (stepProducts.length > 0) {
+          // Если все продукты отфильтрованы, используем первый доступный с предупреждением
+          logger.warn('All products filtered, using first available (evening)', {
+            stepCategory,
+            dayIndex,
+            totalProducts: stepProducts.length,
+            filteredReasons: filteredResults.filter(r => !r.allowed).map(r => r.reason).slice(0, 3),
+            userId,
+          });
+          filteredStepProducts = stepProducts;
+        }
+      }
+      
+      // ИСПРАВЛЕНО: Выбираем разные продукты для разных фаз для разнообразия
       let selectedProductIndexEvening = 0;
-      if (stepProducts.length > 1 && (baseStepEvening === 'toner' || baseStepEvening === 'moisturizer')) {
+      if (filteredStepProducts.length > 1 && (baseStepEvening === 'toner' || baseStepEvening === 'moisturizer')) {
         if (phase === 'adaptation') {
           selectedProductIndexEvening = 0;
         } else if (phase === 'active') {
-          selectedProductIndexEvening = Math.min(1, stepProducts.length - 1);
+          selectedProductIndexEvening = Math.min(1, filteredStepProducts.length - 1);
         } else {
-          selectedProductIndexEvening = Math.min(2, stepProducts.length - 1);
+          selectedProductIndexEvening = Math.min(2, filteredStepProducts.length - 1);
         }
-        selectedProductIndexEvening = selectedProductIndexEvening % stepProducts.length;
+        selectedProductIndexEvening = selectedProductIndexEvening % filteredStepProducts.length;
       }
       
-      const selectedProductEvening = stepProducts[selectedProductIndexEvening];
-      const alternativesEvening = stepProducts
+      const selectedProductEvening = filteredStepProducts[selectedProductIndexEvening];
+      const alternativesEvening = filteredStepProducts
         .filter((_, idx) => idx !== selectedProductIndexEvening)
         .slice(0, 3)
         .map(p => String(p.id));
+      
+      // Добавляем выбранный продукт в список для проверки дубликатов следующих шагов
+      if (selectedProductEvening) {
+        selectedProductsForDay.push(selectedProductEvening);
+      }
       
       // Логируем для отладки
       if (userId === '643160759' || process.env.NODE_ENV === 'development') {

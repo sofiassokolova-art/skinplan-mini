@@ -1,10 +1,13 @@
 // lib/logger.ts
 // Структурированное логирование для production
 
+import { getCorrelationId } from './utils/correlation-id';
+
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 interface LogContext {
   [key: string]: any;
+  correlationId?: string; // Correlation ID для трейсинга запросов
 }
 
 interface ClientLogOptions {
@@ -12,6 +15,7 @@ interface ClientLogOptions {
   userAgent?: string;
   url?: string;
   saveToDb?: boolean; // Сохранять ли в БД (по умолчанию только error и warn)
+  correlationId?: string; // Correlation ID для трейсинга запросов
 }
 
 class Logger {
@@ -65,11 +69,14 @@ class Logger {
       service: this.serviceName,
       message,
       ...context,
+      // Correlation ID всегда в начале для удобства поиска
+      ...(context?.correlationId ? { correlationId: context.correlationId } : {}),
     };
 
     // В development - красивый вывод, в production - JSON
     if (this.isDevelopment) {
-      return `[${timestamp}] ${level.toUpperCase()}: ${message}${context ? ' ' + JSON.stringify(context, null, 2) : ''}`;
+      const correlationIdStr = context?.correlationId ? `[${context.correlationId}] ` : '';
+      return `[${timestamp}] ${correlationIdStr}${level.toUpperCase()}: ${message}${context ? ' ' + JSON.stringify(context, null, 2) : ''}`;
     }
 
     return JSON.stringify(logEntry);
@@ -161,8 +168,20 @@ export function logApiRequest(
   path: string,
   statusCode: number,
   duration: number,
-  userId?: string | null
+  userId?: string | null,
+  correlationId?: string | null
 ) {
+  // ОПТИМИЗАЦИЯ: Проверяем медленные запросы
+  // Импортируем динамически, чтобы избежать циклических зависимостей
+  Promise.resolve().then(async () => {
+    try {
+      const { checkAndLogSlowRequest } = await import('./utils/performance-monitor');
+      checkAndLogSlowRequest(method, path, duration, userId, correlationId);
+    } catch (error) {
+      // Игнорируем ошибки импорта
+    }
+  });
+
   // Логируем в консоль (Vercel logs)
   logger.info('API Request', {
     method,
@@ -170,6 +189,7 @@ export function logApiRequest(
     statusCode,
     duration,
     userId,
+    correlationId: correlationId || undefined,
   });
 
   // ИСПРАВЛЕНО: Сохраняем в KV асинхронно, но надежно
@@ -254,14 +274,14 @@ export function logApiError(
   path: string,
   error: Error | unknown,
   userId?: string | null,
-  options?: ClientLogOptions
+  correlationId?: string | null
 ) {
   logger.error('API Error', error, {
     method,
     path,
     userId: userId || undefined,
+    correlationId: correlationId || undefined,
   }, {
-    ...options,
     userId: userId || undefined,
   });
 }

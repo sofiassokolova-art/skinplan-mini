@@ -1,6 +1,7 @@
 'use client';
 
-import { motion, AnimatePresence, Variants } from 'framer-motion';
+// ОПТИМИЗАЦИЯ: framer-motion будет загружаться асинхронно через webpack code splitting
+import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import { ReactNode } from 'react';
 

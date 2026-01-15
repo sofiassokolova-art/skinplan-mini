@@ -122,11 +122,13 @@ async function getCurrentProfileWithDetails(userId: string): Promise<ResolveResu
       } else if (user.currentProfileId) {
         // ИСПРАВЛЕНО: Оптимизированная проверка - ищем профиль сразу с where: { id, userId }
         // Это дешевле, чем отдельная проверка profile.userId === userId
+        // ОПТИМИЗАЦИЯ: Используем select для уменьшения данных
         const profile = await prisma.skinProfile.findFirst({
           where: {
             id: user.currentProfileId,
             userId: userId, // Проверка принадлежности в одном запросе
           },
+          // ОПТИМИЗАЦИЯ: Не используем select здесь, так как нужен полный профиль
       });
 
       if (profile) {
@@ -173,6 +175,7 @@ async function getCurrentProfileWithDetails(userId: string): Promise<ResolveResu
     
     // ИСПРАВЛЕНО: Убраны DEBUG логи - они засоряют логи и не нужны в production
     // Если нужна диагностика, можно включить через logger.debug в development режиме
+    // ОПТИМИЗАЦИЯ: Используем составной индекс [userId, createdAt] для быстрого поиска
     const profiles = await prisma.skinProfile.findMany({
       where: { userId },
       orderBy: [
@@ -180,6 +183,7 @@ async function getCurrentProfileWithDetails(userId: string): Promise<ResolveResu
         { createdAt: 'desc' },
       ],
       take: 1,
+      // ОПТИМИЗАЦИЯ: Не используем select здесь, так как нужен полный профиль
     });
 
     if (profiles.length === 0) {

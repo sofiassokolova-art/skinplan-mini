@@ -5,6 +5,14 @@ import { clientLogger } from '@/lib/client-logger';
 import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 import type { Questionnaire } from '@/lib/quiz/types';
+import { 
+  saveIndexToSessionStorage, 
+  saveProgressSafely, 
+  updateInfoScreenIndex, 
+  updateQuestionIndex,
+  isOnQuestions,
+  hasQuestionnaire 
+} from './shared-utils';
 
 export interface HandleBackParams {
   currentInfoScreenIndex: number;
@@ -20,7 +28,7 @@ export interface HandleBackParams {
   answers: Record<number, string | string[]>;
 }
 
-export function handleBack({
+export async function handleBack({
   currentInfoScreenIndex,
   currentQuestionIndex,
   questionnaire,
@@ -43,15 +51,12 @@ export function handleBack({
   // ИСПРАВЛЕНО: Используем единую функцию для получения начальных инфо-экранов
   const initialInfoScreens = getInitialInfoScreens();
   
-  // ИСПРАВЛЕНО: Используем ref для более надежной проверки, находимся ли мы на вопросах
-  // Это предотвращает проблемы, когда currentInfoScreenIndex временно не синхронизирован
-  const isOnQuestionsByState = currentInfoScreenIndex >= initialInfoScreens.length;
-  const isOnQuestionsByRef = currentInfoScreenIndexRef.current >= initialInfoScreens.length;
-  const isOnQuestions = isOnQuestionsByState || isOnQuestionsByRef;
+  // ИСПРАВЛЕНО: Используем утилиту для проверки, находимся ли мы на вопросах
+  const isOnQuestionsValue = isOnQuestions(currentInfoScreenIndex, currentInfoScreenIndexRef);
   
   // ИСПРАВЛЕНО: Для начальных инфо-экранов анкета не нужна
   // Проверяем анкету только если мы на вопросах
-  if (isOnQuestions && !questionnaire && !questionnaireRef.current) {
+  if (isOnQuestionsValue && !hasQuestionnaire(questionnaire, questionnaireRef)) {
     clientLogger.warn('⏸️ handleBack: анкета не загружена, но мы на вопросах - блокируем');
     return;
   }
@@ -72,21 +77,13 @@ export function handleBack({
         oldIndex: currentQuestionIndex,
         newIndex: newQuestionIndex,
       });
-      setCurrentQuestionIndex(newQuestionIndex);
+      updateQuestionIndex(newQuestionIndex, undefined, setCurrentQuestionIndex);
       
       // Сохраняем прогресс
-      saveProgress(answers, newQuestionIndex, currentInfoScreenIndex).catch((err) => {
-        clientLogger.warn('⚠️ Ошибка при сохранении прогресса в handleBack:', err);
-      });
+      await saveProgressSafely(saveProgress, answers, newQuestionIndex, currentInfoScreenIndex);
       
       // Сохраняем в sessionStorage
-      if (typeof window !== 'undefined') {
-        try {
-          sessionStorage.setItem('quiz_currentQuestionIndex', String(newQuestionIndex));
-        } catch (err) {
-          clientLogger.warn('⚠️ Не удалось сохранить currentQuestionIndex в sessionStorage', err);
-        }
-      }
+      saveIndexToSessionStorage('quiz_currentQuestionIndex', newQuestionIndex);
     }
     return;
   }
@@ -98,21 +95,13 @@ export function handleBack({
       oldIndex: currentQuestionIndex,
       newIndex: newQuestionIndex,
     });
-    setCurrentQuestionIndex(newQuestionIndex);
+    updateQuestionIndex(newQuestionIndex, undefined, setCurrentQuestionIndex);
     
     // Сохраняем прогресс
-    saveProgress(answers, newQuestionIndex, currentInfoScreenIndex).catch((err) => {
-      clientLogger.warn('⚠️ Ошибка при сохранении прогресса в handleBack:', err);
-    });
+    await saveProgressSafely(saveProgress, answers, newQuestionIndex, currentInfoScreenIndex);
     
     // Сохраняем в sessionStorage
-    if (typeof window !== 'undefined') {
-      try {
-        sessionStorage.setItem('quiz_currentQuestionIndex', String(newQuestionIndex));
-      } catch (err) {
-        clientLogger.warn('⚠️ Не удалось сохранить currentQuestionIndex в sessionStorage', err);
-      }
-    }
+    saveIndexToSessionStorage('quiz_currentQuestionIndex', newQuestionIndex);
     return;
   }
 
@@ -130,22 +119,13 @@ export function handleBack({
       isOnQuestionsByRef,
     });
     // КРИТИЧНО: Обновляем и state, и ref синхронно
-    currentInfoScreenIndexRef.current = newInfoScreenIndex;
-    setCurrentInfoScreenIndex(newInfoScreenIndex);
+    updateInfoScreenIndex(newInfoScreenIndex, currentInfoScreenIndexRef, setCurrentInfoScreenIndex);
     
     // Сохраняем прогресс
-    saveProgress(answers, currentQuestionIndex, newInfoScreenIndex).catch((err) => {
-      clientLogger.warn('⚠️ Ошибка при сохранении прогресса в handleBack:', err);
-    });
+    await saveProgressSafely(saveProgress, answers, currentQuestionIndex, newInfoScreenIndex);
     
     // Сохраняем в sessionStorage
-    if (typeof window !== 'undefined') {
-      try {
-        sessionStorage.setItem('quiz_currentInfoScreenIndex', String(newInfoScreenIndex));
-      } catch (err) {
-        clientLogger.warn('⚠️ Не удалось сохранить currentInfoScreenIndex в sessionStorage', err);
-      }
-    }
+    saveIndexToSessionStorage('quiz_currentInfoScreenIndex', newInfoScreenIndex);
     return;
   }
 
@@ -163,22 +143,13 @@ export function handleBack({
       initialInfoScreensLength: initialInfoScreens.length,
     });
     // КРИТИЧНО: Обновляем и state, и ref синхронно
-    currentInfoScreenIndexRef.current = newInfoScreenIndex;
-    setCurrentInfoScreenIndex(newInfoScreenIndex);
+    updateInfoScreenIndex(newInfoScreenIndex, currentInfoScreenIndexRef, setCurrentInfoScreenIndex);
     
     // Сохраняем прогресс
-    saveProgress(answers, currentQuestionIndex, newInfoScreenIndex).catch((err) => {
-      clientLogger.warn('⚠️ Ошибка при сохранении прогресса в handleBack:', err);
-    });
+    await saveProgressSafely(saveProgress, answers, currentQuestionIndex, newInfoScreenIndex);
     
     // Сохраняем в sessionStorage
-    if (typeof window !== 'undefined') {
-      try {
-        sessionStorage.setItem('quiz_currentInfoScreenIndex', String(newInfoScreenIndex));
-      } catch (err) {
-        clientLogger.warn('⚠️ Не удалось сохранить currentInfoScreenIndex в sessionStorage', err);
-      }
-    }
+    saveIndexToSessionStorage('quiz_currentInfoScreenIndex', newInfoScreenIndex);
     return;
   }
 

@@ -7,6 +7,8 @@ import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { getCurrentProfile } from '@/lib/get-current-profile';
 import { prisma } from '@/lib/db';
 import { logDbFingerprint } from '@/lib/db-fingerprint';
+import { getCorrelationId, addCorrelationIdToHeaders } from '@/lib/utils/correlation-id';
+import { addCacheHeaders, CachePresets } from '@/lib/utils/api-cache';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -16,6 +18,7 @@ export async function GET(request: NextRequest) {
   const method = 'GET';
   const path = '/api/profile/current';
   let userId: string | undefined;
+  const correlationId = getCorrelationId(request);
 
   try {
     // DEBUG: Логируем DB fingerprint для диагностики разных БД
@@ -56,9 +59,13 @@ export async function GET(request: NextRequest) {
       // Это нормальная ситуация для пользователей, которые еще не прошли анкету
       // Возвращаем 200 с null вместо 404 для более RESTful подхода
       const duration = Date.now() - startTime;
-      logApiRequest(method, path, 200, duration, userId);
+      logApiRequest(method, path, 200, duration, userId, correlationId);
       
-      return NextResponse.json(null, { status: 200 });
+      // Для отсутствующего профиля кэшируем на 1 минуту (может появиться)
+      let response = NextResponse.json(null, { status: 200 });
+      response = addCacheHeaders(response, CachePresets.shortCache());
+      addCorrelationIdToHeaders(correlationId, response.headers);
+      return response;
     }
 
     // Преобразуем тип кожи в русский для отображения
@@ -71,9 +78,9 @@ export async function GET(request: NextRequest) {
     };
 
     const duration = Date.now() - startTime;
-    logApiRequest(method, path, 200, duration, userId);
-
-    return NextResponse.json({
+    logApiRequest(method, path, 200, duration, userId, correlationId);
+    
+    let response = NextResponse.json({
       id: profile.id,
       version: profile.version,
       skinType: profile.skinType,
@@ -90,13 +97,20 @@ export async function GET(request: NextRequest) {
       updatedAt: profile.updatedAt,
       primaryConcernRu: 'Акне', // TODO: Вычислить из профиля
     });
+    
+    // Добавляем кэширование: профиль меняется редко, кэшируем на 5 минут
+    response = addCacheHeaders(response, CachePresets.mediumCache());
+    addCorrelationIdToHeaders(correlationId, response.headers);
+    return response;
   } catch (error) {
     const duration = Date.now() - startTime;
-    logApiError(method, path, error, userId);
+    logApiError(method, path, error, userId, correlationId);
 
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     );
+    addCorrelationIdToHeaders(correlationId, errorResponse.headers);
+    return errorResponse;
   }
 }

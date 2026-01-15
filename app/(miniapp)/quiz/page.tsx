@@ -32,6 +32,14 @@ import { useQuizStateExtended } from '@/lib/quiz/hooks/useQuizStateExtended';
 import { useQuizEffects } from '@/lib/quiz/hooks/useQuizEffects';
 import { useQuizComputed } from '@/lib/quiz/hooks/useQuizComputed';
 import { useQuizInit } from '@/lib/quiz/hooks/useQuizInit';
+import { useQuestionnaireSync } from '@/lib/quiz/hooks/useQuestionnaireSync';
+import { useQuizRenderDebug } from '@/lib/quiz/hooks/useQuizRenderDebug';
+import { useResumeScreenLogic } from '@/lib/quiz/hooks/useResumeScreenLogic';
+import { useQuizInitialization } from '@/lib/quiz/hooks/useQuizInitialization';
+import { useRetakeAnswersLoader } from '@/lib/quiz/hooks/useRetakeAnswersLoader';
+import { useQuizUrlSync } from '@/lib/quiz/hooks/useQuizUrlSync';
+import { shouldShowInitialLoader, getQuizBackgroundColor, isQuestionScreen as isQuestionScreenUtil } from '@/lib/quiz/utils/quizRenderHelpers';
+import { handleFullRetake } from '@/lib/quiz/handlers/handleFullRetake';
 // ОТКЛЮЧЕНО: useQuizSync вызывает бесконечные циклы React Error #310
 // import { useQuizSync } from '@/lib/quiz/utils/quizSync';
 import { useQuestionnaire, useQuizProgress, useSaveQuizProgress } from '@/hooks/useQuiz';
@@ -45,6 +53,14 @@ import { QuizQuestion } from './components/QuizQuestion';
 import { QuizInfoScreen } from './components/QuizInfoScreen';
 import { QuizErrorDisplay } from './components/QuizErrorDisplay';
 import { QuizFinalizingLoader } from './components/QuizFinalizingLoader';
+import { QuizResumeScreen } from './components/QuizResumeScreen';
+import { QuizRetakeScreen } from './components/QuizRetakeScreen';
+import { QuizDebugPanel } from './components/QuizDebugPanel';
+import { QuizQuestionState } from './components/QuizQuestionState';
+import { QuizInitialLoader } from './components/QuizInitialLoader';
+import { QuizErrorScreen } from './components/QuizErrorScreen';
+import { checkQuizErrors } from './components/QuizErrorChecker';
+import { QuizPageContent } from './components/QuizPageContent';
 
 export default function QuizPage() {
   const isDev = process.env.NODE_ENV === 'development';
@@ -102,149 +118,20 @@ export default function QuizPage() {
   // ФИКС: Используем данные из React Query, если они доступны
   const { questionnaire, setQuestionnaire, questionnaireRef } = quizState;
   
-  // ФИКС: Синхронизируем questionnaire из React Query с локальным state
-  // ИСПРАВЛЕНО: Добавляем guard для предотвращения бесконечных циклов
-  const { lastSyncedFromQueryIdRef, setQuestionnaireInStateMachineRef } = quizState;
-  // ИСПРАВЛЕНО: Используем ref для setQuestionnaireInStateMachine, чтобы избежать зависимости от функции
-  useEffect(() => {
-    setQuestionnaireInStateMachineRef.current = setQuestionnaireInStateMachine;
-  }, [setQuestionnaireInStateMachine, setQuestionnaireInStateMachineRef]);
-  
-  useEffect(() => {
-    // ИСПРАВЛЕНО: Проверяем ID вместо объекта, чтобы избежать лишних обновлений
-    const queryId = questionnaireFromQuery?.id;
-    const currentId = questionnaire?.id;
-    
-    if (questionnaireFromQuery && queryId && queryId !== currentId && queryId !== lastSyncedFromQueryIdRef.current) {
-      lastSyncedFromQueryIdRef.current = queryId;
-      clientLogger.log('🔄 Syncing questionnaire from React Query', {
-        questionnaireId: questionnaireFromQuery.id,
-        currentQuestionnaireId: questionnaire?.id,
-      });
-      setQuestionnaire(questionnaireFromQuery);
-      // ИСПРАВЛЕНО: Также обновляем questionnaireRef.current для проверки в shouldShowInitialLoader
-      questionnaireRef.current = questionnaireFromQuery;
-      // Также обновляем State Machine (используем ref для стабильности)
-      if (setQuestionnaireInStateMachineRef.current) {
-      setQuestionnaireInStateMachineRef.current(questionnaireFromQuery);
-      }
-      // ИСПРАВЛЕНО: НЕ вызываем setLoading здесь - это делает отдельный useEffect (строка 203)
-      // Это предотвращает бесконечные циклы между useEffect
-    }
-  }, [questionnaireFromQuery?.id, questionnaire?.id]); // ИСПРАВЛЕНО: Убрали setQuestionnaireInStateMachine из зависимостей
-  
-  // УДАЛЕНО: Избыточный useEffect для синхронизации с State Machine
-  // Вся синхронизация теперь выполняется в едином useEffect ниже (строки 212-251)
-  
-  // ИСПРАВЛЕНО: Обертка для setQuestionnaire, которая также обновляет State Machine
-  // КРИТИЧНО: Используем ref для questionnaire вместо state в зависимостях, чтобы избежать пересоздания функции
-  const { questionnaireForCallbackRef } = quizState;
-  
-  const setQuestionnaireWithStateMachine = useCallback((newQuestionnaireOrUpdater: Questionnaire | null | ((prev: Questionnaire | null) => Questionnaire | null)) => {
-    // ИСПРАВЛЕНО: Поддерживаем функциональную форму setState((prev) => ...)
-    let newQuestionnaire: Questionnaire | null;
-    if (typeof newQuestionnaireOrUpdater === 'function') {
-      // Функциональная форма - вызываем функцию с текущим значением
-      const currentQuestionnaire = questionnaireForCallbackRef.current;
-      clientLogger.log('🔄 setQuestionnaireWithStateMachine: calling function updater', {
-        currentQuestionnaireId: currentQuestionnaire?.id || null,
-        hasCurrentQuestionnaire: !!currentQuestionnaire,
-      });
-      newQuestionnaire = newQuestionnaireOrUpdater(currentQuestionnaire);
-      clientLogger.log('🔄 setQuestionnaireWithStateMachine: function updater returned', {
-        returnedQuestionnaireId: newQuestionnaire?.id || null,
-        hasReturnedQuestionnaire: !!newQuestionnaire,
-        returnedType: typeof newQuestionnaire,
-      });
-    } else {
-      // Обычная форма - используем значение напрямую
-      newQuestionnaire = newQuestionnaireOrUpdater;
-    }
-    
-    // КРИТИЧНО: Обновляем State Machine ПЕРВЫМ, чтобы защита от null сработала
-    // ИСПРАВЛЕНО: Всегда вызываем setQuestionnaireInStateMachine, даже если newQuestionnaire null
-    // State Machine сам решит, разрешить ли установку null
-    clientLogger.log('🔄 setQuestionnaireWithStateMachine called', {
-      newQuestionnaireId: newQuestionnaire?.id || null,
-      currentStateMachineQuestionnaireId: quizStateMachine.questionnaire?.id || null,
-      currentLocalQuestionnaireId: questionnaireForCallbackRef.current?.id || null,
-      currentRefQuestionnaireId: questionnaireRef.current?.id || null,
-      isFunctionalForm: typeof newQuestionnaireOrUpdater === 'function',
-    });
-    
-    // КРИТИЧНО: Сохраняем текущее значение из State Machine перед обновлением
-    const previousStateMachineQuestionnaire = quizStateMachine.questionnaire;
-    
-    // Обновляем State Machine
-    setQuestionnaireInStateMachine(newQuestionnaire);
-    
-    // ИСПРАВЛЕНО: Сразу после обновления State Machine проверяем результат
-    // Если State Machine отклонил установку null (защита сработала),
-    // используем предыдущее значение вместо null
-    // ИСПРАВЛЕНО: Используем getQuestionnaire для получения актуального значения
-    const questionnaireFromStateMachine = quizStateMachine.getQuestionnaire();
-    
-    // КРИТИЧНО: Если State Machine отклонил установку null, используем предыдущее значение
-    const questionnaireToSet = questionnaireFromStateMachine || previousStateMachineQuestionnaire;
-    
-    // КРИТИЧНО: Если newQuestionnaire null, но State Machine сохранил предыдущее значение,
-    // это означает, что защита сработала - используем сохраненное значение
-    if (newQuestionnaire === null && questionnaireFromStateMachine === null && previousStateMachineQuestionnaire !== null) {
-      clientLogger.warn('🛡️ [State Machine] Protection triggered: prevented setting questionnaire to null', {
-        previousQuestionnaireId: previousStateMachineQuestionnaire.id,
-      });
-      // Используем предыдущее значение
-      setQuestionnaire(previousStateMachineQuestionnaire);
-      questionnaireRef.current = previousStateMachineQuestionnaire;
-      return;
-    }
-    
-    // Обновляем локальный state и ref
-    const currentQuestionnaire = questionnaireForCallbackRef.current;
-    if (questionnaireToSet !== currentQuestionnaire) {
-      clientLogger.log('🔄 Updating local questionnaire state from State Machine', {
-        stateMachineQuestionnaireId: questionnaireFromStateMachine?.id || null,
-        previousStateMachineQuestionnaireId: previousStateMachineQuestionnaire?.id || null,
-        questionnaireToSetId: questionnaireToSet?.id || null,
-        localQuestionnaireId: currentQuestionnaire?.id || null,
-      });
-      
-      setQuestionnaire(questionnaireToSet);
-      questionnaireRef.current = questionnaireToSet;
-    } else if (questionnaireToSet) {
-      // ИСПРАВЛЕНО: Даже если state не изменился, обновляем ref для гарантии
-      questionnaireRef.current = questionnaireToSet;
-    }
-  }, [setQuestionnaireInStateMachine, quizStateMachine.questionnaire?.id]); // ИСПРАВЛЕНО: Зависем только от ID, а не от всего объекта
-  // ФИКС: Начинаем с loading = true, чтобы показать лоадер при первой загрузке
-  // ФИКС: Используем loading из React Query, если анкета загружается через React Query
-  // Иначе используем локальный state для обратной совместимости
+  // РЕФАКТОРИНГ: Используем хук для синхронизации questionnaire
   const { loading, setLoading, error, setError } = quizState;
   
-  // ФИКС: Синхронизируем loading из React Query
-  // ИСПРАВЛЕНО: Не устанавливаем loading=true при рефетче, если анкета уже загружена
-  // ИСПРАВЛЕНО: Оптимизирован useEffect для управления loading
-  // Зависим только от ID, чтобы избежать бесконечных циклов
-  useEffect(() => {
-    // Если анкета уже загружена (в state, ref или State Machine), не показываем лоадер при рефетче
-    const hasQuestionnaireAlready = !!questionnaire || !!questionnaireRef.current || !!quizStateMachine.questionnaire;
-    
-    if (isLoadingQuestionnaire && !hasQuestionnaireAlready) {
-      // Только устанавливаем loading=true при первой загрузке
-      setLoading(true);
-    } else if (questionnaireFromQuery?.id) {
-      // ИСПРАВЛЕНО: Если React Query загрузил анкету, сбрасываем loading
-      // Не ждем синхронизации с локальным state, так как она происходит в другом useEffect
-      setLoading(false);
-    }
-  }, [isLoadingQuestionnaire, questionnaireFromQuery?.id, questionnaire?.id, quizStateMachine.questionnaire?.id]);
-  
-  // ФИКС: Синхронизируем error из React Query
-  useEffect(() => {
-    if (questionnaireError) {
-      setError('Ошибка загрузки анкеты. Пожалуйста, обновите страницу.');
-    }
-  }, [questionnaireError]);
+  const { setQuestionnaireWithStateMachine } = useQuestionnaireSync({
+    questionnaireFromQuery,
+    questionnaire,
+    questionnaireRef,
+    setQuestionnaire,
+    quizStateMachine,
+    isLoadingQuestionnaire,
+    questionnaireError,
+    setLoading,
+    setError,
+  });
   // РЕФАКТОРИНГ: Все состояния и refs теперь в useQuizStateExtended
   const {
     currentInfoScreenIndex,
@@ -346,63 +233,17 @@ export default function QuizPage() {
   const isQuestionsFromStateMachine = quizStateMachine.isState('QUESTIONS');
   const isIntroFromStateMachine = quizStateMachine.isState('INTRO');
   
-  // ИСПРАВЛЕНО: ЛОГИКА РЕЗЮМ ЭКРАНА:
-  // Резюм экран должен показываться ТОЛЬКО при первой загрузке страницы, если есть сохраненный прогресс
-  // НЕ показываем резюм экран, если пользователь уже активно отвечает в текущей сессии
-  useEffect(() => {
-    // Не проверяем резюм экран во время загрузки или если пользователь начал заново
-    if (loading || isStartingOver || hasResumed) {
-      return;
-    }
-    
-    // ИСПРАВЛЕНО: Не показываем резюм экран, если пользователь уже активно отвечает в текущей сессии
-    // Это предотвращает показ резюм экрана для новых пользователей, которые только что ответили на вопросы
-    const isActiveSession = currentQuestionIndex > 0 || Object.keys(answers).length > 0;
-    if (isActiveSession) {
-      // Если пользователь уже отвечает, скрываем резюм экран
-      if (showResumeScreen) {
-        clientLogger.log('❌ Скрываем резюм экран: пользователь активно отвечает в текущей сессии', {
-          currentQuestionIndex,
-          answersCount: Object.keys(answers).length,
-        });
-        setShowResumeScreen(false);
-      }
-      return;
-    }
-    
-    // Проверяем, есть ли сохраненный прогресс
-    if (!savedProgress || !savedProgress.answers) {
-      // Если нет прогресса, убедимся, что резюм экран скрыт
-      if (showResumeScreen) {
-        setShowResumeScreen(false);
-      }
-      return;
-    }
-    
-    const savedAnswersCount = Object.keys(savedProgress.answers).length;
-    
-    // Если >= 2 ответов → показать резюм экран ТОЛЬКО при первой загрузке (не в активной сессии)
-    if (savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN) {
-      if (!showResumeScreen) {
-        clientLogger.log('✅ Показываем резюм экран: есть >= 2 ответов в сохраненном прогрессе (первая загрузка)', {
-          savedAnswersCount,
-          MIN_ANSWERS: QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN,
-          currentQuestionIndex,
-          currentAnswersCount: Object.keys(answers).length,
-        });
-        setShowResumeScreen(true);
-      }
-    } else {
-      // Если < 2 ответов → не показываем резюм экран
-      if (showResumeScreen) {
-        clientLogger.log('❌ Скрываем резюм экран: < 2 ответов', {
-          savedAnswersCount,
-          MIN_ANSWERS: QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN,
-        });
-        setShowResumeScreen(false);
-      }
-    }
-  }, [loading, savedProgress, showResumeScreen, isStartingOver, hasResumed, currentQuestionIndex, answers]);
+  // РЕФАКТОРИНГ: Используем хук для логики резюм-экрана
+  useResumeScreenLogic({
+    loading,
+    isStartingOver,
+    hasResumed,
+    currentQuestionIndex,
+    answers,
+    savedProgress,
+    showResumeScreen,
+    setShowResumeScreen,
+  });
   
   // РЕФАКТОРИНГ: Используем хук useQuizComputed для всех вычисляемых значений
   // Вынесены: effectiveAnswers, answersCount, allQuestionsRaw, allQuestions, 
@@ -603,11 +444,9 @@ export default function QuizPage() {
     }
   }, []); // Выполняется только при монтировании
 
-  // ИСПРАВЛЕНО: Refs для предотвращения множественных редиректов и history updates
-  // Это предотвращает SecurityError "Attempt to use history.replaceState() more than 100 times per 10 seconds"
+  // ИСПРАВЛЕНО: Refs для предотвращения множественных редиректов
+  // РЕФАКТОРИНГ: historyUpdateInProgressRef и lastHistoryUpdateTimeRef перенесены в useQuizUrlSync
   const redirectInProgressRef = useRef(false);
-  const historyUpdateInProgressRef = useRef(false);
-  const lastHistoryUpdateTimeRef = useRef<number>(0);
   // ФИКС: Ref для предотвращения повторных сбросов на первый экран
   const firstScreenResetRef = useRef(false);
   // ФИКС: Ref для отслеживания завершения resumeQuiz
@@ -754,105 +593,7 @@ export default function QuizPage() {
   // init запускается ровно тогда, когда поменялся сам init (по сути — при первом маунте и когда questionnaire-логика реально изменилась)
   // ПЕРЕМЕЩЕНО НИЖЕ после определения init
   
-  // ИСПРАВЛЕНО: Start over / Retake / Resume - отдельными эффектами
-  // TODO: Вынести логику профиля/retake в отдельные эффекты
-  // Загружаем предыдущие ответы для повторного прохождения анкеты
-  useEffect(() => {
-    if (
-      isRetakingQuiz &&
-      questionnaire &&
-      typeof window !== 'undefined' &&
-      window.Telegram?.WebApp?.initData
-    ) {
-      clientLogger.log('🔄 Загружаем предыдущие ответы для повторного прохождения...');
-      // Вызываем функцию напрямую, не добавляя в зависимости, чтобы избежать проблем
-      (async () => {
-        const quiz = questionnaire;
-        if (!quiz) {
-          clientLogger.warn('⚠️ Cannot load previous answers: questionnaire not loaded');
-          return;
-        }
-        
-        try {
-          const response = await fetch(`/api/questionnaire/progress?retaking=true`, {
-            headers: {
-              'X-Telegram-Init-Data': typeof window !== 'undefined' && window.Telegram?.WebApp?.initData
-                ? window.Telegram.WebApp.initData
-                : '',
-            },
-          });
-
-          if (response.ok) {
-            const data = await response.json() as {
-              progress?: {
-                answers: Record<number, string | string[]>;
-                questionIndex: number;
-                infoScreenIndex: number;
-              } | null;
-            };
-            
-            if (data?.progress?.answers && Object.keys(data.progress.answers).length > 0) {
-              clientLogger.log('✅ Загружены предыдущие ответы для повторного прохождения:', Object.keys(data.progress.answers).length, 'ответов');
-              setAnswers(data.progress.answers);
-              if (data.progress.questionIndex !== undefined && data.progress.questionIndex >= 0) {
-                setCurrentQuestionIndex(data.progress.questionIndex);
-              }
-            }
-          }
-        } catch (err: any) {
-        clientLogger.warn('⚠️ Ошибка загрузки предыдущих ответов:', err);
-        }
-      })();
-    }
-  }, [isRetakingQuiz, questionnaire]);
-
-  // Устанавливаем query параметр для скрытия навигации в layout (вынесено на верхний уровень)
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    // ИСПРАВЛЕНО: Guard против множественных вызовов history.replaceState
-    // Это предотвращает SecurityError "Attempt to use history.replaceState() more than 100 times per 10 seconds"
-    if (typeof window === 'undefined') return;
-    
-    // ИСПРАВЛЕНО: Throttle history updates - не чаще раза в секунду
-    const now = Date.now();
-    if (historyUpdateInProgressRef.current || (now - lastHistoryUpdateTimeRef.current < 1000)) {
-      return; // Пропускаем, если обновление уже в процессе или было недавно
-    }
-    
-    // Проверяем текущее значение параметра resume в URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const currentResume = urlParams.get('resume') === 'true';
-    
-    // Обновляем URL только если значение изменилось
-    if (showResumeScreen && !currentResume) {
-      historyUpdateInProgressRef.current = true;
-      lastHistoryUpdateTimeRef.current = now;
-      try {
-        const url = new URL(window.location.href);
-        url.searchParams.set('resume', 'true');
-        window.history.replaceState({}, '', url.toString());
-      } catch (e) {
-        // Игнорируем SecurityError
-        console.warn('Failed to update URL with resume param:', e);
-      } finally {
-        historyUpdateInProgressRef.current = false;
-      }
-    } else if (!showResumeScreen && currentResume) {
-      historyUpdateInProgressRef.current = true;
-      lastHistoryUpdateTimeRef.current = now;
-      try {
-        const url = new URL(window.location.href);
-        url.searchParams.delete('resume');
-        window.history.replaceState({}, '', url.toString());
-      } catch (e) {
-        // Игнорируем SecurityError
-        console.warn('Failed to remove resume param from URL:', e);
-      } finally {
-        historyUpdateInProgressRef.current = false;
-      }
-    }
-  }, [showResumeScreen]);
+  // РЕФАКТОРИНГ: Загрузка предыдущих ответов и синхронизация URL вынесены в отдельные хуки
 
   // Корректируем currentQuestionIndex после восстановления прогресса
   // Это важно, потому что после фильтрации вопросов индекс может стать невалидным
@@ -1301,406 +1042,7 @@ export default function QuizPage() {
     isDev,
   });
   
-  // УДАЛЕНО: Старая реализация (вынесена в lib/quiz/handlers/loadSavedProgress.ts)
-  const _loadSavedProgressFromServerOld = async () => {
-    // КРИТИЧНО: Проверяем, что пользователь уже не на вопросах ПЕРЕД любыми другими проверками
-    // Это предотвращает сброс currentInfoScreenIndex после перехода к вопросам
-              const initialInfoScreens = getInitialInfoScreens();
-    const isAlreadyOnQuestions = currentInfoScreenIndexRef.current >= initialInfoScreens.length;
-    
-    if (isAlreadyOnQuestions) {
-      clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено, пользователь уже на вопросах', {
-        currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
-        initialInfoScreensLength: initialInfoScreens.length,
-      });
-      return;
-    }
-    
-    // ИСПРАВЛЕНО: Кэширование - не загружаем прогресс повторно, если он уже был загружен
-    // Это оптимизирует обмен данными и предотвращает лишние запросы
-    if (progressLoadedRef.current) {
-      clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено, прогресс уже загружен (кэш)', {
-        currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
-        hasSavedProgress: !!savedProgress,
-      });
-      return;
-    }
-    
-    // ИСПРАВЛЕНО: Логируем вызов для отладки в Telegram Mini App
-    clientLogger.log('🔄 loadSavedProgressFromServer: вызов', {
-      loadProgressInProgress: loadProgressInProgressRef.current,
-      progressLoadInProgress: progressLoadInProgressRef.current,
-      hasResumedRef: hasResumedRef.current,
-      hasResumed,
-      initCompleted: initCompletedRef.current,
-      currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
-      isAlreadyOnQuestions,
-      progressLoaded: progressLoadedRef.current,
-      stack: new Error().stack?.split('\n').slice(1, 4).join('\n'),
-    });
-    
-    // Защита от множественных вызовов
-    if (loadProgressInProgressRef.current) {
-      clientLogger.log('⏸️ loadSavedProgressFromServer: уже выполняется, пропускаем');
-      return;
-    }
-    
-    // ИСПРАВЛЕНО: Проверяем hasResumed ПЕРЕД установкой loadProgressInProgressRef
-    // Это предотвращает начало загрузки, если пользователь уже продолжил анкету
-    if (hasResumedRef.current || hasResumed) {
-      clientLogger.log('⏸️ loadSavedProgressFromServer: hasResumed = true, пропускаем');
-      return;
-    }
-    
-    // ИСПРАВЛЕНО: Дополнительная проверка progressLoadInProgressRef
-    // Это предотвращает повторные вызовы после resumeQuiz
-    if (progressLoadInProgressRef.current) {
-      clientLogger.log('⏸️ loadSavedProgressFromServer: progressLoadInProgressRef = true, пропускаем');
-      return;
-    }
-    
-    loadProgressInProgressRef.current = true;
-
-    try {
-      // Если пользователь только что нажал "Начать заново", не загружаем прогресс
-      // Используем ref для синхронной проверки, так как состояние обновляется асинхронно
-      if (isStartingOverRef.current || isStartingOver) {
-        return;
-      }
-      // Если пользователь уже нажал "Продолжить" (hasResumed = true), не загружаем прогресс снова
-      // Это предотвращает повторное появление экрана "Вы не завершили анкету"
-      // Используем ref для синхронной проверки, так как состояние обновляется асинхронно
-      // ИСПРАВЛЕНО: Проверяем еще раз перед API вызовом
-      if (hasResumedRef.current || hasResumed) {
-        clientLogger.log('⏸️ loadSavedProgressFromServer: hasResumed = true перед API вызовом, пропускаем');
-        return;
-      }
-      // Проверяем, что Telegram WebApp доступен перед запросом
-      if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
-        return;
-      }
-      
-      // ФИКС: Используем React Query для загрузки прогресса (приоритет)
-      // Это обеспечивает автоматическое кэширование и уменьшает количество запросов
-      let response: {
-        progress?: {
-          answers: Record<number, string | string[]>;
-          questionIndex: number;
-          infoScreenIndex: number;
-          timestamp: number;
-        } | null;
-      } | null = null;
-      
-      if (quizProgressFromQuery) {
-        // Используем данные из React Query кэша
-        clientLogger.log('✅ Используем прогресс из React Query кэша', {
-          hasProgress: !!(quizProgressFromQuery as any)?.progress,
-        });
-        response = quizProgressFromQuery as any;
-      } else if (!isLoadingProgress) {
-        // Если React Query не загружает и данных нет, используем прямой вызов API как fallback
-        clientLogger.log('🔄 Загружаем прогресс через прямой API вызов (fallback)');
-        response = await api.getQuizProgress() as {
-          progress?: {
-            answers: Record<number, string | string[]>;
-            questionIndex: number;
-            infoScreenIndex: number;
-            timestamp: number;
-          } | null;
-        };
-      } else {
-        // Если React Query загружает, ждем завершения
-        clientLogger.log('⏳ Ожидаем загрузку прогресса через React Query...');
-        // Ждем максимум 3 секунды
-        let waitAttempts = 0;
-        const maxWaitAttempts = 30; // 30 * 100ms = 3 секунды максимум
-        while (isLoadingProgress && !quizProgressFromQuery && waitAttempts < maxWaitAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-          waitAttempts++;
-        }
-        
-        if (quizProgressFromQuery) {
-          response = quizProgressFromQuery as any;
-        } else {
-          // Если React Query не загрузил, используем прямой вызов API
-          response = await api.getQuizProgress() as {
-            progress?: {
-              answers: Record<number, string | string[]>;
-              questionIndex: number;
-              infoScreenIndex: number;
-              timestamp: number;
-            } | null;
-          };
-        }
-      }
-      
-      if (!response) {
-        return;
-      }
-      
-      // ИСПРАВЛЕНО: Проверяем наличие профиля перед показом экрана "Вы не завершили анкету"
-      // Если профиля нет, но есть ответы - это может быть старые данные, которые нужно очистить
-      // Не показываем экран "Вы не завершили анкету" если профиля нет
-      let hasProfile = false;
-      try {
-        const profile = await api.getCurrentProfile();
-        hasProfile = !!(profile && profile.id);
-      } catch (profileErr: any) {
-        const isNotFound = profileErr?.status === 404 || 
-                          profileErr?.message?.includes('404') || 
-                          profileErr?.message?.includes('No profile') ||
-                          profileErr?.message?.includes('Profile not found');
-        if (isNotFound) {
-          hasProfile = false;
-        }
-      }
-      
-      // ИСПРАВЛЕНО: Показываем экран "Вы не завершили анкету" если есть ответы, независимо от наличия профиля
-      // Профиль создается только после завершения анкеты (отправки ответов)
-      // Поэтому для незавершенной анкеты профиля быть не должно
-      // ВАЖНО: Проверяем только наличие ответов, а не наличие профиля
-      // ИСПРАВЛЕНО: Показываем экран прогресса только если есть минимум 5 ответов или questionIndex >= 5
-      const answersCount = response?.progress?.answers ? Object.keys(response.progress.answers).length : 0;
-      const questionIndex = response?.progress?.questionIndex ?? -1;
-      const shouldShowProgressScreen = 
-        answersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN || 
-        questionIndex >= QUIZ_CONFIG.VALIDATION.MIN_QUESTION_INDEX_FOR_PROGRESS_SCREEN;
-      
-      if (response?.progress && response.progress.answers && answersCount > 0 && shouldShowProgressScreen) {
-        // ФИКС: Начальные экраны - это только те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
-              const initialInfoScreens = getInitialInfoScreens();
-        
-        // ФИКС: Не загружаем прогресс, если пользователь уже перешел к вопросам (currentInfoScreenIndex >= initialInfoScreens.length)
-        // Это предотвращает сброс currentInfoScreenIndex на 0 после перехода к вопросам
-        // ИСПРАВЛЕНО: Используем ref для синхронной проверки, так как state обновляется асинхронно
-        // КРИТИЧНО: Также проверяем, что загруженный прогресс не имеет infoScreenIndex меньше, чем текущий
-        // Это предотвращает откат назад после перехода к вопросам
-        
-        // ФИКС: Проверяем sessionStorage для восстановления индекса при перемонтировании
-        let restoredIndex: number | null = null;
-        if (typeof window !== 'undefined') {
-          try {
-            const savedInfoScreenIndex = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
-            if (savedInfoScreenIndex !== null) {
-              const savedIndex = parseInt(savedInfoScreenIndex, 10);
-              if (!isNaN(savedIndex) && savedIndex >= 0 && savedIndex <= initialInfoScreens.length) {
-                restoredIndex = savedIndex;
-                // Используем восстановленный индекс, если он больше текущего
-                if (restoredIndex > currentInfoScreenIndexRef.current) {
-                  currentInfoScreenIndexRef.current = restoredIndex;
-                  setCurrentInfoScreenIndex(restoredIndex);
-                  clientLogger.log('💾 Использован восстановленный currentInfoScreenIndex из sessionStorage', {
-                    restoredIndex,
-                    currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
-                  });
-                }
-              }
-            }
-          } catch (err) {
-            clientLogger.warn('⚠️ Не удалось проверить currentInfoScreenIndex в sessionStorage', err);
-          }
-        }
-        
-        let currentInfoIndex = currentInfoScreenIndexRef.current >= initialInfoScreens.length 
-          ? currentInfoScreenIndexRef.current 
-          : currentInfoScreenIndex;
-        const progressInfoIndex = response.progress.infoScreenIndex || 0;
-        
-        // ИСПРАВЛЕНО: Если у пользователя есть прогресс с >= 2 ответами,
-        // НЕ блокируем установку savedProgress, даже если currentInfoIndex >= initialInfoScreens.length
-        // Это гарантирует, что пользователь увидит экран "Вы не завершили анкету" при заходе в анкету
-        // Блокируем только если пользователь УЖЕ продолжает анкету (hasResumed = true)
-        if (currentInfoIndex >= initialInfoScreens.length && !shouldShowProgressScreen) {
-          clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено, так как пользователь уже на вопросах и нет прогресса для resume', {
-            currentInfoScreenIndex,
-            currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
-            initialInfoScreensLength: initialInfoScreens.length,
-            progressInfoScreenIndex: progressInfoIndex,
-            currentInfoIndex,
-            restoredIndex,
-            shouldShowProgressScreen,
-          });
-          return;
-        }
-        
-        // КРИТИЧНО: Если текущий infoScreenIndex больше, чем в загруженном прогрессе, не загружаем прогресс
-        // Это предотвращает откат назад после того, как пользователь прошел больше экранов
-        // ИСПРАВЛЕНО: НЕ блокируем, если у пользователя есть прогресс для показа resume
-        // (shouldShowProgressScreen = true), чтобы пользователь увидел экран "Вы не завершили анкету"
-        if (currentInfoIndex > progressInfoIndex && currentInfoIndex > 0 && !shouldShowProgressScreen) {
-          clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено, так как текущий прогресс больше загруженного и нет прогресса для resume', {
-            currentInfoScreenIndex,
-            currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
-            progressInfoScreenIndex: progressInfoIndex,
-            currentInfoIndex,
-            restoredIndex,
-            initialInfoScreensLength: initialInfoScreens.length,
-            shouldShowProgressScreen,
-          });
-          return;
-        }
-        
-        clientLogger.log('✅ Найдены сохраненные ответы, показываем экран продолжения', {
-          answersCount: Object.keys(response.progress.answers).length,
-          questionIndex: response.progress.questionIndex,
-          hasProfile,
-        });
-        // ВАЖНО: Не загружаем прогресс, если пользователь уже нажал "Продолжить"
-        // Это предотвращает повторное появление экрана "Вы не завершили анкету"
-        // Используем ref для синхронной проверки, так как состояние обновляется асинхронно
-        if (hasResumedRef.current || hasResumed) {
-          clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено после получения ответа, так как hasResumed = true', {
-            refValue: hasResumedRef.current,
-            stateValue: hasResumed,
-          });
-          return;
-        }
-        
-        // ВАЖНО: Еще раз проверяем hasResumedRef ПЕРЕД установкой состояний
-        // Это критично, так как запрос мог быть отправлен до установки hasResumedRef
-        if (hasResumedRef.current || hasResumed) {
-          clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено перед установкой состояний, так как hasResumed = true', {
-            refValue: hasResumedRef.current,
-            stateValue: hasResumed,
-          });
-          return;
-        }
-        
-        // ИСПРАВЛЕНО: Финальная проверка hasResumed ПЕРЕД установкой состояний
-        // Это критично для предотвращения бесконечного цикла между экраном продолжения и первым экраном анкеты
-        if (hasResumedRef.current || hasResumed) {
-          clientLogger.log('⏸️ loadSavedProgressFromServer: hasResumed = true перед установкой состояний, пропускаем', {
-            refValue: hasResumedRef.current,
-            stateValue: hasResumed,
-          });
-          return;
-        }
-        
-        // ИСПРАВЛЕНО: Если у пользователя есть прогресс с >= 2 ответами,
-        // ВСЕГДА показываем экран resume, даже если currentInfoScreenIndex >= initialInfoScreens.length
-        // Это гарантирует, что пользователь увидит экран "Вы не завершили анкету" вместо вопроса
-        // Проверка currentInfoIndex >= initialInfoScreens.length блокирует показ resume ТОЛЬКО если
-        // пользователь УЖЕ продолжает анкету (hasResumed = true), а не просто находится на вопросах
-        const finalCheckInfoIndex = currentInfoScreenIndexRef.current >= initialInfoScreens.length 
-          ? currentInfoScreenIndexRef.current 
-          : currentInfoScreenIndex;
-        
-        // Если у пользователя есть прогресс с >= 2 ответами и он еще не продолжил анкету,
-        // показываем экран resume независимо от currentInfoScreenIndex
-        const shouldShowResumeRegardless = shouldShowProgressScreen && !(hasResumedRef.current || hasResumed);
-        
-        // Блокируем установку savedProgress только если:
-        // 1. Пользователь уже на вопросах (finalCheckInfoIndex >= initialInfoScreens.length)
-        // И 2. Пользователь УЖЕ продолжает анкету (hasResumed = true)
-        // ИЛИ 3. У пользователя нет прогресса для показа resume (shouldShowProgressScreen = false)
-        if (finalCheckInfoIndex >= initialInfoScreens.length && !shouldShowResumeRegardless) {
-          clientLogger.log('⏸️ loadSavedProgressFromServer: финальная проверка - пользователь уже на вопросах и продолжает анкету, не устанавливаем savedProgress', {
-            currentInfoScreenIndex,
-            currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
-            initialInfoScreensLength: initialInfoScreens.length,
-            progressInfoScreenIndex: progressInfoIndex,
-            finalCheckInfoIndex,
-            hasResumed: hasResumedRef.current || hasResumed,
-            shouldShowProgressScreen,
-            shouldShowResumeRegardless,
-          });
-          return;
-        }
-        
-        clientLogger.log('✅ Прогресс найден на сервере, показываем экран продолжения:', {
-          answersCount: Object.keys(response.progress.answers).length,
-          questionIndex: response.progress.questionIndex,
-          infoScreenIndex: response.progress.infoScreenIndex,
-          hasProfile,
-        });
-        // ИСПРАВЛЕНО: Сначала устанавливаем showResumeScreen и savedProgress СИНХРОННО,
-        // чтобы предотвратить показ начальных экранов на промежуточных рендерах
-        setSavedProgress(response.progress);
-        setShowResumeScreen(true);
-        // ИСПРАВЛЕНО: Устанавливаем loading = false ПОСЛЕ установки showResumeScreen,
-        // чтобы экран resume показался сразу и не было мигания начальных экранов
-        // Это гарантирует, что пользователь увидит экран "Вы не завершили анкету" до первого экрана анкеты
-        setLoading(false);
-        // ИСПРАВЛЕНО: Прогресс сохраняется в БД через API, localStorage больше не используется
-      } else {
-        clientLogger.log('ℹ️ Прогресс на сервере не найден или пуст');
-        // ИСПРАВЛЕНО: Прогресс хранится в БД, localStorage больше не используется
-        setSavedProgress(null);
-        setShowResumeScreen(false);
-        // Не вызываем loadSavedProgress(), так как прогресс должен быть синхронизирован с сервером
-      }
-    } catch (err: any) {
-      // Если ошибка 401 - это нормально, просто не используем серверный прогресс
-      if (err?.message?.includes('401') || err?.message?.includes('Unauthorized')) {
-        // Не логируем 401 ошибки, так как это нормально, если пользователь не авторизован
-        // ИСПРАВЛЕНО: Прогресс хранится в БД, localStorage больше не используется
-        setSavedProgress(null);
-        setShowResumeScreen(false);
-        return;
-      }
-        
-        // ФИКС: Обработка KV ошибок (max requests limit exceeded)
-        const errorMessage = err?.message || String(err);
-        const isKVError = errorMessage.includes('max requests limit exceeded') || 
-                         errorMessage.includes('Upstash') || 
-                         errorMessage.includes('KV') ||
-                         errorMessage.includes('rate limit');
-        
-        if (isKVError) {
-          // Если это ошибка KV (лимит запросов), явно устанавливаем savedProgress = null
-          // и пропускаем resume-экран, чтобы не застревать на начальных инфо-скринах
-          clientLogger.warn('⚠️ Ошибка KV при загрузке прогресса - продолжаем как новый пользователь', {
-            error: errorMessage,
-            hasResumedRef: hasResumedRef.current,
-            hasResumed,
-          });
-          setSavedProgress(null);
-          setShowResumeScreen(false);
-          // Сбрасываем currentQuestionIndex на 0 для нового пользователя, если он выходит за пределы
-          if (currentQuestionIndex >= allQuestions.length && allQuestions.length > 0) {
-            setCurrentQuestionIndex(0);
-          }
-          // Пропускаем начальные инфо-скрины, если индекс уже прошел их
-          // ФИКС: НЕ сбрасываем на первый экран при KV ошибке - это вызывает повторные редиректы
-          // Вместо этого пропускаем начальные экраны и переходим к вопросам
-          // ФИКС: Начальные экраны - это только те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
-              const initialInfoScreens = getInitialInfoScreens();
-          if (currentInfoScreenIndex >= initialInfoScreens.length && allQuestions.length > 0) {
-            // Уже на вопросах - ничего не делаем
-          } else if (currentInfoScreenIndex < initialInfoScreens.length && allQuestions.length > 0) {
-            // Начальные экраны еще не пройдены - пропускаем их и переходим к вопросам
-            // НЕ сбрасываем на 0, чтобы не вызвать редирект на первый экран
-            setCurrentInfoScreenIndex(initialInfoScreens.length);
-            setCurrentQuestionIndex(0);
-          }
-          return;
-        }
-        
-      clientLogger.warn('Ошибка загрузки прогресса с сервера:', err);
-      // ИСПРАВЛЕНО: Прогресс хранится в БД, localStorage больше не используется
-      setSavedProgress(null);
-      setShowResumeScreen(false);
-    } finally {
-      // ИСПРАВЛЕНО: Не сбрасываем флаги, если пользователь уже продолжил анкету
-      // Это предотвращает повторные вызовы loadSavedProgressFromServer в Telegram Mini App
-      if (!hasResumedRef.current && !hasResumed) {
-        loadProgressInProgressRef.current = false;
-      } else {
-        // Если hasResumed = true, оставляем флаги установленными, чтобы предотвратить повторные вызовы
-        clientLogger.log('🔒 loadSavedProgressFromServer: оставляем флаги установленными, так как hasResumed = true');
-      }
-      
-      // ИСПРАВЛЕНО: Дополнительная проверка после завершения загрузки
-      // Если hasResumed стал true во время загрузки, очищаем состояния
-      if (hasResumedRef.current || hasResumed) {
-        clientLogger.log('⏸️ loadSavedProgressFromServer: hasResumed = true после загрузки, очищаем состояния');
-        setSavedProgress(null);
-        setShowResumeScreen(false);
-      }
-    }
-  };
-
-  // КОНЕЦ старой реализации (удалить после проверки)
+  // РЕФАКТОРИНГ: Старая реализация удалена (вынесена в lib/quiz/handlers/loadSavedProgress.ts)
 
   // РЕФАКТОРИНГ: Функции вынесены в lib/quiz/handlers/saveProgress.ts и lib/quiz/handlers/clearProgress.ts
   // Создаем функции saveProgress и clearProgress используя фабрики
@@ -2034,8 +1376,6 @@ export default function QuizPage() {
     lastRestoredAnswersIdRef,
     saveProgressTimeoutRef,
     submitAnswersRef,
-    historyUpdateInProgressRef,
-    lastHistoryUpdateTimeRef,
     firstScreenResetRef,
     questionnaireFromQuery,
     isLoadingQuestionnaire,
@@ -2793,332 +2133,61 @@ export default function QuizPage() {
   // Если анкета не загрузилась - это ошибка, показываем экран ошибки
   // Fallback лоадер убран, так как он создает путаницу и задерживает отображение анкеты
 
-  // Экран продолжения анкеты
-  // Экран выбора тем при повторном прохождении анкеты
+  // РЕФАКТОРИНГ: Экран выбора тем при повторном прохождении анкеты
   if (showRetakeScreen && isRetakingQuiz) {
-    const retakeTopics = getAllTopics();
-    
     clientLogger.log('🔄 Retake screen check:', {
       showRetakeScreen,
       isRetakingQuiz,
       hasRetakingPayment,
-      paymentKey: 'stored in DB', // ИСПРАВЛЕНО: Флаги оплаты хранятся в БД
+      paymentKey: 'stored in DB',
     });
-    
-    const handleTopicSelect = (topic: QuizTopic) => {
-      // В paid-состоянии PaymentGate отдаёт children, и клик по карточке работает.
-      router.push(`/quiz/update/${topic.id}`);
+
+    // РЕФАКТОРИНГ: Используем функцию из handlers
+    const handleFullRetakeCallback = async () => {
+      await handleFullRetake({
+        hasFullRetakePayment,
+        setShowRetakeScreen,
+        setIsRetakingQuiz,
+        setIsStartingOver,
+        isStartingOverRef,
+        setAnswers,
+        setSavedProgress,
+        setShowResumeScreen,
+        setHasResumed,
+        hasResumedRef,
+        autoSubmitTriggeredRef,
+        setAutoSubmitTriggered,
+        setError,
+        questionnaire,
+        setCurrentInfoScreenIndex,
+        setCurrentQuestionIndex,
+        setPendingInfoScreen,
+      });
     };
 
-    const handleFullRetake = async () => {
-      // Для полного перепрохождения нужна отдельная оплата 99₽
-      if (!hasFullRetakePayment) {
-        clientLogger.log('⚠️ Full retake payment not completed, showing payment gate');
-        // Показываем PaymentGate для полного перепрохождения
-        return;
-      }
-
-      clientLogger.log('✅ Full retake payment completed, starting full questionnaire reset');
-
-      // Сбрасываем флаг оплаты после использования в БД
-      try {
-        await userPreferences.setPaymentFullRetakeCompleted(false);
-        clientLogger.log('🔄 Full retake payment flag cleared');
-      } catch (err) {
-        clientLogger.warn('Failed to clear full retake payment flag:', err);
-      }
-
-      // Полное перепрохождение:
-      // - скрываем экран выбора тем
-      // - очищаем ответы и сохранённый прогресс
-      // - сбрасываем индексы и флаги "продолжить"
-      setShowRetakeScreen(false);
-      setIsRetakingQuiz(true); // остаёмся в режиме перепрохождения, но с чистой анкетой
-
-      // Отмечаем, что пользователь начинает заново
-      setIsStartingOver(true);
-      isStartingOverRef.current = true;
-
-      // Полный сброс ответов и прогресса
-      setAnswers({});
-      setSavedProgress(null);
-      setShowResumeScreen(false);
-      setHasResumed(false);
-      hasResumedRef.current = false;
-
-      autoSubmitTriggeredRef.current = false;
-      setAutoSubmitTriggered(false);
-      setError(null);
-
-      // ИСПРАВЛЕНО: Очищаем флаги перепрохождения в БД
-      try {
-        await userPreferences.setIsRetakingQuiz(false);
-        await userPreferences.setFullRetakeFromHome(false);
-      } catch (err) {
-        clientLogger.warn('Failed to clear retake flags:', err);
-      }
-
-      // Начинаем анкету с самого начала
-      if (questionnaire) {
-        setCurrentInfoScreenIndex(0); // показываем все инфо-экраны заново
-        setCurrentQuestionIndex(0);
-        setPendingInfoScreen(null);
-        clientLogger.log('✅ Full retake: answers and progress cleared, starting from first info screen');
-      }
-    };
-
-    const retakeScreenContent = (
-      <div style={{
-        minHeight: '100vh',
-        padding: '20px',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-      }}>
-        {/* Логотип */}
-        <div style={{
-          padding: '20px',
-          textAlign: 'center',
-        }}>
-        </div>
-
-        {/* Заголовок */}
-        <div style={{
-          textAlign: 'center',
-          marginBottom: '32px',
-        }}>
-          <h1 style={{
-            fontSize: '28px',
-            fontWeight: 'bold',
-            color: '#0A5F59',
-            marginBottom: '12px',
-          }}>
-            Что хотите изменить?
-          </h1>
-          <p style={{
-            fontSize: '16px',
-            color: '#6B7280',
-            lineHeight: '1.6',
-          }}>
-            Выберите тему, которую хотите обновить, или пройдите анкету полностью
-          </p>
-        </div>
-
-        {/* Список тем */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '16px',
-          marginBottom: '24px',
-        }}>
-          {retakeTopics.map((topic) => {
-            const topicButton = (
-              <button
-                key={topic.id}
-                onClick={() => handleTopicSelect(topic)}
-                style={{
-                  padding: '20px',
-                  borderRadius: '16px',
-                  backgroundColor: 'white',
-                  border: '1px solid #E5E7EB',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
-                  width: '100%',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = '#0A5F59';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(10, 95, 89, 0.15)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = '#E5E7EB';
-                  e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.05)';
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{
-                    fontSize: '32px',
-                    width: '48px',
-                    height: '48px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
-                    {topic.icon || '📝'}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{
-                      fontSize: '18px',
-                      fontWeight: '600',
-                      color: '#111827',
-                      marginBottom: '4px',
-                    }}>
-                      {topic.title}
-                    </div>
-                    <div style={{
-                      fontSize: '14px',
-                      color: '#6B7280',
-                    }}>
-                      {topic.description}
-                    </div>
-                  </div>
-                  <div style={{
-                    fontSize: '24px',
-                    color: '#9CA3AF',
-                  }}>
-                    →
-                  </div>
-                </div>
-              </button>
-            );
-            
-            // ИСПРАВЛЕНО: ретейк темы = 49₽ (через productCode=retake_topic).
-            // После оплаты сразу переходим в /quiz/update/{topicId}.
-            return (
-              <PaymentGate
-                key={topic.id}
-                price={49}
-                productCode="retake_topic"
-                isRetaking={true}
-                onPaymentComplete={() => {
-                  clientLogger.log('✅ Retake topic payment completed, navigating to topic', { topicId: topic.id });
-                  router.push(`/quiz/update/${topic.id}`);
-                }}
-              >
-                {topicButton}
-              </PaymentGate>
-            );
-          })}
-        </div>
-
-        {/* Кнопка полного перепрохождения */}
-        {!hasFullRetakePayment ? (
-          <PaymentGate
-            price={99}
-            productCode="retake_full"
-            isRetaking={true}
-            onPaymentComplete={async () => {
-              // Обновляем состояние оплаты из API (источник правды)
-              try {
-                const entitlements = await api.getEntitlements();
-                const hasRetakeFull = entitlements?.entitlements?.some(
-                  (e: any) => e.code === 'retake_full_access' && e.active === true
-                ) || false;
-                setHasFullRetakePayment(hasRetakeFull);
-                clientLogger.log('✅ Full retake payment completed, entitlements updated', { hasRetakeFull });
-              } catch (err) {
-                clientLogger.warn('⚠️ Failed to refresh entitlements after payment, using fallback', err);
-                // Сохраняем флаг оплаты в БД
-                try {
-                  await userPreferences.setPaymentFullRetakeCompleted(true);
-                  setHasFullRetakePayment(true);
-                } catch (err) {
-                  clientLogger.warn('Failed to save full retake payment flag:', err);
-                }
-              }
-              
-              // После оплаты разрешаем полное перепрохождение
-              setShowRetakeScreen(false);
-              // Устанавливаем флаг перепрохождения, чтобы пропустить все info screens
-              setIsRetakingQuiz(true);
-              // Пропускаем все начальные info screens - переходим сразу к вопросам
-              if (questionnaire) {
-                // ФИКС: Начальные экраны - это только те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
-                const initialInfoScreens = getInitialInfoScreens();
-                setCurrentInfoScreenIndex(initialInfoScreens.length);
-                setCurrentQuestionIndex(0);
-                setPendingInfoScreen(null);
-                clientLogger.log('✅ Full retake payment: Skipping all info screens, starting from first question');
-              }
-            }}
-          >
-            <div style={{ width: '100%', marginTop: '8px' }}>
-              <button
-                style={{
-                  width: '100%',
-                  padding: '16px',
-                  borderRadius: '16px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                  border: '2px solid #0A5F59',
-                  color: '#0A5F59',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#0A5F59';
-                  e.currentTarget.style.color = 'white';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
-                  e.currentTarget.style.color = '#0A5F59';
-                }}
-              >
-                Пройти всю анкету заново (99 ₽)
-              </button>
-            </div>
-          </PaymentGate>
-        ) : (
-        <button
-          onClick={handleFullRetake}
-          style={{
-            width: '100%',
-            padding: '16px',
-            borderRadius: '16px',
-            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-            border: '2px solid #0A5F59',
-            color: '#0A5F59',
-            fontSize: '16px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            marginTop: '8px',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#0A5F59';
-            e.currentTarget.style.color = 'white';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
-            e.currentTarget.style.color = '#0A5F59';
-          }}
-        >
-          Пройти всю анкету заново
-        </button>
-        )}
-
-        {/* Кнопка отмены */}
-        <div style={{ textAlign: 'center', marginTop: '24px' }}>
-          <button
-            onClick={() => router.push('/plan')}
-            style={{
-              padding: '12px 24px',
-              borderRadius: '12px',
-              backgroundColor: 'transparent',
-              border: '1px solid #D1D5DB',
-              color: '#6B7280',
-              fontSize: '14px',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#9CA3AF';
-              e.currentTarget.style.color = '#111827';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = '#D1D5DB';
-              e.currentTarget.style.color = '#6B7280';
-            }}
-          >
-            Отмена
-          </button>
-        </div>
-      </div>
+    return (
+      <QuizRetakeScreen
+        questionnaire={questionnaire}
+        hasFullRetakePayment={hasFullRetakePayment}
+        setShowRetakeScreen={setShowRetakeScreen}
+        setIsRetakingQuiz={setIsRetakingQuiz}
+        setIsStartingOver={setIsStartingOver}
+        isStartingOverRef={isStartingOverRef}
+        setAnswers={setAnswers}
+        setSavedProgress={setSavedProgress}
+        setShowResumeScreen={setShowResumeScreen}
+        setHasResumed={setHasResumed}
+        hasResumedRef={hasResumedRef}
+        setAutoSubmitTriggered={setAutoSubmitTriggered}
+        autoSubmitTriggeredRef={autoSubmitTriggeredRef}
+        setError={setError}
+        setCurrentInfoScreenIndex={setCurrentInfoScreenIndex}
+        setCurrentQuestionIndex={setCurrentQuestionIndex}
+        setPendingInfoScreen={setPendingInfoScreen}
+        setHasFullRetakePayment={setHasFullRetakePayment}
+        onFullRetake={handleFullRetakeCallback}
+      />
     );
-
-    // Показываем экран выбора тем
-    // Каждая тема и кнопка "Пройти всю анкету" обернуты в свой PaymentGate
-    return retakeScreenContent;
   }
 
   // КРИТИЧНО: Проверка резюм-экрана перемещена ПОСЛЕ вызова useQuizView (ниже)
@@ -3213,49 +2282,8 @@ export default function QuizPage() {
                            !isStartingOverRef.current && 
                            !hasResumedRef.current;
   
+  // РЕФАКТОРИНГ: Экран продолжения анкеты
   if (shouldShowResume) {
-    // Получаем все вопросы с фильтрацией
-    // ИСПРАВЛЕНО: Добавляем проверку на существование groups и questions
-    const allQuestionsRaw = questionnaire ? [
-      ...(questionnaire.groups || []).flatMap((g) => g.questions || []),
-      ...(questionnaire.questions || []),
-    ] : [];
-    
-    // ИСПРАВЛЕНО: Используем единую функцию filterQuestions вместо дублирующей логики
-    // filterQuestions уже использует allAnswers (answers + savedProgress.answers) внутри
-    const allQuestions = filterQuestions({
-      questions: allQuestionsRaw,
-      answers,
-      savedProgressAnswers: savedProgress?.answers,
-      isRetakingQuiz,
-      showRetakeScreen,
-      logger: clientLogger, // Передаем clientLogger для логирования
-    });
-
-    // ИСПРАВЛЕНО: Вычисляем номер следующего неотвеченного вопроса (N+1)
-    // Нужно найти первый неотвеченный вопрос после сохраненного прогресса
-    let displayQuestionNumber = savedProgress.questionIndex + 2; // Fallback: следующий после сохраненного (N+1)
-    
-    if (allQuestions.length > 0) {
-      const answeredQuestionIds = Object.keys(savedProgress.answers || {}).map(id => Number(id));
-      
-      // Находим следующий неотвеченный вопрос
-      const nextUnansweredQuestion = allQuestions.find((q) => {
-        return !answeredQuestionIds.includes(q.id);
-      });
-      
-      if (nextUnansweredQuestion) {
-        const nextIndex = allQuestions.findIndex(q => q.id === nextUnansweredQuestion.id);
-        if (nextIndex !== -1) {
-          // Показываем номер следующего вопроса (индекс + 1, так как нумерация с 1)
-          displayQuestionNumber = nextIndex + 1;
-        }
-      } else {
-        // Если все вопросы отвечены, показываем последний вопрос
-        displayQuestionNumber = allQuestions.length;
-      }
-    }
-
     // Обработчик "Начать анкету заново"
     const handleStartFromBeginning = async () => {
       clientLogger.log('🔄 Пользователь нажал "Начать анкету заново"');
@@ -3288,8 +2316,6 @@ export default function QuizPage() {
       
       // Очищаем прогресс на сервере (удаляем ответы из БД)
       try {
-        // ИСПРАВЛЕНО: Используем DELETE /api/questionnaire/progress для удаления ответов
-        // Это удаляет ответы независимо от наличия профиля/плана
         const response = await fetch('/api/questionnaire/progress', {
           method: 'DELETE',
           headers: {
@@ -3312,96 +2338,15 @@ export default function QuizPage() {
     };
 
     return (
-      <div style={{ 
-        padding: '20px',
-        minHeight: '100vh',
-        background: '#FFFFFF',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
-        <div 
-          className="animate-fade-in"
-          style={{
-            width: '100%',
-            maxWidth: '360px',
-            padding: '0 20px',
-          }}
-        >
-          {/* Заголовок */}
-          <h1 style={{
-            fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 700,
-            fontSize: '28px',
-            lineHeight: '120%',
-            color: '#000000',
-            margin: '0 0 16px 0',
-            textAlign: 'center',
-          }}>
-            Вы не завершили анкету
-          </h1>
-
-          {/* Подзаголовок */}
-          <p style={{
-            fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 400,
-            fontSize: '16px',
-            lineHeight: '140%',
-            color: '#000000',
-            margin: '0 0 40px 0',
-            textAlign: 'center',
-          }}>
-            Мы сохранили ваш прогресс — продолжите с того же места или начните заново
-          </p>
-
-          {/* Кнопки */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-          }}>
-            {/* Кнопка "Продолжить с вопроса N" */}
-            <button
-              onClick={resumeQuiz}
-              style={{
-                width: '100%',
-                height: '56px',
-                background: '#D5FE61',
-                color: '#000000',
-                border: 'none',
-                borderRadius: '20px',
-                fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontWeight: 600,
-                fontSize: '16px',
-                cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-              }}
-            >
-              Продолжить с вопроса {displayQuestionNumber}
-            </button>
-
-            {/* Кнопка "Начать анкету заново" */}
-            <button
-              onClick={handleStartFromBeginning}
-              style={{
-                width: '100%',
-                height: '56px',
-                background: 'transparent',
-                color: '#000000',
-                border: '2px solid #000000',
-                borderRadius: '20px',
-                fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontWeight: 600,
-                fontSize: '16px',
-                cursor: 'pointer',
-              }}
-            >
-              Начать анкету заново
-            </button>
-          </div>
-        </div>
-      </div>
+      <QuizResumeScreen
+        savedProgress={savedProgress}
+        questionnaire={questionnaire}
+        answers={answers}
+        isRetakingQuiz={isRetakingQuiz}
+        showRetakeScreen={showRetakeScreen}
+        onResume={resumeQuiz}
+        onStartOver={handleStartFromBeginning}
+      />
     );
   }
 
@@ -3988,599 +2933,116 @@ export default function QuizPage() {
     // (вопрос должен найтись сразу после загрузки анкеты)
   }
 
-  // ИСПРАВЛЕНО: Заменяем бесконечный лоадер на явную обработку ошибок
-  // Различаем два случая: анкета не загрузилась vs все вопросы отфильтрованы
-  // ИСПРАВЛЕНО: Не показываем ошибку если идет загрузка или если allQuestionsRaw еще не пересчитан
-  // ИСПРАВЛЕНО: Не блокируем отображение, если показываются info screens или resume screen
-  // ИСПРАВЛЕНО: Используем isShowingInitialInfoScreen вместо isShowingInitialInfoScreen
-  if ((!currentQuestion || allQuestions.length === 0) && !loading && !showResumeScreen && !showRetakeScreen && !isShowingInitialInfoScreen && !pendingInfoScreen && !hasResumed && questionnaireRef.current) {
-    // Случай 1: Анкета не загрузилась (questionnaire === null)
-    if (!questionnaire) {
-      clientLogger.error('❌ Questionnaire not loaded - showing error to user', {
-        loading,
-        error,
-        hasQuestionnaire: !!questionnaire,
-        hasQuestionnaireRef: !!questionnaireRef.current,
-        questionnaireRefId: questionnaireRef.current?.id,
-        initCompleted: initCompletedRef.current,
-        initInProgress: initInProgressRef.current,
-      });
-      return (
-        <div style={{ 
-          padding: '20px',
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
-        }}>
-          <div style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.56)',
-            backdropFilter: 'blur(28px)',
-            borderRadius: '24px',
-            padding: '48px',
-            maxWidth: '400px',
-            textAlign: 'center',
-          }}>
-            <div style={{
-              fontSize: '48px',
-              marginBottom: '24px',
-            }}>⚠️</div>
-            <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
-              Не удалось загрузить анкету
-            </h2>
-            <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5', marginBottom: '24px' }}>
-              {typeof error === 'string' ? error : ((error as any)?.message || 'Пожалуйста, откройте приложение через Telegram или обновите страницу.')}
-            </p>
-            <button
-              onClick={() => {
-                if (typeof window !== 'undefined') {
-                  window.location.reload();
-                }
-              }}
-              style={{
-                backgroundColor: '#0A5F59',
-                color: 'white',
-                border: 'none',
-                borderRadius: '12px',
-                padding: '12px 24px',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-              }}
-            >
-              Обновить страницу
-            </button>
-          </div>
-        </div>
-      );
-    }
-    
-    // Случай 2: Анкета загрузилась, но все вопросы отфильтрованы
-    if (questionnaire && allQuestionsRaw.length > 0 && allQuestions.length === 0) {
-      clientLogger.error('❌ All questions filtered out - showing error to user', {
-        allQuestionsRawLength: allQuestionsRaw.length,
-        allQuestionsLength: allQuestions.length,
-        answersCount: Object.keys(answers).length,
-        isRetakingQuiz,
-        showRetakeScreen,
-      });
-      return (
-        <div style={{ 
-          padding: '20px',
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
-        }}>
-          <div style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.56)',
-            backdropFilter: 'blur(28px)',
-            borderRadius: '24px',
-            padding: '48px',
-            maxWidth: '400px',
-            textAlign: 'center',
-          }}>
-            <div style={{
-              fontSize: '48px',
-              marginBottom: '24px',
-            }}>⚠️</div>
-            <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
-              Все вопросы отфильтрованы
-            </h2>
-            <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5', marginBottom: '24px' }}>
-              Похоже, что все вопросы анкеты были отфильтрованы. Пожалуйста, обновите страницу или обратитесь в поддержку.
-            </p>
-            <button
-              onClick={() => {
-                if (typeof window !== 'undefined') {
-                  window.location.reload();
-                }
-              }}
-              style={{
-                backgroundColor: '#0A5F59',
-                color: 'white',
-                border: 'none',
-                borderRadius: '12px',
-                padding: '12px 24px',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-              }}
-            >
-              Обновить страницу
-            </button>
-          </div>
-        </div>
-      );
-    }
-    
-    // Случай 3: Анкета загрузилась, но allQuestionsRaw пустой (анкета без вопросов)
-    // ИСПРАВЛЕНО: Не показываем экран "нет вопросов" если идет загрузка или если allQuestionsRaw еще не пересчитан
-    // Проверяем questionnaireRef.current, чтобы убедиться, что анкета действительно загружена
-    // КРИТИЧНО: Не используем ранний return здесь, так как это может вызвать React error #300
-    // Вместо этого проверяем условие в JSX ниже
-    const shouldShowEmptyQuestionnaireError = questionnaire && 
-                                               allQuestionsRaw.length === 0 && 
-                                               !loading && 
-                                               questionnaireRef.current;
-    // КРИТИЧНО: Проверяем условие для показа ошибки, но не используем ранний return
-    // Все ранние return должны быть после вызова всех хуков
-    const hasQuestionsInQuestionnaire = shouldShowEmptyQuestionnaireError && questionnaire && 
-                                        (questionnaire.groups?.some((g: any) => g?.questions?.length > 0) || 
-                                           (questionnaire.questions && questionnaire.questions.length > 0));
-      
-    if (shouldShowEmptyQuestionnaireError && !hasQuestionsInQuestionnaire) {
-      clientLogger.error('❌ Questionnaire loaded but has no questions - showing error to user', {
-        questionnaireId: questionnaire.id,
-        hasGroups: !!questionnaire.groups,
-        groupsCount: questionnaire.groups?.length || 0,
-        hasQuestions: !!questionnaire.questions,
-        questionsCount: questionnaire.questions?.length || 0,
-      });
-      return (
-        <div style={{ 
-          padding: '20px',
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
-        }}>
-          <div style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.56)',
-            backdropFilter: 'blur(28px)',
-            borderRadius: '24px',
-            padding: '48px',
-            maxWidth: '400px',
-            textAlign: 'center',
-          }}>
-            <div style={{
-              fontSize: '48px',
-              marginBottom: '24px',
-            }}>⚠️</div>
-            <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
-              Анкета пуста
-            </h2>
-            <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5', marginBottom: '24px' }}>
-              Анкета загружена, но в ней нет вопросов. Пожалуйста, обновите страницу или обратитесь в поддержку.
-            </p>
-            <button
-              onClick={() => {
-                if (typeof window !== 'undefined') {
-                  window.location.reload();
-                }
-              }}
-              style={{
-                backgroundColor: '#0A5F59',
-                color: 'white',
-                border: 'none',
-                borderRadius: '12px',
-                padding: '12px 24px',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-              }}
-            >
-              Обновить страницу
-            </button>
-          </div>
-        </div>
-      );
-    }
-    
-    // ИСПРАВЛЕНО: Лоадер анкеты убран - его не должно быть на /quiz
-    // Лоадер показывается только на главной странице (/)
-    // Если анкета не загружена, просто продолжаем рендер (покажем ошибку ниже, если она есть)
+  // РЕФАКТОРИНГ: Используем утилиту для проверки ошибок анкеты
+  const errorScreen = checkQuizErrors({
+    questionnaire,
+    questionnaireRef,
+    allQuestionsRaw,
+    allQuestions,
+    answers,
+    loading,
+    error,
+    isRetakingQuiz,
+    showRetakeScreen,
+    currentQuestion,
+    showResumeScreen,
+    isShowingInitialInfoScreen,
+    pendingInfoScreen,
+    hasResumed,
+  });
+  
+  if (errorScreen) {
+    return errorScreen;
   }
 
-  // КРИТИЧНО: Логируем, что именно показывается пользователю в конце рендера
-  // Это помогает диагностировать проблему с отображением анкеты
-  // ИСПРАВЛЕНО: Используем questionnaireRef.current если questionnaire (state) еще не обновился
-  const questionnaireToRender = questionnaire || questionnaireRef.current;
-  
-  // КРИТИЧНО: Проверяем, почему анкета может не отображаться
-  // Если анкета загружена, но loading все еще true - это проблема
-  // Это обрабатывается в useEffect выше, который принудительно сбрасывает loading
-  if (questionnaireToRender && loading) {
-    clientLogger.warn('⚠️ CRITICAL: Questionnaire loaded but loading=true - this should be fixed by useEffect', {
-      hasQuestionnaire: !!questionnaire,
-      hasQuestionnaireRef: !!questionnaireRef.current,
-      questionnaireId: questionnaireToRender?.id,
-      loading,
-      initCompleted: initCompletedRef.current,
-      initInProgress: initInProgressRef.current,
-    });
-  }
-  
-  // КРИТИЧНО: Если анкета загружена, но не отображается - логируем все условия
-  // ИСПРАВЛЕНО: Логируем только в development для предотвращения спама
-  if (isDev && questionnaireToRender && !loading && !error) {
-    clientLogger.log('✅ Questionnaire should be visible - all conditions met', {
-      hasQuestionnaire: !!questionnaire,
-      hasQuestionnaireRef: !!questionnaireRef.current,
-      questionnaireId: questionnaireToRender?.id,
-      loading,
-      error: error || null,
-      showResumeScreen,
-      showRetakeScreen,
-      isShowingInitialInfoScreen,
-      pendingInfoScreen: !!pendingInfoScreen,
-      isRetakingQuiz,
-      hasResumed,
-      initCompleted: initCompletedRef.current,
-      currentQuestion: !!currentQuestion,
-      currentQuestionIndex,
-      allQuestionsLength: allQuestions.length,
-    });
-  }
-  
-  // КРИТИЧНО: Логируем состояние перед рендерингом анкеты
-  // ИСПРАВЛЕНО: Логируем только в development для предотвращения спама
-  if (isDev) {
-    clientLogger.log('🔍 Final render check - what will be displayed?', {
-    timestamp: new Date().toISOString(),
-    hasQuestionnaire: !!questionnaire,
-    hasQuestionnaireRef: !!questionnaireRef.current,
-    hasQuestionnaireToRender: !!questionnaireToRender,
-    questionnaireId: questionnaire?.id || questionnaireRef.current?.id || null,
-    hasCurrentQuestion: !!currentQuestion,
-    currentQuestionId: currentQuestion?.id,
+  // РЕФАКТОРИНГ: Используем хук для логирования состояния рендеринга
+  useQuizRenderDebug({
+    isDev,
+    questionnaire,
+    questionnaireRef,
+    quizStateMachineQuestionnaire: quizStateMachine.questionnaire,
+    questionnaireFromQuery,
+    loading,
+    error,
+    currentQuestion,
     currentQuestionIndex,
     allQuestionsLength: allQuestions.length,
     allQuestionsRawLength: allQuestionsRaw.length,
-    loading,
-    error: error || null,
     showResumeScreen,
     showRetakeScreen,
     isShowingInitialInfoScreen,
-    pendingInfoScreen: !!pendingInfoScreen,
-    initCompleted: initCompletedRef.current,
-    initInProgress: initInProgressRef.current,
-    willShowLoader: loading && !questionnaireToRender,
-    willShowError: !!error && !loading,
-    willShowQuestionnaire: !!questionnaireToRender && !loading && !error,
+    pendingInfoScreen,
     isRetakingQuiz,
     hasResumed,
-    });
-  }
+    initCompletedRef,
+    initInProgressRef: initInProgressRef,
+  });
 
-  // ФИКС: Показываем лоадер в самом начале, если анкета еще не загружена или идет загрузка
-  // Это предотвращает показ белого экрана при загрузке приложения
-  // ИСПРАВЛЕНО: Проверка перенесена после всех хуков, чтобы не нарушать правила React hooks
-  // Лоадер показывается пока: loading=true ИЛИ анкета не загружена
-  // ФИКС: Проверяем initCompletedRef, чтобы лоадер показывался до завершения init()
-  // Это предотвращает показ первого инфо-экрана до загрузки анкеты
-  // ФИКС: НЕ проверяем allQuestions.length, так как фильтрация происходит динамически после ответов
-  // ФИКС: Проверяем не только наличие объекта, но и что он действительно загружен (имеет id)
-  // ИСПРАВЛЕНО: Также проверяем questionnaireFromQuery из React Query
-  const effectiveQuestionnaireForLoader = questionnaireRef.current || questionnaire || quizStateMachine.questionnaire || questionnaireFromQuery;
-  const hasValidQuestionnaire = effectiveQuestionnaireForLoader && effectiveQuestionnaireForLoader.id;
-  // ФИКС: Показываем лоадер только при первой загрузке
-  // ИСПРАВЛЕНО: Не показываем лоадер, если анкета уже была загружена (даже если идет рефетч)
-  // Проверяем, что анкета действительно отсутствует во всех источниках
-  // ИСПРАВЛЕНО: Не показываем лоадер, если показывается pendingInfoScreen (предотвращает каскад ремоунтов)
-  // ИСПРАВЛЕНО: Не показываем лоадер, если пользователь на начальных инфо-экранах
-  // Начальные инфо-экраны должны показываться независимо от загрузки анкеты
-  const initialInfoScreensForLoader = getInitialInfoScreens();
-  const isOnInitialInfoScreens = currentInfoScreenIndex < initialInfoScreensForLoader.length;
-  const hasQuestionnaireAnywhere = !!questionnaireRef.current || !!questionnaire || !!quizStateMachine.questionnaire || !!questionnaireFromQuery;
-  const shouldShowInitialLoader = !pendingInfoScreen && !isOnInitialInfoScreens && !hasQuestionnaireAnywhere && (loading || !initCompletedRef.current);
+  // РЕФАКТОРИНГ: Используем утилиту для определения необходимости показа лоадера
+  const shouldShowLoader = shouldShowInitialLoader({
+    pendingInfoScreen,
+    currentInfoScreenIndex,
+    loading,
+    initCompletedRef,
+    questionnaireRef,
+    questionnaire,
+    quizStateMachineQuestionnaire: quizStateMachine.questionnaire,
+    questionnaireFromQuery,
+  });
   
   // ФИКС: Ранний return для лоадера (после всех хуков)
-  if (shouldShowInitialLoader && !showResumeScreen && !showRetakeScreen) {
-    return (
-      <div style={{ 
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-        padding: '40px 20px',
-      }}>
-        <div style={{
-          width: '64px',
-          height: '64px',
-          border: '5px solid rgba(10, 95, 89, 0.2)',
-          borderTop: '5px solid #0A5F59',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
-          marginBottom: '32px',
-        }}></div>
-        <div style={{ color: '#0A5F59', fontSize: '20px', fontWeight: 600, marginBottom: '8px' }}>
-          Загрузка анкеты...
-        </div>
-        <div style={{ color: '#6B7280', fontSize: '14px', textAlign: 'center' }}>
-          Подождите, мы готовим анкету для вас
-        </div>
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
-      </div>
-    );
+  if (shouldShowLoader && !showResumeScreen && !showRetakeScreen) {
+    return <QuizInitialLoader />;
   }
 
-  // Определяем, нужен ли белый фон для вопросов
-  // ОБНОВЛЕНО: Если есть currentQuestion - это экран вопроса (белый фон)
-  const isQuestionScreen = !!currentQuestion && !pendingInfoScreen && !showResumeScreen && !showRetakeScreen;
+  // РЕФАКТОРИНГ: Используем утилиту для определения типа экрана
+  const isQuestionScreen = isQuestionScreenUtil(
+    currentQuestion,
+    pendingInfoScreen,
+    showResumeScreen,
+    showRetakeScreen
+  );
 
   // Определяем, это ли вопрос о целях (для специального стиля)
   const isGoalsQuestion = currentQuestion?.code === 'skin_goals' &&
     currentQuestion?.type === 'multi_choice';
 
-  // Определяем цвет фона
-  // ОБНОВЛЕНО: Все вопросы теперь на белом фоне (включая goals)
-  const getBackgroundColor = () => {
-    if (isQuestionScreen) return '#FFFFFF';
-    return 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)';
-  };
+  // РЕФАКТОРИНГ: Используем утилиту для определения цвета фона
+  const backgroundColor = getQuizBackgroundColor(isQuestionScreen);
 
+  // РЕФАКТОРИНГ: Используем компонент для основного контента
   return (
-    <div style={{ 
-      padding: '20px',
-      minHeight: '100vh',
-      background: getBackgroundColor(),
-      position: 'relative',
-    }}>
-      {/* Debug Panel (только в development) */}
-      {(process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_DEBUG === 'true') && (
-        <div style={{
-          position: 'fixed',
-          bottom: '20px',
-          right: '20px',
-          zIndex: 10000,
-        }}>
-          <button
-            onClick={() => setShowDebugPanel(!showDebugPanel)}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '8px',
-              backgroundColor: showDebugPanel ? '#0A5F59' : 'rgba(10, 95, 89, 0.7)',
-              color: 'white',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: 'bold',
-            }}
-          >
-            {showDebugPanel ? '🔽 Скрыть логи' : '🔺 Показать логи'}
-          </button>
-          {showDebugPanel && (
-            <div style={{
-              position: 'absolute',
-              bottom: '40px',
-              right: '0',
-              width: '300px',
-              maxHeight: '400px',
-              backgroundColor: 'rgba(0, 0, 0, 0.9)',
-              color: '#0f0',
-              padding: '12px',
-              borderRadius: '8px',
-              fontSize: '11px',
-              fontFamily: 'monospace',
-              overflow: 'auto',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-            }}>
-              <div style={{ marginBottom: '8px', fontWeight: 'bold', color: '#fff' }}>
-                Debug Logs ({debugLogs.length})
-              </div>
-              {debugLogs.map((log, idx) => (
-                <div key={idx} style={{ marginBottom: '8px', borderBottom: '1px solid #333', paddingBottom: '4px' }}>
-                  <div style={{ color: '#0f0', fontWeight: 'bold' }}>
-                    [{log.time}] {log.message}
-                  </div>
-                  {log.data && (
-                    <pre style={{ 
-                      marginTop: '4px', 
-                      color: '#ccc', 
-                      fontSize: '10px',
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-all',
-                    }}>
-                      {log.data}
-                    </pre>
-                  )}
-                </div>
-              ))}
-              {debugLogs.length === 0 && (
-                <div style={{ color: '#666', fontStyle: 'italic' }}>
-                  Логи появятся здесь...
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-      {/* Контейнер вопроса - все вопросы без blur, белый фон */}
-      {(() => {
-        const isGoalsScreen = currentQuestion?.code === 'skin_goals' && currentQuestion?.type === 'multi_choice';
-        
-        return (
-          <div style={{
-            // Без контейнера blur - просто белый фон
-            maxWidth: '600px',
-            margin: '0 auto',
-            padding: isGoalsScreen ? '0' : '24px',
-          }}>
-        {/* Проверка на существование вопроса */}
-        {/* КРИТИЧНО: Не показываем "Вопрос не найден", если пользователь уже прошел начальные экраны */}
-        {/* Это может быть временное состояние из-за гонки состояний, которое исправится в следующем рендере */}
-        {/* ИСПРАВЛЕНО: Используем ref для более точной проверки, так как state может быть устаревшим */}
-        {(() => {
-          const isPastInitialScreensRef = currentInfoScreenIndexRef.current >= initialInfoScreens.length;
-          // ИСПРАВЛЕНО: Не показываем ошибку, если анкета не загружена или вопросы еще не готовы
-          // Также не показываем ошибку, если пользователь еще на начальных экранах
-          const hasQuestions = allQuestions.length > 0;
-          // ИСПРАВЛЕНО: Используем effectiveQuestionnaire для проверки наличия анкеты
-          // Это гарантирует, что проверка использует все доступные источники
-          const effectiveQuestionnaire = questionnaireRef.current || questionnaire || quizStateMachine.questionnaire;
-          const hasQuestionnaireData = !!effectiveQuestionnaire;
-          const shouldShowError = !currentQuestion && !isPastInitialScreens && !isPastInitialScreensRef && hasQuestions && hasQuestionnaireData;
-          // ИСПРАВЛЕНО: Показываем загрузку если:
-          // 1. currentQuestion null И
-          // 2. (пользователь прошел начальные экраны ИЛИ нет вопросов ИЛИ анкета не загружена)
-          // 3. НО НЕ показываем загрузку, если показываются начальные экраны
-          // Это гарантирует, что загрузка показывается во всех случаях, когда данные еще не готовы
-          // КРИТИЧНО: Не показываем загрузку, если isShowingInitialInfoScreen = true, чтобы не блокировать инфо-экраны
-          // ИСПРАВЛЕНО: Также не показываем загрузку, если currentInfoScreenIndex < initialInfoScreens.length
-          // Это дополнительная защита от блокировки инфо-экранов
-          const shouldShowLoading = !currentQuestion && 
-            !isShowingInitialInfoScreen && // ИСПРАВЛЕНО: Не показываем загрузку, если показываются инфо-экраны
-            currentInfoScreenIndex >= initialInfoScreens.length && // ИСПРАВЛЕНО: Не показываем загрузку, если еще на начальных экранах
-            (
-              (isPastInitialScreens || isPastInitialScreensRef) || 
-              !hasQuestions || 
-              !hasQuestionnaireData ||
-              loading // Также показываем загрузку, если идет загрузка
-            );
-          
-          // Логируем состояние для диагностики
-          if (!currentQuestion) {
-            clientLogger.warn('⚠️ Рендер: currentQuestion null, проверяем условия', {
-              hasCurrentQuestion: !!currentQuestion,
-              currentQuestionIndex,
-              currentInfoScreenIndex,
-              currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
-              isPastInitialScreens,
-              isPastInitialScreensRef,
-              shouldShowError,
-              shouldShowLoading,
-              initialInfoScreensLength: initialInfoScreens.length,
-              allQuestionsLength: allQuestions.length,
-              hasQuestions,
-              hasQuestionnaireData,
-              hasQuestionnaireState: !!questionnaire,
-              hasQuestionnaireRef: !!questionnaireRef.current,
-              hasQuestionnaireStateMachine: !!quizStateMachine.questionnaire,
-              effectiveQuestionnaire: !!(questionnaireRef.current || questionnaire || quizStateMachine.questionnaire),
-              isShowingInitialInfoScreen,
-            });
-          }
-          
-          if (shouldShowError) {
-            return (
-          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-            {isDev && (
-              <div style={{ marginBottom: '20px', padding: '10px', background: '#fff3cd', borderRadius: '8px', fontSize: '12px', textAlign: 'left' }}>
-                <strong>🔍 Диагностика:</strong>
-                <pre style={{ marginTop: '8px', fontSize: '11px', overflow: 'auto' }}>
-                  {JSON.stringify({
-                    currentQuestion: currentQuestion ? 'exists' : 'null',
-                    currentQuestionIndex,
-                    allQuestionsLength: allQuestions.length,
-                    isShowingInitialInfoScreen,
-                    isPastInitialScreens,
-                    pendingInfoScreen: pendingInfoScreen ? pendingInfoScreen.id : null,
-                    showResumeScreen,
-                    hasResumed,
-                    currentInfoScreenIndex,
-                    initialInfoScreensLength: initialInfoScreens.length,
-                  }, null, 2)}
-                </pre>
-              </div>
-            )}
-            <div style={{ color: '#0A5F59', fontSize: '18px', marginBottom: '12px' }}>
-              Вопрос не найден
-            </div>
-            <div style={{ color: '#6B7280', fontSize: '14px' }}>
-              Попробуйте обновить страницу
-            </div>
-          </div>
-            );
-          }
-          
-          if (shouldShowLoading) {
-            // Если пользователь уже прошел начальные экраны, но currentQuestion временно null,
-            // показываем загрузку вместо ошибки
-            return (
-              <div style={{ 
-                minHeight: '100vh',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: '#FFFFFF',
-                padding: '40px 20px',
-              }}>
-                <div style={{
-                  width: '48px',
-                  height: '48px',
-                  border: '4px solid rgba(10, 95, 89, 0.2)',
-                  borderTop: '4px solid #0A5F59',
-                  borderRadius: '50%',
-                  animation: 'spin 1s linear infinite',
-                  marginBottom: '24px',
-                }}></div>
-                <div style={{ color: '#0A5F59', fontSize: '18px', fontWeight: 600 }}>
-                  Загрузка вопросов...
-                </div>
-                <style>{`
-                  @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                  }
-                `}</style>
-              </div>
-            );
-          }
-          
-          // Если currentQuestion существует, показываем его
-          return null;
-        })()}
-        {/* РЕФАКТОРИНГ: Используем компонент QuizQuestion для рендеринга вопроса */}
-        {currentQuestion && currentQuestion.id && (
-          <QuizQuestion
-            question={currentQuestion}
-            currentQuestionIndex={currentQuestionIndex}
-            allQuestionsLength={allQuestions.length}
-            answers={answers}
-            isRetakingQuiz={isRetakingQuiz}
-            isSubmitting={isSubmitting}
-            onAnswer={handleAnswer}
-            onNext={handleNext}
-            onSubmit={submitAnswers}
-            onBack={handleBack}
-            showBackButton={currentQuestionIndex > 0 || currentInfoScreenIndex > 0}
-          />
-        )}
-          </div>
-        );
-      })()}
-      
-      {/* РЕФАКТОРИНГ: Используем компонент QuizFinalizingLoader */}
-      <QuizFinalizingLoader
-        finalizing={finalizing}
-        finalizingStep={finalizingStep}
-        finalizeError={finalizeError}
-      />
-    </div>
+    <QuizPageContent
+      backgroundColor={backgroundColor}
+      isDev={isDev}
+      showDebugPanel={showDebugPanel}
+      debugLogs={debugLogs}
+      setShowDebugPanel={setShowDebugPanel}
+      currentQuestion={currentQuestion}
+      currentQuestionIndex={currentQuestionIndex}
+      currentInfoScreenIndex={currentInfoScreenIndex}
+      currentInfoScreenIndexRef={currentInfoScreenIndexRef}
+      isPastInitialScreens={isPastInitialScreens}
+      allQuestionsLength={allQuestions.length}
+      initialInfoScreensLength={initialInfoScreens.length}
+      isShowingInitialInfoScreen={isShowingInitialInfoScreen}
+      loading={loading}
+      questionnaire={questionnaire}
+      questionnaireRef={questionnaireRef}
+      quizStateMachineQuestionnaire={quizStateMachine.questionnaire}
+      pendingInfoScreen={pendingInfoScreen}
+      showResumeScreen={showResumeScreen}
+      hasResumed={hasResumed}
+      answers={answers}
+      isRetakingQuiz={isRetakingQuiz}
+      isSubmitting={isSubmitting}
+      onAnswer={handleAnswer}
+      onNext={handleNext}
+      onSubmit={submitAnswers}
+      onBack={handleBack}
+      finalizing={finalizing}
+      finalizingStep={finalizingStep}
+      finalizeError={finalizeError}
+    />
   );
 }

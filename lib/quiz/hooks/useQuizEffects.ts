@@ -85,8 +85,6 @@ export interface UseQuizEffectsParams {
   lastRestoredAnswersIdRef: React.MutableRefObject<string | null>;
   saveProgressTimeoutRef: React.MutableRefObject<NodeJS.Timeout | null>;
   submitAnswersRef: React.MutableRefObject<(() => Promise<void>) | null>;
-  historyUpdateInProgressRef: React.MutableRefObject<boolean>;
-  lastHistoryUpdateTimeRef: React.MutableRefObject<number>;
   firstScreenResetRef: React.MutableRefObject<boolean>;
   
   // React Query
@@ -174,8 +172,6 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     lastRestoredAnswersIdRef,
     saveProgressTimeoutRef,
     submitAnswersRef,
-    historyUpdateInProgressRef,
-    lastHistoryUpdateTimeRef,
     firstScreenResetRef,
     questionnaireFromQuery,
     isLoadingQuestionnaire,
@@ -865,47 +861,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     }
   }, [isRetakingQuiz, questionnaire, setAnswers, setCurrentQuestionIndex]);
 
-  // ============================================
-  // ГРУППА 10: Обновление URL при showResumeScreen
-  // ============================================
-  
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    const now = Date.now();
-    if (historyUpdateInProgressRef.current || (now - lastHistoryUpdateTimeRef.current < 1000)) {
-      return;
-    }
-    
-    const urlParams = new URLSearchParams(window.location.search);
-    const currentResume = urlParams.get('resume') === 'true';
-    
-    if (showResumeScreen && !currentResume) {
-      historyUpdateInProgressRef.current = true;
-      lastHistoryUpdateTimeRef.current = now;
-      try {
-        const url = new URL(window.location.href);
-        url.searchParams.set('resume', 'true');
-        window.history.replaceState({}, '', url.toString());
-      } catch (e) {
-        console.warn('Failed to update URL with resume param:', e);
-      } finally {
-        historyUpdateInProgressRef.current = false;
-      }
-    } else if (!showResumeScreen && currentResume) {
-      historyUpdateInProgressRef.current = true;
-      lastHistoryUpdateTimeRef.current = now;
-      try {
-        const url = new URL(window.location.href);
-        url.searchParams.delete('resume');
-        window.history.replaceState({}, '', url.toString());
-      } catch (e) {
-        console.warn('Failed to remove resume param from URL:', e);
-      } finally {
-        historyUpdateInProgressRef.current = false;
-      }
-    }
-  }, [showResumeScreen, historyUpdateInProgressRef, lastHistoryUpdateTimeRef]);
+  // РЕФАКТОРИНГ: Обновление URL при showResumeScreen вынесено в useQuizUrlSync
 
   // ============================================
   // ГРУППА 11: Проверка entitlements для retake screen

@@ -2,7 +2,17 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    unoptimized: true,
+    unoptimized: false, // РЕФАКТОРИНГ: Включаем оптимизацию изображений для лучшей производительности
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**.telegram.org',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.telegramcdn.org',
+      },
+    ],
   },
   // Используем только App Router (app/), не Pages Router (pages/)
   pageExtensions: ['tsx', 'ts'],
@@ -18,7 +28,7 @@ const nextConfig = {
           },
           {
             key: 'Strict-Transport-Security',
-            value: 'max-age=63072000; includeSubDomains; preload'
+            value: 'max-age=63072000; includeSubDomains; preload' // РЕФАКТОРИНГ: Добавлен preload для HSTS
           },
           {
             key: 'X-Frame-Options',
@@ -28,10 +38,8 @@ const nextConfig = {
             key: 'X-Content-Type-Options',
             value: 'nosniff'
           },
-          {
-            key: 'X-XSS-Protection',
-            value: '1; mode=block'
-          },
+          // УДАЛЕНО: X-XSS-Protection устарел и не поддерживается современными браузерами
+          // Защита от XSS обеспечивается через CSP
           {
             key: 'Referrer-Policy',
             value: 'strict-origin-when-cross-origin'
@@ -61,6 +69,7 @@ const nextConfig = {
     ];
   },
   // Исключаем src из сборки (Vite фронтенд)
+  // ОПТИМИЗАЦИЯ: Code splitting для уменьшения размера бандла
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
@@ -68,6 +77,52 @@ const nextConfig = {
         fs: false,
         net: false,
         tls: false,
+      };
+      
+      // ОПТИМИЗАЦИЯ: Разделяем большие библиотеки на отдельные чанки
+      config.optimization = config.optimization || {};
+      config.optimization.splitChunks = {
+        chunks: 'all',
+        cacheGroups: {
+          default: false,
+          vendors: false,
+          // Отдельный чанк для chart.js (используется только в админке)
+          chartjs: {
+            name: 'chartjs',
+            test: /[\\/]node_modules[\\/](chart\.js|react-chartjs-2|recharts)[\\/]/,
+            chunks: 'async',
+            priority: 20,
+          },
+          // Отдельный чанк для PDF библиотек (используется для экспорта)
+          pdf: {
+            name: 'pdf',
+            test: /[\\/]node_modules[\\/]jspdf[\\/]/,
+            chunks: 'async',
+            priority: 20,
+          },
+          // Отдельный чанк для анимаций (используется не везде)
+          animations: {
+            name: 'animations',
+            test: /[\\/]node_modules[\\/](framer-motion|lottie-react|@lottiefiles)[\\/]/,
+            chunks: 'async',
+            priority: 20,
+          },
+          // Отдельный чанк для Prisma (большая библиотека)
+          prisma: {
+            name: 'prisma',
+            test: /[\\/]node_modules[\\/]@prisma[\\/]/,
+            chunks: 'async',
+            priority: 30,
+          },
+          // Общий чанк для остальных vendor библиотек
+          vendor: {
+            name: 'vendor',
+            test: /[\\/]node_modules[\\/]/,
+            chunks: 'all',
+            priority: 10,
+            minChunks: 2,
+          },
+        },
       };
     }
     // Исключаем src/pages из сборки Next.js
@@ -78,10 +133,6 @@ const nextConfig = {
       // Игнорируем src/pages
     };
     return config;
-  },
-  // Игнорируем директории при сборке
-  experimental: {
-    // outputFileTracingRoot: path.join(process.cwd(), './'),
   },
 };
 

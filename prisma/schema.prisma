@@ -79,6 +79,7 @@ model SkinProfile {
 
   @@unique([userId, version])
   @@index([userId])
+  @@index([userId, createdAt]) // ОПТИМИЗАЦИЯ: Для запросов с orderBy createdAt (getCurrentProfile)
   @@map("skin_profiles")
 }
 
@@ -100,6 +101,7 @@ model Questionnaire {
   progress       QuestionnaireProgress[]
 
   @@unique([version])
+  @@index([isActive]) // ОПТИМИЗАЦИЯ: Часто используется findFirst({ where: { isActive: true }})
   @@map("questionnaires")
 }
 
@@ -170,6 +172,7 @@ model UserAnswer {
   @@index([userId])
   @@index([questionnaireId])
   @@index([questionId])
+  @@index([userId, questionnaireId]) // ОПТИМИЗАЦИЯ: Составной индекс для частых запросов по userId + questionnaireId
   @@map("user_answers")
 }
 
@@ -427,6 +430,7 @@ model Plan28 {
   @@index([userId])
   @@index([skinProfileId])
   @@index([profileVersion])
+  @@index([userId, profileVersion]) // ОПТИМИЗАЦИЯ: Составной индекс для частых запросов по userId + profileVersion
   @@map("plan28")
 }
 

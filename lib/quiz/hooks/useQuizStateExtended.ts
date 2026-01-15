@@ -1,12 +1,13 @@
 // lib/quiz/hooks/useQuizStateExtended.ts
 // РЕФАКТОРИНГ: Расширенный хук для управления всеми состояниями анкеты
 // Вынесен из quiz/page.tsx для улучшения читаемости и поддержки
+// ИСПРАВЛЕНО: Использует специализированные хуки useQuizNavigation и useQuizUI
 
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
-import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
+import { useState, useRef, useEffect } from 'react';
 import type { Questionnaire } from '@/lib/quiz/types';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
+import { useQuizNavigation } from './useQuizNavigation';
+import { useQuizUI } from './useQuizUI';
 
 export interface UseQuizStateExtendedReturn {
   // Основные состояния
@@ -138,133 +139,20 @@ export interface UseQuizStateExtendedReturn {
 /**
  * Расширенный хук для управления всеми состояниями анкеты
  * Группирует все useState и useRef из основного компонента
+ * РЕФАКТОРИНГ: Использует специализированные хуки useQuizNavigation и useQuizUI
  */
 export function useQuizStateExtended(): UseQuizStateExtendedReturn {
-  // Восстанавливаем индексы из sessionStorage при инициализации
-  // ИСПРАВЛЕНО: Для нового пользователя всегда начинаем с 0, чтобы показать все начальные инфо-экраны
-  const initialInfoScreenIndex = useMemo(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        // Проверяем, есть ли сохраненные ответы - если нет или только 1 (имя), это новый пользователь
-        // ИСПРАВЛЕНО: Используем правильный ключ для сохраненных ответов
-        const savedAnswersStr = sessionStorage.getItem('quiz_answers_backup');
-        let savedAnswersCount = 0;
-        if (savedAnswersStr && savedAnswersStr !== '{}' && savedAnswersStr !== 'null') {
-          try {
-            const parsed = JSON.parse(savedAnswersStr);
-            savedAnswersCount = Object.keys(parsed || {}).length;
-          } catch (e) {
-            // Игнорируем ошибки парсинга
-          }
-        }
-        
-        // ИСПРАВЛЕНО: Если нет ответов или только 1 ответ (имя), это новый пользователь - всегда начинаем с 0
-        if (savedAnswersCount <= 1) {
-          // Очищаем сохраненный индекс для нового пользователя
-          sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
-          sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
-          return 0;
-        }
-        
-        // Для пользователя с сохраненными ответами (> 1) восстанавливаем индекс
-        const saved = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
-        if (saved !== null) {
-          const savedIndex = parseInt(saved, 10);
-          if (!isNaN(savedIndex) && savedIndex >= 0) {
-            const initialInfoScreens = getInitialInfoScreens();
-            // ИСПРАВЛЕНО: Если индекс >= длины начальных экранов, это означает, что пользователь уже прошел их
-            // Но если <= 1 ответ, это ошибка - сбрасываем на 0
-            if (savedIndex < initialInfoScreens.length) {
-              return savedIndex;
-            } else if (savedIndex >= initialInfoScreens.length && savedAnswersCount > 1) {
-              // Пользователь уже прошел начальные экраны и есть ответы (> 1) - это нормально
-              return savedIndex;
-            } else {
-              // Индекс >= длины начальных экранов, но <= 1 ответ - это ошибка, сбрасываем на 0
-              sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
-              return 0;
-            }
-          }
-        }
-      } catch (err) {
-        // Игнорируем ошибки sessionStorage
-      }
-    }
-    return 0;
-  }, []);
-
-  const initialQuestionIndex = useMemo(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
-        if (saved !== null) {
-          const savedIndex = parseInt(saved, 10);
-          if (!isNaN(savedIndex) && savedIndex >= 0) {
-            return savedIndex;
-          }
-        }
-      } catch (err) {
-        // Игнорируем ошибки sessionStorage
-      }
-    }
-    return 0;
-  }, []);
+  // РЕФАКТОРИНГ: Используем специализированные хуки
+  const navigation = useQuizNavigation();
+  const ui = useQuizUI();
 
   // Основные состояния
   const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Навигация
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(initialQuestionIndex);
-  const currentQuestionIndexRef = useRef(initialQuestionIndex);
-  const [currentInfoScreenIndex, setCurrentInfoScreenIndex] = useState(initialInfoScreenIndex);
-  const currentInfoScreenIndexRef = useRef(initialInfoScreenIndex);
-  
   // Ответы
   const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
-  
-  // UI состояния
-  const [showResumeScreen, setShowResumeScreen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const isSubmittingRef = useRef(false);
-  const [finalizing, setFinalizing] = useState(false);
-  const [finalizingStep, setFinalizingStep] = useState<'answers' | 'plan' | 'done'>('answers');
-  const [finalizeError, setFinalizeError] = useState<string | null>(null);
-  const [pendingInfoScreen, setPendingInfoScreen] = useState<InfoScreen | null>(null);
-  const pendingInfoScreenRef = useRef<InfoScreen | null>(null);
-  
-  // ФИКС: Синхронизируем ref с state для получения актуального значения в замыканиях
-  // ИСПРАВЛЕНО: Добавлено логирование для диагностики проблемы с синхронизацией
-  useEffect(() => {
-    const previousValue = pendingInfoScreenRef.current;
-    pendingInfoScreenRef.current = pendingInfoScreen;
-    
-    // Логируем изменения для диагностики
-    if (process.env.NODE_ENV === 'development' || true) {
-      if (previousValue?.id !== pendingInfoScreen?.id) {
-        console.log('🔄 pendingInfoScreenRef обновлен:', {
-          previous: previousValue?.id || null,
-          current: pendingInfoScreen?.id || null,
-          timestamp: new Date().toISOString(),
-        });
-      }
-    }
-  }, [pendingInfoScreen]);
-  
-  // ФИКС: Обертка для setPendingInfoScreen с логированием
-  const setPendingInfoScreenWithLogging = useCallback((value: InfoScreen | null | ((prev: InfoScreen | null) => InfoScreen | null)) => {
-    const newValue = typeof value === 'function' ? value(pendingInfoScreen) : value;
-    if (process.env.NODE_ENV === 'development' || true) {
-      console.log('🔄 setPendingInfoScreen вызван:', {
-        previous: pendingInfoScreen?.id || null,
-        new: newValue?.id || null,
-        timestamp: new Date().toISOString(),
-        stackTrace: new Error().stack?.split('\n').slice(1, 4).join('\n'),
-      });
-    }
-    setPendingInfoScreen(value);
-  }, [pendingInfoScreen]);
   
   // Прогресс
   const [savedProgress, setSavedProgress] = useState<{
@@ -297,13 +185,7 @@ export function useQuizStateExtended(): UseQuizStateExtendedReturn {
   const isStartingOverRef = useRef(false);
   const [daysSincePlanGeneration, setDaysSincePlanGeneration] = useState<number | null>(null);
   
-  // Debug состояния
-  const [debugLogs, setDebugLogs] = useState<Array<{ time: string; message: string; data?: any }>>([]);
-  const [showDebugPanel, setShowDebugPanel] = useState(false);
-  
-  // Auto submit
-  const [autoSubmitTriggered, setAutoSubmitTriggered] = useState(false);
-  const autoSubmitTriggeredRef = useRef(false);
+  // РЕФАКТОРИНГ: Debug и Auto submit состояния теперь в useQuizUI
   
   // Refs для синхронизации
   const questionnaireRef = useRef<Questionnaire | null>(null);
@@ -340,26 +222,10 @@ export function useQuizStateExtended(): UseQuizStateExtendedReturn {
   const stateMachineQuestionnaireRef = useRef<Questionnaire | null>(null);
   const stateMachineQuestionnaireIdRef = useRef<string | number | null>(null);
   
-  // Синхронизация refs с state
-  useEffect(() => {
-    isSubmittingRef.current = isSubmitting;
-  }, [isSubmitting]);
-  
-  useEffect(() => {
-    currentQuestionIndexRef.current = currentQuestionIndex;
-  }, [currentQuestionIndex]);
-  
-  useEffect(() => {
-    currentInfoScreenIndexRef.current = currentInfoScreenIndex;
-  }, [currentInfoScreenIndex]);
-  
+  // Синхронизация refs с state (для состояний, которые не вынесены в специализированные хуки)
   useEffect(() => {
     hasResumedRef.current = hasResumed;
   }, [hasResumed]);
-  
-  useEffect(() => {
-    autoSubmitTriggeredRef.current = autoSubmitTriggered;
-  }, [autoSubmitTriggered]);
   
   useEffect(() => {
     isStartingOverRef.current = isStartingOver;
@@ -410,33 +276,44 @@ export function useQuizStateExtended(): UseQuizStateExtendedReturn {
     error,
     setError,
     
-    // Навигация
-    currentQuestionIndex,
-    setCurrentQuestionIndex,
-    currentQuestionIndexRef,
-    currentInfoScreenIndex,
-    setCurrentInfoScreenIndex,
-    currentInfoScreenIndexRef,
+    // Навигация (из useQuizNavigation)
+    currentQuestionIndex: navigation.currentQuestionIndex,
+    setCurrentQuestionIndex: navigation.setCurrentQuestionIndex,
+    currentQuestionIndexRef: navigation.currentQuestionIndexRef,
+    currentInfoScreenIndex: navigation.currentInfoScreenIndex,
+    setCurrentInfoScreenIndex: navigation.setCurrentInfoScreenIndex,
+    currentInfoScreenIndexRef: navigation.currentInfoScreenIndexRef,
     
     // Ответы
     answers,
     setAnswers,
     
-    // UI состояния
-    showResumeScreen,
-    setShowResumeScreen,
-    isSubmitting,
-    setIsSubmitting,
-    isSubmittingRef,
-    finalizing,
-    setFinalizing,
-    finalizingStep,
-    setFinalizingStep,
-    finalizeError,
-    setFinalizeError,
-    pendingInfoScreen,
-    pendingInfoScreenRef,
-    setPendingInfoScreen: setPendingInfoScreenWithLogging,
+    // UI состояния (из useQuizUI)
+    showResumeScreen: ui.showResumeScreen,
+    setShowResumeScreen: ui.setShowResumeScreen,
+    isSubmitting: ui.isSubmitting,
+    setIsSubmitting: ui.setIsSubmitting,
+    isSubmittingRef: ui.isSubmittingRef,
+    finalizing: ui.finalizing,
+    setFinalizing: ui.setFinalizing,
+    finalizingStep: ui.finalizingStep,
+    setFinalizingStep: ui.setFinalizingStep,
+    finalizeError: ui.finalizeError,
+    setFinalizeError: ui.setFinalizeError,
+    pendingInfoScreen: ui.pendingInfoScreen,
+    pendingInfoScreenRef: ui.pendingInfoScreenRef,
+    setPendingInfoScreen: ui.setPendingInfoScreen,
+    
+    // Debug состояния (из useQuizUI)
+    debugLogs: ui.debugLogs,
+    setDebugLogs: ui.setDebugLogs,
+    showDebugPanel: ui.showDebugPanel,
+    setShowDebugPanel: ui.setShowDebugPanel,
+    
+    // Auto submit (из useQuizUI)
+    autoSubmitTriggered: ui.autoSubmitTriggered,
+    setAutoSubmitTriggered: ui.setAutoSubmitTriggered,
+    autoSubmitTriggeredRef: ui.autoSubmitTriggeredRef,
     
     // Прогресс
     savedProgress,
@@ -467,17 +344,6 @@ export function useQuizStateExtended(): UseQuizStateExtendedReturn {
     isStartingOverRef,
     daysSincePlanGeneration,
     setDaysSincePlanGeneration,
-    
-    // Debug состояния
-    debugLogs,
-    setDebugLogs,
-    showDebugPanel,
-    setShowDebugPanel,
-    
-    // Auto submit
-    autoSubmitTriggered,
-    setAutoSubmitTriggered,
-    autoSubmitTriggeredRef,
     
     // Refs для синхронизации
     questionnaireRef,
