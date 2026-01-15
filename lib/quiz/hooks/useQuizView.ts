@@ -66,7 +66,8 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
     const effectiveQuestionnaire = questionnaire || 
                                     questionnaireRef?.current || 
                                     questionnaireFromStateMachine;
-    // 1. Экран продолжения (resume)
+    // 1. Экран продолжения (resume) - КРИТИЧНО: Проверяем ПЕРВЫМ
+    // Если showResumeScreen = true, показываем резюм-экран независимо от других условий
     if (showResumeScreen) {
       return { type: 'resume' };
     }
@@ -99,22 +100,21 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
       // Проверка анкеты нужна только при переходе к вопросам, а не для начальных инфо-экранов
       // ФИКС: НЕ проверяем allQuestionsLength, так как фильтрация происходит динамически после ответов
       
-      // Не показываем, если показывается resume screen
-      if (showResumeScreen) return false;
-      
+      // Не показываем, если показывается resume screen (проверка выше уже сделана)
       // Не показываем, если показывается retake screen
       if (showRetakeScreen && isRetakingQuiz) return false;
       
-      // Не показываем, если есть сохраненный прогресс с ответами (> 1 ответа)
-      // ИСПРАВЛЕНО: Если только 1 ответ (имя), это новый пользователь - показываем инфо-экраны
+      // ИСПРАВЛЕНО: Если есть сохраненный прогресс с >= 2 ответами, НЕ показываем инфо-экраны
+      // Такие пользователи должны увидеть резюм-экран (который проверяется выше)
+      // Но если только 1 ответ (имя), это новый пользователь - показываем инфо-экраны
       if (savedProgress && savedProgress.answers) {
         const savedAnswersCount = Object.keys(savedProgress.answers).length;
-        // Если больше 1 ответа - это не новый пользователь, не показываем инфо-экраны
-        if (savedAnswersCount > 1) {
+        // Если >= 2 ответа - должен показаться резюм-экран (проверяется выше)
+        // Не показываем инфо-экраны
+        if (savedAnswersCount >= 2) {
           return false;
         }
         // Если 1 ответ - это имя, считаем новым пользователем и показываем инфо-экраны
-        // Но только если currentInfoScreenIndex < длины начальных экранов
       }
       
       // Не показываем, если пользователь уже возобновил анкету
@@ -132,7 +132,12 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
       // (currentQuestionIndex > 0 означает, что уже был переход к вопросам)
       // Но если есть только 1 ответ (имя) и currentQuestionIndex = 0, это новый пользователь
       const answersCount = Object.keys(answers).length;
-      if (currentQuestionIndex > 0 || (answersCount > 1)) {
+      // Если >= 2 ответа, не показываем инфо-экраны (должен показаться резюм-экран)
+      if (answersCount >= 2) {
+        return false;
+      }
+      // Если currentQuestionIndex > 0, уже перешли к вопросам
+      if (currentQuestionIndex > 0) {
         return false;
       }
       

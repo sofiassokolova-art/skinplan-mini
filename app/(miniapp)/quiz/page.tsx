@@ -3077,19 +3077,9 @@ export default function QuizPage() {
     return retakeScreenContent;
   }
 
-  // УПРОЩЕННАЯ ПРОВЕРКА РЕЗЮМ ЭКРАНА:
-  // Показываем экран только если:
-  // 1. showResumeScreen = true (устанавливается в useEffect выше)
-  // 2. Есть savedProgress с >= 2 ответов
-  // 3. Пользователь не начал заново и не продолжил анкету
-  const savedAnswersCount = savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0;
-  const shouldShowResume = showResumeScreen && 
-                           savedProgress && 
-                           savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN &&
-                           !isStartingOverRef.current && 
-                           !hasResumedRef.current;
-  
-  if (shouldShowResume) {
+  // ИСПРАВЛЕНО: Перемещаем проверку резюм-экрана ПОСЛЕ вызова useQuizView
+  // useQuizView вызывается ниже, но резюм-экран проверяется в нем ПЕРВЫМ
+  // Здесь оставляем только базовую проверку для отображения UI резюм-экрана
     // Получаем все вопросы с фильтрацией
     // ИСПРАВЛЕНО: Добавляем проверку на существование groups и questions
     const allQuestionsRaw = questionnaire ? [
