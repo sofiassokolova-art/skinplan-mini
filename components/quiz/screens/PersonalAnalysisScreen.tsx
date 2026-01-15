@@ -30,6 +30,7 @@ function PersonalAnalysisScreenComponent({
         />
       ),
       text: 'Точная оценка состояния кожи',
+      boldPart: null,
     },
     {
       icon: (
@@ -40,6 +41,7 @@ function PersonalAnalysisScreenComponent({
         />
       ),
       text: 'Индивидуально подобранные средства ухода',
+      boldPart: null,
     },
     {
       icon: (
@@ -49,7 +51,8 @@ function PersonalAnalysisScreenComponent({
           style={{ width: '48px', height: '48px', objectFit: 'contain' }}
         />
       ),
-      text: 'Умная рутина, которая работает в 3 раза эффективнее',
+      text: 'Умная рутина, которая работает ',
+      boldPart: 'в 3 раза эффективнее',
     },
   ];
 
@@ -94,12 +97,27 @@ function PersonalAnalysisScreenComponent({
             letterSpacing: '0px',
             textAlign: 'center',
             color: '#000000',
-            margin: '0 0 40px 0',
+            margin: '0 0 12px 0',
             maxWidth: '311px',
           }}>
           <span style={{ fontWeight: 700 }}>SkinIQ</span>
           <span style={{ fontWeight: 400 }}> — ваш персональный анализ кожи</span>
         </h1>
+
+        {/* Подзаголовок - статистика */}
+        <div style={{
+          fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+          fontWeight: 400,
+          fontSize: '14px',
+          lineHeight: '140%',
+          letterSpacing: '0px',
+          textAlign: 'center',
+          color: '#9D9D9D',
+          marginBottom: '40px',
+          maxWidth: '320px',
+        }}>
+          92% пользователей SkinIQ отмечают улучшение состояния кожи за 1 месяц
+        </div>
 
         {/* Список функций с иконками */}
         <div style={{
@@ -141,32 +159,14 @@ function PersonalAnalysisScreenComponent({
                 maxWidth: '289px',
               }}>
                 {feature.text}
+                {feature.boldPart && (
+                  <span style={{ fontWeight: 700 }}>{feature.boldPart}</span>
+                )}
               </div>
             </div>
           ))}
         </div>
 
-        {/* Факты */}
-        <div style={{
-          width: '100%',
-          maxWidth: '320px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px',
-          marginTop: '20px',
-        }}>
-          <div style={{
-            fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 400,
-            fontSize: '14px',
-            lineHeight: '140%',
-            letterSpacing: '0px',
-            textAlign: 'center',
-            color: '#000000',
-          }}>
-            92% пользователей SkinIQ отмечают улучшение состояния кожи за 1 месяц
-          </div>
-        </div>
       </div>
       
       {/* Фиксированная кнопка "Продолжить" внизу экрана */}
