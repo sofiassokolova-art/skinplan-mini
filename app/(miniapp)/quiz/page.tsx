@@ -1196,6 +1196,8 @@ export default function QuizPage() {
       hasResumed,
       isStartingOver,
       allQuestions,
+      savedProgress,
+      showResumeScreen,
       setCurrentInfoScreenIndex,
       setCurrentQuestionIndex,
       setSavedProgress,

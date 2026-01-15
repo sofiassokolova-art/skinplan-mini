@@ -23,6 +23,12 @@ export interface LoadSavedProgressParams {
   hasResumed: boolean;
   isStartingOver: boolean;
   allQuestions: any[];
+  savedProgress: {
+    answers: Record<number, string | string[]>;
+    questionIndex: number;
+    infoScreenIndex: number;
+  } | null;
+  showResumeScreen: boolean;
   
   // State setters
   setCurrentInfoScreenIndex: React.Dispatch<React.SetStateAction<number>>;
@@ -57,6 +63,8 @@ export async function loadSavedProgressFromServer({
   hasResumed,
   isStartingOver,
   allQuestions,
+  savedProgress,
+  showResumeScreen,
   setCurrentInfoScreenIndex,
   setCurrentQuestionIndex,
   setSavedProgress,
@@ -70,11 +78,25 @@ export async function loadSavedProgressFromServer({
   const initialInfoScreens = getInitialInfoScreens();
   const isAlreadyOnQuestions = currentInfoScreenIndexRef.current >= initialInfoScreens.length;
   
-  // ИСПРАВЛЕНО: Проверяем наличие прогресса в quizProgressFromQuery ПЕРЕД проверкой isAlreadyOnQuestions
+  // ИСПРАВЛЕНО: Проверяем наличие прогресса в quizProgressFromQuery ИЛИ savedProgress ПЕРЕД проверкой isAlreadyOnQuestions
   // Если есть прогресс с >= 2 ответами, не блокируем вызов, чтобы показать экран резюме
   const hasProgressInQuery = quizProgressFromQuery?.progress?.answers;
-  const progressAnswersCount = hasProgressInQuery ? Object.keys(quizProgressFromQuery.progress.answers).length : 0;
+  const hasProgressInState = savedProgress?.answers;
+  const progressAnswersCountFromQuery = hasProgressInQuery ? Object.keys(quizProgressFromQuery.progress.answers).length : 0;
+  const progressAnswersCountFromState = hasProgressInState ? Object.keys(savedProgress.answers).length : 0;
+  const progressAnswersCount = progressAnswersCountFromQuery || progressAnswersCountFromState;
   const shouldShowResume = progressAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN;
+  
+  // ИСПРАВЛЕНО: Если progressLoadedRef = true, но showResumeScreen = false и есть сохраненный прогресс с >= 2 ответами,
+  // устанавливаем showResumeScreen = true
+  if (progressLoadedRef.current && !showResumeScreen && savedProgress && progressAnswersCountFromState >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN) {
+    clientLogger.log('✅ Устанавливаем showResumeScreen = true, так как есть сохраненный прогресс', {
+      savedAnswersCount: progressAnswersCountFromState,
+      MIN_ANSWERS: QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN,
+    });
+    setShowResumeScreen(true);
+    return;
+  }
   
   // ИСПРАВЛЕНО: Не блокируем вызов, если нужно показать экран резюме
   // Даже если пользователь "уже на вопросах" в sessionStorage, нужно показать экран резюме
