@@ -145,33 +145,42 @@ export function useQuizStateExtended(): UseQuizStateExtendedReturn {
   const initialInfoScreenIndex = useMemo(() => {
     if (typeof window !== 'undefined') {
       try {
-        // Проверяем, есть ли сохраненные ответы - если нет, это новый пользователь
+        // Проверяем, есть ли сохраненные ответы - если нет или только 1 (имя), это новый пользователь
         // ИСПРАВЛЕНО: Используем правильный ключ для сохраненных ответов
         const savedAnswersStr = sessionStorage.getItem('quiz_answers_backup');
-        const hasSavedAnswers = savedAnswersStr && savedAnswersStr !== '{}' && savedAnswersStr !== 'null';
+        let savedAnswersCount = 0;
+        if (savedAnswersStr && savedAnswersStr !== '{}' && savedAnswersStr !== 'null') {
+          try {
+            const parsed = JSON.parse(savedAnswersStr);
+            savedAnswersCount = Object.keys(parsed || {}).length;
+          } catch (e) {
+            // Игнорируем ошибки парсинга
+          }
+        }
         
-        // Если нет сохраненных ответов, это новый пользователь - всегда начинаем с 0
-        if (!hasSavedAnswers) {
+        // ИСПРАВЛЕНО: Если нет ответов или только 1 ответ (имя), это новый пользователь - всегда начинаем с 0
+        if (savedAnswersCount <= 1) {
           // Очищаем сохраненный индекс для нового пользователя
           sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
+          sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
           return 0;
         }
         
-        // Для пользователя с сохраненными ответами восстанавливаем индекс
+        // Для пользователя с сохраненными ответами (> 1) восстанавливаем индекс
         const saved = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
         if (saved !== null) {
           const savedIndex = parseInt(saved, 10);
           if (!isNaN(savedIndex) && savedIndex >= 0) {
             const initialInfoScreens = getInitialInfoScreens();
             // ИСПРАВЛЕНО: Если индекс >= длины начальных экранов, это означает, что пользователь уже прошел их
-            // Но если нет сохраненных ответов, это ошибка - сбрасываем на 0
+            // Но если <= 1 ответ, это ошибка - сбрасываем на 0
             if (savedIndex < initialInfoScreens.length) {
               return savedIndex;
-            } else if (savedIndex >= initialInfoScreens.length && hasSavedAnswers) {
-              // Пользователь уже прошел начальные экраны и есть ответы - это нормально
+            } else if (savedIndex >= initialInfoScreens.length && savedAnswersCount > 1) {
+              // Пользователь уже прошел начальные экраны и есть ответы (> 1) - это нормально
               return savedIndex;
             } else {
-              // Индекс >= длины начальных экранов, но нет ответов - это ошибка, сбрасываем на 0
+              // Индекс >= длины начальных экранов, но <= 1 ответ - это ошибка, сбрасываем на 0
               sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
               return 0;
             }

@@ -105,9 +105,16 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
       // Не показываем, если показывается retake screen
       if (showRetakeScreen && isRetakingQuiz) return false;
       
-      // Не показываем, если есть сохраненный прогресс с ответами
-      if (savedProgress && savedProgress.answers && Object.keys(savedProgress.answers).length > 0) {
-        return false;
+      // Не показываем, если есть сохраненный прогресс с ответами (> 1 ответа)
+      // ИСПРАВЛЕНО: Если только 1 ответ (имя), это новый пользователь - показываем инфо-экраны
+      if (savedProgress && savedProgress.answers) {
+        const savedAnswersCount = Object.keys(savedProgress.answers).length;
+        // Если больше 1 ответа - это не новый пользователь, не показываем инфо-экраны
+        if (savedAnswersCount > 1) {
+          return false;
+        }
+        // Если 1 ответ - это имя, считаем новым пользователем и показываем инфо-экраны
+        // Но только если currentInfoScreenIndex < длины начальных экранов
       }
       
       // Не показываем, если пользователь уже возобновил анкету
@@ -121,8 +128,13 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
       // и может привести к React error #300
       if (currentInfoScreenIndex >= initialInfoScreens.length) return false;
       
-      // Не показываем, если пользователь уже начал отвечать
-      if (currentQuestionIndex > 0 || Object.keys(answers).length > 0) return false;
+      // ИСПРАВЛЕНО: Не показываем инфо-экраны, если пользователь уже начал отвечать на вопросы
+      // (currentQuestionIndex > 0 означает, что уже был переход к вопросам)
+      // Но если есть только 1 ответ (имя) и currentQuestionIndex = 0, это новый пользователь
+      const answersCount = Object.keys(answers).length;
+      if (currentQuestionIndex > 0 || (answersCount > 1)) {
+        return false;
+      }
       
       // Показываем, если currentInfoScreenIndex < initialInfoScreens.length
       return currentInfoScreenIndex < initialInfoScreens.length;
