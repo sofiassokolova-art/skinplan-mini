@@ -52,12 +52,18 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org https://*.telegram.org https://vercel.live",
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              "font-src 'self' data: https://fonts.gstatic.com",
+              // ИСПРАВЛЕНО: Разрешаем все необходимые источники для скриптов, включая Telegram SDK
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org https://*.telegram.org https://vercel.live data:",
+              // ИСПРАВЛЕНО: Разрешаем inline стили и внешние стили
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.fontshare.com",
+              "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.fontshare.com",
+              // ИСПРАВЛЕНО: Разрешаем загрузку шрифтов из различных источников
+              "font-src 'self' data: https://fonts.gstatic.com https://api.fontshare.com",
+              // ИСПРАВЛЕНО: Разрешаем загрузку изображений из всех источников
               "img-src 'self' data: https: blob:",
-              "connect-src 'self' https://api.telegram.org https://*.telegram.org https://vercel.live",
+              // ИСПРАВЛЕНО: Разрешаем подключения к API Telegram и другим источникам
+              "connect-src 'self' https://api.telegram.org https://*.telegram.org https://vercel.live ws: wss:",
+              // ИСПРАВЛЕНО: Разрешаем iframe для Telegram и других источников
               "frame-src https://telegram.org https://*.telegram.org https://vercel.live",
               "object-src 'none'",
               "base-uri 'self'",
