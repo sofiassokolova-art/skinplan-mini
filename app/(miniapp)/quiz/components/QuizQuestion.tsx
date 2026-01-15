@@ -231,7 +231,7 @@ export function QuizQuestion({
                   fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                 }}
               >
-                Далее
+                Продолжить
               </button>
             )
           )}
@@ -409,7 +409,7 @@ export function QuizQuestion({
               );
             })}
             
-            {/* Кнопка "Далее" - черная */}
+            {/* Кнопка "Продолжить" - черная */}
             {answers[question.id] && (Array.isArray(answers[question.id]) ? (answers[question.id] as string[]).length > 0 : true) && (
               <button
                 onClick={showSubmitButton ? onSubmit : onNext}
@@ -535,7 +535,7 @@ export function QuizQuestion({
                   fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                 }}
               >
-                Далее
+                Продолжить
               </button>
             )
           )}
