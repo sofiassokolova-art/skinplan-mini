@@ -456,9 +456,8 @@ export async function loadSavedProgressFromServer({
       // УПРОЩЕНО: Устанавливаем только savedProgress
       // Решение о показе резюм экрана принимает useEffect в компоненте
       setSavedProgress(response.progress);
-      // ИСПРАВЛЕНО: Устанавливаем loading = false ПОСЛЕ установки showResumeScreen,
-      // чтобы экран resume показался сразу и не было мигания начальных экранов
-      // Это гарантирует, что пользователь увидит экран "Вы не завершили анкету" до первого экрана анкеты
+      // УПРОЩЕНО: Устанавливаем loading = false после установки savedProgress
+      // useEffect в компоненте установит showResumeScreen на основе savedProgress
       setLoading(false);
       progressLoadedRef.current = true;
     } else {
@@ -515,7 +514,7 @@ export async function loadSavedProgressFromServer({
         hasResumed,
       });
       setSavedProgress(null);
-      setShowResumeScreen(false);
+      // УПРОЩЕНО: Не устанавливаем showResumeScreen здесь - это делает useEffect в компоненте
       // Сбрасываем currentQuestionIndex на 0 для нового пользователя, если он выходит за пределы
       if (currentQuestionIndex >= allQuestions.length && allQuestions.length > 0) {
         setCurrentQuestionIndex(0);
@@ -555,7 +554,7 @@ export async function loadSavedProgressFromServer({
     if (hasResumedRef.current || hasResumed) {
       clientLogger.log('⏸️ loadSavedProgressFromServer: hasResumed = true после загрузки, очищаем состояния');
       setSavedProgress(null);
-      setShowResumeScreen(false);
+      // УПРОЩЕНО: Не устанавливаем showResumeScreen здесь - это делает useEffect в компоненте
     }
   }
 }
