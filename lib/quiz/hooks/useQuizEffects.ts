@@ -65,6 +65,7 @@ export interface UseQuizEffectsParams {
   isSubmittingRef: React.MutableRefObject<boolean>;
   isStartingOverRef: React.MutableRefObject<boolean>;
   initCompletedRef: React.MutableRefObject<boolean>;
+  setInitCompleted: React.Dispatch<React.SetStateAction<boolean>>;
   initCalledRef: React.MutableRefObject<boolean>;
   initInProgressRef: React.MutableRefObject<boolean>;
   isMountedRef: React.MutableRefObject<boolean>;
@@ -153,6 +154,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     isSubmittingRef,
     isStartingOverRef,
     initCompletedRef,
+    setInitCompleted,
     initCalledRef,
     initInProgressRef,
     isMountedRef,
@@ -291,6 +293,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
         sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED);
         sessionStorage.removeItem('quiz_init_done');
         initCompletedRef.current = true;
+        setInitCompleted(true);
         setLoading(false);
         window.location.replace('/plan?state=generating');
         setTimeout(() => {

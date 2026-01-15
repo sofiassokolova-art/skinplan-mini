@@ -37,6 +37,7 @@ export interface UseQuizInitParams {
   initCalledRef: React.MutableRefObject<boolean>;
   initInProgressRef: React.MutableRefObject<boolean>;
   initCompletedRef: React.MutableRefObject<boolean>;
+  setInitCompleted: React.Dispatch<React.SetStateAction<boolean>>;
   isStartingOverRef: React.MutableRefObject<boolean>;
   hasResumedRef: React.MutableRefObject<boolean>;
   loadProgressInProgressRef: React.MutableRefObject<boolean>;
@@ -78,6 +79,7 @@ export function useQuizInit(params: UseQuizInitParams) {
     initCalledRef,
     initInProgressRef,
     initCompletedRef,
+    setInitCompleted,
     isStartingOverRef,
     hasResumedRef,
     loadProgressInProgressRef,
@@ -630,6 +632,7 @@ export function useQuizInit(params: UseQuizInitParams) {
     } finally {
       const totalElapsed = Date.now() - (initStartTimeRef.current || Date.now());
       initCompletedRef.current = true;
+      setInitCompleted(true);
       initInProgressRef.current = false;
       initStartTimeRef.current = null;
       // ИСПРАВЛЕНО: Устанавливаем время завершения init() для показа второго лоадера

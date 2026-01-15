@@ -11,6 +11,7 @@ export interface ResumeQuizParams {
   questionnaire: Questionnaire | null;
   redirectInProgressRef: React.MutableRefObject<boolean>;
   initCompletedRef: React.MutableRefObject<boolean>;
+  setInitCompleted: React.Dispatch<React.SetStateAction<boolean>>;
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
   hasResumed: boolean;
   currentInfoScreenIndex: number;
@@ -42,6 +43,7 @@ export function resumeQuiz(params: ResumeQuizParams): void {
       sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED);
       sessionStorage.removeItem('quiz_init_done');
       params.initCompletedRef.current = true;
+      params.setInitCompleted(true);
       params.setLoading(false);
       window.location.replace('/plan');
     }
@@ -78,6 +80,7 @@ export function resumeQuiz(params: ResumeQuizParams): void {
   // после того, как пользователь продолжил анкету
   if (!params.initCompletedRef.current) {
     params.initCompletedRef.current = true;
+    params.setInitCompleted(true);
     clientLogger.log('✅ initCompletedRef установлен в resumeQuiz для предотвращения повторной инициализации');
   }
   

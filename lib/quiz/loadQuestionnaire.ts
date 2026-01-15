@@ -15,6 +15,7 @@ export interface LoadQuestionnaireParams {
   loadQuestionnaireAttemptedRef: React.MutableRefObject<boolean>;
   redirectInProgressRef: React.MutableRefObject<boolean>;
   initCompletedRef: React.MutableRefObject<boolean>;
+  setInitCompleted: React.Dispatch<React.SetStateAction<boolean>>;
   
   // State getters
   questionnaire: Questionnaire | null;
@@ -54,6 +55,7 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
     loadQuestionnaireAttemptedRef,
     redirectInProgressRef,
     initCompletedRef,
+    setInitCompleted,
     questionnaire,
     loading,
     error,
@@ -284,6 +286,7 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
           hasProfile: _meta.hasProfile,
         });
         initCompletedRef.current = true;
+        setInitCompleted(true);
         setLoading(false);
         if (typeof window !== 'undefined') {
           window.location.replace('/plan');

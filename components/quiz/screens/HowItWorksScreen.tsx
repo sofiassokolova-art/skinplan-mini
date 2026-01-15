@@ -160,4 +160,3 @@ function HowItWorksScreenComponent({
 
 // ФИКС: Оптимизация рендеринга - мемоизируем компонент для предотвращения лишних перерендеров
 export const HowItWorksScreen = React.memo(HowItWorksScreenComponent);
-

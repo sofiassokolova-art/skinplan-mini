@@ -315,6 +315,8 @@ export default function QuizPage() {
     daysSincePlanGeneration,
     setDaysSincePlanGeneration,
     initCompletedRef,
+    initCompleted,
+    setInitCompleted,
     debugLogs,
     setDebugLogs,
     showDebugPanel,
@@ -397,7 +399,7 @@ export default function QuizPage() {
     const id = window.setTimeout(() => {
       clientLogger.warn('⏱️ Absolute loading timeout hit → forcing loading=false');
       setLoading(false);
-      initCompletedRef.current = true;
+      setInitCompleted(true);
       initInProgressRef.current = false;
     }, 15000);
 
@@ -575,8 +577,8 @@ export default function QuizPage() {
         sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED);
         // ИСПРАВЛЕНО: Удаляем флаг quiz_init_done перед редиректом, чтобы init() мог запуститься при возврате на /quiz
         sessionStorage.removeItem('quiz_init_done');
-        // Устанавливаем initCompletedRef, чтобы предотвратить повторную инициализацию
-        initCompletedRef.current = true;
+        // Устанавливаем initCompleted, чтобы предотвратить повторную инициализацию
+        setInitCompleted(true);
         setLoading(false);
         // Редиректим на /plan?state=generating СРАЗУ, без задержек
         window.location.replace('/plan?state=generating');
@@ -607,8 +609,8 @@ export default function QuizPage() {
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED);
       }
-      // Устанавливаем initCompletedRef, чтобы предотвратить повторную инициализацию
-      initCompletedRef.current = true;
+      // Устанавливаем initCompleted, чтобы предотвратить повторную инициализацию
+      setInitCompleted(true);
       setLoading(false);
       // ИСПРАВЛЕНО: Удаляем флаг quiz_init_done перед редиректом
       if (typeof window !== 'undefined') {
@@ -1226,6 +1228,7 @@ export default function QuizPage() {
     initCalledRef,
     initInProgressRef,
     initCompletedRef,
+    setInitCompleted,
     isStartingOverRef,
     hasResumedRef,
     loadProgressInProgressRef,
@@ -1677,6 +1680,7 @@ export default function QuizPage() {
       loadQuestionnaireAttemptedRef,
       redirectInProgressRef,
       initCompletedRef,
+      setInitCompleted,
       questionnaire,
       loading,
       error,
@@ -1811,6 +1815,7 @@ export default function QuizPage() {
       questionnaire,
       redirectInProgressRef,
       initCompletedRef,
+      setInitCompleted,
       setLoading,
       hasResumed,
       currentInfoScreenIndex,
@@ -1834,6 +1839,7 @@ export default function QuizPage() {
       isStartingOverRef,
       setIsStartingOver,
       initCompletedRef,
+      setInitCompleted,
       initCalledRef,
       clearProgress,
       setAnswers,
@@ -1951,6 +1957,7 @@ export default function QuizPage() {
     isSubmittingRef,
     isStartingOverRef,
     initCompletedRef,
+    setInitCompleted,
     initCalledRef,
     initInProgressRef,
     isMountedRef,
@@ -2557,8 +2564,8 @@ export default function QuizPage() {
         return null; // Редирект уже в процессе
       }
       redirectInProgressRef.current = true;
-      // Устанавливаем initCompletedRef, чтобы предотвратить повторную инициализацию
-      initCompletedRef.current = true;
+      // Устанавливаем initCompleted, чтобы предотвратить повторную инициализацию
+      setInitCompleted(true);
       // Редиректим на /plan?state=generating СРАЗУ, без задержек
       // Используем window.location.replace для немедленного редиректа
       if (typeof window !== 'undefined') {
@@ -3294,7 +3301,7 @@ export default function QuizPage() {
     questionnaireFromStateMachine: quizStateMachine.questionnaire, // ИСПРАВЛЕНО: Передаем questionnaireFromStateMachine как fallback
     loading,
     hasResumed,
-    initCompleted: initCompletedRef.current, // ФИКС: Передаем флаг завершения инициализации
+    initCompleted, // ФИКС: Передаем флаг завершения инициализации (реактивный state вместо ref)
     savedProgress,
     answers,
     allQuestionsLength: allQuestions.length,

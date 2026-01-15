@@ -34,10 +34,10 @@ export interface ProductFilterContext {
  * ИСПРАВЛЕНО: Объединяет всю логику фильтрации из разных мест
  * Правила только говорят ЧТО нужно, фильтр решает МОЖНО ЛИ использовать продукт
  */
-export function filterProducts(
+export async function filterProducts(
   products: ProductWithBrand[],
   context: ProductFilterContext
-): ProductSelectionResult[] {
+): Promise<ProductSelectionResult[]> {
   const {
     profileClassification,
     protocol,
@@ -53,7 +53,10 @@ export function filterProducts(
     return [];
   }
 
-  // ИСПРАВЛЕНО: Базовые проверки (skinType, budget, exclude ingredients)
+  // ИСПРАВЛЕНО: Импортируем функцию нормализации чувствительности заранее (синхронно)
+  const { normalizeSensitivityForRules } = await import('./skin-type-normalizer');
+  
+  // ИСПРАВЛЕНО: Базовые проверки (skinType, budget, exclude ingredients, противопоказания)
   let filtered = products.filter(product => {
     // 1. Проверка типа кожи
     const productSkinTypes = (product.skinTypes || []) as string[];
@@ -98,12 +101,64 @@ export function filterProducts(
       }
     }
 
-    // 4. Проверка противопоказаний (беременность)
-    if (profileClassification.pregnant) {
-      const avoidIf = (product as any).avoidIf || [];
-      if (avoidIf.includes('pregnant') || avoidIf.includes('breastfeeding')) {
-        if (strictness === 'hard') {
-          return false;
+    // 4. Проверка противопоказаний из avoidIf
+    const avoidIf = (product as any).avoidIf || [];
+    if (Array.isArray(avoidIf) && avoidIf.length > 0) {
+      // 4.1. Проверка беременности/лактации
+      if (profileClassification.pregnant) {
+        if (avoidIf.includes('pregnant') || avoidIf.includes('breastfeeding')) {
+          if (strictness === 'hard') {
+            return false;
+          }
+        }
+      }
+      
+      // 4.2. Проверка чувствительности
+      // ИСПРАВЛЕНО: Проверяем very_high_sensitivity из avoidIf
+      if (avoidIf.includes('very_high_sensitivity')) {
+        const normalizedSensitivity = normalizeSensitivityForRules(profileClassification.sensitivityLevel);
+        if (normalizedSensitivity === 'very_high') {
+          if (strictness === 'hard') {
+            return false;
+          }
+        }
+      }
+      
+      // 4.3. Проверка аллергий
+      // ИСПРАВЛЕНО: Проверяем аллергии из avoidIf против аллергий пользователя
+      if (profileClassification.allergies && profileClassification.allergies.length > 0) {
+        const userAllergies = profileClassification.allergies.map(a => a.toLowerCase());
+        const allergyContraindications = avoidIf.filter((contra: string) => 
+          contra.includes('_allergy') || contra.includes('allergy')
+        );
+        
+        for (const contra of allergyContraindications) {
+          // Проверяем соответствие аллергии (например, retinol_allergy, aha_bha_allergy)
+          const contraLower = contra.toLowerCase();
+          const hasMatchingAllergy = userAllergies.some(userAllergy => {
+            const userAllergyLower = userAllergy.toLowerCase();
+            // Проверяем точное совпадение или частичное (например, "retinol" в "retinol_allergy")
+            if (contraLower.includes(userAllergyLower) || userAllergyLower.includes(contraLower.replace('_allergy', ''))) {
+              return true;
+            }
+            // Специальные проверки для общих аллергий
+            if ((contraLower.includes('aha') || contraLower.includes('bha')) && 
+                (userAllergyLower.includes('кислот') || userAllergyLower.includes('acid') || 
+                 userAllergyLower.includes('aha') || userAllergyLower.includes('bha'))) {
+              return true;
+            }
+            if (contraLower.includes('retinol') && 
+                (userAllergyLower.includes('ретинол') || userAllergyLower.includes('retinol'))) {
+              return true;
+            }
+            return false;
+          });
+          
+          if (hasMatchingAllergy) {
+            if (strictness === 'hard') {
+              return false;
+            }
+          }
         }
       }
     }
@@ -187,10 +242,10 @@ export function filterProducts(
  * Возвращает ProductSelectionResult[] с reasons для каждого продукта
  * Полезно для дебага, админки и логирования
  */
-export function filterProductsWithReasons(
+export async function filterProductsWithReasons(
   products: ProductWithBrand[],
   context: ProductFilterContext
-): ProductSelectionResult[] {
+): Promise<ProductSelectionResult[]> {
   const {
     profileClassification,
     protocol,
@@ -205,6 +260,9 @@ export function filterProductsWithReasons(
   if (!products || products.length === 0) {
     return [];
   }
+
+  // ИСПРАВЛЕНО: Импортируем функцию нормализации чувствительности заранее (синхронно)
+  const { normalizeSensitivityForRules } = await import('./skin-type-normalizer');
 
   // ИСПРАВЛЕНО: Базовые проверки с сохранением причин
   let results: ProductSelectionResult[] = products.map(product => {
@@ -267,15 +325,70 @@ export function filterProductsWithReasons(
       }
     }
 
-    // 4. Проверка противопоказаний (беременность)
-    if (profileClassification.pregnant) {
-      const avoidIf = (product as any).avoidIf || [];
-      if (avoidIf.includes('pregnant') || avoidIf.includes('breastfeeding')) {
-        if (strictness === 'hard') {
-          allowed = false;
-          reasons.push('Противопоказан при беременности/лактации');
-        } else {
-          reasons.push('Не рекомендуется при беременности/лактации');
+    // 4. Проверка противопоказаний из avoidIf
+    const avoidIf = (product as any).avoidIf || [];
+    if (Array.isArray(avoidIf) && avoidIf.length > 0) {
+      // 4.1. Проверка беременности/лактации
+      if (profileClassification.pregnant) {
+        if (avoidIf.includes('pregnant') || avoidIf.includes('breastfeeding')) {
+          if (strictness === 'hard') {
+            allowed = false;
+            reasons.push('Противопоказан при беременности/лактации');
+          } else {
+            reasons.push('Не рекомендуется при беременности/лактации');
+          }
+        }
+      }
+      
+      // 4.2. Проверка чувствительности
+      // ИСПРАВЛЕНО: Проверяем very_high_sensitivity из avoidIf
+      if (avoidIf.includes('very_high_sensitivity')) {
+        const normalizedSensitivity = normalizeSensitivityForRules(profileClassification.sensitivityLevel);
+        if (normalizedSensitivity === 'very_high') {
+          if (strictness === 'hard') {
+            allowed = false;
+            reasons.push('Противопоказан при очень высокой чувствительности');
+          } else {
+            reasons.push('Не рекомендуется при очень высокой чувствительности');
+          }
+        }
+      }
+      
+      // 4.3. Проверка аллергий
+      // ИСПРАВЛЕНО: Проверяем аллергии из avoidIf против аллергий пользователя
+      if (profileClassification.allergies && profileClassification.allergies.length > 0) {
+        const userAllergies = profileClassification.allergies.map(a => a.toLowerCase());
+        const allergyContraindications = avoidIf.filter((contra: string) => 
+          contra.includes('_allergy') || contra.includes('allergy')
+        );
+        
+        for (const contra of allergyContraindications) {
+          const contraLower = contra.toLowerCase();
+          const hasMatchingAllergy = userAllergies.some(userAllergy => {
+            const userAllergyLower = userAllergy.toLowerCase();
+            if (contraLower.includes(userAllergyLower) || userAllergyLower.includes(contraLower.replace('_allergy', ''))) {
+              return true;
+            }
+            if ((contraLower.includes('aha') || contraLower.includes('bha')) && 
+                (userAllergyLower.includes('кислот') || userAllergyLower.includes('acid') || 
+                 userAllergyLower.includes('aha') || userAllergyLower.includes('bha'))) {
+              return true;
+            }
+            if (contraLower.includes('retinol') && 
+                (userAllergyLower.includes('ретинол') || userAllergyLower.includes('retinol'))) {
+              return true;
+            }
+            return false;
+          });
+          
+          if (hasMatchingAllergy) {
+            if (strictness === 'hard') {
+              allowed = false;
+              reasons.push(`Противопоказан из-за аллергии: ${contra}`);
+            } else {
+              reasons.push(`Не рекомендуется из-за аллергии: ${contra}`);
+            }
+          }
         }
       }
     }
@@ -415,12 +528,12 @@ export function filterProductsWithReasons(
  * Фильтрует продукты по базовым критериям (без дерматологической логики)
  * ИСПРАВЛЕНО: Используется для быстрой фильтрации в правилах
  */
-export function filterProductsBasic(
+export async function filterProductsBasic(
   products: ProductWithBrand[],
   profileClassification: ProfileClassification,
   strictness: FilterStrictness = 'soft'
-): ProductWithBrand[] {
-  const results = filterProducts(products, {
+): Promise<ProductWithBrand[]> {
+  const results = await filterProducts(products, {
     profileClassification,
     strictness,
   });

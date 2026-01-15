@@ -118,6 +118,8 @@ export interface UseQuizStateExtendedReturn {
   loadingRefForTimeout: React.MutableRefObject<boolean>;
   loadingStartTimeRef: React.MutableRefObject<number | null>;
   initCompletedRef: React.MutableRefObject<boolean>;
+  initCompleted: boolean;
+  setInitCompleted: React.Dispatch<React.SetStateAction<boolean>>;
   
   // Refs для синхронизации с State Machine и React Query
   lastSyncedFromQueryIdRef: React.MutableRefObject<string | number | null>;
@@ -307,6 +309,15 @@ export function useQuizStateExtended(): UseQuizStateExtendedReturn {
   const loadingStartTimeRef = useRef<number | null>(null);
   const initCompletedRef = useRef(false);
   
+  // ИСПРАВЛЕНО: Добавлен useState для initCompleted, чтобы триггерить ререндер при изменении
+  // Это необходимо для корректной работы useQuizView, который зависит от initCompleted
+  const [initCompleted, setInitCompleted] = useState(false);
+  
+  // Синхронизация initCompleted с ref
+  useEffect(() => {
+    initCompletedRef.current = initCompleted;
+  }, [initCompleted]);
+  
   // Refs для синхронизации с State Machine и React Query
   const lastSyncedFromQueryIdRef = useRef<string | number | null>(null);
   const setQuestionnaireInStateMachineRef = useRef<((questionnaire: Questionnaire | null) => void) | null>(null);
@@ -471,6 +482,8 @@ export function useQuizStateExtended(): UseQuizStateExtendedReturn {
     loadingRefForTimeout,
     loadingStartTimeRef,
     initCompletedRef,
+    initCompleted,
+    setInitCompleted,
     
     // Refs для синхронизации с State Machine и React Query
     lastSyncedFromQueryIdRef,

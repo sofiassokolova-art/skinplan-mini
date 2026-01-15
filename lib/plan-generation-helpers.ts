@@ -205,7 +205,7 @@ export async function replaceInactiveBrandProducts(
           strictness: 'hard', // ИСПРАВЛЕНО: Используем hard strictness для замены
         };
 
-        const filtered = filterProductsWithReasons(candidatesAsProductWithBrand, filterContext);
+        const filtered = await filterProductsWithReasons(candidatesAsProductWithBrand, filterContext);
         const allowed = filtered.filter(r => r.allowed);
 
         if (allowed.length > 0) {
@@ -233,7 +233,7 @@ export async function replaceInactiveBrandProducts(
           logger.debug('No valid replacement found for stepCategory', {
             stepCategory,
             productId: product.id,
-            reasons: filtered.map(f => f.reason).filter(Boolean),
+            reasons: filtered.map((f: { reason?: string }) => f.reason).filter(Boolean),
           });
         }
       }

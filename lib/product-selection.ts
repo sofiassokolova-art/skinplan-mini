@@ -337,7 +337,7 @@ export async function getProductsForStep(
   // Это гарантирует, что рекомендации и план используют одинаковую логику фильтрации
   // Включая ingredient-compatibility как центральный гейт
   if (profileClassification && products.length > 0) {
-    const filteredResults = filterProductsBasic(products as any, profileClassification, 'soft');
+    const filteredResults = await filterProductsBasic(products as any, profileClassification, 'soft');
     products = filteredResults as any[];
     
     // ИСПРАВЛЕНО: Дополнительная проверка совместимости ингредиентов для рекомендаций

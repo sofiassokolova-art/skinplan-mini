@@ -105,4 +105,3 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext }: WelcomeS
 
 // ФИКС: Оптимизация рендеринга - мемоизируем компонент для предотвращения лишних перерендеров
 export const WelcomeScreen = React.memo(WelcomeScreenComponent);
-

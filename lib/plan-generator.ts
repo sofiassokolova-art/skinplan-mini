@@ -744,7 +744,7 @@ export async function generate28DayPlan(
     });
     
     logger.info('No RecommendationSession - filtering products from scratch using unified filter', { userId });
-    filteredProducts = filterProductsBasic(normalizedProducts, profileClassification, 'soft');
+    filteredProducts = await filterProductsBasic(normalizedProducts, profileClassification, 'soft');
   }
 
   // Сортируем продукты по релевантности (приоритет основному фокусу, затем isHero и priority)

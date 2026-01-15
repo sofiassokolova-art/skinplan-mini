@@ -9,6 +9,7 @@ export interface StartOverParams {
   isStartingOverRef: React.MutableRefObject<boolean>;
   setIsStartingOver: React.Dispatch<React.SetStateAction<boolean>>;
   initCompletedRef: React.MutableRefObject<boolean>;
+  setInitCompleted: React.Dispatch<React.SetStateAction<boolean>>;
   initCalledRef: React.MutableRefObject<boolean>;
   clearProgress: () => Promise<void>;
   setAnswers: React.Dispatch<React.SetStateAction<Record<number, string | string[]>>>;
@@ -44,6 +45,7 @@ export async function startOver(params: StartOverParams): Promise<void> {
   // ВАЖНО: Сбрасываем initCompletedRef и initCalledRef, чтобы позволить повторную инициализацию
   // но с правильными флагами (isStartingOverRef = true), чтобы не загружать прогресс
   params.initCompletedRef.current = false;
+  params.setInitCompleted(false);
   params.initCalledRef.current = false; // ИСПРАВЛЕНО: Сбрасываем initCalledRef для повторной инициализации
   
   // ФИКС: Очищаем флаг quiz_initCalled из sessionStorage при startOver
@@ -96,6 +98,7 @@ export async function startOver(params: StartOverParams): Promise<void> {
   if (params.questionnaire) {
     clientLogger.log('✅ Анкета уже загружена, завершаем инициализацию без повторной загрузки');
     params.initCompletedRef.current = true;
+    params.setInitCompleted(true);
     params.isStartingOverRef.current = false;
     params.setIsStartingOver(false);
     clientLogger.log('✅ startOver завершен, анкета уже была загружена');
