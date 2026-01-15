@@ -175,3 +175,51 @@ export function PlanSkeleton() {
     </div>
   );
 }
+
+/**
+ * Компонент для skeleton loader рутины (routine items)
+ * Используется на главной странице при загрузке плана
+ */
+export function RoutineSkeleton() {
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '12px',
+      padding: '0 20px',
+      maxWidth: '600px',
+      margin: '0 auto',
+    }}>
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div
+          key={i}
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.56)',
+            backdropFilter: 'blur(28px)',
+            borderRadius: '20px',
+            padding: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+          }}
+        >
+          {/* Step Number Circle */}
+          <SkeletonLoader variant="circular" width="32px" height="32px" />
+          
+          {/* Icon */}
+          <SkeletonLoader variant="rectangular" width="60px" height="60px" borderRadius="8px" />
+          
+          {/* Content */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <SkeletonLoader variant="text" lines={1} width="60%" height="17px" style={{ marginBottom: '8px' }} />
+            <SkeletonLoader variant="text" lines={1} width="80%" height="14px" />
+          </div>
+          
+          {/* Info Button */}
+          <SkeletonLoader variant="circular" width="28px" height="28px" />
+        </div>
+      ))}
+    </div>
+  );
+}

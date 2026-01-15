@@ -10,6 +10,7 @@ import { api } from '@/lib/api';
 import { clientLogger } from '@/lib/client-logger';
 import { PaymentGate } from '@/components/PaymentGate';
 import { getBaseStepFromStepCategory } from '@/lib/plan-helpers';
+import { RoutineSkeleton } from '@/components/ui/SkeletonLoader';
 
 interface RoutineItem {
   id: string;
@@ -724,23 +725,82 @@ export default function HomePage() {
   if (!mounted || loading) {
     return (
       <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        flexDirection: 'column',
-        gap: '16px',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        paddingBottom: '120px',
       }}>
+        {/* Header Skeleton */}
         <div style={{
-          width: '48px',
-          height: '48px',
-          border: '4px solid rgba(10, 95, 89, 0.2)',
-          borderTop: '4px solid #0A5F59',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }}></div>
-        <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка плана...</div>
+          padding: '20px',
+          textAlign: 'center',
+        }}>
+          <div style={{
+            width: '140px',
+            height: '140px',
+            backgroundColor: 'rgba(255, 255, 255, 0.5)',
+            borderRadius: '12px',
+            margin: '8px auto',
+          }} />
+          <div style={{
+            width: '200px',
+            height: '20px',
+            backgroundColor: 'rgba(255, 255, 255, 0.5)',
+            borderRadius: '4px',
+            margin: '12px auto 8px',
+          }} />
+          <div style={{
+            width: '250px',
+            height: '26px',
+            backgroundColor: 'rgba(255, 255, 255, 0.5)',
+            borderRadius: '4px',
+            margin: '0 auto 16px',
+          }} />
+          <div style={{
+            width: '150px',
+            height: '44px',
+            backgroundColor: 'rgba(255, 255, 255, 0.5)',
+            borderRadius: '12px',
+            margin: '0 auto',
+          }} />
+        </div>
+
+        {/* Loading Text with Spinner */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: '12px',
+          marginBottom: '24px',
+        }}>
+          <div style={{
+            width: '20px',
+            height: '20px',
+            border: '3px solid rgba(10, 95, 89, 0.2)',
+            borderTop: '3px solid #0A5F59',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite'
+          }}></div>
+          <div style={{ color: '#0A5F59', fontSize: '16px', fontWeight: 500 }}>Загрузка плана...</div>
+        </div>
+
+        {/* Toggle AM/PM Skeleton */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          marginBottom: '24px',
+        }}>
+          <div style={{
+            width: '200px',
+            height: '44px',
+            backgroundColor: 'rgba(255, 255, 255, 0.42)',
+            borderRadius: '28px',
+            backdropFilter: 'blur(20px)',
+          }} />
+        </div>
+
+        {/* Routine Items Skeleton */}
+        <RoutineSkeleton />
+
         <style>{`
           @keyframes spin {
             0% { transform: rotate(0deg); }
