@@ -31,6 +31,13 @@ export function handleBack({
   saveProgress,
   answers,
 }: HandleBackParams): void {
+  clientLogger.log('🔙 handleBack вызван', {
+    currentInfoScreenIndex,
+    currentQuestionIndex,
+    hasPendingInfoScreen: !!pendingInfoScreen,
+    hasQuestionnaire: !!questionnaire || !!questionnaireRef.current,
+  });
+
   // ИСПРАВЛЕНО: Используем единую функцию для получения начальных инфо-экранов
   const initialInfoScreens = getInitialInfoScreens();
   
@@ -44,6 +51,7 @@ export function handleBack({
 
   // Если показывается инфо-экран между вопросами, просто закрываем его
   if (pendingInfoScreen) {
+    clientLogger.log('🔙 handleBack: закрываем pendingInfoScreen');
     setPendingInfoScreen(null);
     return;
   }
@@ -51,6 +59,10 @@ export function handleBack({
   // Если мы на вопросах, переходим к предыдущему вопросу
   if (isOnQuestions && currentQuestionIndex > 0) {
     const newQuestionIndex = currentQuestionIndex - 1;
+    clientLogger.log('🔙 handleBack: переходим к предыдущему вопросу', {
+      oldIndex: currentQuestionIndex,
+      newIndex: newQuestionIndex,
+    });
     setCurrentQuestionIndex(newQuestionIndex);
     
     // Сохраняем прогресс
@@ -72,6 +84,11 @@ export function handleBack({
   // Если мы на начальных инфо-экранах, переходим к предыдущему
   if (currentInfoScreenIndex > 0) {
     const newInfoScreenIndex = currentInfoScreenIndex - 1;
+    clientLogger.log('🔙 handleBack: переходим к предыдущему инфо-экрану', {
+      oldIndex: currentInfoScreenIndex,
+      newIndex: newInfoScreenIndex,
+      initialInfoScreensLength: initialInfoScreens.length,
+    });
     setCurrentInfoScreenIndex(newInfoScreenIndex);
     
     // Сохраняем прогресс
@@ -87,6 +104,13 @@ export function handleBack({
         clientLogger.warn('⚠️ Не удалось сохранить currentInfoScreenIndex в sessionStorage', err);
       }
     }
+    return;
   }
+
+  // Если мы на самом начале (индекс 0), не делаем ничего
+  clientLogger.log('🔙 handleBack: мы на самом начале, ничего не делаем', {
+    currentInfoScreenIndex,
+    currentQuestionIndex,
+  });
 }
 

@@ -49,15 +49,19 @@ export function QuizQuestion({
 
   return (
     <>
-      {/* Кнопка "Назад" - простая стрелка без фона */}
+      {/* Кнопка "Назад" - простая стрелка без фона, зафиксирована */}
       {showBackButton && (
         <button
-          onClick={onBack}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onBack();
+          }}
           style={{
             position: 'fixed',
             top: 'clamp(20px, 4vh, 40px)',
             left: 'clamp(19px, 5vw, 24px)',
-            zIndex: 100,
+            zIndex: 1000,
             width: '44px',
             height: '44px',
             background: 'transparent',
@@ -67,6 +71,7 @@ export function QuizQuestion({
             justifyContent: 'center',
             cursor: 'pointer',
             padding: 0,
+            pointerEvents: 'auto',
           }}
         >
           <svg

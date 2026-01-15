@@ -338,17 +338,33 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
           nextInfoScreenId: nextInfoScreen?.id || null,
           currentQuestionIndex,
           isLastQuestion: currentQuestionIndex === allQuestions.length - 1,
+          allInfoScreens: INFO_SCREENS.map(s => ({ id: s.id, showAfterInfoScreenId: s.showAfterInfoScreenId })),
         });
       }
       
       if (nextInfoScreen) {
+        clientLogger.warn('✅ Найден следующий инфо-экран в цепочке, устанавливаем pendingInfoScreen', {
+          from: currentPendingInfoScreen.id,
+          to: nextInfoScreen.id,
+          currentQuestionIndex,
+          currentInfoScreenIndex,
+        });
         setPendingInfoScreen(nextInfoScreen);
+        if (pendingInfoScreenRef) {
+          pendingInfoScreenRef.current = nextInfoScreen;
+        }
         await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
         clientLogger.log('✅ Переход к следующему инфо-экрану в цепочке:', {
           from: currentPendingInfoScreen.id,
           to: nextInfoScreen.id,
         });
         return;
+      } else {
+        clientLogger.warn('⚠️ Следующий инфо-экран в цепочке НЕ найден, закрываем pendingInfoScreen', {
+          currentPendingInfoScreenId: currentPendingInfoScreen.id,
+          currentQuestionIndex,
+          currentInfoScreenIndex,
+        });
       }
       
       // ИСПРАВЛЕНО: Проверяем, не последний ли это вопрос ДО закрытия инфо-экрана

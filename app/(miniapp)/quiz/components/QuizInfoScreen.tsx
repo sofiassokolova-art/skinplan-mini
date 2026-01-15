@@ -437,14 +437,14 @@ export function QuizInfoScreen({
               width: '100%',
               height: '56px',
               borderRadius: '20px',
-              background: '#000000',
-              color: '#FFFFFF',
+              background: '#D5FE61',
+              color: '#000000',
               border: 'none',
               fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 600,
               fontSize: '16px',
               cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+              boxShadow: '0 4px 12px rgba(213, 254, 97, 0.3)',
             }}
           >
             {screen.ctaText || 'Продолжить'}
