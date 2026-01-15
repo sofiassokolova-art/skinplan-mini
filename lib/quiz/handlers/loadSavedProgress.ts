@@ -239,12 +239,36 @@ export async function loadSavedProgressFromServer({
     });
     
     // ИСПРАВЛЕНО: Показываем экран резюме, если есть прогресс И (есть ответы И достаточно ответов) ИЛИ (infoScreenIndex > 0)
-    if (response?.progress && ((response.progress.answers && answersCount > 0 && shouldShowProgressScreen) || (infoScreenIndex > 0 && infoScreenIndex < initialInfoScreens.length))) {
-      // ФИКС: Не загружаем прогресс, если пользователь уже перешел к вопросам (currentInfoScreenIndex >= initialInfoScreens.length)
-      // Это предотвращает сброс currentInfoScreenIndex на 0 после перехода к вопросам
-      // ИСПРАВЛЕНО: Используем ref для синхронной проверки, так как state обновляется асинхронно
-      // КРИТИЧНО: Также проверяем, что загруженный прогресс не имеет infoScreenIndex меньше, чем текущий
-      // Это предотвращает откат назад после перехода к вопросам
+    // ВАЖНО: Если есть ответы (>= 2), показываем резюм-экран независимо от infoScreenIndex
+    const hasEnoughAnswers = response.progress?.answers && answersCount > 0 && shouldShowProgressScreen;
+    const isOnInfoScreens = infoScreenIndex > 0 && infoScreenIndex < initialInfoScreens.length;
+    
+    if (response?.progress && (hasEnoughAnswers || isOnInfoScreens)) {
+      // ФИКС: Если есть достаточно ответов, показываем резюм-экран независимо от текущего индекса
+      // Но если НЕТ ответов и пользователь уже на вопросах - не показываем резюм-экран
+      if (!hasEnoughAnswers) {
+        // ФИКС: Не загружаем прогресс, если пользователь уже перешел к вопросам (currentInfoScreenIndex >= initialInfoScreens.length)
+        // Это предотвращает сброс currentInfoScreenIndex на 0 после перехода к вопросам
+        // ИСПРАВЛЕНО: Используем ref для синхронной проверки, так как state обновляется асинхронно
+        // КРИТИЧНО: Также проверяем, что загруженный прогресс не имеет infoScreenIndex меньше, чем текущий
+        // Это предотвращает откат назад после перехода к вопросам
+        
+        let currentInfoIndex = currentInfoScreenIndexRef.current >= initialInfoScreens.length 
+          ? currentInfoScreenIndexRef.current 
+          : currentInfoScreenIndex;
+        const progressInfoIndex = response.progress.infoScreenIndex || 0;
+        
+        if (currentInfoIndex >= initialInfoScreens.length) {
+          clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено, так как пользователь уже на вопросах и нет ответов', {
+            currentInfoScreenIndex,
+            currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
+            initialInfoScreensLength: initialInfoScreens.length,
+            progressInfoScreenIndex: progressInfoIndex,
+            currentInfoIndex,
+          });
+          return;
+        }
+      }
       
       // ФИКС: Проверяем sessionStorage для восстановления индекса при перемонтировании
       let restoredIndex: number | null = null;
@@ -275,18 +299,6 @@ export async function loadSavedProgressFromServer({
         ? currentInfoScreenIndexRef.current 
         : currentInfoScreenIndex;
       const progressInfoIndex = response.progress.infoScreenIndex || 0;
-      
-      if (currentInfoIndex >= initialInfoScreens.length) {
-        clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено, так как пользователь уже на вопросах', {
-          currentInfoScreenIndex,
-          currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
-          initialInfoScreensLength: initialInfoScreens.length,
-          progressInfoScreenIndex: progressInfoIndex,
-          currentInfoIndex,
-          restoredIndex,
-        });
-        return;
-      }
       
       // КРИТИЧНО: Если текущий infoScreenIndex больше, чем в загруженном прогрессе, не загружаем прогресс
       // Это предотвращает откат назад после того, как пользователь прошел больше экранов

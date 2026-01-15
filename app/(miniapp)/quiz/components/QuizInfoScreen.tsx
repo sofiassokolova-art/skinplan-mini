@@ -410,6 +410,7 @@ export function QuizInfoScreen({
         <div style={{
           flex: 1,
           overflow: 'hidden',
+          overflowY: 'visible', // Разрешаем видимость тени сверху/снизу
           paddingLeft: '20px',
           paddingRight: '20px',
           paddingTop: '20px',

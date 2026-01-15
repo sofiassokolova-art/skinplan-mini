@@ -35,7 +35,8 @@ export function TestimonialsCarousel({ testimonials }: TestimonialsCarouselProps
       display: 'flex', 
       gap: '16px', 
       overflowX: 'auto',
-      padding: '8px 0',
+      overflowY: 'visible', // Разрешаем видимость тени сверху/снизу
+      padding: '12px 0', // Увеличено для тени
       marginBottom: '28px',
       scrollbarWidth: 'none',
       WebkitOverflowScrolling: 'touch',
@@ -52,7 +53,7 @@ export function TestimonialsCarousel({ testimonials }: TestimonialsCarouselProps
           backgroundColor: '#FFFFFF',
           borderRadius: '20px',
           padding: '0',
-          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)', // Уменьшена тень
           flexShrink: 0,
           overflow: 'hidden',
           display: 'flex',
