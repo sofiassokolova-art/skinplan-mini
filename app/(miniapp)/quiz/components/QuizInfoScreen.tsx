@@ -15,6 +15,102 @@ import { clientLogger } from '@/lib/client-logger';
 import { getInitialInfoScreens } from '../info-screens';
 import { QuizErrorDisplay } from './QuizErrorDisplay';
 
+// Компонент для плавной загрузки изображений
+function ImageWithLoading({ src, alt, maxWidth }: { src: string; alt: string; maxWidth: string }) {
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+
+  return (
+    <div style={{
+      width: '100%',
+      maxWidth,
+      marginBottom: '32px',
+      background: '#FFFFFF',
+      backgroundColor: '#FFFFFF',
+      borderRadius: '0',
+      position: 'relative',
+      minHeight: isLoading ? '200px' : 'auto',
+    }}>
+      {/* Placeholder во время загрузки */}
+      {isLoading && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: '#F9FAFB',
+          borderRadius: '0',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: 1,
+          transition: 'opacity 0.3s ease-out',
+        }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '3px solid #E5E7EB',
+            borderTopColor: '#D5FE61',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite',
+          }} />
+          <style>{`
+            @keyframes spin {
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>
+      )}
+      
+      {/* Изображение */}
+      <img
+        src={src}
+        alt={alt}
+        onLoad={() => {
+          setIsLoading(false);
+          setHasError(false);
+        }}
+        onError={() => {
+          setIsLoading(false);
+          setHasError(true);
+        }}
+        style={{
+          width: '100%',
+          height: 'auto',
+          objectFit: 'contain',
+          border: 'none',
+          outline: 'none',
+          display: 'block',
+          background: '#FFFFFF',
+          backgroundColor: '#FFFFFF',
+          boxShadow: 'none',
+          borderRadius: '0',
+          opacity: isLoading ? 0 : 1,
+          transition: 'opacity 0.4s ease-out',
+        }}
+      />
+      
+      {/* Placeholder при ошибке загрузки */}
+      {hasError && (
+        <div style={{
+          width: '100%',
+          height: '200px',
+          background: '#F3F4F6',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#9CA3AF',
+          fontSize: '14px',
+          borderRadius: '0',
+        }}>
+          Изображение не загружено
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface QuizInfoScreenProps {
   screen: InfoScreen;
   currentInfoScreenIndex: number;
