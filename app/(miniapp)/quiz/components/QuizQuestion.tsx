@@ -100,12 +100,14 @@ export function QuizQuestion({
             borderRadius: '3px',
             overflow: 'hidden',
             position: 'relative',
+            padding: '1px',
+            boxSizing: 'border-box',
           }}>
             <div style={{
               width: `${allQuestionsLength > 0 ? ((currentQuestionIndex + 1) / allQuestionsLength) * 100 : 0}%`,
               height: '100%',
               backgroundColor: '#D5FE61',
-              borderRadius: '3px',
+              borderRadius: '2px',
               transition: 'width 0.3s ease',
             }} />
           </div>
@@ -288,8 +290,8 @@ export function QuizQuestion({
           backgroundColor: '#D5FE61',
           borderRadius: '24px',
           padding: '20px',
-          marginTop: '-40px',
-          paddingTop: '60px',
+          marginTop: '-20px',
+          paddingTop: '40px',
         }}>
           {/* Заголовок внутри лаймового контейнера */}
           <h2 style={{ 
