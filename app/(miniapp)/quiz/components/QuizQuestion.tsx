@@ -415,7 +415,7 @@ export function QuizQuestion({
               );
             })}
             
-            {/* Кнопка "Продолжить" - лаймовая для продолжения, черная для отправки */}
+            {/* Кнопка "Продолжить" - черная для skin_goals (в отличие от остальных экранов) */}
             {answers[question.id] && (Array.isArray(answers[question.id]) ? (answers[question.id] as string[]).length > 0 : true) && (
               <button
                 onClick={showSubmitButton ? onSubmit : onNext}
@@ -425,8 +425,8 @@ export function QuizQuestion({
                   width: '100%',
                   padding: '18px',
                   borderRadius: '20px',
-                  backgroundColor: showSubmitButton ? '#000000' : '#D5FE61',
-                  color: showSubmitButton ? '#FFFFFF' : '#000000',
+                  backgroundColor: '#000000',
+                  color: '#FFFFFF',
                   border: 'none',
                   cursor: isSubmitting ? 'not-allowed' : 'pointer',
                   fontSize: '16px',

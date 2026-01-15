@@ -190,19 +190,44 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     }
 
     if (currentInfoScreenIndex === initialInfoScreens.length - 1) {
-      // ИСПРАВЛЕНО: Проверяем анкету только при переходе к вопросам
-      // Если анкета не загружена, все равно переходим к вопросам (они могут загрузиться позже)
-      // Но логируем предупреждение для диагностики
-      if (!hasQuestionnaire) {
-        clientLogger.warn('⚠️ Переход к вопросам без анкеты - анкета может загрузиться позже', {
+      // КРИТИЧНО: Проверяем, что есть вопросы перед переходом к ним
+      // Если анкета не загружена и вопросов нет, не переходим к вопросам
+      if (allQuestions.length === 0 && !hasQuestionnaire) {
+        clientLogger.warn('⚠️ Переход к вопросам заблокирован: анкета не загружена и вопросов нет', {
           hasQuestionnaire: !!questionnaire,
           hasQuestionnaireRef: !!questionnaireRef.current,
+          allQuestionsLength: allQuestions.length,
           loading,
           initCompleted: initCompletedRef.current,
         });
-        // НЕ блокируем переход - разрешаем переход к вопросам, даже если анкета еще не загружена
-        // Это позволит пользователю видеть инфо-экраны, даже если API вернул пустую анкету
+        // Блокируем переход, если нет ни анкеты, ни вопросов
+        return;
       }
+      
+      // ИСПРАВЛЕНО: Проверяем анкету только при переходе к вопросам
+      // Если анкета не загружена, но есть вопросы (из кэша), разрешаем переход
+      // Но логируем предупреждение для диагностики
+      if (!hasQuestionnaire && allQuestions.length === 0) {
+        clientLogger.warn('⚠️ Переход к вопросам без анкеты и без вопросов - блокируем', {
+          hasQuestionnaire: !!questionnaire,
+          hasQuestionnaireRef: !!questionnaireRef.current,
+          allQuestionsLength: allQuestions.length,
+          loading,
+          initCompleted: initCompletedRef.current,
+        });
+        return;
+      }
+      
+      if (!hasQuestionnaire && allQuestions.length > 0) {
+        clientLogger.warn('⚠️ Переход к вопросам без анкеты, но есть вопросы из кэша - разрешаем', {
+          hasQuestionnaire: !!questionnaire,
+          hasQuestionnaireRef: !!questionnaireRef.current,
+          allQuestionsLength: allQuestions.length,
+          loading,
+          initCompleted: initCompletedRef.current,
+        });
+      }
+      
       const newInfoIndex = initialInfoScreens.length;
       // ФИКС: Логируем переход к вопросам после последнего инфо-экрана
       clientLogger.warn('🔄 handleNext: переход к вопросам после последнего инфо-экрана', {
@@ -227,6 +252,18 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       
       // ИСПРАВЛЕНО: Не сбрасываем currentQuestionIndex на 0, если у пользователя уже есть ответы
       // Это предотвращает возврат к первому вопросу для пользователей, которые уже отвечали
+      // КРИТИЧНО: Проверяем, что allQuestions не пустой перед установкой индекса
+      if (allQuestions.length === 0) {
+        clientLogger.warn('⚠️ handleNext: allQuestions пустой, не устанавливаем currentQuestionIndex', {
+          allQuestionsLength: allQuestions.length,
+          hasQuestionnaire: !!questionnaire || !!questionnaireRef.current,
+          loading,
+        });
+        // Не устанавливаем индекс, если вопросов нет - анкета еще загружается
+        await saveProgress(answers, currentQuestionIndex, newInfoIndex);
+        return;
+      }
+      
       const answeredQuestionIds = Object.keys(answers).map(id => Number(id));
       let nextQuestionIndex = 0;
       
@@ -256,6 +293,15 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
           nextQuestionIndex = currentQuestionIndex > 0 ? currentQuestionIndex : 0;
         }
         
+        // КРИТИЧНО: Проверяем, что индекс в пределах массива
+        if (nextQuestionIndex >= allQuestions.length) {
+          clientLogger.warn('⚠️ handleNext: nextQuestionIndex >= allQuestions.length, исправляем', {
+            nextQuestionIndex,
+            allQuestionsLength: allQuestions.length,
+          });
+          nextQuestionIndex = Math.max(0, allQuestions.length - 1);
+        }
+        
         clientLogger.log('🔄 Переход к вопросам: найдем следующий неотвеченный вопрос', {
           answeredQuestionIds,
           currentQuestionIndex,
@@ -266,6 +312,15 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         // Для нового пользователя без ответов начинаем с первого вопроса (индекс 0)
         nextQuestionIndex = 0;
         clientLogger.log('🔄 Переход к вопросам: новый пользователь, начинаем с первого вопроса');
+      }
+      
+      // КРИТИЧНО: Финальная проверка перед установкой индекса
+      if (nextQuestionIndex < 0 || nextQuestionIndex >= allQuestions.length) {
+        clientLogger.warn('⚠️ handleNext: некорректный nextQuestionIndex, исправляем', {
+          nextQuestionIndex,
+          allQuestionsLength: allQuestions.length,
+        });
+        nextQuestionIndex = Math.max(0, Math.min(allQuestions.length - 1, 0));
       }
       
       setCurrentQuestionIndex(nextQuestionIndex);

@@ -78,6 +78,14 @@ export async function loadSavedProgressFromServer({
   const initialInfoScreens = getInitialInfoScreens();
   const isAlreadyOnQuestions = currentInfoScreenIndexRef.current >= initialInfoScreens.length;
   
+  // КРИТИЧНО: Если анкета завершена (isCompleted: true), НЕ показываем резюм-экран
+  // Резюм-экран должен показываться ТОЛЬКО для пользователей, которые "бросили" анкету (не завершили)
+  const isCompleted = (quizProgressFromQuery as any)?.isCompleted === true;
+  if (isCompleted) {
+    clientLogger.log('✅ Анкета завершена (isCompleted: true из quizProgressFromQuery), не показываем резюм-экран');
+    return;
+  }
+  
   // ИСПРАВЛЕНО: Проверяем наличие прогресса в quizProgressFromQuery ИЛИ savedProgress ПЕРЕД проверкой isAlreadyOnQuestions
   // Если есть прогресс с >= 2 ответами, не блокируем вызов, чтобы показать экран резюме
   const hasProgressInQuery = quizProgressFromQuery?.progress?.answers;
@@ -163,14 +171,24 @@ export async function loadSavedProgressFromServer({
         infoScreenIndex: number;
         timestamp: number;
       } | null;
+      isCompleted?: boolean;
     } | null = null;
     
     if (quizProgressFromQuery) {
       // Используем данные из React Query кэша
       clientLogger.log('✅ Используем прогресс из React Query кэша', {
         hasProgress: !!(quizProgressFromQuery as any)?.progress,
+        isCompleted: !!(quizProgressFromQuery as any)?.isCompleted,
       });
-      response = quizProgressFromQuery as any;
+      response = quizProgressFromQuery as {
+        progress?: {
+          answers: Record<number, string | string[]>;
+          questionIndex: number;
+          infoScreenIndex: number;
+          timestamp: number;
+        } | null;
+        isCompleted?: boolean;
+      };
     } else if (!isLoadingProgress) {
       // Если React Query не загружает и данных нет, используем прямой вызов API как fallback
       clientLogger.log('🔄 Загружаем прогресс через прямой API вызов (fallback)');
@@ -181,6 +199,7 @@ export async function loadSavedProgressFromServer({
           infoScreenIndex: number;
           timestamp: number;
         } | null;
+        isCompleted?: boolean;
       };
     } else {
       // Если React Query загружает, ждем завершения
@@ -194,7 +213,15 @@ export async function loadSavedProgressFromServer({
       }
       
       if (quizProgressFromQuery) {
-        response = quizProgressFromQuery as any;
+        response = quizProgressFromQuery as {
+          progress?: {
+            answers: Record<number, string | string[]>;
+            questionIndex: number;
+            infoScreenIndex: number;
+            timestamp: number;
+          } | null;
+          isCompleted?: boolean;
+        };
       } else {
         // Если React Query не загрузил, используем прямой вызов API
         response = await api.getQuizProgress() as {
@@ -204,11 +231,26 @@ export async function loadSavedProgressFromServer({
             infoScreenIndex: number;
             timestamp: number;
           } | null;
+          isCompleted?: boolean;
         };
       }
     }
     
     if (!response) {
+      return;
+    }
+    
+    // КРИТИЧНО: Если анкета завершена (пользователь отправил ответы и получил план), НЕ показываем резюм-экран
+    // Резюм-экран должен показываться ТОЛЬКО для пользователей, которые "бросили" анкету (не завершили)
+    if ((response as any).isCompleted === true) {
+      clientLogger.log('✅ Анкета завершена (isCompleted: true), не показываем резюм-экран', {
+        hasProgress: !!response.progress,
+        progressAnswersCount: response.progress?.answers ? Object.keys(response.progress.answers).length : 0,
+      });
+      setSavedProgress(null);
+      setShowResumeScreen(false);
+      progressLoadedRef.current = true;
+      setLoading(false);
       return;
     }
     

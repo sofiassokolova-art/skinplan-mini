@@ -460,25 +460,38 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       });
     }
     
+    // КРИТИЧНО: Если показывается экран продолжения - не показываем начальные экраны
+    // Это должно быть ПЕРВОЙ проверкой, чтобы резюм-экран имел приоритет
+    if (showResumeScreen) {
+      if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (showResumeScreen)');
+      return false;
+    }
+    
     // Если показывается экран выбора тем при перепрохождении - не показываем начальные экраны
     if (showRetakeScreen && isRetakingQuiz) {
       if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (showRetakeScreen && isRetakingQuiz)');
       return false;
     }
-    // Если показывается экран продолжения - не показываем начальные экраны
-    if (showResumeScreen) {
-      if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (showResumeScreen)');
-      return false;
-    }
-    // Если есть сохраненный прогресс (даже если еще не нажали "Продолжить") - не показываем начальные экраны
-    // Это предотвращает показ начальных экранов на промежуточных рендерах после resumeQuiz
-    if (savedProgress && savedProgress.answers && Object.keys(savedProgress.answers).length > 0) {
-      if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (savedProgress with answers)');
+    // КРИТИЧНО: Проверяем savedProgress ПЕРЕД проверкой isOnInfoScreens
+    // Если есть сохраненный прогресс с >= 2 ответами, НЕ показываем инфо-экраны (должен показаться резюм-экран)
+    // Это предотвращает показ инфо-экранов при повторном заходе в приложение
+    if (savedProgress && savedProgress.answers && Object.keys(savedProgress.answers).length >= 2) {
+      if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (savedProgress with >= 2 answers)');
       return false;
     }
     // Если пользователь восстановил прогресс - не показываем начальные экраны
     if (hasResumed) {
       if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (hasResumed)');
+      return false;
+    }
+    // ИСПРАВЛЕНО: Если пользователь вернулся к инфо-экранам через навигацию назад (оба индекса < length),
+    // показываем их, даже если есть сохраненный прогресс с 1 ответом (имя)
+    const isOnInfoScreens = currentInfoScreenIndex < initialInfoScreens.length && 
+                            currentInfoScreenIndexRef.current < initialInfoScreens.length;
+    // Если есть сохраненный прогресс с 1 ответом (только имя) И пользователь НЕ на инфо-экранах - не показываем
+    // Это предотвращает показ инфо-экранов при первом заходе, если есть только имя
+    if (!isOnInfoScreens && savedProgress && savedProgress.answers && Object.keys(savedProgress.answers).length === 1) {
+      if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (savedProgress with 1 answer, not on info screens)');
       return false;
     }
     // ВАЖНО: Если повторное прохождение БЕЗ экрана выбора тем - не показываем начальные экраны
@@ -498,9 +511,12 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (index >= length)');
       return false;
     }
-    // Если пользователь уже начал отвечать - не показываем начальные экраны
-    if (currentQuestionIndex > 0 || Object.keys(answers).length > 0) {
-      if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (user started answering)');
+    // ИСПРАВЛЕНО: НЕ блокируем показ инфо-экранов, если пользователь вернулся к ним через навигацию назад
+    // Проверяем только, если пользователь активно на вопросах (currentQuestionIndex > 0 И currentInfoScreenIndex >= length)
+    // Если currentInfoScreenIndex < initialInfoScreens.length, значит пользователь на инфо-экранах, показываем их
+    const isActivelyOnQuestions = currentQuestionIndex > 0 && currentInfoScreenIndex >= initialInfoScreens.length;
+    if (isActivelyOnQuestions) {
+      if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (user actively on questions)');
       return false;
     }
     // Иначе показываем, если currentInfoScreenIndex < initialInfoScreens.length
@@ -636,7 +652,11 @@ export function useQuizComputed(params: UseQuizComputedParams) {
         hasResumed,
         savedProgressExists: !!savedProgress,
         usingPrevRef: allQuestions.length === 0 && allQuestionsPrevRef.current.length > 0,
+        isValidIndex,
+        indexRange: questionsToUse.length > 0 ? `0-${questionsToUse.length - 1}` : 'empty',
       });
+      // ИСПРАВЛЕНО: Если индекс вне границ и есть вопросы, логируем для диагностики
+      // Но не пытаемся исправить индекс здесь - это должно делать в handleNext или при восстановлении прогресса
       return null;
     }
     
