@@ -3043,7 +3043,8 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Добавлена проверка на минимальное количество ответов (>= 5) для показа экрана прогресса
   const savedAnswersCount = savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0;
   const savedQuestionIndex = savedProgress?.questionIndex ?? -1;
-  const shouldShowProgressScreen = savedAnswersCount >= 5 || savedQuestionIndex >= 5;
+  const shouldShowProgressScreen = savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN || 
+    savedQuestionIndex >= QUIZ_CONFIG.VALIDATION.MIN_QUESTION_INDEX_FOR_PROGRESS_SCREEN;
   
   if (showResumeScreen && savedProgress && !isStartingOverRef.current && !hasResumedRef.current && shouldShowProgressScreen) {
     // Получаем все вопросы с фильтрацией

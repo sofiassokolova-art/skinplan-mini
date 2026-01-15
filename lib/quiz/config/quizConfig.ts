@@ -46,8 +46,8 @@ export const QUIZ_CONFIG = {
   
   // Валидация
   VALIDATION: {
-    MIN_ANSWERS_FOR_PROGRESS_SCREEN: 5, // Минимум ответов для показа экрана прогресса
-    MIN_QUESTION_INDEX_FOR_PROGRESS_SCREEN: 5, // Минимум индекс вопроса для показа экрана прогресса
+    MIN_ANSWERS_FOR_PROGRESS_SCREEN: 1, // Минимум ответов для показа экрана прогресса
+    MIN_QUESTION_INDEX_FOR_PROGRESS_SCREEN: 1, // Минимум индекс вопроса для показа экрана прогресса
   },
   
   // Retry настройки
