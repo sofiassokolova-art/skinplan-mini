@@ -369,7 +369,7 @@ export function QuizInfoScreen({
 
         {/* Фиксированная шапка с заголовком */}
         <div style={{
-          paddingTop: '100px',
+          paddingTop: '120px',
           paddingLeft: '20px',
           paddingRight: '20px',
           paddingBottom: '24px',
@@ -379,7 +379,7 @@ export function QuizInfoScreen({
           <h1 style={{
             fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 700,
-            fontSize: '24px',
+            fontSize: '32px',
             lineHeight: '120%',
             letterSpacing: '0px',
             textAlign: 'center',
@@ -400,6 +400,7 @@ export function QuizInfoScreen({
               letterSpacing: '0px',
               textAlign: 'center',
               color: '#000000',
+              whiteSpace: 'pre-line',
             }}>
               {screen.subtitle}
             </div>

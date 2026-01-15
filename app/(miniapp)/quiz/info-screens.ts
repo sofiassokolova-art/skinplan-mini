@@ -75,7 +75,7 @@ export const INFO_SCREENS: InfoScreen[] = [
   {
     id: 'testimonials',
     title: 'Тысячи пользователей уже получили результат со SkinIQ',
-    subtitle: 'Персональный уход под ваши цели и особенности',
+    subtitle: 'Персональный уход\nпод ваши цели и особенности',
     type: 'testimonials',
     showAfterQuestionCode: 'skin_goals', // После вопроса о целях
     content: [

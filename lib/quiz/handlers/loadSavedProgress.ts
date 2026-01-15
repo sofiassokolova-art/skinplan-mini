@@ -270,12 +270,23 @@ export async function loadSavedProgressFromServer({
       shouldShowProgressScreen,
       hasProgress: !!response?.progress,
       hasAnswers: !!response?.progress?.answers,
+      progressAnswersKeys: response?.progress?.answers ? Object.keys(response.progress.answers).length : 0,
     });
     
     // ИСПРАВЛЕНО: Показываем экран резюме только если >= 2 ответа
-    // ВАЖНО: Если есть ответы (>= 2), показываем резюм-экран независимо от infoScreenIndex
-    const hasEnoughAnswers = response.progress?.answers && answersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN && shouldShowProgressScreen;
+    // ВАЖНО: Если есть ответы (>= 2), показываем резюм-экран независимо от infoScreenIndex и других условий
+    // Проверяем только наличие ответов и их количество
+    const hasEnoughAnswers = response.progress?.answers && answersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN;
     const isOnInfoScreens = infoScreenIndex > 0 && infoScreenIndex < initialInfoScreens.length && answersCount === 0; // Только если нет ответов
+    
+    clientLogger.log('🔍 Проверка условий показа экрана резюме:', {
+      hasEnoughAnswers,
+      isOnInfoScreens,
+      answersCount,
+      MIN_ANSWERS: QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN,
+      hasProgress: !!response?.progress,
+      hasAnswersInProgress: !!response?.progress?.answers,
+    });
     
     if (response?.progress && (hasEnoughAnswers || isOnInfoScreens)) {
       // ФИКС: Если есть достаточно ответов, показываем резюм-экран независимо от текущего индекса
