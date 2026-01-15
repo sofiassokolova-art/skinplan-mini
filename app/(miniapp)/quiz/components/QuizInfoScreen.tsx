@@ -680,11 +680,11 @@ export function QuizInfoScreen({
           width: '100%',
           boxSizing: 'border-box',
         }}>
-          {/* Картинка */}
+          {/* Картинка - уменьшенный размер для general_info_intro */}
           {screen.image && (
             <div style={{
               width: '100%',
-              maxWidth: '320px',
+              maxWidth: '240px',
               marginBottom: '32px',
               background: 'transparent',
             }}>
