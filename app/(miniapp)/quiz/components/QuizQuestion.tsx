@@ -140,7 +140,7 @@ export function QuizQuestion({
                 style={{
                   padding: '16px',
                   borderRadius: '16px',
-                  border: '1px solid #E0E0E0',
+                  border: '1px solid #000000',
                   backgroundColor: isSelected ? '#F2F2F2' : '#FFFFFF',
                   cursor: 'pointer',
                   textAlign: 'left',
@@ -322,6 +322,7 @@ export function QuizQuestion({
                   textAlign: 'left',
                   overflow: 'hidden',
                   transition: 'all 0.2s',
+                  boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
                 }}
               >
                 {/* Картинка */}
@@ -368,6 +369,7 @@ export function QuizQuestion({
                     alignItems: 'center',
                     justifyContent: 'center',
                     flexShrink: 0,
+                    boxShadow: isSelected ? 'none' : 'inset 0 2px 4px rgba(0, 0, 0, 0.15)',
                   }}>
                     {isSelected && (
                       <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
@@ -425,7 +427,7 @@ export function QuizQuestion({
                 style={{
                   padding: '16px',
                   borderRadius: '16px',
-                  border: '1px solid #E0E0E0',
+                  border: '1px solid #000000',
                   backgroundColor: isSelected ? '#F2F2F2' : '#FFFFFF',
                   cursor: 'pointer',
                   textAlign: 'left',
