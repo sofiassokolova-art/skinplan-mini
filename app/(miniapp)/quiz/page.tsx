@@ -3160,13 +3160,11 @@ export default function QuizPage() {
     isDev,
   });
   
-  // ИСПРАВЛЕНО: Проверяем резюм-экран ПОСЛЕ вызова useQuizView
-  // Используем quizView.type === 'resume' как основную проверку
-  // useQuizView проверяет showResumeScreen ПЕРВЫМ, так что если showResumeScreen = true,
-  // quizView.type будет 'resume'
+  // ИСПРАВЛЕНО: Резюм-экран должен показываться сразу при заходе в приложение для пользователей, которым он положен
+  // Упрощаем условие - показываем если showResumeScreen = true и есть savedProgress
+  // Не проверяем quizView.type, так как это может блокировать показ при загрузке
   const savedAnswersCount = savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0;
-  const shouldShowResume = quizView.type === 'resume' &&
-                           showResumeScreen && 
+  const shouldShowResume = showResumeScreen && 
                            savedProgress && 
                            savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN &&
                            !isStartingOverRef.current && 
@@ -3190,6 +3188,34 @@ export default function QuizPage() {
       showRetakeScreen,
       logger: clientLogger, // Передаем clientLogger для логирования
     });
+
+    // ИСПРАВЛЕНО: Вычисляем правильный номер вопроса на основе отфильтрованного списка
+    // savedProgress.questionIndex - это индекс в исходном списке (allQuestionsRaw)
+    // Нужно найти этот вопрос в отфильтрованном списке allQuestions
+    let displayQuestionNumber = savedProgress.questionIndex + 1; // Fallback значение
+    if (allQuestionsRaw.length > 0 && savedProgress.questionIndex >= 0 && savedProgress.questionIndex < allQuestionsRaw.length) {
+      const questionAtSavedIndex = allQuestionsRaw[savedProgress.questionIndex];
+      if (questionAtSavedIndex) {
+        // Находим этот вопрос в отфильтрованном списке по ID
+        const filteredIndex = allQuestions.findIndex(q => q.id === questionAtSavedIndex.id);
+        if (filteredIndex !== -1) {
+          displayQuestionNumber = filteredIndex + 1;
+        } else {
+          // Если вопрос был отфильтрован, ищем следующий доступный вопрос
+          // Находим первый неотвеченный вопрос после сохраненного индекса
+          const answeredQuestionIds = Object.keys(savedProgress.answers || {}).map(id => Number(id));
+          const nextUnansweredQuestion = allQuestions.find((q, index) => {
+            return !answeredQuestionIds.includes(q.id) && index >= 0;
+          });
+          if (nextUnansweredQuestion) {
+            const nextIndex = allQuestions.findIndex(q => q.id === nextUnansweredQuestion.id);
+            if (nextIndex !== -1) {
+              displayQuestionNumber = nextIndex + 1;
+            }
+          }
+        }
+      }
+    }
 
     // Обработчик "Начать анкету заново"
     const handleStartFromBeginning = async () => {
@@ -3313,7 +3339,7 @@ export default function QuizPage() {
                 boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
               }}
             >
-              Продолжить с вопроса {savedProgress.questionIndex + 1}
+              Продолжить с вопроса {displayQuestionNumber}
             </button>
 
             {/* Кнопка "Начать анкету заново" */}

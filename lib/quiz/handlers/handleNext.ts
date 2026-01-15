@@ -224,14 +224,56 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
           clientLogger.warn('⚠️ Не удалось сохранить currentInfoScreenIndex в sessionStorage', err);
         }
       }
-      // КРИТИЧНО: Для нового пользователя всегда начинаем с первого вопроса (индекс 0)
-      // Это гарантирует, что после прохождения всех инфо-экранов вопросы начнут отображаться
-      setCurrentQuestionIndex(0);
-      // ФИКС: Сохраняем 0 в sessionStorage для восстановления при перемонтировании
+      
+      // ИСПРАВЛЕНО: Не сбрасываем currentQuestionIndex на 0, если у пользователя уже есть ответы
+      // Это предотвращает возврат к первому вопросу для пользователей, которые уже отвечали
+      const answeredQuestionIds = Object.keys(answers).map(id => Number(id));
+      let nextQuestionIndex = 0;
+      
+      // Если есть ответы, находим следующий неотвеченный вопрос
+      if (answeredQuestionIds.length > 0 && allQuestions.length > 0) {
+        const nextUnansweredQuestion = allQuestions.find((q, index) => {
+          return !answeredQuestionIds.includes(q.id) && index >= currentQuestionIndex;
+        });
+        
+        if (nextUnansweredQuestion) {
+          nextQuestionIndex = allQuestions.findIndex(q => q.id === nextUnansweredQuestion.id);
+        } else {
+          // Если все вопросы после текущего индекса отвечены, ищем первый неотвеченный с начала
+          const firstUnansweredQuestion = allQuestions.find((q) => {
+            return !answeredQuestionIds.includes(q.id);
+          });
+          if (firstUnansweredQuestion) {
+            nextQuestionIndex = allQuestions.findIndex(q => q.id === firstUnansweredQuestion.id);
+          } else {
+            // Если все вопросы отвечены, переходим к последнему
+            nextQuestionIndex = allQuestions.length - 1;
+          }
+        }
+        
+        // Если nextQuestionIndex получился -1 (не найден), используем текущий индекс или 0
+        if (nextQuestionIndex === -1) {
+          nextQuestionIndex = currentQuestionIndex > 0 ? currentQuestionIndex : 0;
+        }
+        
+        clientLogger.log('🔄 Переход к вопросам: найдем следующий неотвеченный вопрос', {
+          answeredQuestionIds,
+          currentQuestionIndex,
+          nextQuestionIndex,
+          allQuestionsLength: allQuestions.length,
+        });
+      } else {
+        // Для нового пользователя без ответов начинаем с первого вопроса (индекс 0)
+        nextQuestionIndex = 0;
+        clientLogger.log('🔄 Переход к вопросам: новый пользователь, начинаем с первого вопроса');
+      }
+      
+      setCurrentQuestionIndex(nextQuestionIndex);
+      // ФИКС: Сохраняем индекс в sessionStorage для восстановления при перемонтировании
       if (typeof window !== 'undefined') {
         try {
-          sessionStorage.setItem('quiz_currentQuestionIndex', '0');
-          clientLogger.log('💾 Сохранен currentQuestionIndex=0 в sessionStorage при переходе к вопросам');
+          sessionStorage.setItem('quiz_currentQuestionIndex', String(nextQuestionIndex));
+          clientLogger.log('💾 Сохранен currentQuestionIndex в sessionStorage при переходе к вопросам', { nextQuestionIndex });
         } catch (err) {
           clientLogger.warn('⚠️ Не удалось сохранить currentQuestionIndex в sessionStorage', err);
         }
@@ -240,22 +282,17 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       // Это предотвращает застревание на info screens
       setPendingInfoScreen(null);
       // ФИКС: Детальное логирование установки вопросов для диагностики
-      clientLogger.warn('🔧 УСТАНОВКА ВОПРОСОВ: setCurrentQuestionIndex(0) в handleNext после инфо-скринов', {
-        newInfoIndex,
-        allQuestionsLength: allQuestions.length,
-        currentQuestionIndex: 0,
-        isRetakingQuiz,
-        showRetakeScreen,
-      });
       clientLogger.log('✅ Завершены все начальные инфо-экраны, переходим к вопросам', {
         newInfoIndex,
         allQuestionsLength: allQuestions.length,
-        currentQuestionIndex: 0,
+        currentQuestionIndex: nextQuestionIndex,
+        previousQuestionIndex: currentQuestionIndex,
+        answeredQuestionsCount: answeredQuestionIds.length,
         isRetakingQuiz,
         showRetakeScreen,
         pendingInfoScreenCleared: true,
       });
-      await saveProgress(answers, 0, newInfoIndex);
+      await saveProgress(answers, nextQuestionIndex, newInfoIndex);
       return;
     }
 

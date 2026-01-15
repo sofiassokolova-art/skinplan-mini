@@ -432,7 +432,7 @@ export function QuizInfoScreen({
               position: 'fixed',
               top: 'clamp(20px, 4vh, 40px)',
               left: 'clamp(19px, 5vw, 24px)',
-              zIndex: 100,
+              zIndex: 1000,
               width: '44px',
               height: '44px',
               background: 'transparent',
@@ -442,6 +442,7 @@ export function QuizInfoScreen({
               justifyContent: 'center',
               cursor: 'pointer',
               padding: 0,
+              pointerEvents: 'auto',
             }}
           >
             <svg
@@ -876,15 +877,15 @@ export function QuizInfoScreen({
       justifyContent: 'center',
       position: 'relative',
     }}>
-      {/* Кнопка "Назад" - простая стрелка */}
+      {/* Кнопка "Назад" - простая стрелка, зафиксирована наверху */}
       {currentInfoScreenIndex > 0 && (
         <button
           onClick={() => setCurrentInfoScreenIndex(currentInfoScreenIndex - 1)}
           style={{
-            position: 'absolute',
+            position: 'fixed',
             top: 'clamp(20px, 4vh, 40px)',
             left: 'clamp(19px, 5vw, 24px)',
-            zIndex: 10,
+            zIndex: 1000,
             width: '44px',
             height: '44px',
             background: 'transparent',
@@ -894,6 +895,7 @@ export function QuizInfoScreen({
             justifyContent: 'center',
             cursor: 'pointer',
             padding: 0,
+            pointerEvents: 'auto',
           }}
         >
           <svg
