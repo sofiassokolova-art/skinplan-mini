@@ -453,11 +453,21 @@ export async function loadSavedProgressFromServer({
         infoScreenIndex: response.progress.infoScreenIndex,
         hasProfile,
       });
-      // УПРОЩЕНО: Устанавливаем только savedProgress
-      // Решение о показе резюм экрана принимает useEffect в компоненте
+      // КРИТИЧНО: Устанавливаем savedProgress И showResumeScreen СИНХРОННО
+      // чтобы предотвратить показ инфо-экранов до установки showResumeScreen
+      // Если >= 2 ответов - показываем резюм-экран сразу
+      const finalAnswersCount = response.progress.answers ? Object.keys(response.progress.answers).length : 0;
       setSavedProgress(response.progress);
-      // УПРОЩЕНО: Устанавливаем loading = false после установки savedProgress
-      // useEffect в компоненте установит showResumeScreen на основе savedProgress
+      if (finalAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN) {
+        clientLogger.log('✅ Устанавливаем showResumeScreen = true сразу при загрузке прогресса', {
+          answersCount: finalAnswersCount,
+          MIN_ANSWERS: QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN,
+        });
+        setShowResumeScreen(true);
+      } else {
+        setShowResumeScreen(false);
+      }
+      // Устанавливаем loading = false после установки savedProgress и showResumeScreen
       setLoading(false);
       progressLoadedRef.current = true;
     } else {
