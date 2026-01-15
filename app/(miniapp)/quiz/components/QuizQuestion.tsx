@@ -92,34 +92,36 @@ export function QuizQuestion({
         </button>
       )}
 
-      {/* Прогресс-бар - черный фон с лаймовым прогрессом */}
-      {!hideProgressBar && (
-        <div style={{ 
-          marginBottom: '24px',
-          marginTop: '75px',
-        }}>
-          <div style={{
-            width: '100%',
-            height: '6px',
-            backgroundColor: '#000000',
-            borderRadius: '3px',
-            overflow: 'hidden',
-            position: 'relative',
-            padding: '1px',
-            boxSizing: 'border-box',
+      {/* Контейнер с анимацией для всего контента вопроса */}
+      <div className="animate-fade-in">
+        {/* Прогресс-бар - черный фон с лаймовым прогрессом */}
+        {!hideProgressBar && (
+          <div style={{ 
+            marginBottom: '24px',
+            marginTop: '75px',
           }}>
             <div style={{
-              width: `${allQuestionsLength > 0 ? ((currentQuestionIndex + 1) / allQuestionsLength) * 100 : 0}%`,
-              height: '100%',
-              backgroundColor: '#D5FE61',
-              borderRadius: '2px',
-              transition: 'width 0.3s ease',
-            }} />
+              width: '100%',
+              height: '6px',
+              backgroundColor: '#000000',
+              borderRadius: '3px',
+              overflow: 'hidden',
+              position: 'relative',
+              padding: '1px',
+              boxSizing: 'border-box',
+            }}>
+              <div style={{
+                width: `${allQuestionsLength > 0 ? ((currentQuestionIndex + 1) / allQuestionsLength) * 100 : 0}%`,
+                height: '100%',
+                backgroundColor: '#D5FE61',
+                borderRadius: '2px',
+                transition: 'width 0.3s ease',
+              }} />
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Заголовок вопроса - скрыт для skin_goals (отображается внутри лаймового контейнера) */}
+        {/* Заголовок вопроса - скрыт для skin_goals (отображается внутри лаймового контейнера) */}
       {!useLimeStyle && (
         <h2 className="quiz-title" style={{ 
           fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
@@ -539,6 +541,7 @@ export function QuizQuestion({
           )}
         </div>
       )}
+      </div>
     </>
   );
 }

@@ -3136,11 +3136,14 @@ export default function QuizPage() {
         alignItems: 'center',
         justifyContent: 'center',
       }}>
-        <div style={{
-          width: '100%',
-          maxWidth: '360px',
-          padding: '0 20px',
-        }}>
+        <div 
+          className="animate-fade-in"
+          style={{
+            width: '100%',
+            maxWidth: '360px',
+            padding: '0 20px',
+          }}
+        >
           {/* Заголовок */}
           <h1 style={{
             fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",

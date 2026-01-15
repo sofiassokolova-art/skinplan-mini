@@ -60,20 +60,23 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
         </div>
       )}
 
-      {/* Контент (текст) */}
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'flex-start',
-        paddingTop: 'clamp(30px, 8vh, 60px)',
-        paddingBottom: '100px', // Отступ снизу для фиксированной кнопки
-        paddingLeft: '20px',
-        paddingRight: '20px',
-        width: '100%',
-        boxSizing: 'border-box',
-      }}>
+      {/* Контент (текст) с анимацией */}
+      <div 
+        className="animate-fade-in"
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'flex-start',
+          paddingTop: 'clamp(30px, 8vh, 60px)',
+          paddingBottom: '100px', // Отступ снизу для фиксированной кнопки
+          paddingLeft: '20px',
+          paddingRight: '20px',
+          width: '100%',
+          boxSizing: 'border-box',
+        }}
+      >
         {/* Текст */}
         <div style={{
           width: '100%',

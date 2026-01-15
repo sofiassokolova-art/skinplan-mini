@@ -72,20 +72,23 @@ function PersonalAnalysisScreenComponent({
         <BackButton onClick={onBack} />
       )}
 
-      {/* Контент */}
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'flex-start',
-        paddingTop: '120px',
-        paddingBottom: '100px',
-        paddingLeft: '20px',
-        paddingRight: '20px',
-        width: '100%',
-        boxSizing: 'border-box',
-      }}>
+      {/* Контент с анимацией */}
+      <div 
+        className="animate-fade-in"
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'flex-start',
+          paddingTop: '120px',
+          paddingBottom: '100px',
+          paddingLeft: '20px',
+          paddingRight: '20px',
+          width: '100%',
+          boxSizing: 'border-box',
+        }}
+      >
         {/* Заголовок */}
         <h1 
           className="quiz-title"

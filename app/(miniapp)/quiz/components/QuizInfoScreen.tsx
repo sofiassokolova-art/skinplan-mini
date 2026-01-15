@@ -139,20 +139,23 @@ export function QuizInfoScreen({
           </svg>
         </button>
 
-        {/* Контент */}
-        <div style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'flex-start',
-          paddingTop: '120px',
-          paddingBottom: '100px',
-          paddingLeft: '20px',
-          paddingRight: '20px',
-          width: '100%',
-          boxSizing: 'border-box',
-        }}>
+        {/* Контент с анимацией */}
+        <div 
+          className="animate-fade-in"
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'flex-start',
+            paddingTop: '120px',
+            paddingBottom: '100px',
+            paddingLeft: '20px',
+            paddingRight: '20px',
+            width: '100%',
+            boxSizing: 'border-box',
+          }}
+        >
           {/* Заголовок */}
           <h1 
             className="quiz-how-it-works-title"
@@ -367,14 +370,17 @@ export function QuizInfoScreen({
           </button>
         )}
 
-        {/* Фиксированная шапка с заголовком */}
-        <div style={{
-          paddingTop: '120px',
-          paddingLeft: '20px',
-          paddingRight: '20px',
-          paddingBottom: '24px',
-          background: '#FFFFFF',
-        }}>
+        {/* Фиксированная шапка с заголовком и анимацией */}
+        <div 
+          className="animate-fade-in"
+          style={{
+            paddingTop: '120px',
+            paddingLeft: '20px',
+            paddingRight: '20px',
+            paddingBottom: '24px',
+            background: '#FFFFFF',
+          }}
+        >
           {/* Заголовок */}
           <h1 style={{
             fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
@@ -407,16 +413,20 @@ export function QuizInfoScreen({
           )}
         </div>
 
-        {/* Прокручиваемая область только для слайдера отзывов */}
-        <div style={{
-          flex: 1,
-          overflow: 'hidden',
-          overflowY: 'visible', // Разрешаем видимость тени сверху/снизу
-          paddingLeft: '20px',
-          paddingRight: '20px',
-          paddingTop: '20px',
-          paddingBottom: '180px',
-        }}>
+        {/* Прокручиваемая область только для слайдера отзывов с анимацией */}
+        <div 
+          className="animate-fade-in"
+          style={{
+            flex: 1,
+            overflow: 'hidden',
+            overflowY: 'visible', // Разрешаем видимость тени сверху/снизу
+            paddingLeft: '20px',
+            paddingRight: '20px',
+            paddingTop: '20px',
+            paddingBottom: '180px',
+            animationDelay: '0.1s',
+          }}
+        >
           {/* Слайдер отзывов */}
           {screen.content && Array.isArray(screen.content) && (
             <TestimonialsCarousel testimonials={screen.content as any} />
@@ -509,20 +519,23 @@ export function QuizInfoScreen({
           </button>
         )}
 
-        {/* Контент */}
-        <div style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'flex-start',
-          paddingTop: '100px',
-          paddingBottom: '120px',
+        {/* Контент с анимацией */}
+        <div 
+          className="animate-fade-in"
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'flex-start',
+            paddingTop: '100px',
+            paddingBottom: '120px',
           paddingLeft: '20px',
           paddingRight: '20px',
           width: '100%',
           boxSizing: 'border-box',
-        }}>
+        }}
+      >
           {/* Картинка */}
           {screen.image && (
             <div style={{
@@ -669,20 +682,23 @@ export function QuizInfoScreen({
           </button>
         )}
 
-        {/* Контент */}
-        <div style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'flex-start',
-          paddingTop: '100px',
-          paddingBottom: '120px',
+        {/* Контент с анимацией */}
+        <div 
+          className="animate-fade-in"
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'flex-start',
+            paddingTop: '100px',
+            paddingBottom: '120px',
           paddingLeft: '20px',
           paddingRight: '20px',
           width: '100%',
           boxSizing: 'border-box',
-        }}>
+        }}
+      >
           {/* Картинка */}
           {screen.image && (
             <div style={{
