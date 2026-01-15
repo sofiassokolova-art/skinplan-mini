@@ -3282,15 +3282,15 @@ export default function QuizPage() {
               style={{
                 width: '100%',
                 height: '56px',
-                background: '#000000',
-                color: '#FFFFFF',
+                background: '#D5FE61',
+                color: '#000000',
                 border: 'none',
                 borderRadius: '20px',
                 fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                 fontWeight: 600,
                 fontSize: '16px',
                 cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
               }}
             >
               Продолжить с вопроса {savedProgress.questionIndex + 1}
