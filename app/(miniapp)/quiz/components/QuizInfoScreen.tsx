@@ -91,67 +91,45 @@ export function QuizInfoScreen({
         position: 'relative',
         width: '100%',
       }}>
-        {/* Кнопка "Назад" */}
-        <div style={{
-          position: 'absolute',
-          top: 'clamp(20px, 4vh, 40px)',
-          left: 'clamp(19px, 5vw, 24px)',
-          zIndex: 10,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-        }}>
-          <button
-            onClick={() => {
-              if (currentInfoScreenIndex > 0) {
-                setCurrentInfoScreenIndex(currentInfoScreenIndex - 1);
-              }
-            }}
-            style={{
-              width: '34px',
-              height: '34px',
-              borderRadius: '10px',
-              background: '#D5FE61',
-              border: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              padding: 0,
-            }}
+        {/* Кнопка "Назад" - простая стрелка без фона */}
+        <button
+          onClick={() => {
+            if (currentInfoScreenIndex > 0) {
+              setCurrentInfoScreenIndex(currentInfoScreenIndex - 1);
+            }
+          }}
+          style={{
+            position: 'absolute',
+            top: 'clamp(20px, 4vh, 40px)',
+            left: 'clamp(19px, 5vw, 24px)',
+            zIndex: 10,
+            width: '44px',
+            height: '44px',
+            background: 'transparent',
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            padding: 0,
+          }}
+        >
+          <svg
+            width="12"
+            height="20"
+            viewBox="0 0 12 20"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
           >
-            <svg
-              width="7"
-              height="14"
-              viewBox="0 0 7 14"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              style={{
-                transform: 'rotate(180deg)',
-              }}
-            >
-              <path
-                d="M1 1L6 7L1 13"
-                stroke="#000000"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-          <span style={{
-            fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 400,
-            fontStyle: 'normal',
-            fontSize: '14px',
-            lineHeight: '34px',
-            letterSpacing: '0px',
-            textAlign: 'center',
-            color: '#000000',
-          }}>
-            Назад
-          </span>
-        </div>
+            <path
+              d="M10 2L2 10L10 18"
+              stroke="#1A1A1A"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
 
         {/* Контент */}
         <div style={{
