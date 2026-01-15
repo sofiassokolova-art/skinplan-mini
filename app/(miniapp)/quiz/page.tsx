@@ -3044,6 +3044,19 @@ export default function QuizPage() {
   const shouldShowProgressScreen = savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN || 
     savedQuestionIndex >= QUIZ_CONFIG.VALIDATION.MIN_QUESTION_INDEX_FOR_PROGRESS_SCREEN;
   
+  // КРИТИЧНО: Если есть savedProgress с >= 2 ответами, но showResumeScreen = false,
+  // устанавливаем showResumeScreen = true
+  // Это исправляет проблему, когда loadSavedProgressFromServer не вызывается или блокируется
+  if (savedProgress && !showResumeScreen && !isStartingOverRef.current && !hasResumedRef.current && shouldShowProgressScreen) {
+    clientLogger.log('✅ Устанавливаем showResumeScreen = true в quiz/page.tsx, так как есть сохраненный прогресс', {
+      savedAnswersCount,
+      savedQuestionIndex,
+      shouldShowProgressScreen,
+      MIN_ANSWERS: QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN,
+    });
+    setShowResumeScreen(true);
+  }
+  
   // КРИТИЧНО: Логируем проверку экрана resume для диагностики
   if (savedProgress && (showResumeScreen || shouldShowProgressScreen)) {
     clientLogger.log('🔍 Проверка экрана resume:', {
