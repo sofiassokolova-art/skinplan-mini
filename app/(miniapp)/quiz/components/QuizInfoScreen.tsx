@@ -689,7 +689,8 @@ export function QuizInfoScreen({
               width: '100%',
               maxWidth: '320px',
               marginBottom: '32px',
-              background: 'transparent',
+              background: '#FFFFFF',
+              borderRadius: '0',
             }}>
               <img
                 src={screen.image}
@@ -701,7 +702,8 @@ export function QuizInfoScreen({
                   border: 'none',
                   outline: 'none',
                   display: 'block',
-                  background: 'transparent',
+                  background: '#FFFFFF',
+                  backgroundColor: '#FFFFFF',
                   boxShadow: 'none',
                 }}
               />
