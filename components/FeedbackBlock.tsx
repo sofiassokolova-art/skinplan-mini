@@ -56,18 +56,44 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
     if (feedbackType === 'plan_recommendations') {
       const checkFeedback = async () => {
         try {
+          // ИСПРАВЛЕНО: Проверяем в preferences и через API для надежности
           const { getPlanFeedbackSent } = await import('@/lib/user-preferences');
           const feedbackSent = await getPlanFeedbackSent();
+          
           if (feedbackSent) {
             // Обратная связь уже отправлена - не показываем больше
             setIsVisible(false);
             return;
           }
+          
+          // Дополнительная проверка через API (на случай, если флаг в preferences не синхронизирован)
+          try {
+            const { setPlanFeedbackSent } = await import('@/lib/user-preferences');
+            const response = await fetch('/api/feedback?type=plan_recommendations', {
+              headers: {
+                'X-Telegram-Init-Data': typeof window !== 'undefined' && window.Telegram?.WebApp?.initData
+                  ? window.Telegram.WebApp.initData
+                  : '',
+              },
+            });
+            if (response.ok) {
+              const data = await response.json();
+              if (data?.lastFeedback) {
+                // Feedback уже есть в БД - синхронизируем флаг и скрываем
+                await setPlanFeedbackSent(true);
+                setIsVisible(false);
+                return;
+              }
+            }
+          } catch (apiError) {
+            // Игнорируем ошибки API проверки
+          }
+          
           // Если еще не отправляли - показываем
           setIsVisible(true);
         } catch (error) {
-          // При ошибке показываем виджет
-          setIsVisible(true);
+          // При ошибке не показываем виджет (избегаем повторных показов)
+          setIsVisible(false);
         }
       };
       checkFeedback();
@@ -109,24 +135,29 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
       await onSubmit({ isRelevant: true });
       setShowThankYou(true);
       
-      // Сохраняем дату отправки и флаг отправки в БД
+      // ИСПРАВЛЕНО: Сохраняем флаг отправки сразу, без задержки
       try {
         const { setPlanFeedbackSent, setLastPlanFeedbackDate } = await import('@/lib/user-preferences');
         if (feedbackType === 'plan_recommendations') {
           // Для plan_recommendations: помечаем как отправленное, больше не показываем
           await setPlanFeedbackSent(true);
+          // Скрываем виджет сразу после сохранения флага
+          setIsVisible(false);
         } else {
           // Для service: сохраняем дату для cooldown
           await setLastPlanFeedbackDate(new Date().toISOString());
+          // Скрываем виджет после отправки с задержкой (для показа "спасибо")
+          setTimeout(() => {
+            setIsVisible(false);
+          }, 3000);
         }
       } catch (error) {
         console.warn('Failed to save feedback flag:', error);
-      }
-      
-      // Скрываем виджет после отправки
-        setTimeout(() => {
+        // Даже при ошибке скрываем виджет, чтобы не показывать повторно
+        if (feedbackType === 'plan_recommendations') {
           setIsVisible(false);
-        }, 3000);
+        }
+      }
     } catch (err) {
       console.error('Error submitting feedback:', err);
     } finally {
@@ -149,24 +180,29 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
       setShowFeedback(false);
       setComment('');
       
-      // Сохраняем дату отправки и флаг отправки в БД
+      // ИСПРАВЛЕНО: Сохраняем флаг отправки сразу, без задержки
       try {
         const { setPlanFeedbackSent, setLastPlanFeedbackDate } = await import('@/lib/user-preferences');
         if (feedbackType === 'plan_recommendations') {
           // Для plan_recommendations: помечаем как отправленное, больше не показываем
           await setPlanFeedbackSent(true);
+          // Скрываем виджет сразу после сохранения флага
+          setIsVisible(false);
         } else {
           // Для service: сохраняем дату для cooldown
           await setLastPlanFeedbackDate(new Date().toISOString());
+          // Скрываем виджет после отправки с задержкой (для показа "спасибо")
+          setTimeout(() => {
+            setIsVisible(false);
+          }, 3000);
         }
       } catch (error) {
         console.warn('Failed to save feedback flag:', error);
-      }
-      
-      // Скрываем виджет после отправки
-        setTimeout(() => {
+        // Даже при ошибке скрываем виджет, чтобы не показывать повторно
+        if (feedbackType === 'plan_recommendations') {
           setIsVisible(false);
-        }, 3000);
+        }
+      }
     } catch (err) {
       console.error('Error submitting feedback:', err);
     } finally {
