@@ -88,42 +88,15 @@ export async function loadSavedProgressFromServer({
   const progressAnswersCount = Math.max(progressAnswersCountFromQuery, progressAnswersCountFromState);
   const shouldShowResume = progressAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN;
   
-  // ИСПРАВЛЕНО: Если progressLoadedRef = true, но showResumeScreen = false и есть сохраненный прогресс с >= 2 ответами,
-  // устанавливаем showResumeScreen = true
-  if (progressLoadedRef.current && !showResumeScreen && savedProgress && progressAnswersCountFromState >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN) {
-    clientLogger.log('✅ Устанавливаем showResumeScreen = true, так как есть сохраненный прогресс', {
-      savedAnswersCount: progressAnswersCountFromState,
-      MIN_ANSWERS: QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN,
-    });
-    setShowResumeScreen(true);
-    return;
-  }
+  // УПРОЩЕНО: Не устанавливаем showResumeScreen здесь - это делает useEffect в компоненте
+  // Эта функция только загружает прогресс и устанавливает savedProgress
+  // Решение о показе резюм экрана принимает useEffect на основе savedProgress
   
-  // ИСПРАВЛЕНО: Не блокируем вызов, если нужно показать экран резюме
-  // Даже если пользователь "уже на вопросах" в sessionStorage, нужно показать экран резюме
-  // Проверяем savedProgress отдельно, так как quizProgressFromQuery может быть еще не загружен
-  if (isAlreadyOnQuestions && !shouldShowResume && progressAnswersCountFromState < QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN) {
-    clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено, пользователь уже на вопросах и нет прогресса для резюме', {
+  // Если прогресс уже загружен и пользователь на вопросах, не перезагружаем
+  if (progressLoadedRef.current && isAlreadyOnQuestions && progressAnswersCountFromState < QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN) {
+    clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено, прогресс уже загружен и пользователь на вопросах', {
       currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
-      initialInfoScreensLength: initialInfoScreens.length,
-      shouldShowResume,
-      progressAnswersCount,
       progressAnswersCountFromState,
-      progressAnswersCountFromQuery,
-    });
-    return;
-  }
-  
-  // ИСПРАВЛЕНО: Кэширование - не загружаем прогресс повторно, если он уже был загружен
-  // НО: Пропускаем кэш, если нужно показать экран резюме (есть прогресс с >= 2 ответами)
-  // Проверяем savedProgress отдельно, так как quizProgressFromQuery может быть еще не загружен
-  if (progressLoadedRef.current && !shouldShowResume && progressAnswersCountFromState < QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN) {
-    clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено, прогресс уже загружен (кэш)', {
-      currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
-      shouldShowResume,
-      progressAnswersCount,
-      progressAnswersCountFromState,
-      progressAnswersCountFromQuery,
     });
     return;
   }
@@ -276,7 +249,6 @@ export async function loadSavedProgressFromServer({
       });
       // Очищаем прогресс, чтобы показать все инфо-экраны заново
       setSavedProgress(null);
-      setShowResumeScreen(false);
       // Сбрасываем индексы на 0
       if (typeof window !== 'undefined') {
         try {
@@ -475,16 +447,15 @@ export async function loadSavedProgressFromServer({
         return;
       }
       
-      clientLogger.log('✅ Прогресс найден на сервере, показываем экран продолжения:', {
+      clientLogger.log('✅ Прогресс найден на сервере, устанавливаем savedProgress:', {
         answersCount: response.progress.answers ? Object.keys(response.progress.answers).length : 0,
         questionIndex: response.progress.questionIndex,
         infoScreenIndex: response.progress.infoScreenIndex,
         hasProfile,
       });
-      // ИСПРАВЛЕНО: Сначала устанавливаем showResumeScreen и savedProgress СИНХРОННО,
-      // чтобы предотвратить показ начальных экранов на промежуточных рендерах
+      // УПРОЩЕНО: Устанавливаем только savedProgress
+      // Решение о показе резюм экрана принимает useEffect в компоненте
       setSavedProgress(response.progress);
-      setShowResumeScreen(true);
       // ИСПРАВЛЕНО: Устанавливаем loading = false ПОСЛЕ установки showResumeScreen,
       // чтобы экран resume показался сразу и не было мигания начальных экранов
       // Это гарантирует, что пользователь увидит экран "Вы не завершили анкету" до первого экрана анкеты
@@ -494,7 +465,6 @@ export async function loadSavedProgressFromServer({
       clientLogger.log('ℹ️ Прогресс на сервере не найден или пуст');
       // ИСПРАВЛЕНО: Прогресс хранится в БД, localStorage больше не используется
       setSavedProgress(null);
-      setShowResumeScreen(false);
       progressLoadedRef.current = true;
       
       // КРИТИЧНО: Если прогресса на сервере нет, очищаем sessionStorage
@@ -525,7 +495,6 @@ export async function loadSavedProgressFromServer({
       // Не логируем 401 ошибки, так как это нормально, если пользователь не авторизован
       // ИСПРАВЛЕНО: Прогресс хранится в БД, localStorage больше не используется
       setSavedProgress(null);
-      setShowResumeScreen(false);
       progressLoadedRef.current = true;
       return;
     }
