@@ -399,31 +399,35 @@ export async function loadSavedProgressFromServer({
       
       // КРИТИЧНО: Финальная проверка перед установкой savedProgress
       // Если пользователь уже на вопросах, не устанавливаем savedProgress, чтобы не сбросить состояние
+      // НО: Если у пользователя >= 2 ответа (hasEnoughAnswers), ВСЕГДА показываем экран резюме
       const finalCheckInfoIndex = currentInfoScreenIndexRef.current >= initialInfoScreens.length 
         ? currentInfoScreenIndexRef.current 
         : currentInfoScreenIndex;
-      if (finalCheckInfoIndex >= initialInfoScreens.length) {
-        clientLogger.log('⏸️ loadSavedProgressFromServer: финальная проверка - пользователь уже на вопросах, не устанавливаем savedProgress', {
+      
+      // ИСПРАВЛЕНО: Пропускаем эту проверку, если hasEnoughAnswers = true
+      // Это гарантирует, что пользователь с >= 2 ответами ВСЕГДА увидит экран резюме
+      if (finalCheckInfoIndex >= initialInfoScreens.length && !hasEnoughAnswers) {
+        clientLogger.log('⏸️ loadSavedProgressFromServer: финальная проверка - пользователь уже на вопросах и нет достаточно ответов, не устанавливаем savedProgress', {
           currentInfoScreenIndex,
           currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
           initialInfoScreensLength: initialInfoScreens.length,
           progressInfoScreenIndex: progressInfoIndex,
           finalCheckInfoIndex,
+          hasEnoughAnswers,
         });
         return;
       }
       
       // ИСПРАВЛЕНО: Финальная проверка ПЕРЕД установкой savedProgress
-      // Если пользователь уже на вопросах (currentInfoScreenIndexRef.current >= initialInfoScreens.length),
-      // НИКОГДА не устанавливаем savedProgress, даже если он найден на сервере
-      // Это предотвращает редирект на первый экран после перехода к вопросам
-      const finalCheckBeforeSet = currentInfoScreenIndexRef.current >= initialInfoScreens.length;
+      // Пропускаем, если hasEnoughAnswers = true - пользователь с >= 2 ответами должен видеть экран резюме
+      const finalCheckBeforeSet = currentInfoScreenIndexRef.current >= initialInfoScreens.length && !hasEnoughAnswers;
       if (finalCheckBeforeSet) {
-        clientLogger.log('⏸️ loadSavedProgressFromServer: финальная проверка перед установкой - пользователь уже на вопросах, не устанавливаем savedProgress', {
+        clientLogger.log('⏸️ loadSavedProgressFromServer: финальная проверка перед установкой - пользователь уже на вопросах и нет достаточно ответов, не устанавливаем savedProgress', {
           currentInfoScreenIndex,
           currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
           initialInfoScreensLength: initialInfoScreens.length,
           progressInfoScreenIndex: progressInfoIndex,
+          hasEnoughAnswers,
         });
         return;
       }
