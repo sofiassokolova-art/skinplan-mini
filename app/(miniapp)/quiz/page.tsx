@@ -3192,7 +3192,7 @@ export default function QuizPage() {
     });
 
     // Обработчик "Начать анкету заново"
-    const handleStartFromBeginning = () => {
+    const handleStartFromBeginning = async () => {
       clientLogger.log('🔄 Пользователь нажал "Начать анкету заново"');
       
       // Очищаем sessionStorage
