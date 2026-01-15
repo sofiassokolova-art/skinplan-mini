@@ -176,7 +176,7 @@ export function resumeQuiz(params: ResumeQuizParams): void {
     // ФИКС: Сохраняем currentQuestionIndex в sessionStorage при восстановлении прогресса
     if (typeof window !== 'undefined') {
       try {
-        sessionStorage.setItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION, String(progressToRestore.questionIndex));
+        sessionStorage.setItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION, String(nextQuestionIndex));
       } catch (err) {
         clientLogger.warn('⚠️ Не удалось сохранить currentQuestionIndex в sessionStorage', err);
       }
