@@ -277,30 +277,41 @@ export function useQuizInit(params: UseQuizInitParams) {
         }
       } else if (isNewUser) {
         // ИСПРАВЛЕНО: Для нового пользователя ВСЕГДА сбрасываем currentInfoScreenIndex на 0
-        // Это гарантирует, что новый пользователь увидит все начальные инфо-экраны
-        // даже если initialInfoScreenIndex был восстановлен из sessionStorage в useQuizStateExtended
-        const initialInfoScreens = getInitialInfoScreens();
-        // КРИТИЧНО: Сбрасываем на 0 для любого нового пользователя, даже если индекс < длины начальных экранов
-        // Это гарантирует, что новый пользователь всегда начинает с первого инфо-экрана
-        if (currentInfoScreenIndex !== 0 || currentInfoScreenIndexRef.current !== 0) {
-          clientLogger.log('🔄 Сброс currentInfoScreenIndex на 0 для нового пользователя', {
+        // НО только если НЕТ showResumeScreen (т.е. нет прогресса с >= 2 ответами)
+        // Если showResumeScreen = true, значит прогресс загружается и нужно показать резюм-экран, а не инфо-экраны
+        if (showResumeScreen) {
+          // Если есть резюм-экран, не сбрасываем на 0 - пусть покажется резюм-экран
+          clientLogger.log('⏸️ Пропускаем сброс currentInfoScreenIndex - показывается резюм-экран', {
             currentIndex: currentInfoScreenIndex,
-            currentIndexRef: currentInfoScreenIndexRef.current,
-            initialInfoScreensLength: initialInfoScreens.length,
-            hasNoSavedProgress,
+            showResumeScreen,
           });
-          currentInfoScreenIndexRef.current = 0;
-          setCurrentInfoScreenIndex(0);
-          
-          // КРИТИЧНО: Очищаем sessionStorage для нового пользователя
-          if (typeof window !== 'undefined') {
-            try {
-              sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
-              sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
-              sessionStorage.removeItem('quiz_answers_backup');
-              clientLogger.log('🧹 Очищен sessionStorage для нового пользователя');
-            } catch (err) {
-              clientLogger.warn('⚠️ Не удалось очистить sessionStorage', err);
+        } else {
+          // ИСПРАВЛЕНО: Для нового пользователя ВСЕГДА сбрасываем currentInfoScreenIndex на 0
+          // Это гарантирует, что новый пользователь увидит все начальные инфо-экраны
+          // даже если initialInfoScreenIndex был восстановлен из sessionStorage в useQuizStateExtended
+          const initialInfoScreens = getInitialInfoScreens();
+          // КРИТИЧНО: Сбрасываем на 0 для любого нового пользователя, даже если индекс < длины начальных экранов
+          // Это гарантирует, что новый пользователь всегда начинает с первого инфо-экрана
+          if (currentInfoScreenIndex !== 0 || currentInfoScreenIndexRef.current !== 0) {
+            clientLogger.log('🔄 Сброс currentInfoScreenIndex на 0 для нового пользователя', {
+              currentIndex: currentInfoScreenIndex,
+              currentIndexRef: currentInfoScreenIndexRef.current,
+              initialInfoScreensLength: initialInfoScreens.length,
+              hasNoSavedProgress,
+            });
+            currentInfoScreenIndexRef.current = 0;
+            setCurrentInfoScreenIndex(0);
+            
+            // КРИТИЧНО: Очищаем sessionStorage для нового пользователя
+            if (typeof window !== 'undefined') {
+              try {
+                sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
+                sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
+                sessionStorage.removeItem('quiz_answers_backup');
+                clientLogger.log('🧹 Очищен sessionStorage для нового пользователя');
+              } catch (err) {
+                clientLogger.warn('⚠️ Не удалось очистить sessionStorage', err);
+              }
             }
           }
         }

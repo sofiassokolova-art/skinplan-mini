@@ -3221,7 +3221,26 @@ export default function QuizPage() {
       setCurrentQuestionIndex(0);
       setPendingInfoScreen(null);
       
-      // Очищаем прогресс на сервере
+      // Очищаем прогресс на сервере (удаляем ответы из БД)
+      try {
+        // ИСПРАВЛЕНО: Используем DELETE /api/questionnaire/progress для удаления ответов
+        // Это удаляет ответы независимо от наличия профиля/плана
+        const response = await fetch('/api/questionnaire/progress', {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        if (response.ok) {
+          clientLogger.log('✅ Ответы удалены на сервере при "Начать заново"');
+        } else {
+          clientLogger.warn('⚠️ Не удалось удалить ответы на сервере при "Начать заново"');
+        }
+      } catch (err) {
+        clientLogger.warn('⚠️ Ошибка при удалении ответов на сервере:', err);
+      }
+      
+      // Также вызываем clearProgress для очистки локального состояния
       clearProgress();
       
       clientLogger.log('✅ Состояние сброшено, переход на первый инфо экран');
@@ -3345,6 +3364,7 @@ export default function QuizPage() {
         handleNext={handleNext}
         submitAnswers={submitAnswers}
         pendingInfoScreenRef={quizState.pendingInfoScreenRef}
+        handleBack={handleBack}
       />
     );
   }
@@ -3405,6 +3425,7 @@ export default function QuizPage() {
         setLoading={setLoading}
         handleNext={handleNext}
         submitAnswers={submitAnswers}
+        handleBack={handleBack}
       />
     );
   }

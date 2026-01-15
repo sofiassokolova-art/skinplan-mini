@@ -11,12 +11,16 @@ export interface BackButtonProps {
 export function BackButton({ onClick }: BackButtonProps) {
   return (
     <button
-      onClick={onClick}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onClick();
+      }}
       style={{
-        position: 'absolute',
+        position: 'fixed',
         top: 'clamp(20px, 4vh, 40px)',
         left: 'clamp(19px, 5vw, 24px)',
-        zIndex: 10,
+        zIndex: 1000,
         width: '44px',
         height: '44px',
         background: 'transparent',
@@ -26,6 +30,7 @@ export function BackButton({ onClick }: BackButtonProps) {
         justifyContent: 'center',
         cursor: 'pointer',
         padding: 0,
+        pointerEvents: 'auto',
       }}
     >
       <svg

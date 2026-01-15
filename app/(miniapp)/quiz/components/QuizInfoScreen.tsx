@@ -128,6 +128,7 @@ interface QuizInfoScreenProps {
   setLoading: (loading: boolean | ((prev: boolean) => boolean)) => void;
   handleNext: () => Promise<void>;
   submitAnswers: () => Promise<void>;
+  handleBack: () => void; // ИСПРАВЛЕНО: Добавлен handleBack для правильной обработки кнопки "Назад"
   pendingInfoScreenRef?: React.MutableRefObject<InfoScreen | null>;
 }
 
@@ -149,6 +150,7 @@ export function QuizInfoScreen({
   handleNext,
   submitAnswers,
   pendingInfoScreenRef,
+  handleBack,
 }: QuizInfoScreenProps) {
   const isTinderScreen = screen.type === 'tinder';
   const isTestimonialsScreen = screen.type === 'testimonials';
@@ -172,11 +174,7 @@ export function QuizInfoScreen({
         }}
         isHandlingNext={isHandlingNext}
         currentInfoScreenIndex={currentInfoScreenIndex}
-        onBack={() => {
-          if (currentInfoScreenIndex > 0) {
-            setCurrentInfoScreenIndex(currentInfoScreenIndex - 1);
-          }
-        }}
+        onBack={handleBack}
       />
     );
   }
@@ -196,21 +194,22 @@ export function QuizInfoScreen({
         position: 'relative',
         width: '100%',
       }}>
-        {/* Кнопка "Назад" - простая стрелка без фона */}
+        {/* Кнопка "Назад" - простая стрелка без фона, зафиксирована */}
         <button
-          onClick={() => {
-            if (currentInfoScreenIndex > 0) {
-              setCurrentInfoScreenIndex(currentInfoScreenIndex - 1);
-            }
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleBack();
           }}
           style={{
-            position: 'absolute',
+            position: 'fixed',
             top: 'clamp(20px, 4vh, 40px)',
             left: 'clamp(19px, 5vw, 24px)',
-            zIndex: 10,
+            zIndex: 1000,
             width: '44px',
             height: '44px',
             background: 'transparent',
+            pointerEvents: 'auto',
             border: 'none',
             display: 'flex',
             alignItems: 'center',
@@ -404,11 +403,7 @@ export function QuizInfoScreen({
       <PersonalAnalysisScreen
         screen={screen}
         currentInfoScreenIndex={currentInfoScreenIndex}
-        onBack={() => {
-          if (currentInfoScreenIndex > 0) {
-            setCurrentInfoScreenIndex(currentInfoScreenIndex - 1);
-          }
-        }}
+        onBack={handleBack}
         onContinue={handleNext}
       />
     );
@@ -581,12 +576,17 @@ export function QuizInfoScreen({
         {/* Кнопка "Назад" */}
         {currentInfoScreenIndex > 0 && (
           <button
-            onClick={() => setCurrentInfoScreenIndex(currentInfoScreenIndex - 1)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleBack();
+            }}
             style={{
-              position: 'absolute',
+              position: 'fixed',
               top: 'clamp(20px, 4vh, 40px)',
               left: 'clamp(19px, 5vw, 24px)',
-              zIndex: 10,
+              zIndex: 1000,
+              pointerEvents: 'auto',
               width: '44px',
               height: '44px',
               background: 'transparent',
@@ -728,12 +728,17 @@ export function QuizInfoScreen({
         {/* Кнопка "Назад" */}
         {currentInfoScreenIndex > 0 && (
           <button
-            onClick={() => setCurrentInfoScreenIndex(currentInfoScreenIndex - 1)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleBack();
+            }}
             style={{
-              position: 'absolute',
+              position: 'fixed',
               top: 'clamp(20px, 4vh, 40px)',
               left: 'clamp(19px, 5vw, 24px)',
-              zIndex: 10,
+              zIndex: 1000,
+              pointerEvents: 'auto',
               width: '44px',
               height: '44px',
               background: 'transparent',
