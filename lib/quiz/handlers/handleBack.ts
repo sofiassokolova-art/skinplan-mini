@@ -81,8 +81,35 @@ export function handleBack({
     return;
   }
 
+  // Если мы на первом вопросе (currentQuestionIndex === 0) и на вопросах, 
+  // возвращаемся к последнему инфо-экрану
+  if (isOnQuestions && currentQuestionIndex === 0) {
+    const newInfoScreenIndex = initialInfoScreens.length - 1;
+    clientLogger.log('🔙 handleBack: возвращаемся к последнему инфо-экрану с первого вопроса', {
+      oldInfoScreenIndex: currentInfoScreenIndex,
+      newInfoScreenIndex,
+      currentQuestionIndex,
+    });
+    setCurrentInfoScreenIndex(newInfoScreenIndex);
+    
+    // Сохраняем прогресс
+    saveProgress(answers, currentQuestionIndex, newInfoScreenIndex).catch((err) => {
+      clientLogger.warn('⚠️ Ошибка при сохранении прогресса в handleBack:', err);
+    });
+    
+    // Сохраняем в sessionStorage
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem('quiz_currentInfoScreenIndex', String(newInfoScreenIndex));
+      } catch (err) {
+        clientLogger.warn('⚠️ Не удалось сохранить currentInfoScreenIndex в sessionStorage', err);
+      }
+    }
+    return;
+  }
+
   // Если мы на начальных инфо-экранах, переходим к предыдущему
-  if (currentInfoScreenIndex > 0) {
+  if (currentInfoScreenIndex > 0 && currentInfoScreenIndex < initialInfoScreens.length) {
     const newInfoScreenIndex = currentInfoScreenIndex - 1;
     clientLogger.log('🔙 handleBack: переходим к предыдущему инфо-экрану', {
       oldIndex: currentInfoScreenIndex,
