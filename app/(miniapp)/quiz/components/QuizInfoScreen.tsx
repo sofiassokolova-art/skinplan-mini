@@ -5,6 +5,7 @@
 'use client';
 
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { Questionnaire } from '@/lib/quiz/types';
 import type { InfoScreen } from '../info-screens';
 import { getNextInfoScreenAfterScreen } from '../info-screens';
@@ -183,57 +184,64 @@ export function QuizInfoScreen({
   if (isHowItWorksScreen) {
     const steps = screen.subtitle?.split('\n').filter(line => line.trim()) || [];
     
-    return (
-      <div style={{ 
-        padding: 0,
-        margin: 0,
-        minHeight: '100vh',
-        background: '#FFFFFF',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-        width: '100%',
-      }}>
-        {/* Кнопка "Назад" - простая стрелка без фона, зафиксирована */}
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleBack();
-          }}
-          style={{
-            position: 'fixed',
-            top: 'clamp(20px, 4vh, 40px)',
-            left: 'clamp(19px, 5vw, 24px)',
-            zIndex: 1000,
-            width: '44px',
-            height: '44px',
-            background: 'transparent',
-            pointerEvents: 'auto',
-            border: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            padding: 0,
-          }}
+    // Кнопка "Назад" через портал для гарантированной фиксации
+    const howItWorksBackButton = currentInfoScreenIndex > 0 && typeof window !== 'undefined' && handleBack ? createPortal(
+      <button
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleBack();
+        }}
+        style={{
+          position: 'fixed',
+          top: 'clamp(20px, 4vh, 40px)',
+          left: 'clamp(19px, 5vw, 24px)',
+          zIndex: 9999,
+          width: '44px',
+          height: '44px',
+          background: 'transparent',
+          pointerEvents: 'auto',
+          border: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          padding: 0,
+          willChange: 'transform',
+        }}
+      >
+        <svg
+          width="12"
+          height="20"
+          viewBox="0 0 12 20"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
         >
-          <svg
-            width="12"
-            height="20"
-            viewBox="0 0 12 20"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M10 2L2 10L10 18"
-              stroke="#1A1A1A"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
+          <path
+            d="M10 2L2 10L10 18"
+            stroke="#1A1A1A"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>,
+      document.body
+    ) : null;
+    
+    return (
+      <>
+        {howItWorksBackButton}
+        <div style={{ 
+          padding: 0,
+          margin: 0,
+          minHeight: '100vh',
+          background: '#FFFFFF',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
+          width: '100%',
+        }}>
 
         {/* Контент с анимацией */}
         <div 
@@ -394,6 +402,7 @@ export function QuizInfoScreen({
           </div>
         )}
       </div>
+      </>
     );
   }
 
@@ -411,57 +420,70 @@ export function QuizInfoScreen({
 
   // Экран отзывов (testimonials) - белый фон, фиксированная шапка, скроллится только слайдер
   if (isTestimonialsScreen) {
+    // Кнопка "Назад" через портал для гарантированной фиксации
+    const testimonialsBackButton = currentInfoScreenIndex > 0 && typeof window !== 'undefined' && handleBack ? createPortal(
+      <button
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (handleBack) {
+            handleBack();
+          } else {
+            setCurrentInfoScreenIndex(currentInfoScreenIndex - 1);
+          }
+        }}
+        style={{
+          position: 'fixed',
+          top: 'clamp(20px, 4vh, 40px)',
+          left: 'clamp(19px, 5vw, 24px)',
+          zIndex: 9999,
+          width: '44px',
+          height: '44px',
+          background: 'transparent',
+          border: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          padding: 0,
+          pointerEvents: 'auto',
+          willChange: 'transform',
+        }}
+      >
+        <svg
+          width="12"
+          height="20"
+          viewBox="0 0 12 20"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M10 2L2 10L10 18"
+            stroke="#1A1A1A"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>,
+      document.body
+    ) : null;
+
     return (
-      <div style={{ 
-        padding: 0,
-        margin: 0,
-        minHeight: '100vh',
-        maxHeight: '100vh',
-        background: '#FFFFFF',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-        width: '100%',
-        overflow: 'hidden',
-      }}>
-        {/* Фиксированная кнопка "Назад" */}
-        {currentInfoScreenIndex > 0 && (
-          <button
-            onClick={() => setCurrentInfoScreenIndex(currentInfoScreenIndex - 1)}
-            style={{
-              position: 'fixed',
-              top: 'clamp(20px, 4vh, 40px)',
-              left: 'clamp(19px, 5vw, 24px)',
-              zIndex: 1000,
-              width: '44px',
-              height: '44px',
-              background: 'transparent',
-              border: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              padding: 0,
-              pointerEvents: 'auto',
-            }}
-          >
-            <svg
-              width="12"
-              height="20"
-              viewBox="0 0 12 20"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M10 2L2 10L10 18"
-                stroke="#1A1A1A"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-        )}
+      <>
+        {testimonialsBackButton}
+        <div style={{ 
+          padding: 0,
+          margin: 0,
+          minHeight: '100vh',
+          maxHeight: '100vh',
+          background: '#FFFFFF',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
+          width: '100%',
+          overflow: 'hidden',
+        }}>
 
         {/* Фиксированная шапка с заголовком и анимацией */}
         <div 
@@ -558,64 +580,70 @@ export function QuizInfoScreen({
           </button>
         </div>
       </div>
+      </>
     );
   }
 
   // Экран "Какую цель вы ставите перед собой?" (goals_intro)
   if (isGoalsIntroScreen) {
+    // Кнопка "Назад" через портал для гарантированной фиксации
+    const goalsBackButton = currentInfoScreenIndex > 0 && typeof window !== 'undefined' && handleBack ? createPortal(
+      <button
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleBack();
+        }}
+        style={{
+          position: 'fixed',
+          top: 'clamp(20px, 4vh, 40px)',
+          left: 'clamp(19px, 5vw, 24px)',
+          zIndex: 9999,
+          pointerEvents: 'auto',
+          width: '44px',
+          height: '44px',
+          background: 'transparent',
+          border: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          padding: 0,
+          willChange: 'transform',
+        }}
+      >
+        <svg
+          width="12"
+          height="20"
+          viewBox="0 0 12 20"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M10 2L2 10L10 18"
+            stroke="#1A1A1A"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>,
+      document.body
+    ) : null;
+
     return (
-      <div style={{ 
-        padding: 0,
-        margin: 0,
-        minHeight: '100vh',
-        background: '#FFFFFF',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-        width: '100%',
-      }}>
-        {/* Кнопка "Назад" */}
-        {currentInfoScreenIndex > 0 && (
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleBack();
-            }}
-            style={{
-              position: 'fixed',
-              top: 'clamp(20px, 4vh, 40px)',
-              left: 'clamp(19px, 5vw, 24px)',
-              zIndex: 1000,
-              pointerEvents: 'auto',
-              width: '44px',
-              height: '44px',
-              background: 'transparent',
-              border: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              padding: 0,
-            }}
-          >
-            <svg
-              width="12"
-              height="20"
-              viewBox="0 0 12 20"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M10 2L2 10L10 18"
-                stroke="#1A1A1A"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-        )}
+      <>
+        {goalsBackButton}
+        <div style={{ 
+          padding: 0,
+          margin: 0,
+          minHeight: '100vh',
+          background: '#FFFFFF',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
+          width: '100%',
+        }}>
 
         {/* Контент с анимацией */}
         <div 
@@ -710,64 +738,70 @@ export function QuizInfoScreen({
           </button>
         </div>
       </div>
+      </>
     );
   }
 
   // Экран "Общая информация" (general_info_intro) - такая же верстка как у goals_intro
   if (isGeneralInfoIntroScreen) {
+    // Кнопка "Назад" через портал для гарантированной фиксации
+    const generalBackButton = currentInfoScreenIndex > 0 && typeof window !== 'undefined' && handleBack ? createPortal(
+      <button
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleBack();
+        }}
+        style={{
+          position: 'fixed',
+          top: 'clamp(20px, 4vh, 40px)',
+          left: 'clamp(19px, 5vw, 24px)',
+          zIndex: 9999,
+          pointerEvents: 'auto',
+          width: '44px',
+          height: '44px',
+          background: 'transparent',
+          border: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          padding: 0,
+          willChange: 'transform',
+        }}
+      >
+        <svg
+          width="12"
+          height="20"
+          viewBox="0 0 12 20"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M10 2L2 10L10 18"
+            stroke="#1A1A1A"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>,
+      document.body
+    ) : null;
+
     return (
-      <div style={{ 
-        padding: 0,
-        margin: 0,
-        minHeight: '100vh',
-        background: '#FFFFFF',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-        width: '100%',
-      }}>
-        {/* Кнопка "Назад" */}
-        {currentInfoScreenIndex > 0 && (
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleBack();
-            }}
-            style={{
-              position: 'fixed',
-              top: 'clamp(20px, 4vh, 40px)',
-              left: 'clamp(19px, 5vw, 24px)',
-              zIndex: 1000,
-              pointerEvents: 'auto',
-              width: '44px',
-              height: '44px',
-              background: 'transparent',
-              border: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              padding: 0,
-            }}
-          >
-            <svg
-              width="12"
-              height="20"
-              viewBox="0 0 12 20"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M10 2L2 10L10 18"
-                stroke="#1A1A1A"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-        )}
+      <>
+        {generalBackButton}
+        <div style={{ 
+          padding: 0,
+          margin: 0,
+          minHeight: '100vh',
+          background: '#FFFFFF',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
+          width: '100%',
+        }}>
 
         {/* Контент с анимацией */}
         <div 
@@ -862,59 +896,73 @@ export function QuizInfoScreen({
           </button>
         </div>
       </div>
+      </>
     );
   }
 
+  // Кнопка "Назад" - рендерим через портал, чтобы она была вне прокручиваемого контейнера
+  // ИСПРАВЛЕНО: Кнопка всегда зафиксирована наверху и не листается вместе с инфо-экранами
+  const shouldShowBackButton = (currentInfoScreenIndex > 0) || (pendingInfoScreenRef?.current && handleBack);
+  const backButton = shouldShowBackButton && typeof window !== 'undefined' && handleBack ? createPortal(
+    <button
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handleBack();
+      }}
+      style={{
+        position: 'fixed',
+        top: 'clamp(20px, 4vh, 40px)',
+        left: 'clamp(19px, 5vw, 24px)',
+        zIndex: 99999,
+        width: '44px',
+        height: '44px',
+        background: 'transparent',
+        border: 'none',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        padding: 0,
+        pointerEvents: 'auto',
+        willChange: 'auto',
+        isolation: 'isolate',
+      }}
+    >
+      <svg
+        width="12"
+        height="20"
+        viewBox="0 0 12 20"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M10 2L2 10L10 18"
+          stroke="#1A1A1A"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>,
+    document.body
+  ) : null;
+
   // Дефолтный рендеринг для остальных инфо-экранов
   return (
-    <div style={{ 
-      padding: '20px',
-      paddingBottom: '100px',
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      position: 'relative',
-    }}>
-      {/* Кнопка "Назад" - простая стрелка, зафиксирована наверху */}
-      {currentInfoScreenIndex > 0 && (
-        <button
-          onClick={() => setCurrentInfoScreenIndex(currentInfoScreenIndex - 1)}
-          style={{
-            position: 'fixed',
-            top: 'clamp(20px, 4vh, 40px)',
-            left: 'clamp(19px, 5vw, 24px)',
-            zIndex: 1000,
-            width: '44px',
-            height: '44px',
-            background: 'transparent',
-            border: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            padding: 0,
-            pointerEvents: 'auto',
-          }}
-        >
-          <svg
-            width="12"
-            height="20"
-            viewBox="0 0 12 20"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M10 2L2 10L10 18"
-              stroke="#1A1A1A"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
-      )}
+    <>
+      {/* Кнопка "Назад" - рендерится через портал в body для гарантированной фиксации */}
+      {backButton}
+      <div style={{ 
+        padding: '20px',
+        paddingBottom: '100px',
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+      }}>
 
       <div style={{
         width: '88%',
@@ -1136,7 +1184,8 @@ export function QuizInfoScreen({
         disabled={isHandlingNext}
         loadingText="Загрузка..."
       />
-    </div>
+      </div>
+    </>
   );
 }
 

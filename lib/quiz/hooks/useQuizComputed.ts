@@ -487,6 +487,12 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (isRetakingQuiz && !showRetakeScreen)');
       return false;
     }
+    // ИСПРАВЛЕНО: КРИТИЧЕСКАЯ ЗАЩИТА - проверяем ref, чтобы не показывать инфо-экраны, если пользователь уже перешел к вопросам
+    // Это предотвращает показ инфо-экранов, если currentInfoScreenIndex временно сбросился, но ref все еще указывает на вопросы
+    if (currentInfoScreenIndexRef.current >= initialInfoScreens.length) {
+      if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (ref index >= length)');
+      return false;
+    }
     // Если currentInfoScreenIndex уже прошел все начальные экраны - не показываем их
     if (currentInfoScreenIndex >= initialInfoScreens.length) {
       if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (index >= length)');
@@ -498,8 +504,9 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       return false;
     }
     // Иначе показываем, если currentInfoScreenIndex < initialInfoScreens.length
-    // ВОССТАНОВЛЕНО: Простая проверка из рабочего коммита
-    const shouldShow = currentInfoScreenIndex < initialInfoScreens.length;
+    // ИСПРАВЛЕНО: Дополнительная проверка ref для надежности
+    const shouldShow = currentInfoScreenIndex < initialInfoScreens.length && 
+                       currentInfoScreenIndexRef.current < initialInfoScreens.length;
     
     // ФИКС: Всегда логируем результат (warn уровень для диагностики в БД)
     // Это поможет понять, почему isShowingInitialInfoScreen остается true

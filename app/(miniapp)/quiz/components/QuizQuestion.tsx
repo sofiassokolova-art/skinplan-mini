@@ -5,6 +5,7 @@
 'use client';
 
 import Link from 'next/link';
+import { createPortal } from 'react-dom';
 import type { Question } from '@/lib/quiz/types';
 import { getInfoScreenAfterQuestion } from '../info-screens';
 
@@ -47,50 +48,55 @@ export function QuizQuestion({
   const isGoalsQuestion = question?.code === 'skin_goals';
   const useLimeStyle = isGoalsQuestion && question?.type === 'multi_choice';
 
+  // Кнопка "Назад" - рендерим через портал, чтобы она была вне всех контейнеров
+  const backButton = showBackButton && typeof window !== 'undefined' ? createPortal(
+    <button
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onBack();
+      }}
+      style={{
+        position: 'fixed',
+        top: 'clamp(20px, 4vh, 40px)',
+        left: 'clamp(19px, 5vw, 24px)',
+        zIndex: 9999,
+        width: '44px',
+        height: '44px',
+        background: 'transparent',
+        border: 'none',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        padding: 0,
+        pointerEvents: 'auto',
+        willChange: 'transform',
+      }}
+    >
+      <svg
+        width="12"
+        height="20"
+        viewBox="0 0 12 20"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M10 2L2 10L10 18"
+          stroke="#1A1A1A"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>,
+    document.body
+  ) : null;
+
   return (
     <>
-      {/* Кнопка "Назад" - простая стрелка без фона, зафиксирована */}
-      {showBackButton && (
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onBack();
-          }}
-          style={{
-            position: 'fixed',
-            top: 'clamp(20px, 4vh, 40px)',
-            left: 'clamp(19px, 5vw, 24px)',
-            zIndex: 1000,
-            width: '44px',
-            height: '44px',
-            background: 'transparent',
-            border: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            padding: 0,
-            pointerEvents: 'auto',
-          }}
-        >
-          <svg
-            width="12"
-            height="20"
-            viewBox="0 0 12 20"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M10 2L2 10L10 18"
-              stroke="#1A1A1A"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
-      )}
+      {/* Кнопка "Назад" - рендерится через портал в body для гарантированной фиксации */}
+      {backButton}
 
       {/* Контейнер с анимацией для всего контента вопроса */}
       <div className="animate-fade-in">
@@ -221,8 +227,8 @@ export function QuizQuestion({
                   width: '100%',
                   padding: '16px',
                   borderRadius: '20px',
-                  backgroundColor: '#000000',
-                  color: '#FFFFFF',
+                  backgroundColor: '#D5FE61',
+                  color: '#000000',
                   border: 'none',
                   cursor: 'pointer',
                   fontSize: '16px',
@@ -409,7 +415,7 @@ export function QuizQuestion({
               );
             })}
             
-            {/* Кнопка "Продолжить" - черная */}
+            {/* Кнопка "Продолжить" - лаймовая для продолжения, черная для отправки */}
             {answers[question.id] && (Array.isArray(answers[question.id]) ? (answers[question.id] as string[]).length > 0 : true) && (
               <button
                 onClick={showSubmitButton ? onSubmit : onNext}
@@ -419,8 +425,8 @@ export function QuizQuestion({
                   width: '100%',
                   padding: '18px',
                   borderRadius: '20px',
-                  backgroundColor: '#000000',
-                  color: '#FFFFFF',
+                  backgroundColor: showSubmitButton ? '#000000' : '#D5FE61',
+                  color: showSubmitButton ? '#FFFFFF' : '#000000',
                   border: 'none',
                   cursor: isSubmitting ? 'not-allowed' : 'pointer',
                   fontSize: '16px',
@@ -525,8 +531,8 @@ export function QuizQuestion({
                   width: '100%',
                   padding: '16px',
                   borderRadius: '20px',
-                  backgroundColor: '#000000',
-                  color: '#FFFFFF',
+                  backgroundColor: '#D5FE61',
+                  color: '#000000',
                   border: 'none',
                   cursor: 'pointer',
                   fontSize: '16px',

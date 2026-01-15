@@ -241,30 +241,43 @@ export async function loadSavedProgressFromServer({
     const infoScreenIndex = response?.progress?.infoScreenIndex ?? 0;
     
     // ВАЖНО: Если ровно 1 ответ (только имя) - НЕ показываем резюм-экран, показываем анкету заново
+    // ИСПРАВЛЕНО: НЕ сбрасываем currentInfoScreenIndex, если пользователь уже проходит анкету
     if (answersCount === 1) {
       clientLogger.log('ℹ️ У пользователя 1 ответ (только имя), показываем анкету заново', {
         answersCount,
         questionIndex,
         infoScreenIndex,
+        isAlreadyOnQuestions,
+        currentInfoScreenIndex: currentInfoScreenIndexRef.current,
+        currentQuestionIndex: currentQuestionIndexRef.current,
       });
       // Очищаем прогресс, чтобы показать все инфо-экраны заново
       setSavedProgress(null);
-      // Сбрасываем индексы на 0
-      if (typeof window !== 'undefined') {
-        try {
-          sessionStorage.removeItem('quiz_currentInfoScreenIndex');
-          sessionStorage.removeItem('quiz_currentQuestionIndex');
-          sessionStorage.removeItem('quiz_answers_backup');
-          clientLogger.log('🧹 SessionStorage очищен (1 ответ - показываем анкету заново)');
-        } catch (err) {
-          clientLogger.warn('⚠️ Не удалось очистить sessionStorage:', err);
+      // ИСПРАВЛЕНО: НЕ сбрасываем индексы, если пользователь уже на вопросах или активно проходит анкету
+      if (!isAlreadyOnQuestions && currentQuestionIndexRef.current === 0) {
+        // Сбрасываем индексы на 0 только если пользователь еще не начал проходить анкету
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.removeItem('quiz_currentInfoScreenIndex');
+            sessionStorage.removeItem('quiz_currentQuestionIndex');
+            sessionStorage.removeItem('quiz_answers_backup');
+            clientLogger.log('🧹 SessionStorage очищен (1 ответ - показываем анкету заново)');
+          } catch (err) {
+            clientLogger.warn('⚠️ Не удалось очистить sessionStorage:', err);
+          }
         }
-      }
-      if (setCurrentInfoScreenIndex) {
-        setCurrentInfoScreenIndex(0);
-      }
-      if (currentInfoScreenIndexRef) {
-        currentInfoScreenIndexRef.current = 0;
+        if (setCurrentInfoScreenIndex) {
+          setCurrentInfoScreenIndex(0);
+        }
+        if (currentInfoScreenIndexRef) {
+          currentInfoScreenIndexRef.current = 0;
+        }
+      } else {
+        clientLogger.warn('⚠️ Пропускаем сброс currentInfoScreenIndex - пользователь уже проходит анкету', {
+          isAlreadyOnQuestions,
+          currentInfoScreenIndex: currentInfoScreenIndexRef.current,
+          currentQuestionIndex: currentQuestionIndexRef.current,
+        });
       }
       progressLoadedRef.current = true;
       setLoading(false);
@@ -479,6 +492,7 @@ export async function loadSavedProgressFromServer({
       // КРИТИЧНО: Если прогресса на сервере нет, очищаем sessionStorage
       // Это гарантирует, что пользователь увидит начальные инфо-экраны
       // даже если в sessionStorage сохранены старые индексы от предыдущего прохождения
+      // ИСПРАВЛЕНО: НЕ сбрасываем currentInfoScreenIndex, если пользователь уже проходит анкету
       if (typeof window !== 'undefined') {
         try {
           sessionStorage.removeItem('quiz_currentInfoScreenIndex');
@@ -487,11 +501,20 @@ export async function loadSavedProgressFromServer({
           clientLogger.log('🧹 SessionStorage очищен (прогресс на сервере не найден)');
           
           // ФИКС: Сбрасываем currentInfoScreenIndex на 0, чтобы показать все начальные инфо-экраны
-          if (setCurrentInfoScreenIndex) {
-            setCurrentInfoScreenIndex(0);
-          }
-          if (currentInfoScreenIndexRef) {
-            currentInfoScreenIndexRef.current = 0;
+          // ИСПРАВЛЕНО: НЕ сбрасываем, если пользователь уже на вопросах или активно проходит анкету
+          if (!isAlreadyOnQuestions && currentQuestionIndexRef.current === 0) {
+            if (setCurrentInfoScreenIndex) {
+              setCurrentInfoScreenIndex(0);
+            }
+            if (currentInfoScreenIndexRef) {
+              currentInfoScreenIndexRef.current = 0;
+            }
+          } else {
+            clientLogger.warn('⚠️ Пропускаем сброс currentInfoScreenIndex - пользователь уже проходит анкету', {
+              isAlreadyOnQuestions,
+              currentInfoScreenIndex: currentInfoScreenIndexRef.current,
+              currentQuestionIndex: currentQuestionIndexRef.current,
+            });
           }
         } catch (storageErr) {
           clientLogger.warn('⚠️ Не удалось очистить sessionStorage:', storageErr);

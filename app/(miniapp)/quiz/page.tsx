@@ -346,14 +346,27 @@ export default function QuizPage() {
   const isQuestionsFromStateMachine = quizStateMachine.isState('QUESTIONS');
   const isIntroFromStateMachine = quizStateMachine.isState('INTRO');
   
-  // УПРОЩЕННАЯ ЛОГИКА РЕЗЮМ ЭКРАНА:
-  // 1. Если есть >= 2 ответов → показать резюм экран
-  // 2. Если 1 ответ (имя) → показать инфо экраны заново
-  // 3. Если 0 ответов → показать инфо экраны
-  // Вся логика в одном месте - после загрузки анкеты
+  // ИСПРАВЛЕНО: ЛОГИКА РЕЗЮМ ЭКРАНА:
+  // Резюм экран должен показываться ТОЛЬКО при первой загрузке страницы, если есть сохраненный прогресс
+  // НЕ показываем резюм экран, если пользователь уже активно отвечает в текущей сессии
   useEffect(() => {
     // Не проверяем резюм экран во время загрузки или если пользователь начал заново
     if (loading || isStartingOver || hasResumed) {
+      return;
+    }
+    
+    // ИСПРАВЛЕНО: Не показываем резюм экран, если пользователь уже активно отвечает в текущей сессии
+    // Это предотвращает показ резюм экрана для новых пользователей, которые только что ответили на вопросы
+    const isActiveSession = currentQuestionIndex > 0 || Object.keys(answers).length > 0;
+    if (isActiveSession) {
+      // Если пользователь уже отвечает, скрываем резюм экран
+      if (showResumeScreen) {
+        clientLogger.log('❌ Скрываем резюм экран: пользователь активно отвечает в текущей сессии', {
+          currentQuestionIndex,
+          answersCount: Object.keys(answers).length,
+        });
+        setShowResumeScreen(false);
+      }
       return;
     }
     
@@ -368,12 +381,14 @@ export default function QuizPage() {
     
     const savedAnswersCount = Object.keys(savedProgress.answers).length;
     
-    // Если >= 2 ответов → показать резюм экран
+    // Если >= 2 ответов → показать резюм экран ТОЛЬКО при первой загрузке (не в активной сессии)
     if (savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN) {
       if (!showResumeScreen) {
-        clientLogger.log('✅ Показываем резюм экран: есть >= 2 ответов', {
+        clientLogger.log('✅ Показываем резюм экран: есть >= 2 ответов в сохраненном прогрессе (первая загрузка)', {
           savedAnswersCount,
           MIN_ANSWERS: QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN,
+          currentQuestionIndex,
+          currentAnswersCount: Object.keys(answers).length,
         });
         setShowResumeScreen(true);
       }
@@ -387,7 +402,7 @@ export default function QuizPage() {
         setShowResumeScreen(false);
       }
     }
-  }, [loading, savedProgress, showResumeScreen, isStartingOver, hasResumed]);
+  }, [loading, savedProgress, showResumeScreen, isStartingOver, hasResumed, currentQuestionIndex, answers]);
   
   // РЕФАКТОРИНГ: Используем хук useQuizComputed для всех вычисляемых значений
   // Вынесены: effectiveAnswers, answersCount, allQuestionsRaw, allQuestions, 
@@ -1800,6 +1815,7 @@ export default function QuizPage() {
       questionnaire,
       questionnaireRef,
       pendingInfoScreen,
+      currentInfoScreenIndexRef,
       setCurrentInfoScreenIndex,
       setCurrentQuestionIndex,
       setPendingInfoScreen,
@@ -3189,31 +3205,27 @@ export default function QuizPage() {
       logger: clientLogger, // Передаем clientLogger для логирования
     });
 
-    // ИСПРАВЛЕНО: Вычисляем правильный номер вопроса на основе отфильтрованного списка
-    // savedProgress.questionIndex - это индекс в исходном списке (allQuestionsRaw)
-    // Нужно найти этот вопрос в отфильтрованном списке allQuestions
-    let displayQuestionNumber = savedProgress.questionIndex + 1; // Fallback значение
-    if (allQuestionsRaw.length > 0 && savedProgress.questionIndex >= 0 && savedProgress.questionIndex < allQuestionsRaw.length) {
-      const questionAtSavedIndex = allQuestionsRaw[savedProgress.questionIndex];
-      if (questionAtSavedIndex) {
-        // Находим этот вопрос в отфильтрованном списке по ID
-        const filteredIndex = allQuestions.findIndex(q => q.id === questionAtSavedIndex.id);
-        if (filteredIndex !== -1) {
-          displayQuestionNumber = filteredIndex + 1;
-        } else {
-          // Если вопрос был отфильтрован, ищем следующий доступный вопрос
-          // Находим первый неотвеченный вопрос после сохраненного индекса
-          const answeredQuestionIds = Object.keys(savedProgress.answers || {}).map(id => Number(id));
-          const nextUnansweredQuestion = allQuestions.find((q, index) => {
-            return !answeredQuestionIds.includes(q.id) && index >= 0;
-          });
-          if (nextUnansweredQuestion) {
-            const nextIndex = allQuestions.findIndex(q => q.id === nextUnansweredQuestion.id);
-            if (nextIndex !== -1) {
-              displayQuestionNumber = nextIndex + 1;
-            }
-          }
+    // ИСПРАВЛЕНО: Вычисляем номер следующего неотвеченного вопроса (N+1)
+    // Нужно найти первый неотвеченный вопрос после сохраненного прогресса
+    let displayQuestionNumber = savedProgress.questionIndex + 2; // Fallback: следующий после сохраненного (N+1)
+    
+    if (allQuestions.length > 0) {
+      const answeredQuestionIds = Object.keys(savedProgress.answers || {}).map(id => Number(id));
+      
+      // Находим следующий неотвеченный вопрос
+      const nextUnansweredQuestion = allQuestions.find((q) => {
+        return !answeredQuestionIds.includes(q.id);
+      });
+      
+      if (nextUnansweredQuestion) {
+        const nextIndex = allQuestions.findIndex(q => q.id === nextUnansweredQuestion.id);
+        if (nextIndex !== -1) {
+          // Показываем номер следующего вопроса (индекс + 1, так как нумерация с 1)
+          displayQuestionNumber = nextIndex + 1;
         }
+      } else {
+        // Если все вопросы отвечены, показываем последний вопрос
+        displayQuestionNumber = allQuestions.length;
       }
     }
 

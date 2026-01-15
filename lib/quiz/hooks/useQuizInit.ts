@@ -290,14 +290,20 @@ export function useQuizInit(params: UseQuizInitParams) {
           // Это гарантирует, что новый пользователь увидит все начальные инфо-экраны
           // даже если initialInfoScreenIndex был восстановлен из sessionStorage в useQuizStateExtended
           const initialInfoScreens = getInitialInfoScreens();
-          // КРИТИЧНО: Сбрасываем на 0 для любого нового пользователя, даже если индекс < длины начальных экранов
-          // Это гарантирует, что новый пользователь всегда начинает с первого инфо-экрана
-          if (currentInfoScreenIndex !== 0 || currentInfoScreenIndexRef.current !== 0) {
+          // ИСПРАВЛЕНО: НЕ сбрасываем currentInfoScreenIndex, если пользователь уже проходит анкету
+          // Проверяем, что пользователь еще не перешел к вопросам и не начал отвечать
+          const isAlreadyOnQuestions = currentInfoScreenIndexRef.current >= initialInfoScreens.length;
+          const hasStartedAnswering = currentQuestionIndex > 0;
+          
+          // КРИТИЧНО: Сбрасываем на 0 только для нового пользователя, который еще не начал проходить анкету
+          if (!isAlreadyOnQuestions && !hasStartedAnswering && (currentInfoScreenIndex !== 0 || currentInfoScreenIndexRef.current !== 0)) {
             clientLogger.log('🔄 Сброс currentInfoScreenIndex на 0 для нового пользователя', {
               currentIndex: currentInfoScreenIndex,
               currentIndexRef: currentInfoScreenIndexRef.current,
               initialInfoScreensLength: initialInfoScreens.length,
               hasNoSavedProgress,
+              isAlreadyOnQuestions,
+              hasStartedAnswering,
             });
             currentInfoScreenIndexRef.current = 0;
             setCurrentInfoScreenIndex(0);
@@ -313,6 +319,13 @@ export function useQuizInit(params: UseQuizInitParams) {
                 clientLogger.warn('⚠️ Не удалось очистить sessionStorage', err);
               }
             }
+          } else {
+            clientLogger.warn('⚠️ Пропускаем сброс currentInfoScreenIndex - пользователь уже проходит анкету', {
+              isAlreadyOnQuestions,
+              hasStartedAnswering,
+              currentInfoScreenIndex: currentInfoScreenIndexRef.current,
+              currentQuestionIndex,
+            });
           }
         }
       }
