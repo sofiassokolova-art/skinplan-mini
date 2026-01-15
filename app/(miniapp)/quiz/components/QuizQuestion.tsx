@@ -91,7 +91,7 @@ export function QuizQuestion({
       {!hideProgressBar && (
         <div style={{ 
           marginBottom: useLimeStyle ? '16px' : '24px',
-          marginTop: '60px',
+          marginTop: '90px',
         }}>
           <div style={{
             width: '100%',
