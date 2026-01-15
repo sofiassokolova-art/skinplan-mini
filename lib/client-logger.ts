@@ -108,11 +108,11 @@ const sendLogFetch = async (
   level: 'log' | 'warn' | 'debug' | 'error' | 'info',
   message: string
 ) => {
-  // ИСПРАВЛЕНО: В production полностью отключаем отправку логов на сервер
-  // Логируем только в консоль браузера - это предотвращает 403 ошибки и блокировки
-  // Отправка логов на сервер происходит только в development для отладки
-  if (!isDevelopment) {
-    return; // В production не отправляем логи на сервер вообще
+  // ИСПРАВЛЕНО: В production отправляем логи на сервер, но только ошибки
+  // Логи сохраняются в PostgreSQL, а не в Redis/KV
+  // Отправка логов не блокирует работу приложения (fire-and-forget)
+  if (!isDevelopment && level !== 'error') {
+    return; // В production отправляем на сервер только error логи
   }
 
   try {
