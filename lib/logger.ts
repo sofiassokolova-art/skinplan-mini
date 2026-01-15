@@ -192,80 +192,62 @@ export function logApiRequest(
     correlationId: correlationId || undefined,
   });
 
-  // ИСПРАВЛЕНО: Сохраняем в KV асинхронно, но надежно
-  // Используем Promise.resolve().then() для неблокирующего выполнения
-  // Это гарантирует, что логирование произойдет даже если setTimeout не сработает
-  Promise.resolve().then(async () => {
-    try {
-      const { getRedis } = await import('@/lib/redis');
-      const redis = getRedis();
-      
-      if (!redis) {
-        // Redis не настроен - логируем только в production для диагностики
-        if (process.env.NODE_ENV === 'production') {
-          console.warn('⚠️ API log not saved to KV: Redis not configured', {
+  // ИСПРАВЛЕНО: Отключаем логирование в KV по умолчанию (достигнут лимит 500000 запросов)
+  // Логируем в KV только ошибки или если явно включено через env переменную
+  const shouldLogToKV = process.env.ENABLE_KV_API_LOGGING === 'true' || 
+                        statusCode >= 500; // Логируем только ошибки сервера
+  
+  if (shouldLogToKV) {
+    Promise.resolve().then(async () => {
+      try {
+        const { getRedis } = await import('@/lib/redis');
+        const redis = getRedis();
+        
+        if (!redis) {
+          return;
+        }
+
+        // Создаем структурированный лог для KV
+        const logData = {
+          timestamp: new Date().toISOString(),
+          level: statusCode >= 500 ? 'ERROR' : 'INFO',
+          service: process.env.SERVICE_NAME || 'skinplan-mini',
+          message: 'API Request',
+          method,
+          path,
+          statusCode,
+          duration,
+          userId: userId || null,
+        };
+
+        // Создаем уникальный ключ: api_logs:{userId}:{timestamp}:{random}
+        const logKey = `api_logs:${userId || 'anonymous'}:${Date.now()}:${Math.random().toString(36).substring(7)}`;
+        
+        // Сохраняем с TTL 7 дней (уменьшено с 30 дней)
+        await redis.set(logKey, JSON.stringify(logData), { ex: 7 * 24 * 60 * 60 });
+        
+        // Также добавляем в список последних API логов пользователя (храним последние 50, уменьшено с 100)
+        if (userId) {
+          const userApiLogsKey = `user_api_logs:${userId}`;
+          await redis.lpush(userApiLogsKey, logKey);
+          await redis.ltrim(userApiLogsKey, 0, 49); // Храним только последние 50 логов
+          await redis.expire(userApiLogsKey, 7 * 24 * 60 * 60); // TTL 7 дней
+        }
+      } catch (error: any) {
+        // Молча игнорируем ошибки KV (чтобы не создавать лишние запросы)
+        // Только логируем в консоль для диагностики
+        if (error?.message?.includes('max requests limit exceeded')) {
+          console.warn('⚠️ KV request limit exceeded, skipping API log', {
             method,
             path,
-            hasKVUrl: !!(process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL),
-            hasKVToken: !!(process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN),
+            statusCode,
           });
         }
-        return;
       }
-
-      // Создаем структурированный лог для KV
-      const logData = {
-        timestamp: new Date().toISOString(),
-        level: 'INFO',
-        service: process.env.SERVICE_NAME || 'skinplan-mini',
-        message: 'API Request',
-        method,
-        path,
-        statusCode,
-        duration,
-        userId: userId || null,
-      };
-
-      // Создаем уникальный ключ: api_logs:{userId}:{timestamp}:{random}
-      const logKey = `api_logs:${userId || 'anonymous'}:${Date.now()}:${Math.random().toString(36).substring(7)}`;
-      
-      // Сохраняем с TTL 30 дней
-      const setResult = await redis.set(logKey, JSON.stringify(logData), { ex: 30 * 24 * 60 * 60 });
-      
-      // Также добавляем в список последних API логов пользователя (храним последние 100)
-      if (userId) {
-        const userApiLogsKey = `user_api_logs:${userId}`;
-        await redis.lpush(userApiLogsKey, logKey);
-        await redis.ltrim(userApiLogsKey, 0, 99); // Храним только последние 100 логов
-        await redis.expire(userApiLogsKey, 30 * 24 * 60 * 60); // TTL 30 дней
-      }
-      
-      // Логируем успешную запись в KV (для диагностики)
-      console.log('✅ API log saved to KV', {
-        method,
-        path,
-        statusCode,
-        userId: userId || 'anonymous',
-        logKey: logKey.substring(0, 50) + '...',
-      });
-    } catch (error: any) {
-      // Логируем ошибки сохранения в KV (для диагностики)
-      console.error('❌ Failed to save API request log to KV:', {
-        method,
-        path,
-        error: error?.message,
-        errorCode: error?.code,
-        userId: userId || 'anonymous',
-      });
-    }
-  }).catch((error) => {
-    // Обрабатываем ошибки промиса (на случай, если Promise.resolve().then() не сработает)
-    console.error('❌ Failed to schedule API request log to KV:', {
-      method,
-      path,
-      error: error?.message,
+    }).catch(() => {
+      // Молча игнорируем ошибки промиса
     });
-  });
+  }
 }
 
 // Helper для логирования ошибок API
