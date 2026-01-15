@@ -23,7 +23,10 @@ vi.mock('@/lib/auth/telegram-auth', async () => {
     ...actual,
     requireTelegramAuth: vi.fn(async (request: NextRequest) => {
       if (!mockPrisma) {
-        mockPrisma = prismaTest;
+        const { PrismaClient } = await import('@prisma/client');
+        mockPrisma = hasDatabase
+          ? new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL! } } })
+          : new PrismaClient();
       }
       
       const telegramId = 'test-user-api-answers';
@@ -166,12 +169,7 @@ describe('POST /api/questionnaire/answers', () => {
       body: JSON.stringify(requestBody),
     });
 
-    vi.mock('@/lib/auth/telegram-auth', () => ({
-      requireTelegramAuth: vi.fn().mockResolvedValue({
-        ok: true,
-        ctx: { userId: testUserId },
-      }),
-    }));
+    // Мок уже определен на верхнем уровне, не нужно создавать еще один
 
     const response = await postAnswers(request);
     expect(response.status).toBe(400);
@@ -265,7 +263,9 @@ describe('GET /api/questionnaire/answers', () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(Array.isArray(data.data)).toBe(true);
-    expect(data.data.length).toBeGreaterThanOrEqual(2);
+    // ApiResponse.success возвращает данные напрямую (массив userAnswers)
+    expect(data).toBeDefined();
+    expect(Array.isArray(data)).toBe(true);
+    expect(data.length).toBeGreaterThanOrEqual(2);
   });
 });

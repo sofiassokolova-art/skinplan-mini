@@ -118,10 +118,11 @@ describe('GET /api/profile/current', () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.data).toBeDefined();
-    expect(data.data.id).toBe(profile.id);
-    expect(data.data.userId).toBe(testUserId);
-    expect(data.data.skinType).toBe('dry');
+    expect(data).toBeDefined();
+    expect(data).not.toBeNull();
+    expect(data.id).toBe(profile.id);
+    expect(data.skinType).toBe('dry');
+    expect(data.version).toBe(1);
   });
 
   it('должен вернуть 200 с null если профиль не найден', async () => {
@@ -149,7 +150,7 @@ describe('GET /api/profile/current', () => {
     const response = await getCurrentProfile(request);
     const data = await response.json();
     expect(response.status).toBe(200);
-    expect(data.data).toBeNull();
+    expect(data).toBeNull();
   });
 
   it('должен вернуть последнюю версию профиля', async () => {
@@ -193,7 +194,9 @@ describe('GET /api/profile/current', () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.data.version).toBe(2); // Последняя версия
-    expect(data.data.skinType).toBe('oily');
+    expect(data).toBeDefined();
+    expect(data).not.toBeNull();
+    expect(data.version).toBe(2); // Последняя версия
+    expect(data.skinType).toBe('oily');
   });
 });

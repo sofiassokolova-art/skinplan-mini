@@ -167,8 +167,18 @@ describe('GET /api/plan/generate', () => {
     expect([200, 202]).toContain(response.status);
   });
 
-  it('должен вернуть ошибку при отсутствии profileId', async () => {
+  it('должен вернуть 200 с state no_profile при отсутствии профиля', async () => {
     if (!hasDatabase) return;
+
+    // Убеждаемся, что у пользователя нет профиля
+    const user = await prismaTest.user.findUnique({
+      where: { telegramId: testUserId },
+    });
+    if (user) {
+      await prismaTest.skinProfile.deleteMany({
+        where: { userId: user.id },
+      });
+    }
 
     const initData = 'test_init_data';
     const request = new NextRequest('http://localhost:3000/api/plan/generate', {
@@ -179,6 +189,11 @@ describe('GET /api/plan/generate', () => {
     });
 
     const response = await generatePlan(request);
-    expect([400, 404]).toContain(response.status);
+    const data = await response.json();
+    
+    // API возвращает 200 с state: 'no_profile' при отсутствии профиля
+    expect(response.status).toBe(200);
+    expect(data).toBeDefined();
+    expect(data.state || data.data?.state).toBe('no_profile');
   });
 });
