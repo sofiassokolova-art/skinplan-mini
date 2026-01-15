@@ -52,16 +52,16 @@ export class QuestionnaireService {
           answers.map(async (answer) => {
             return tx.userAnswer.upsert({
               where: {
-                userId_questionId_questionnaireId: {
+                userId_questionnaireId_questionId: {
                   userId,
-                  questionId: answer.questionId,
                   questionnaireId,
+                  questionId: answer.questionId,
                 },
               },
               update: {
                 answerValue: answer.answerValue || null,
                 answerValues: answer.answerValues || [],
-                updatedAt: new Date(),
+                // updatedAt обновляется автоматически через @updatedAt
               },
               create: {
                 userId,
@@ -134,16 +134,21 @@ export class QuestionnaireService {
 
         let profile;
         if (existingProfile) {
+          const updateData: any = { ...profileData };
+          if (updateData.medicalMarkers !== undefined) {
+            updateData.medicalMarkers = updateData.medicalMarkers as any; // Prisma JSON type
+          }
           profile = await tx.skinProfile.update({
             where: { id: existingProfile.id },
-            data: profileData,
+            data: updateData,
           });
         } else {
+          const createData: any = { ...profileData, userId };
+          if (createData.medicalMarkers !== undefined) {
+            createData.medicalMarkers = createData.medicalMarkers as any; // Prisma JSON type
+          }
           profile = await tx.skinProfile.create({
-            data: {
-              ...profileData,
-              userId,
-            },
+            data: createData,
           });
         }
 

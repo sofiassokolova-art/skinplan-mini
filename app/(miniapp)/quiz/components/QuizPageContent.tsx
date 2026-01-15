@@ -33,9 +33,9 @@ interface QuizPageContentProps {
   answers: Record<string, any>;
   isRetakingQuiz: boolean;
   isSubmitting: boolean;
-  onAnswer: (questionId: number, value: any) => void;
+  onAnswer: (questionId: number, value: string | string[]) => Promise<void>;
   onNext: () => void;
-  onSubmit: () => void;
+  onSubmit: () => Promise<void>;
   onBack: () => void;
   finalizing: boolean;
   finalizingStep: 'answers' | 'plan' | 'done';

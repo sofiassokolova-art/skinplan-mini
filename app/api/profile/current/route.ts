@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   const method = 'GET';
   const path = '/api/profile/current';
   let userId: string | undefined;
-  const correlationId = getCorrelationId(request);
+  const correlationId = getCorrelationId(request) || undefined;
 
   try {
     // DEBUG: Логируем DB fingerprint для диагностики разных БД
@@ -62,10 +62,12 @@ export async function GET(request: NextRequest) {
       logApiRequest(method, path, 200, duration, userId, correlationId);
       
       // Для отсутствующего профиля кэшируем на 1 минуту (может появиться)
-      let response = NextResponse.json(null, { status: 200 });
-      response = addCacheHeaders(response, CachePresets.shortCache());
-      addCorrelationIdToHeaders(correlationId, response.headers);
-      return response;
+      const response = NextResponse.json(null, { status: 200 });
+      const responseWithCache = addCacheHeaders(response, CachePresets.shortCache());
+      if (correlationId) {
+        addCorrelationIdToHeaders(correlationId, responseWithCache.headers);
+      }
+      return responseWithCache;
     }
 
     // Преобразуем тип кожи в русский для отображения
@@ -80,7 +82,7 @@ export async function GET(request: NextRequest) {
     const duration = Date.now() - startTime;
     logApiRequest(method, path, 200, duration, userId, correlationId);
     
-    let response = NextResponse.json({
+    const response = NextResponse.json({
       id: profile.id,
       version: profile.version,
       skinType: profile.skinType,
@@ -99,9 +101,11 @@ export async function GET(request: NextRequest) {
     });
     
     // Добавляем кэширование: профиль меняется редко, кэшируем на 5 минут
-    response = addCacheHeaders(response, CachePresets.mediumCache());
-    addCorrelationIdToHeaders(correlationId, response.headers);
-    return response;
+    const responseWithCache = addCacheHeaders(response, CachePresets.mediumCache());
+    if (correlationId) {
+      addCorrelationIdToHeaders(correlationId, responseWithCache.headers);
+    }
+    return responseWithCache;
   } catch (error) {
     const duration = Date.now() - startTime;
     logApiError(method, path, error, userId, correlationId);
@@ -110,7 +114,9 @@ export async function GET(request: NextRequest) {
       { error: 'Internal server error' },
       { status: 500 }
     );
-    addCorrelationIdToHeaders(correlationId, errorResponse.headers);
+    if (correlationId) {
+      addCorrelationIdToHeaders(correlationId, errorResponse.headers);
+    }
     return errorResponse;
   }
 }

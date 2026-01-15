@@ -27,16 +27,8 @@ export function getCorrelationId(request?: NextRequest | Request | null): string
   }
 
   // Пытаемся получить из Next.js headers (для Server Components)
-  try {
-    const headersList = headers();
-    const correlationId = headersList.get(CORRELATION_ID_HEADER) ||
-                        headersList.get(REQUEST_ID_HEADER);
-    if (correlationId) {
-      return correlationId;
-    }
-  } catch (e) {
-    // Игнорируем ошибки, если headers() недоступен
-  }
+  // В Next.js 15+ headers() возвращает Promise, но в API routes всегда есть request
+  // Поэтому пропускаем этот блок, если request уже передан
 
   // Генерируем новый, если не найден
   return generateCorrelationId();

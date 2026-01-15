@@ -29,7 +29,7 @@ export class PlanRepository {
     return prisma.plan28.findFirst({
       where: {
         userId,
-        profileId,
+        skinProfileId: profileId,
       },
       orderBy: {
         createdAt: 'desc',
@@ -84,7 +84,7 @@ export class PlanRepository {
    */
   static async findManyByProfileId(profileId: string): Promise<Plan28Model[]> {
     return prisma.plan28.findMany({
-      where: { profileId },
+      where: { skinProfileId: profileId },
       orderBy: {
         createdAt: 'desc',
       },
@@ -103,9 +103,9 @@ export class PlanRepository {
     return prisma.plan28.create({
       data: {
         userId: data.userId,
-        profileId: data.profileId,
+        skinProfileId: data.profileId,
         profileVersion: data.profileVersion,
-        plan: data.plan as any, // Prisma JSON type
+        planData: data.plan as any, // Prisma JSON type (planData в схеме)
       },
     });
   }
@@ -123,7 +123,7 @@ export class PlanRepository {
     return prisma.plan28.update({
       where: { id },
       data: {
-        ...(data.plan && { plan: data.plan as any }),
+        ...(data.plan && { planData: data.plan as any }), // planData в схеме
         ...(data.profileVersion && { profileVersion: data.profileVersion }),
       },
     });
@@ -152,7 +152,7 @@ export class PlanRepository {
    */
   static async deleteManyByProfileId(profileId: string): Promise<{ count: number }> {
     return prisma.plan28.deleteMany({
-      where: { profileId },
+      where: { skinProfileId: profileId },
     });
   }
 
@@ -172,7 +172,7 @@ export class PlanRepository {
     const count = await prisma.plan28.count({
       where: {
         userId,
-        profileId,
+        skinProfileId: profileId,
       },
     });
     return count > 0;

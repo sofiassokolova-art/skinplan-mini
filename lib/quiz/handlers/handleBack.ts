@@ -40,7 +40,7 @@ export async function handleBack({
   setPendingInfoScreen,
   saveProgress,
   answers,
-}: HandleBackParams): void {
+}: HandleBackParams): Promise<void> {
   clientLogger.log('🔙 handleBack вызван', {
     currentInfoScreenIndex,
     currentQuestionIndex,
@@ -89,7 +89,7 @@ export async function handleBack({
   }
 
   // Если мы на вопросах, переходим к предыдущему вопросу
-  if (isOnQuestions && currentQuestionIndex > 0) {
+  if (isOnQuestionsValue && currentQuestionIndex > 0) {
     const newQuestionIndex = currentQuestionIndex - 1;
     clientLogger.log('🔙 handleBack: переходим к предыдущему вопросу', {
       oldIndex: currentQuestionIndex,
@@ -108,15 +108,14 @@ export async function handleBack({
   // Если мы на первом вопросе (currentQuestionIndex === 0) и на вопросах, 
   // возвращаемся к последнему инфо-экрану
   // ИСПРАВЛЕНО: Это позволяет пользователю вернуться к инфо-экранам после прохождения вопросов
-  if (isOnQuestions && currentQuestionIndex === 0) {
+  if (isOnQuestionsValue && currentQuestionIndex === 0) {
     const newInfoScreenIndex = initialInfoScreens.length - 1;
     clientLogger.log('🔙 handleBack: возвращаемся к последнему инфо-экрану с первого вопроса', {
       oldInfoScreenIndex: currentInfoScreenIndex,
       oldInfoScreenIndexRef: currentInfoScreenIndexRef.current,
       newInfoScreenIndex,
       currentQuestionIndex,
-      isOnQuestionsByState,
-      isOnQuestionsByRef,
+      isOnQuestionsValue,
     });
     // КРИТИЧНО: Обновляем и state, и ref синхронно
     updateInfoScreenIndex(newInfoScreenIndex, currentInfoScreenIndexRef, setCurrentInfoScreenIndex);

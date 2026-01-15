@@ -3,6 +3,7 @@
 
 'use client';
 
+import React from 'react';
 import { clientLogger } from '@/lib/client-logger';
 import { QuizErrorScreen } from './QuizErrorScreen';
 import type { Questionnaire, Question } from '@/lib/quiz/types';
@@ -43,7 +44,7 @@ export function checkQuizErrors({
   isShowingInitialInfoScreen,
   pendingInfoScreen,
   hasResumed,
-}: QuizErrorCheckerProps): JSX.Element | null {
+}: QuizErrorCheckerProps): React.ReactElement | null {
   // Случай 1: Анкета не загрузилась (questionnaire === null)
   if ((!currentQuestion || allQuestions.length === 0) && !loading && !showResumeScreen && !showRetakeScreen && !isShowingInitialInfoScreen && !pendingInfoScreen && !hasResumed && questionnaireRef.current) {
     if (!questionnaire) {

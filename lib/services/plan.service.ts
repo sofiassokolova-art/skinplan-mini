@@ -69,7 +69,7 @@ export class PlanService {
       return {
         success: true,
         data: {
-          plan28: plan.plan as Plan28,
+          plan28: plan.planData as unknown as Plan28,
           state: 'ready',
         },
         state: 'ready',
@@ -112,7 +112,7 @@ export class PlanService {
           success: true,
           data: {
             state: 'ready',
-            plan28: plan.plan as Plan28,
+            plan28: plan.planData as unknown as Plan28,
           },
           state: 'ready',
         };
@@ -154,7 +154,7 @@ export class PlanService {
       if (existingSession) {
         return {
           success: true,
-          sessionId: existingSession.id,
+          sessionId: String(existingSession.id),
         };
       }
 
@@ -162,18 +162,19 @@ export class PlanService {
         data: {
           userId,
           profileId,
+          products: [], // Пустой массив по умолчанию
         },
       });
 
       logger.info('RecommendationSession created before plan generation', {
         userId,
         profileId,
-        sessionId: newSession.id,
+        sessionId: String(newSession.id),
       });
 
       return {
         success: true,
-        sessionId: newSession.id,
+        sessionId: String(newSession.id),
       };
     } catch (error: any) {
       logger.error('Error ensuring RecommendationSession', error, {

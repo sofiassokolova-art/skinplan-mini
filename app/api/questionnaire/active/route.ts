@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   const method = 'GET';
   const path = '/api/questionnaire/active';
   let userId: string | null = null;
-  const correlationId = getCorrelationId(request);
+  const correlationId = getCorrelationId(request) || undefined;
   
   try {
     // ИСПРАВЛЕНО: Проверяем авторизацию и получаем userId
@@ -524,13 +524,13 @@ export async function GET(request: NextRequest) {
     
     // Добавляем кэширование: анкета меняется редко, кэшируем на 1 час
     // Но для персональных данных (shouldRedirectToPlan) не кэшируем
-    if (!shouldRedirectToPlan) {
-      response = addCacheHeaders(response, CachePresets.longCache());
-    } else {
-      response = addCacheHeaders(response, CachePresets.noCache());
+    const responseWithCache = !shouldRedirectToPlan
+      ? addCacheHeaders(response, CachePresets.longCache())
+      : addCacheHeaders(response, CachePresets.noCache());
+    if (correlationId) {
+      addCorrelationIdToHeaders(correlationId, responseWithCache.headers);
     }
-    addCorrelationIdToHeaders(correlationId, response.headers);
-    return response;
+    return responseWithCache;
   } catch (error: any) {
     const duration = Date.now() - startTime;
     
@@ -563,7 +563,9 @@ export async function GET(request: NextRequest) {
         },
         { status: 500 }
       );
-      addCorrelationIdToHeaders(correlationId, errorResponse.headers);
+      if (correlationId) {
+        addCorrelationIdToHeaders(correlationId, errorResponse.headers);
+      }
       return errorResponse;
     }
     
@@ -579,7 +581,9 @@ export async function GET(request: NextRequest) {
       { error: 'Internal server error', details: process.env.NODE_ENV === 'development' ? error?.message : undefined },
       { status: 500 }
     );
-    addCorrelationIdToHeaders(correlationId, errorResponse.headers);
+    if (correlationId) {
+      addCorrelationIdToHeaders(correlationId, errorResponse.headers);
+    }
     return errorResponse;
   }
 }

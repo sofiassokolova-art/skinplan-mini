@@ -6,7 +6,7 @@ import { prisma } from '@/lib/db';
 import type { Questionnaire, Question, UserAnswer, QuestionGroup } from '@prisma/client';
 
 export interface QuestionnaireWithRelations extends Questionnaire {
-  groups: Array<QuestionGroup & { questions: Array<Question & { answerOptions: any[] }> }>;
+  questionGroups?: Array<QuestionGroup & { questions: Array<Question & { answerOptions: any[] }> }>;
   questions: Array<Question & { answerOptions: any[] }>;
 }
 
@@ -31,10 +31,10 @@ export class QuestionnaireRepository {
    * Получить активную анкету с полными данными (группы, вопросы, опции)
    */
   static async findActiveWithRelations(): Promise<QuestionnaireWithRelations | null> {
-    return prisma.questionnaire.findFirst({
+    const result = await prisma.questionnaire.findFirst({
       where: { isActive: true },
       include: {
-        groups: {
+        questionGroups: {
           include: {
             questions: {
               include: {
@@ -50,6 +50,7 @@ export class QuestionnaireRepository {
         },
       },
     });
+    return result as QuestionnaireWithRelations | null;
   }
 
   /**
@@ -65,10 +66,10 @@ export class QuestionnaireRepository {
    * Получить анкету по ID с полными данными
    */
   static async findByIdWithRelations(id: number): Promise<QuestionnaireWithRelations | null> {
-    return prisma.questionnaire.findUnique({
+    const result = await prisma.questionnaire.findUnique({
       where: { id },
       include: {
-        groups: {
+        questionGroups: {
           include: {
             questions: {
               include: {
@@ -84,6 +85,7 @@ export class QuestionnaireRepository {
         },
       },
     });
+    return result as QuestionnaireWithRelations | null;
   }
 
   /**
@@ -111,10 +113,10 @@ export class UserAnswerRepository {
   ): Promise<UserAnswer | null> {
     return prisma.userAnswer.findUnique({
       where: {
-        userId_questionId_questionnaireId: {
+        userId_questionnaireId_questionId: {
           userId,
-          questionId,
           questionnaireId,
+          questionId,
         },
       },
     });
@@ -171,16 +173,16 @@ export class UserAnswerRepository {
   ): Promise<UserAnswer> {
     return prisma.userAnswer.upsert({
       where: {
-        userId_questionId_questionnaireId: {
+        userId_questionnaireId_questionId: {
           userId,
-          questionId,
           questionnaireId,
+          questionId,
         },
       },
       update: {
         answerValue: data.answerValue ?? null,
         answerValues: data.answerValues ?? [],
-        updatedAt: new Date(),
+        // updatedAt обновляется автоматически через @updatedAt
       },
       create: {
         userId,
@@ -204,14 +206,33 @@ export class UserAnswerRepository {
       answerValues?: string[];
     }>
   ): Promise<UserAnswer[]> {
-    return prisma.$transaction(
-      answers.map((answer) =>
-        this.upsert(userId, answer.questionId, questionnaireId, {
-          answerValue: answer.answerValue,
-          answerValues: answer.answerValues,
-        })
-      )
-    );
+    return prisma.$transaction(async (tx) => {
+      const results: UserAnswer[] = [];
+      for (const answer of answers) {
+        const result = await tx.userAnswer.upsert({
+          where: {
+            userId_questionnaireId_questionId: {
+              userId,
+              questionnaireId,
+              questionId: answer.questionId,
+            },
+          },
+          update: {
+            answerValue: answer.answerValue ?? null,
+            answerValues: answer.answerValues ?? [],
+          },
+          create: {
+            userId,
+            questionId: answer.questionId,
+            questionnaireId,
+            answerValue: answer.answerValue ?? null,
+            answerValues: answer.answerValues ?? [],
+          },
+        });
+        results.push(result);
+      }
+      return results;
+    });
   }
 
   /**

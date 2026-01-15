@@ -86,7 +86,10 @@ export class ProfileRepository {
     data: Omit<SkinProfile, 'id' | 'createdAt' | 'updatedAt'>
   ): Promise<SkinProfile> {
     return prisma.skinProfile.create({
-      data,
+      data: {
+        ...data,
+        medicalMarkers: data.medicalMarkers as any, // Prisma JSON type
+      },
     });
   }
 
@@ -97,9 +100,13 @@ export class ProfileRepository {
     id: string,
     data: Partial<Omit<SkinProfile, 'id' | 'createdAt' | 'updatedAt' | 'userId'>>
   ): Promise<SkinProfile> {
+    const updateData: any = { ...data };
+    if (updateData.medicalMarkers !== undefined) {
+      updateData.medicalMarkers = updateData.medicalMarkers as any; // Prisma JSON type
+    }
     return prisma.skinProfile.update({
       where: { id },
-      data,
+      data: updateData,
     });
   }
 
