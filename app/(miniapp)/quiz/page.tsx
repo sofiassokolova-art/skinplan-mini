@@ -4193,14 +4193,13 @@ export default function QuizPage() {
   // ОБНОВЛЕНО: Если есть currentQuestion - это экран вопроса (белый фон)
   const isQuestionScreen = !!currentQuestion && !pendingInfoScreen && !showResumeScreen && !showRetakeScreen;
 
-  // Определяем, нужен ли лаймовый фон для вопроса о целях
-  const isGoalsQuestionWithLimeBg = currentQuestion?.code === 'skin_goals' &&
+  // Определяем, это ли вопрос о целях (для специального стиля)
+  const isGoalsQuestion = currentQuestion?.code === 'skin_goals' &&
     currentQuestion?.type === 'multi_choice';
 
   // Определяем цвет фона
-  // ОБНОВЛЕНО: Все вопросы теперь на белом фоне (кроме goals)
+  // ОБНОВЛЕНО: Все вопросы теперь на белом фоне (включая goals)
   const getBackgroundColor = () => {
-    if (isGoalsQuestionWithLimeBg) return '#D5FE61';
     if (isQuestionScreen) return '#FFFFFF';
     return 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)';
   };

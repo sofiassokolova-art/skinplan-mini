@@ -112,17 +112,19 @@ export function QuizQuestion({
         </div>
       )}
 
-      {/* Заголовок вопроса */}
-      <h2 className="quiz-title" style={{ 
-        fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-        fontSize: '24px', 
-        fontWeight: 700, 
-        color: '#000000',
-        marginBottom: useLimeStyle ? '16px' : '24px',
-        marginTop: hideProgressBar ? '60px' : '0',
-      }}>
-        {question?.text || ''}
-      </h2>
+      {/* Заголовок вопроса - скрыт для skin_goals (отображается внутри лаймового контейнера) */}
+      {!useLimeStyle && (
+        <h2 className="quiz-title" style={{ 
+          fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+          fontSize: '24px', 
+          fontWeight: 700, 
+          color: '#000000',
+          marginBottom: '24px',
+          marginTop: hideProgressBar ? '60px' : '0',
+        }}>
+          {question?.text || ''}
+        </h2>
+      )}
 
       {/* Single Choice - белые кнопки с серой окантовкой, #F2F2F2 при выборе */}
       {question?.type === 'single_choice' && question?.options && (
@@ -280,131 +282,150 @@ export function QuizQuestion({
         </div>
       )}
 
-      {/* Multi Choice - Lime Style (skin_goals) */}
+      {/* Multi Choice - Lime Style (skin_goals) - лаймовый контейнер с отступами */}
       {question?.type === 'multi_choice' && question?.options && useLimeStyle && (
         <div style={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          gap: '16px',
           backgroundColor: '#D5FE61',
           borderRadius: '24px',
           padding: '20px',
+          marginLeft: '-20px',
+          marginRight: '-20px',
+          marginTop: '-40px',
+          paddingTop: '60px',
         }}>
-          {question.options.map((option, index) => {
-            const currentAnswers = (answers[question.id] as string[]) || [];
-            const isSelected = currentAnswers.includes(option.value);
-            // Картинки для каждой опции skin_goals
-            const goalImages: Record<number, string> = {
-              0: '/wrinkles6.jpeg',      // Сократить морщины и мелкие линии
-              1: '/acne6.jpeg',          // Избавиться от акне и высыпаний
-              2: '/pores6.jpeg',         // Сделать поры менее заметными
-              3: '/puff6.jpeg',          // Уменьшить отёчность лица
-              4: '/pigmentation6.jpeg',  // Выровнять тон и пигментацию
-              5: '/tone6.jpeg',          // Улучшить текстуру и гладкость кожи
-            };
-            const imageUrl = goalImages[index] || '/tone6.jpeg';
-            
-            return (
-              <button
-                key={option.id}
-                onClick={async () => {
-                  const newAnswers = isSelected
-                    ? currentAnswers.filter((v) => v !== option.value)
-                    : [...currentAnswers, option.value];
-                  await onAnswer(question.id, newAnswers);
-                }}
-                style={{
-                  padding: '0',
-                  borderRadius: '16px',
-                  border: isSelected ? '2px solid #FFFFFF' : 'none',
-                  backgroundColor: isSelected ? '#D5FE61' : '#FFFFFF',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  overflow: 'hidden',
-                  transition: 'all 0.2s',
-                  boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-                }}
-              >
-                {/* Картинка */}
-                <div style={{
-                  width: '100%',
-                  height: '140px',
-                  backgroundColor: '#f0f0f0',
-                  overflow: 'hidden',
-                }}>
-                  <img 
-                    src={imageUrl}
-                    alt={option.label}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                    }}
-                  />
-                </div>
-                {/* Текст и чекбокс */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '16px',
-                  backgroundColor: isSelected ? '#D5FE61' : '#FFFFFF',
-                }}>
-                  <span style={{
-                    fontSize: '16px',
-                    fontWeight: 500,
-                    color: '#000000',
-                    fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                  }}>
-                    {option.label}
-                  </span>
-                  {/* Кружок-чекбокс */}
+          {/* Заголовок внутри лаймового контейнера */}
+          <h2 style={{ 
+            fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontSize: '24px', 
+            fontWeight: 700, 
+            color: '#000000',
+            marginBottom: '20px',
+            marginTop: '0',
+          }}>
+            {question?.text || ''}
+          </h2>
+
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '16px',
+          }}>
+            {question.options.map((option, index) => {
+              const currentAnswers = (answers[question.id] as string[]) || [];
+              const isSelected = currentAnswers.includes(option.value);
+              // Картинки для каждой опции skin_goals
+              const goalImages: Record<number, string> = {
+                0: '/wrinkles6.jpeg',      // Сократить морщины и мелкие линии
+                1: '/acne6.jpeg',          // Избавиться от акне и высыпаний
+                2: '/pores6.jpeg',         // Сделать поры менее заметными
+                3: '/puff6.jpeg',          // Уменьшить отёчность лица
+                4: '/pigmentation6.jpeg',  // Выровнять тон и пигментацию
+                5: '/tone6.jpeg',          // Улучшить текстуру и гладкость кожи
+              };
+              const imageUrl = goalImages[index] || '/tone6.jpeg';
+              
+              return (
+                <button
+                  key={option.id}
+                  onClick={async () => {
+                    const newAnswers = isSelected
+                      ? currentAnswers.filter((v) => v !== option.value)
+                      : [...currentAnswers, option.value];
+                    await onAnswer(question.id, newAnswers);
+                  }}
+                  style={{
+                    padding: '0',
+                    borderRadius: '16px',
+                    border: isSelected ? '2px solid #FFFFFF' : 'none',
+                    backgroundColor: isSelected ? '#D5FE61' : '#FFFFFF',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    overflow: 'hidden',
+                    transition: 'all 0.2s',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                  }}
+                >
+                  {/* Картинка */}
                   <div style={{
-                    width: '28px',
-                    height: '28px',
-                    borderRadius: '50%',
-                    backgroundColor: isSelected ? '#000000' : '#D5FE61',
-                    border: isSelected ? 'none' : '2px solid #D5FE61',
+                    width: '100%',
+                    height: '140px',
+                    backgroundColor: '#f0f0f0',
+                    overflow: 'hidden',
+                  }}>
+                    <img 
+                      src={imageUrl}
+                      alt={option.label}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                      }}
+                    />
+                  </div>
+                  {/* Текст и чекбокс */}
+                  <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    boxShadow: isSelected ? 'none' : 'inset 0 2px 4px rgba(0, 0, 0, 0.15)',
+                    justifyContent: 'space-between',
+                    padding: '16px',
+                    backgroundColor: isSelected ? '#D5FE61' : '#FFFFFF',
                   }}>
-                    {isSelected && (
-                      <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
-                        <path d="M1 5L5 9L13 1" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
+                    <span style={{
+                      fontSize: '16px',
+                      fontWeight: 500,
+                      color: '#000000',
+                      fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                    }}>
+                      {option.label}
+                    </span>
+                    {/* Кружок-чекбокс */}
+                    <div style={{
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '50%',
+                      backgroundColor: isSelected ? '#000000' : '#D5FE61',
+                      border: isSelected ? 'none' : '2px solid #D5FE61',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      boxShadow: isSelected ? 'none' : 'inset 0 2px 4px rgba(0, 0, 0, 0.15)',
+                    }}>
+                      {isSelected && (
+                        <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
+                          <path d="M1 5L5 9L13 1" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </div>
                   </div>
-                </div>
+                </button>
+              );
+            })}
+            
+            {/* Кнопка "Далее" - черная */}
+            {answers[question.id] && (Array.isArray(answers[question.id]) ? (answers[question.id] as string[]).length > 0 : true) && (
+              <button
+                onClick={showSubmitButton ? onSubmit : onNext}
+                disabled={isSubmitting}
+                style={{
+                  marginTop: '8px',
+                  width: '100%',
+                  padding: '18px',
+                  borderRadius: '20px',
+                  backgroundColor: '#000000',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  opacity: isSubmitting ? 0.7 : 1,
+                  fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                }}
+              >
+                {showSubmitButton ? (isSubmitting ? 'Отправка...' : 'Получить план') : 'Продолжить'}
               </button>
-            );
-          })}
-          
-          {/* Кнопка "Далее" - черная */}
-          {answers[question.id] && (Array.isArray(answers[question.id]) ? (answers[question.id] as string[]).length > 0 : true) && (
-            <button
-              onClick={showSubmitButton ? onSubmit : onNext}
-              disabled={isSubmitting}
-              style={{
-                marginTop: '8px',
-                width: '100%',
-                padding: '18px',
-                borderRadius: '20px',
-                backgroundColor: '#000000',
-                color: '#FFFFFF',
-                border: 'none',
-                cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                fontSize: '16px',
-                fontWeight: 600,
-                opacity: isSubmitting ? 0.7 : 1,
-                fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-              }}
-            >
-              {showSubmitButton ? (isSubmitting ? 'Отправка...' : 'Получить план') : 'Продолжить'}
-            </button>
-          )}
+            )}
+          </div>
         </div>
       )}
 
