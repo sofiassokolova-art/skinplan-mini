@@ -3,6 +3,7 @@
 // Заменяют использование localStorage
 
 import { api } from './api';
+import { isQuizContext } from './route-utils';
 
 // Кэш для preferences (чтобы не делать лишние запросы)
 let preferencesCache: {
@@ -17,174 +18,67 @@ let pendingRequest: Promise<any> | null = null;
 
 const CACHE_TTL = 30000; // 30 секунд кэш (увеличено для уменьшения запросов)
 
+// Дефолтные значения для preferences
+const DEFAULT_PREFERENCES = {
+  isRetakingQuiz: false,
+  fullRetakeFromHome: false,
+  paymentRetakingCompleted: false,
+  paymentFullRetakeCompleted: false,
+  hasPlanProgress: false,
+  routineProducts: null,
+  planFeedbackSent: false,
+  serviceFeedbackSent: false,
+  lastPlanFeedbackDate: null,
+  lastServiceFeedbackDate: null,
+  extra: null,
+};
+
 // Получаем preferences с кэшированием
 export async function getUserPreferences() {
-  // ТЗ: НА /quiz НИКОГДА не делаем API вызовы - используем дефолтные значения
-  // КРИТИЧНО: Проверяем pathname, href и referrer СИНХРОННО перед любыми async операциями
-  if (typeof window !== 'undefined') {
-    const pathname = window.location.pathname;
-    const href = window.location.href;
-    const referrer = document.referrer;
-    const isNavigatingToQuiz = referrer && (referrer.includes('/quiz') || referrer.endsWith('/quiz'));
-    const isQuizInHref = href.includes('/quiz');
-    const isOnQuizPage = pathname === '/quiz' || pathname.startsWith('/quiz/');
-    const shouldBlock = isOnQuizPage || isNavigatingToQuiz || isQuizInHref;
-    
-    if (shouldBlock) {
-      console.log('⚠️ getUserPreferences called on /quiz - returning defaults without API call', {
-        pathname,
-        href,
-        referrer,
-        isNavigatingToQuiz,
-        isQuizInHref,
-        isOnQuizPage,
-        hasPendingRequest: !!pendingRequest,
-      });
-      // ИСПРАВЛЕНО: Возвращаем resolved Promise с дефолтными значениями
-      // Это предотвращает любые async операции на /quiz
-      return {
-        isRetakingQuiz: false,
-        fullRetakeFromHome: false,
-        paymentRetakingCompleted: false,
-        paymentFullRetakeCompleted: false,
-        hasPlanProgress: false,
-        routineProducts: null,
-        planFeedbackSent: false,
-        serviceFeedbackSent: false,
-        lastPlanFeedbackDate: null,
-        lastServiceFeedbackDate: null,
-        extra: null,
-      };
-    }
+  // РЕФАКТОРИНГ: Используем централизованную проверку из route-utils.ts
+  // На /quiz не делаем API вызовы - используем дефолтные значения
+  if (isQuizContext()) {
+    console.log('⚠️ getUserPreferences called on /quiz - returning defaults without API call');
+    return DEFAULT_PREFERENCES;
   }
   
-  // ТЗ: Проверяем sessionStorage для hasPlanProgress (самый частый запрос)
-  // Это предотвращает множественные запросы при загрузке страницы
-  // ВАЖНО: Используем try-catch для всех операций с sessionStorage, так как они могут быть недоступны
-  // ТЗ: На /quiz не используем кэш из sessionStorage
-  if (typeof window !== 'undefined') {
+  // Проверяем sessionStorage кэш (не на /quiz)
+  if (typeof window !== 'undefined' && !isQuizContext()) {
     try {
-      const pathname = window.location.pathname;
-      const isOnQuiz = pathname === '/quiz' || pathname.startsWith('/quiz/');
-      
-      if (!isOnQuiz) {
-        const cached = sessionStorage.getItem('user_preferences_cache');
-        if (cached) {
-          try {
-            const parsed = JSON.parse(cached);
-            const cacheAge = Date.now() - parsed.timestamp;
-            if (cacheAge < CACHE_TTL && parsed.data) {
-              return parsed.data;
-            }
-          } catch (e) {
-            // Игнорируем ошибки парсинга
-          }
+      const cached = sessionStorage.getItem('user_preferences_cache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        const cacheAge = Date.now() - parsed.timestamp;
+        if (cacheAge < CACHE_TTL && parsed.data) {
+          return parsed.data;
         }
       }
     } catch (e) {
-      // Игнорируем ошибки sessionStorage (может быть недоступен в приватном режиме и т.д.)
-      // Продолжаем выполнение с проверкой кэша в памяти
+      // Игнорируем ошибки sessionStorage
     }
   }
   
   // Проверяем кэш в памяти
   if (preferencesCache && Date.now() - preferencesCache.timestamp < CACHE_TTL) {
-    // ТЗ: Даже если есть кэш, проверяем pathname на /quiz
-    // На /quiz не используем кэш, возвращаем дефолтные значения
-    if (typeof window !== 'undefined') {
-      const pathname = window.location.pathname;
-      if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
-        console.log('⚠️ getUserPreferences called on /quiz - returning defaults (ignoring cache)');
-        return {
-          isRetakingQuiz: false,
-          fullRetakeFromHome: false,
-          paymentRetakingCompleted: false,
-          paymentFullRetakeCompleted: false,
-          hasPlanProgress: false,
-          routineProducts: null,
-          planFeedbackSent: false,
-          serviceFeedbackSent: false,
-          lastPlanFeedbackDate: null,
-          lastServiceFeedbackDate: null,
-          extra: null,
-        };
-      }
-    }
     return preferencesCache.data;
   }
 
-  // ТЗ: Если уже есть запрос в процессе, проверяем pathname перед возвратом
-  // Если мы на /quiz, не ждем pending запрос, возвращаем дефолтные значения
+  // Если уже есть запрос в процессе, возвращаем его
   if (pendingRequest) {
-    // КРИТИЧНО: Проверяем pathname еще раз перед возвратом pending запроса
-    if (typeof window !== 'undefined') {
-      const pathname = window.location.pathname;
-      if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
-        console.log('⚠️ getUserPreferences: pending request exists but we are on /quiz - returning defaults');
-        return {
-          isRetakingQuiz: false,
-          fullRetakeFromHome: false,
-          paymentRetakingCompleted: false,
-          paymentFullRetakeCompleted: false,
-          hasPlanProgress: false,
-          routineProducts: null,
-          planFeedbackSent: false,
-          serviceFeedbackSent: false,
-          lastPlanFeedbackDate: null,
-          lastServiceFeedbackDate: null,
-          extra: null,
-        };
-      }
-    }
     return pendingRequest;
   }
 
-  // КРИТИЧНО: Проверяем pathname еще раз ПЕРЕД созданием нового запроса
-  // Это защита от race condition, когда вызов был инициирован до перехода на /quiz
-  if (typeof window !== 'undefined') {
-    const pathname = window.location.pathname;
-    const isOnQuizPage = pathname === '/quiz' || pathname.startsWith('/quiz/');
-    if (isOnQuizPage) {
-      console.log('⚠️ getUserPreferences: preventing new request creation on /quiz - returning defaults');
-      return {
-        isRetakingQuiz: false,
-        fullRetakeFromHome: false,
-        paymentRetakingCompleted: false,
-        paymentFullRetakeCompleted: false,
-        hasPlanProgress: false,
-        routineProducts: null,
-        planFeedbackSent: false,
-        serviceFeedbackSent: false,
-        lastPlanFeedbackDate: null,
-        lastServiceFeedbackDate: null,
-        extra: null,
-      };
-    }
+  // Финальная проверка перед созданием запроса
+  if (isQuizContext()) {
+    console.log('⚠️ getUserPreferences: preventing new request on /quiz');
+    return DEFAULT_PREFERENCES;
   }
 
   // Создаем новый запрос
   pendingRequest = (async () => {
-    // КРИТИЧНО: Проверяем pathname еще раз ВНУТРИ async функции перед API вызовом
-    // Это финальная защита от race condition
-    if (typeof window !== 'undefined') {
-      const pathname = window.location.pathname;
-      const isOnQuizPage = pathname === '/quiz' || pathname.startsWith('/quiz/');
-      if (isOnQuizPage) {
-        console.log('⚠️ getUserPreferences: preventing API call inside async function on /quiz - returning defaults');
-        return {
-          isRetakingQuiz: false,
-          fullRetakeFromHome: false,
-          paymentRetakingCompleted: false,
-          paymentFullRetakeCompleted: false,
-          hasPlanProgress: false,
-          routineProducts: null,
-          planFeedbackSent: false,
-          serviceFeedbackSent: false,
-          lastPlanFeedbackDate: null,
-          lastServiceFeedbackDate: null,
-          extra: null,
-        };
-      }
+    // Финальная проверка внутри async функции
+    if (isQuizContext()) {
+      return DEFAULT_PREFERENCES;
     }
     
     try {

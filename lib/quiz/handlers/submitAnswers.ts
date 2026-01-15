@@ -63,114 +63,15 @@ export async function submitAnswers(params: SubmitAnswersParams): Promise<void> 
     console.warn('⚠️ Ошибка при подготовке логирования (submitAnswers called):', logError);
   }
   
-  // ВАЖНО: Логируем, что продолжаем выполнение после логирования
-  clientLogger.log('✅ Логирование submitAnswers called завершено, продолжаем выполнение');
-  
-  // ВАЖНО: Отправляем критичный лог на сервер (неблокирующе)
-  // ИСПРАВЛЕНО: Не ждем завершения логирования, чтобы не блокировать выполнение
-  const syncInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
-  if (syncInitData) {
-    // Отправляем логирование асинхронно, не блокируя выполнение
-    fetch('/api/logs', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Telegram-Init-Data': syncInitData,
-      },
-      body: JSON.stringify({
-        level: 'info',
-        message: '✅ Логирование submitAnswers called завершено, продолжаем выполнение',
-        context: {
-          timestamp: new Date().toISOString(),
-          hasQuestionnaire: !!params.questionnaire,
-          questionnaireId: params.questionnaire?.id,
-        },
-        url: typeof window !== 'undefined' ? window.location.href : undefined,
-      }),
-    }).catch(() => {}); // Игнорируем ошибки логирования
-  }
-  
-  // Сохраняем функцию в ref для использования в setTimeout
-  // ИСПРАВЛЕНО: В отдельной функции не можем сохранить саму функцию в ref
-  
-  // ВАЖНО: Логируем сразу после установки ref
-  clientLogger.log('✅ submitAnswersRef.current установлен, продолжаем выполнение');
-  
-  // ВАЖНО: Отправляем критичный лог на сервер (неблокирующе)
-  // ИСПРАВЛЕНО: Не ждем завершения логирования, чтобы не блокировать выполнение
-  if (syncInitData) {
-    // Отправляем логирование асинхронно, не блокируя выполнение
-    fetch('/api/logs', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Telegram-Init-Data': syncInitData,
-      },
-      body: JSON.stringify({
-        level: 'info',
-        message: '✅ submitAnswersRef.current установлен, продолжаем выполнение',
-        context: {
-          timestamp: new Date().toISOString(),
-          hasQuestionnaire: !!params.questionnaire,
-          questionnaireId: params.questionnaire?.id,
-        },
-        url: typeof window !== 'undefined' ? window.location.href : undefined,
-      }),
-    }).catch(() => {}); // Игнорируем ошибки логирования
-  }
-  
-  // ВАЖНО: Логируем перед проверкой params.questionnaire
-  clientLogger.log('🔍 Проверка params.questionnaire перед продолжением:', {
+  // РЕФАКТОРИНГ: clientLogger уже отправляет логи на сервер, дублирующие fetch-вызовы удалены
+  clientLogger.info('✅ submitAnswers started', {
     hasQuestionnaire: !!params.questionnaire,
     questionnaireId: params.questionnaire?.id,
+    answersCount: Object.keys(params.answers).length,
   });
-  
-  // ВАЖНО: Отправляем критичный лог на сервер (неблокирующе)
-  if (syncInitData) {
-    // Отправляем логирование асинхронно, не блокируя выполнение
-    fetch('/api/logs', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Telegram-Init-Data': syncInitData,
-      },
-      body: JSON.stringify({
-        level: 'info',
-        message: '🔍 Проверка params.questionnaire перед продолжением',
-        context: {
-          timestamp: new Date().toISOString(),
-          hasQuestionnaire: !!params.questionnaire,
-          questionnaireId: params.questionnaire?.id,
-        },
-        url: typeof window !== 'undefined' ? window.location.href : undefined,
-      }),
-    }).catch(() => {}); // Игнорируем ошибки логирования
-  }
   
   if (!params.questionnaire) {
     clientLogger.error('❌ Анкета не загружена - блокируем отправку');
-    
-    // ВАЖНО: Отправляем критичный лог на сервер (неблокирующе)
-    const syncInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
-    if (syncInitData) {
-      fetch('/api/logs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Telegram-Init-Data': syncInitData,
-        },
-        body: JSON.stringify({
-          level: 'error',
-          message: '❌ Анкета не загружена - блокируем отправку',
-          context: {
-            timestamp: new Date().toISOString(),
-            hasQuestionnaire: false,
-          },
-          url: typeof window !== 'undefined' ? window.location.href : undefined,
-        }),
-      }).catch(() => {}); // Игнорируем ошибки логирования
-    }
-    
     if (params.isMountedRef.current) {
       params.setError('Анкета не загружена. Пожалуйста, обновите страницу.');
       // ИСПРАВЛЕНО: Устанавливаем state, ref синхронизируется автоматически через useEffect
@@ -192,31 +93,10 @@ export async function submitAnswers(params: SubmitAnswersParams): Promise<void> 
       params.isSubmittingRef.current = true;
     }
     // Оба флага true - действительно идет отправка
-      clientLogger.warn('⚠️ Уже отправляется, игнорируем повторный вызов', {
-        isSubmitting: params.isSubmitting,
-        isSubmittingRef: params.isSubmittingRef.current,
+    clientLogger.warn('⚠️ Уже отправляется, игнорируем повторный вызов', {
+      isSubmitting: params.isSubmitting,
+      isSubmittingRef: params.isSubmittingRef.current,
     });
-    // ВАЖНО: Логируем на сервер для диагностики (неблокирующе)
-    const currentInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
-    if (currentInitData) {
-      fetch('/api/logs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Telegram-Init-Data': currentInitData,
-        },
-        body: JSON.stringify({
-          level: 'warn',
-          message: '⚠️ Уже отправляется, игнорируем повторный вызов',
-          context: {
-            isSubmitting: params.isSubmitting,
-            isSubmittingRef: params.isSubmittingRef.current,
-            timestamp: new Date().toISOString(),
-          },
-          url: typeof window !== 'undefined' ? window.location.href : undefined,
-        }),
-      }).catch(() => {}); // Игнорируем ошибки логирования
-    }
     return;
   }
 
@@ -292,54 +172,10 @@ export async function submitAnswers(params: SubmitAnswersParams): Promise<void> 
     }
     
     clientLogger.log('✅ Все проверки пройдены, продолжаем формирование answerArray');
-    
-    // ВАЖНО: Отправляем критичный лог на сервер (неблокирующе)
-    const currentInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
-    if (currentInitData) {
-      fetch('/api/logs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Telegram-Init-Data': currentInitData,
-        },
-        body: JSON.stringify({
-          level: 'info',
-          message: '✅ Все проверки пройдены, продолжаем формирование answerArray',
-          context: {
-            timestamp: new Date().toISOString(),
-            hasQuestionnaire: !!params.questionnaire,
-            answersCount: Object.keys(params.answers).length,
-          },
-          url: typeof window !== 'undefined' ? window.location.href : undefined,
-        }),
-      }).catch(() => {}); // Игнорируем ошибки логирования
-    }
 
-    // Собираем ответы из state, если они пустые - пытаемся загрузить из localStorage
+    // Собираем ответы из state, если они пустые - пытаемся загрузить из БД
     let answersToSubmit = params.answers;
     clientLogger.log('📝 Текущие ответы в state:', Object.keys(answersToSubmit).length);
-    
-    // ВАЖНО: Отправляем критичный лог на сервер (неблокирующе)
-    const currentInitDataForLog1 = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
-    if (currentInitDataForLog1) {
-      fetch('/api/logs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Telegram-Init-Data': currentInitDataForLog1,
-        },
-        body: JSON.stringify({
-          level: 'info',
-          message: '📝 Текущие ответы в state',
-          context: {
-            timestamp: new Date().toISOString(),
-            answersCount: Object.keys(answersToSubmit).length,
-            answersInState: Object.keys(params.answers).length,
-          },
-          url: typeof window !== 'undefined' ? window.location.href : undefined,
-        }),
-      }).catch(() => {}); // Игнорируем ошибки логирования
-    }
     
     if (Object.keys(answersToSubmit).length === 0) {
       clientLogger.log('📦 Ответы пустые, пытаемся загрузить из БД...');
@@ -432,29 +268,6 @@ export async function submitAnswers(params: SubmitAnswersParams): Promise<void> 
       answerArraySample: answerArray.slice(0, 5),
     });
     
-    // ВАЖНО: Отправляем критичный лог на сервер (неблокирующе)
-    const currentInitDataForLog2 = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
-    if (currentInitDataForLog2) {
-      fetch('/api/logs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Telegram-Init-Data': currentInitDataForLog2,
-        },
-        body: JSON.stringify({
-          level: 'info',
-          message: '📤 Отправка ответов на сервер',
-          context: {
-            timestamp: new Date().toISOString(),
-            questionnaireId: params.questionnaire?.id,
-            answersCount: answerArray.length,
-            answerArrayQuestionIds: answerArray.map(a => a.questionId),
-          },
-          url: typeof window !== 'undefined' ? window.location.href : undefined,
-        }),
-      }).catch(() => {}); // Игнорируем ошибки логирования
-    }
-    
     // ВАЖНО: Проверяем, что answerArray не пустой
     if (answerArray.length === 0) {
       clientLogger.error('❌ answerArray пустой после фильтрации - блокируем вызов API', {
@@ -501,55 +314,10 @@ export async function submitAnswers(params: SubmitAnswersParams): Promise<void> 
         answerQuestionIds: answerArray.map(a => a.questionId),
       });
       
-      // ВАЖНО: Логируем на сервер перед вызовом API (неблокирующе)
-      if (currentInitData) {
-        fetch('/api/logs', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Telegram-Init-Data': currentInitData,
-          },
-          body: JSON.stringify({
-            level: 'info',
-            message: '🚀 About to call api.submitAnswers',
-            context: {
-              questionnaireId: params.questionnaire?.id,
-              answersCount: answerArray.length,
-              answerQuestionIds: answerArray.map(a => a.questionId),
-              timestamp: new Date().toISOString(),
-            },
-            url: typeof window !== 'undefined' ? window.location.href : undefined,
-          }),
-        }).catch(() => {}); // Игнорируем ошибки логирования
-      }
-      
       result = await api.submitAnswers({
         questionnaireId: params.questionnaire?.id!,
         answers: answerArray,
       });
-      
-      // ВАЖНО: Логируем на сервер после получения ответа (неблокирующе)
-      if (currentInitData) {
-        fetch('/api/logs', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Telegram-Init-Data': currentInitData,
-          },
-          body: JSON.stringify({
-            level: result?.profile?.id ? 'info' : 'error',
-            message: result?.profile?.id ? '✅ api.submitAnswers completed with profile' : '❌ api.submitAnswers completed without profile',
-            context: {
-              hasResult: !!result,
-              hasProfile: !!result?.profile,
-              profileId: result?.profile?.id,
-              resultKeys: result ? Object.keys(result) : [],
-              timestamp: new Date().toISOString(),
-            },
-            url: typeof window !== 'undefined' ? window.location.href : undefined,
-          }),
-        }).catch(() => {}); // Игнорируем ошибки логирования
-      }
       
       // ВАЖНО: Логируем сразу после получения ответа
       clientLogger.log('📥 Получен ответ от api.submitAnswers:', {
@@ -637,30 +405,6 @@ export async function submitAnswers(params: SubmitAnswersParams): Promise<void> 
         errorName: submitError?.name,
         errorType: typeof submitError,
       });
-      
-      // ВАЖНО: Логируем на сервер для диагностики (неблокирующе)
-      const currentInitDataForError = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
-      if (currentInitDataForError) {
-        fetch('/api/logs', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Telegram-Init-Data': currentInitDataForError,
-          },
-          body: JSON.stringify({
-            level: 'error',
-            message: `Error in submitAnswers: ${submitError?.message || 'Unknown error'}`,
-            context: {
-              error: submitError?.message || String(submitError),
-              status: submitError?.status,
-              questionnaireId: params.questionnaire?.id,
-              answersCount: answerArray.length,
-              stack: submitError?.stack?.substring(0, 500),
-            },
-            url: typeof window !== 'undefined' ? window.location.href : undefined,
-          }),
-        }).catch(() => {}); // Игнорируем ошибки логирования
-      }
       
       // Если это не дубликат и не временная ошибка сети, показываем ошибку пользователю
       const isDuplicate = submitError?.message?.includes('duplicate') || 
@@ -975,33 +719,6 @@ export async function submitAnswers(params: SubmitAnswersParams): Promise<void> 
       profileId: profileId || null,
       planUrl,
     });
-    
-    // ИСПРАВЛЕНО: Логируем на сервер перед редиректом для диагностики
-    try {
-      const currentInitData = await params.getInitData();
-      if (currentInitData) {
-        fetch('/api/logs', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'X-Telegram-Init-Data': currentInitData,
-          },
-          body: JSON.stringify({
-            level: 'info',
-            message: 'Redirecting to /plan after submitAnswers',
-            context: {
-              hasResult: !!result,
-              resultSuccess: result?.success,
-              hasError: !!result?.error,
-              answersCount: Object.keys(params.answers).length,
-              timestamp: new Date().toISOString(),
-            },
-          }),
-        }).catch(() => {});
-      }
-    } catch (logError) {
-      // Игнорируем ошибки логирования
-    }
     
     // ИСПРАВЛЕНО: Лоадер уже показан выше (params.isSubmitting = true установлен ДО генерации плана)
     // Теперь просто редиректим на /plan после того, как план готов

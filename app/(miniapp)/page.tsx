@@ -7,6 +7,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { clientLogger } from '@/lib/client-logger';
+import { REDIRECT_TIMEOUTS } from '@/lib/config/timeouts';
 
 export default function RootPage() {
   const router = useRouter();
@@ -14,6 +15,8 @@ export default function RootPage() {
   const [isLoading, setIsLoading] = useState(true);
   // ФИКС: Ref для предотвращения множественных редиректов
   const redirectInProgressRef = useRef(false);
+  // РЕФАКТОРИНГ: Ref для хранения таймера очистки
+  const cleanupTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // ФИКС: Защита от множественных редиректов
@@ -22,14 +25,11 @@ export default function RootPage() {
     }
     
     // КРИТИЧНО: Проверяем флаг quiz_just_submitted ПЕРЕД ВСЕМ
-    // Это предотвращает редирект на /quiz сразу после отправки анкеты
     const justSubmitted = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
     if (justSubmitted) {
-      redirectInProgressRef.current = true; // Помечаем, что редирект начат
+      redirectInProgressRef.current = true;
       clientLogger.log('✅ Флаг quiz_just_submitted установлен на главной - редиректим на /plan?state=generating');
-      // ИСПРАВЛЕНО: Оборачиваем async операции в отдельную функцию и ОЖИДАЕМ её выполнение
-      // Это предотвращает race condition, когда редирект происходит до завершения записи в БД
-      // Сравните с правильной реализацией в home/page.tsx:76-86
+      
       (async () => {
         try {
           const { setHasPlanProgress } = await import('@/lib/user-preferences');
@@ -37,15 +37,13 @@ export default function RootPage() {
         } catch (error) {
           clientLogger.warn('⚠️ Ошибка при установке hasPlanProgress (некритично):', error);
         }
-        // ИСПРАВЛЕНО: Редирект выполняется ПОСЛЕ завершения async операции
-        // Это гарантирует, что hasPlanProgress будет сохранен в БД до редиректа
         if (typeof window !== 'undefined') {
           sessionStorage.removeItem('quiz_just_submitted');
           window.location.replace('/plan?state=generating');
-          // ФИКС: Сбрасываем redirectInProgressRef через задержку после редиректа
-          setTimeout(() => {
+          // РЕФАКТОРИНГ: Используем ref для cleanup
+          cleanupTimerRef.current = setTimeout(() => {
             redirectInProgressRef.current = false;
-          }, 1000);
+          }, REDIRECT_TIMEOUTS.RESET_FLAG);
         }
       })();
       return;
@@ -127,47 +125,46 @@ export default function RootPage() {
       }
       
       if (!hasPlanProgress) {
-        // Нет plan_progress - значит пользователь новый
-        // ИСПРАВЛЕНО: Сразу редиректим на /quiz БЕЗ показа контента, лоадера или ошибок
-        redirectInProgressRef.current = true; // Помечаем, что редирект начат
-        clientLogger.log('ℹ️ No plan_progress - redirecting to /quiz (new user, no content shown)');
+        // Нет plan_progress - новый пользователь → /quiz
+        redirectInProgressRef.current = true;
+        clientLogger.log('ℹ️ No plan_progress - redirecting to /quiz');
         setIsRedirecting(true);
         setIsLoading(false);
         if (typeof window !== 'undefined') {
           window.location.replace('/quiz');
-          // ФИКС: Сбрасываем redirectInProgressRef через задержку после редиректа
-          setTimeout(() => {
+          cleanupTimerRef.current = setTimeout(() => {
             redirectInProgressRef.current = false;
-          }, 1000);
+          }, REDIRECT_TIMEOUTS.RESET_FLAG);
         }
         return;
       }
 
-      // plan_progress есть - пользователь не новый, редиректим на /home
-      redirectInProgressRef.current = true; // Помечаем, что редирект начат
+      // plan_progress есть → /home
+      redirectInProgressRef.current = true;
       clientLogger.log('ℹ️ Has plan_progress - redirecting to /home');
       setIsRedirecting(true);
       setIsLoading(false);
       if (typeof window !== 'undefined') {
         window.location.replace('/home');
-        // ФИКС: Сбрасываем redirectInProgressRef через задержку после редиректа
-        setTimeout(() => {
+        cleanupTimerRef.current = setTimeout(() => {
           redirectInProgressRef.current = false;
-        }, 1000);
+        }, REDIRECT_TIMEOUTS.RESET_FLAG);
       }
     };
 
     checkAndRedirect();
+    
+    // РЕФАКТОРИНГ: Cleanup function для очистки таймеров при размонтировании
+    return () => {
+      if (cleanupTimerRef.current) {
+        clearTimeout(cleanupTimerRef.current);
+        cleanupTimerRef.current = null;
+      }
+    };
   }, [router]);
 
-  // ИСПРАВЛЕНО: Лоадер убран - главная страница только редиректит, не показывает контент
-  // Если идет загрузка или редирект - возвращаем null
+  // Во время загрузки/редиректа не показываем контент
   if (isLoading || isRedirecting) {
-    return null;
-  }
-
-  // Во время редиректа не показываем контент
-  if (isRedirecting) {
     return null;
   }
 

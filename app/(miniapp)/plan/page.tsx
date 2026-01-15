@@ -13,6 +13,7 @@ import type { Plan28, DayPlan } from '@/lib/plan-types';
 import type { GeneratedPlan, ProfileResponse } from '@/lib/api-types';
 import { clientLogger } from '@/lib/client-logger';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import { PLAN_TIMEOUTS } from '@/lib/config/timeouts';
 
 interface PlanData {
   // Новый формат (plan28)
@@ -295,16 +296,14 @@ export default function PlanPage() {
     isMountedRef.current = true;
     pageLoadStartTimeRef.current = Date.now(); // ИСПРАВЛЕНО: Запоминаем время начала загрузки страницы
     
-    // ИСПРАВЛЕНО: Абсолютный таймаут на всю страницу (35 секунд)
-    // Если за это время план не загрузился - показываем fallback-экран
-    // ИСПРАВЛЕНО: Используем refs вместо state значений из замыкания, чтобы избежать stale closure
+    // РЕФАКТОРИНГ: Абсолютный таймаут из конфигурации
     const absoluteTimeout = setTimeout(() => {
       if (isMountedRef.current && loadingRef.current && !planDataRef.current) {
         clientLogger.warn('⚠️ Absolute timeout reached - showing fallback screen');
         safeSetLoading(false);
         safeSetError('Не удалось загрузить план за отведенное время. Пожалуйста, попробуйте обновить страницу или перейти в анкету.');
       }
-    }, 35000); // 35 секунд
+    }, PLAN_TIMEOUTS.PAGE_ABSOLUTE);
     
     // ИСПРАВЛЕНО: Проверяем state из URL напрямую, чтобы избежать проблем с задержкой searchParams
     let state: string | null = null;
@@ -344,11 +343,10 @@ export default function PlanPage() {
       }
       
       // Начинаем polling статуса плана
-      pollingIntervalRef.current = setInterval(pollPlanStatus, 1500);
+      pollingIntervalRef.current = setInterval(pollPlanStatus, PLAN_TIMEOUTS.POLLING_INTERVAL);
       
-      // ИСПРАВЛЕНО: Таймаут на 60 секунд - используем ref вместо значения из замыкания
+      // РЕФАКТОРИНГ: Таймаут генерации из конфигурации
       setTimeout(() => {
-        // ИСПРАВЛЕНО: Проверяем через ref, чтобы получить актуальное значение
         if (isMountedRef.current && generatingStateRef.current === 'generating') {
           clientLogger.warn('Plan generation timeout, loading plan anyway');
           if (pollingIntervalRef.current) {
@@ -356,11 +354,11 @@ export default function PlanPage() {
             pollingIntervalRef.current = null;
           }
           setGeneratingState('ready');
-          generatingStateRef.current = 'ready'; // ИСПРАВЛЕНО: Синхронизируем ref
+          generatingStateRef.current = 'ready';
           router.replace('/plan');
           loadPlan(0, true);
         }
-      }, 60000);
+      }, PLAN_TIMEOUTS.GENERATION_TIMEOUT);
     } else {
       // Обычная загрузка плана
       // ВАЖНО: Очищаем кэш профиля при загрузке страницы плана

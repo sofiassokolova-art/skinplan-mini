@@ -2,6 +2,7 @@
 // API клиент для работы с бэкендом
 
 import { handleNetworkError, fetchWithTimeout } from './network-utils';
+import { isQuizContext, shouldBlockApiRequest } from './route-utils';
 import type { 
   UserProfileResponse, 
   ProfileResponse, 
@@ -28,86 +29,48 @@ const CACHE_TTL = 2000; // 2 секунды кэш для одинаковых �
 // ИСПРАВЛЕНО: Увеличено с 5 до 10 минут для более надежной защиты от дублирования
 const QUESTIONNAIRE_CACHE_TTL = 600000; // 10 минут для /questionnaire/active
 
+// Дефолтные значения для заблокированных endpoints
+const DEFAULT_CART_RESPONSE = { items: [] };
+const DEFAULT_PREFERENCES_RESPONSE = {
+  isRetakingQuiz: false,
+  fullRetakingQuiz: false,
+  paymentRetakingCompleted: false,
+  paymentFullRetakeCompleted: false,
+  hasPlanProgress: false,
+  routineProducts: null,
+  planFeedbackSent: false,
+  serviceFeedbackSent: false,
+  lastPlanFeedbackDate: null,
+  lastServiceFeedbackDate: null,
+  extra: null,
+};
+
 async function request<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  // КРИТИЧНО: Блокируем запросы к /cart и /user/preferences на странице /quiz
-  // Это предотвращает лишние запросы при загрузке анкеты
-  // ИСПРАВЛЕНО: Проверяем pathname СИНХРОННО в самом начале, даже до проверки window
-  // Это гарантирует, что блокировка работает даже при первой загрузке страницы
-  const isCartEndpoint = endpoint === '/cart' || 
-                        (endpoint.includes('/cart') && !endpoint.includes('/questionnaire'));
-  const isPreferencesEndpoint = endpoint === '/user/preferences' || 
-                                (endpoint.includes('/user/preferences') && !endpoint.includes('/questionnaire'));
+  // РЕФАКТОРИНГ: Используем централизованную проверку из route-utils.ts
+  // Блокируем cart и preferences на /quiz для предотвращения лишних запросов
+  if (shouldBlockApiRequest(endpoint)) {
+    const isCartEndpoint = endpoint === '/cart' || endpoint.includes('/cart');
+    console.log('🚫 Blocking API request on /quiz:', endpoint);
+    
+    if (isCartEndpoint) {
+      return Promise.resolve(DEFAULT_CART_RESPONSE as T);
+    }
+    return Promise.resolve(DEFAULT_PREFERENCES_RESPONSE as T);
+  }
   
-  // КРИТИЧНО: Блокируем cart и preferences на /quiz ДО любых других проверок
-  if (isCartEndpoint || isPreferencesEndpoint) {
-    if (typeof window !== 'undefined') {
-      const pathname = window.location.pathname;
-      const href = window.location.href;
-      const referrer = document.referrer;
-      
-      // ИСПРАВЛЕНО: Проверяем все возможные индикаторы навигации на /quiz
-      const isNavigatingToQuiz = referrer && (referrer.includes('/quiz') || referrer.endsWith('/quiz'));
-      const isOnQuizPage = pathname === '/quiz' || pathname.startsWith('/quiz/');
-      const isQuizInHref = href.includes('/quiz');
-      
-      // ТЗ: Блокируем запросы, если мы на /quiz ИЛИ навигация на /quiz
-      if (isOnQuizPage || isNavigatingToQuiz || isQuizInHref) {
-        // ТЗ: Логируем в production для диагностики проблемы
-        console.log('🚫 Blocking API request on /quiz:', endpoint, {
-          pathname,
-          href,
-          referrer,
-          isNavigatingToQuiz,
-          isOnQuizPage,
-          isQuizInHref,
-          isCartEndpoint,
-          isPreferencesEndpoint,
-        });
-        // Возвращаем дефолтные значения для заблокированных endpoints
-        // КРИТИЧНО: Возвращаем resolved Promise, чтобы не блокировать код, который ожидает результат
-        if (isCartEndpoint) {
-          return Promise.resolve({ items: [] } as T);
-        }
-        if (isPreferencesEndpoint) {
-          return Promise.resolve({
-            isRetakingQuiz: false,
-            fullRetakingQuiz: false,
-            paymentRetakingCompleted: false,
-            paymentFullRetakeCompleted: false,
-            hasPlanProgress: false,
-            routineProducts: null,
-            planFeedbackSent: false,
-            serviceFeedbackSent: false,
-            lastPlanFeedbackDate: null,
-            lastServiceFeedbackDate: null,
-            extra: null,
-          } as T);
-        }
-      }
-    } else {
-      // ИСПРАВЛЕНО: На сервере (SSR) также блокируем cart и preferences
-      // Это предотвращает запросы при SSR на /quiz
-      if (isCartEndpoint) {
-        return Promise.resolve({ items: [] } as T);
-      }
-      if (isPreferencesEndpoint) {
-        return Promise.resolve({
-          isRetakingQuiz: false,
-          fullRetakingQuiz: false,
-          paymentRetakingCompleted: false,
-          paymentFullRetakeCompleted: false,
-          hasPlanProgress: false,
-          routineProducts: null,
-          planFeedbackSent: false,
-          serviceFeedbackSent: false,
-          lastPlanFeedbackDate: null,
-          lastServiceFeedbackDate: null,
-          extra: null,
-        } as T);
-      }
+  // ИСПРАВЛЕНО: На сервере (SSR) также блокируем cart и preferences
+  if (typeof window === 'undefined') {
+    const isCartEndpoint = endpoint === '/cart' || endpoint.includes('/cart');
+    const isPreferencesEndpoint = endpoint === '/user/preferences' || endpoint.includes('/user/preferences');
+    
+    if (isCartEndpoint) {
+      return Promise.resolve(DEFAULT_CART_RESPONSE as T);
+    }
+    if (isPreferencesEndpoint) {
+      return Promise.resolve(DEFAULT_PREFERENCES_RESPONSE as T);
     }
   }
   
