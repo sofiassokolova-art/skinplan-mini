@@ -72,6 +72,12 @@ export function QuizInfoScreen({
           }
         }}
         isHandlingNext={isHandlingNext}
+        currentInfoScreenIndex={currentInfoScreenIndex}
+        onBack={() => {
+          if (currentInfoScreenIndex > 0) {
+            setCurrentInfoScreenIndex(currentInfoScreenIndex - 1);
+          }
+        }}
       />
     );
   }
@@ -318,6 +324,44 @@ export function QuizInfoScreen({
       justifyContent: 'center',
       position: 'relative',
     }}>
+      {/* Кнопка "Назад" - простая стрелка */}
+      {currentInfoScreenIndex > 0 && (
+        <button
+          onClick={() => setCurrentInfoScreenIndex(currentInfoScreenIndex - 1)}
+          style={{
+            position: 'absolute',
+            top: 'clamp(20px, 4vh, 40px)',
+            left: 'clamp(19px, 5vw, 24px)',
+            zIndex: 10,
+            width: '44px',
+            height: '44px',
+            background: 'transparent',
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            padding: 0,
+          }}
+        >
+          <svg
+            width="12"
+            height="20"
+            viewBox="0 0 12 20"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M10 2L2 10L10 18"
+              stroke="#1A1A1A"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      )}
+
       <div style={{
         width: '88%',
         maxWidth: isTestimonialsScreen ? '90%' : '420px',

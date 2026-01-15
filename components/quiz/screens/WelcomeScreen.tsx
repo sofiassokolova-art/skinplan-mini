@@ -4,15 +4,18 @@
 
 import React from 'react';
 import { FixedContinueButton } from '../buttons/FixedContinueButton';
+import { BackButton } from '../buttons/BackButton';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 
 export interface WelcomeScreenProps {
   screen: InfoScreen;
   onContinue: () => void;
   isHandlingNext: boolean;
+  currentInfoScreenIndex?: number;
+  onBack?: () => void;
 }
 
-function WelcomeScreenComponent({ screen, onContinue, isHandlingNext }: WelcomeScreenProps) {
+function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInfoScreenIndex = 0, onBack }: WelcomeScreenProps) {
   return (
     <div style={{ 
       padding: 0,
@@ -26,6 +29,11 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext }: WelcomeS
       width: '100%',
       maxWidth: '100vw',
     }}>
+      {/* Кнопка "Назад" */}
+      {currentInfoScreenIndex > 0 && onBack && (
+        <BackButton onClick={onBack} />
+      )}
+
       {/* Картинка */}
       {screen.image && (
         <div style={{
