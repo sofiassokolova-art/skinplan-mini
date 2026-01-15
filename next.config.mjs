@@ -57,11 +57,13 @@ const nextConfig = {
               "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' data: https://fonts.gstatic.com",
               "img-src 'self' data: https: blob:",
-              "connect-src 'self' https://api.telegram.org https://*.telegram.org",
+              "connect-src 'self' https://api.telegram.org https://*.telegram.org https://vercel.live",
               "frame-src https://telegram.org https://*.telegram.org https://vercel.live",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",
+              // ИСПРАВЛЕНО: Разрешаем worker-src для поддержки Service Workers (если используются)
+              "worker-src 'self' blob:",
             ].join('; ')
           }
         ],

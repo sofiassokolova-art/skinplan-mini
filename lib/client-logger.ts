@@ -101,17 +101,18 @@ const sendLogToServer = async (
 };
 
 // ИСПРАВЛЕНО: Вынесено в отдельную функцию для полностью неблокирующей отправки
-// В production временно отключено для снижения нагрузки
+// В production полностью отключено для снижения нагрузки и предотвращения 403 ошибок
 const sendLogFetch = async (
   logPayload: any, 
   initData: string | null, 
   level: 'log' | 'warn' | 'debug' | 'error' | 'info',
   message: string
 ) => {
-  // ИСПРАВЛЕНО: В production временно отключаем отправку логов для снижения нагрузки
-  // Логируем только в консоль браузера
-  if (!isDevelopment && level !== 'error') {
-    return; // В production отправляем только error
+  // ИСПРАВЛЕНО: В production полностью отключаем отправку логов на сервер
+  // Логируем только в консоль браузера - это предотвращает 403 ошибки и блокировки
+  // Отправка логов на сервер происходит только в development для отладки
+  if (!isDevelopment) {
+    return; // В production не отправляем логи на сервер вообще
   }
 
   try {
