@@ -3079,8 +3079,6 @@ export default function QuizPage() {
 
   // КРИТИЧНО: Проверка резюм-экрана перемещена ПОСЛЕ вызова useQuizView (ниже)
   // Используем quizView.type === 'resume' для определения необходимости показа резюм-экрана
-    // ИСПРАВЛЕНО: Добавляем проверку на существование groups и questions
-    const allQuestionsRaw = questionnaire ? [
       ...(questionnaire.groups || []).flatMap((g) => g.questions || []),
       ...(questionnaire.questions || []),
     ] : [];
