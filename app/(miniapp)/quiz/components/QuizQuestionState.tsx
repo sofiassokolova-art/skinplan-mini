@@ -5,6 +5,7 @@
 
 import { clientLogger } from '@/lib/client-logger';
 import type { Questionnaire } from '@/lib/quiz/types';
+import { QuestionSkeleton } from '@/components/ui/SkeletonLoader';
 
 interface QuizQuestionStateProps {
   currentQuestion: any;
@@ -120,6 +121,7 @@ export function QuizQuestionState({
   }
 
   if (shouldShowLoading) {
+    // Используем только скелетную загрузку, без спиннера и текста
     return (
       <div style={{ 
         minHeight: '100vh',
@@ -130,72 +132,7 @@ export function QuizQuestionState({
         backgroundColor: '#FFFFFF',
         padding: '40px 20px',
       }}>
-        <div style={{
-          width: '48px',
-          height: '48px',
-          border: '4px solid rgba(10, 95, 89, 0.2)',
-          borderTop: '4px solid #0A5F59',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
-          marginBottom: '24px',
-        }}></div>
-        <div style={{ color: '#0A5F59', fontSize: '18px', fontWeight: 600, marginBottom: '32px' }}>
-          Загрузка вопросов...
-        </div>
-        {/* Skeleton loader для предпросмотра вопроса */}
-        <div style={{ width: '100%', maxWidth: '600px' }}>
-          <div style={{
-            backgroundColor: '#E5E7EB',
-            height: '24px',
-            width: '60%',
-            borderRadius: '4px',
-            marginBottom: '16px',
-            animation: 'pulse 1.5s ease-in-out infinite',
-          }}></div>
-          <div style={{
-            backgroundColor: '#E5E7EB',
-            height: '16px',
-            width: '100%',
-            borderRadius: '4px',
-            marginBottom: '8px',
-            animation: 'pulse 1.5s ease-in-out infinite',
-          }}></div>
-          <div style={{
-            backgroundColor: '#E5E7EB',
-            height: '16px',
-            width: '80%',
-            borderRadius: '4px',
-            marginBottom: '32px',
-            animation: 'pulse 1.5s ease-in-out infinite',
-          }}></div>
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div
-              key={i}
-              style={{
-                backgroundColor: '#E5E7EB',
-                height: '48px',
-                width: '100%',
-                borderRadius: '8px',
-                marginBottom: '12px',
-                animation: 'pulse 1.5s ease-in-out infinite',
-              }}
-            />
-          ))}
-        </div>
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-          @keyframes pulse {
-            0%, 100% {
-              opacity: 1;
-            }
-            50% {
-              opacity: 0.5;
-            }
-          }
-        `}</style>
+        <QuestionSkeleton />
       </div>
     );
   }
