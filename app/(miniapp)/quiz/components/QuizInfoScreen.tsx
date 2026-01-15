@@ -313,28 +313,30 @@ export function QuizInfoScreen({
     );
   }
 
-  // Экран отзывов (testimonials) - белый фон, без контейнера
+  // Экран отзывов (testimonials) - белый фон, фиксированная шапка, скроллится только слайдер
   if (isTestimonialsScreen) {
     return (
       <div style={{ 
         padding: 0,
         margin: 0,
         minHeight: '100vh',
+        maxHeight: '100vh',
         background: '#FFFFFF',
         display: 'flex',
         flexDirection: 'column',
         position: 'relative',
         width: '100%',
+        overflow: 'hidden',
       }}>
-        {/* Кнопка "Назад" */}
+        {/* Фиксированная кнопка "Назад" */}
         {currentInfoScreenIndex > 0 && (
           <button
             onClick={() => setCurrentInfoScreenIndex(currentInfoScreenIndex - 1)}
             style={{
-              position: 'absolute',
+              position: 'fixed',
               top: 'clamp(20px, 4vh, 40px)',
               left: 'clamp(19px, 5vw, 24px)',
-              zIndex: 10,
+              zIndex: 100,
               width: '44px',
               height: '44px',
               background: 'transparent',
@@ -364,19 +366,13 @@ export function QuizInfoScreen({
           </button>
         )}
 
-        {/* Контент */}
+        {/* Фиксированная шапка с заголовком */}
         <div style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-start',
-          justifyContent: 'flex-start',
-          paddingTop: '100px',
-          paddingBottom: '120px',
+          paddingTop: '80px',
           paddingLeft: '20px',
           paddingRight: '20px',
-          width: '100%',
-          boxSizing: 'border-box',
+          paddingBottom: '16px',
+          background: '#FFFFFF',
         }}>
           {/* Заголовок */}
           <h1 style={{
@@ -403,12 +399,20 @@ export function QuizInfoScreen({
               letterSpacing: '0px',
               textAlign: 'left',
               color: '#000000',
-              marginBottom: '24px',
             }}>
               {screen.subtitle}
             </div>
           )}
+        </div>
 
+        {/* Прокручиваемая область только для слайдера отзывов */}
+        <div style={{
+          flex: 1,
+          overflow: 'hidden',
+          paddingLeft: '20px',
+          paddingRight: '20px',
+          paddingBottom: '140px',
+        }}>
           {/* Слайдер отзывов */}
           {screen.content && Array.isArray(screen.content) && (
             <TestimonialsCarousel testimonials={screen.content as any} />
