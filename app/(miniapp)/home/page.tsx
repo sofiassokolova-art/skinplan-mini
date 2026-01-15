@@ -143,10 +143,24 @@ export default function HomePage() {
           const hasWeeks = plan && Array.isArray(plan.weeks) && plan.weeks.length > 0;
           const exists = !!hasPlan28 || !!hasWeeks;
           setHasPlan(exists);
+          
+          // ИСПРАВЛЕНО: Детальное логирование для диагностики редиректа на /quiz
           if (hasPlan28 || hasWeeks) {
-            clientLogger.log('✅ Plan exists for user, disabling CTA on home');
+            clientLogger.log('✅ Plan exists for user, disabling CTA on home', {
+              hasPlan28,
+              plan28DaysCount: hasPlan28 ? plan.plan28.days.length : 0,
+              hasWeeks,
+              weeksCount: hasWeeks ? plan.weeks.length : 0,
+            });
           } else {
-            clientLogger.log('ℹ️ Plan not found when checking from home page');
+            clientLogger.log('ℹ️ Plan not found when checking from home page', {
+              hasPlan: !!plan,
+              hasPlan28: !!(plan?.plan28),
+              plan28DaysCount: plan?.plan28?.days?.length || 0,
+              hasWeeks: !!(plan?.weeks),
+              weeksCount: plan?.weeks?.length || 0,
+              planKeys: plan ? Object.keys(plan) : [],
+            });
           }
           return exists;
         } catch (err: any) {
@@ -627,6 +641,16 @@ export default function HomePage() {
       setMorningItems(morning);
       setEveningItems(evening);
 
+      // ИСПРАВЛЕНО: Логируем результат загрузки рекомендаций для диагностики
+      clientLogger.log('✅ Recommendations loaded', {
+        hasSteps: !!data?.steps,
+        stepsKeys: data?.steps ? Object.keys(data.steps) : [],
+        morningItemsCount: morning.length,
+        eveningItemsCount: evening.length,
+        hasPlan,
+        willRedirect: morning.length === 0 && evening.length === 0 && !hasPlan,
+      });
+
       // Фолбэк через план для нового пользователя больше не используем:
       // если нет шагов рутины, дальше логика редиректит на /quiz (см. ниже).
     } catch (error: any) {
@@ -767,6 +791,17 @@ export default function HomePage() {
 
   // Совсем новый пользователь (нет рутины и нет сохранённого плана) → сразу отправляем на анкету
   if (routineItems.length === 0 && !hasPlan) {
+    // ИСПРАВЛЕНО: Детальное логирование редиректа на /quiz для диагностики
+    clientLogger.log('🔄 Redirecting to /quiz: no routine items and no plan', {
+      routineItemsCount: routineItems.length,
+      hasPlan,
+      morningItemsCount: morningItems.length,
+      eveningItemsCount: eveningItems.length,
+      tab,
+      recommendations: !!recommendations,
+      hasSteps: !!recommendations?.steps,
+      stepsKeys: recommendations?.steps ? Object.keys(recommendations.steps) : [],
+    });
     if (typeof window !== 'undefined') {
       router.replace('/quiz');
     }
