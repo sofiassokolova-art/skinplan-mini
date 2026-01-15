@@ -121,6 +121,19 @@ export function useResumeLogic(options: UseResumeLogicOptions) {
         clientLogger.log('ℹ️ Прогресс на сервере не найден или пуст');
         setSavedProgress(null);
         setShowResumeScreen(false);
+        
+        // КРИТИЧНО: Если прогресса на сервере нет, очищаем sessionStorage
+        // Это гарантирует, что пользователь увидит начальные инфо-экраны
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.removeItem('quiz_currentInfoScreenIndex');
+            sessionStorage.removeItem('quiz_currentQuestionIndex');
+            sessionStorage.removeItem('quiz_answers_backup');
+            clientLogger.log('🧹 SessionStorage очищен (прогресс на сервере не найден)');
+          } catch (storageErr) {
+            clientLogger.warn('⚠️ Не удалось очистить sessionStorage:', storageErr);
+          }
+        }
       }
     } catch (err: any) {
       if (err?.message?.includes('401') || err?.message?.includes('Unauthorized')) {

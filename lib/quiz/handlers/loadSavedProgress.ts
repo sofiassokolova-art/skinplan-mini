@@ -378,6 +378,28 @@ export async function loadSavedProgressFromServer({
       setSavedProgress(null);
       setShowResumeScreen(false);
       progressLoadedRef.current = true;
+      
+      // КРИТИЧНО: Если прогресса на сервере нет, очищаем sessionStorage
+      // Это гарантирует, что пользователь увидит начальные инфо-экраны
+      // даже если в sessionStorage сохранены старые индексы от предыдущего прохождения
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.removeItem('quiz_currentInfoScreenIndex');
+          sessionStorage.removeItem('quiz_currentQuestionIndex');
+          sessionStorage.removeItem('quiz_answers_backup');
+          clientLogger.log('🧹 SessionStorage очищен (прогресс на сервере не найден)');
+          
+          // ФИКС: Сбрасываем currentInfoScreenIndex на 0, чтобы показать все начальные инфо-экраны
+          if (setCurrentInfoScreenIndex) {
+            setCurrentInfoScreenIndex(0);
+          }
+          if (currentInfoScreenIndexRef) {
+            currentInfoScreenIndexRef.current = 0;
+          }
+        } catch (storageErr) {
+          clientLogger.warn('⚠️ Не удалось очистить sessionStorage:', storageErr);
+        }
+      }
     }
   } catch (err: any) {
     // Если ошибка 401 - это нормально, просто не используем серверный прогресс
