@@ -95,8 +95,8 @@ export function QuizQuestion({
       {/* Прогресс-бар - черный фон с лаймовым прогрессом */}
       {!hideProgressBar && (
         <div style={{ 
-          marginBottom: useLimeStyle ? '24px' : '24px',
-          marginTop: useLimeStyle ? '75px' : '90px',
+          marginBottom: '24px',
+          marginTop: '75px',
         }}>
           <div style={{
             width: '100%',

@@ -84,7 +84,8 @@ export async function loadSavedProgressFromServer({
   const hasProgressInState = savedProgress?.answers;
   const progressAnswersCountFromQuery = hasProgressInQuery ? Object.keys(quizProgressFromQuery.progress.answers).length : 0;
   const progressAnswersCountFromState = hasProgressInState ? Object.keys(savedProgress.answers).length : 0;
-  const progressAnswersCount = progressAnswersCountFromQuery || progressAnswersCountFromState;
+  // Используем максимальное значение, чтобы не потерять прогресс
+  const progressAnswersCount = Math.max(progressAnswersCountFromQuery, progressAnswersCountFromState);
   const shouldShowResume = progressAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN;
   
   // ИСПРАВЛЕНО: Если progressLoadedRef = true, но showResumeScreen = false и есть сохраненный прогресс с >= 2 ответами,
@@ -100,23 +101,29 @@ export async function loadSavedProgressFromServer({
   
   // ИСПРАВЛЕНО: Не блокируем вызов, если нужно показать экран резюме
   // Даже если пользователь "уже на вопросах" в sessionStorage, нужно показать экран резюме
-  if (isAlreadyOnQuestions && !shouldShowResume) {
+  // Проверяем savedProgress отдельно, так как quizProgressFromQuery может быть еще не загружен
+  if (isAlreadyOnQuestions && !shouldShowResume && progressAnswersCountFromState < QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN) {
     clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено, пользователь уже на вопросах и нет прогресса для резюме', {
       currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
       initialInfoScreensLength: initialInfoScreens.length,
       shouldShowResume,
       progressAnswersCount,
+      progressAnswersCountFromState,
+      progressAnswersCountFromQuery,
     });
     return;
   }
   
   // ИСПРАВЛЕНО: Кэширование - не загружаем прогресс повторно, если он уже был загружен
   // НО: Пропускаем кэш, если нужно показать экран резюме (есть прогресс с >= 2 ответами)
-  if (progressLoadedRef.current && !shouldShowResume) {
+  // Проверяем savedProgress отдельно, так как quizProgressFromQuery может быть еще не загружен
+  if (progressLoadedRef.current && !shouldShowResume && progressAnswersCountFromState < QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN) {
     clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено, прогресс уже загружен (кэш)', {
       currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
       shouldShowResume,
       progressAnswersCount,
+      progressAnswersCountFromState,
+      progressAnswersCountFromQuery,
     });
     return;
   }
@@ -381,14 +388,16 @@ export async function loadSavedProgressFromServer({
       
       // КРИТИЧНО: Если текущий infoScreenIndex больше, чем в загруженном прогрессе, не загружаем прогресс
       // Это предотвращает откат назад после того, как пользователь прошел больше экранов
-      if (currentInfoIndex > progressInfoIndex && currentInfoIndex > 0) {
-        clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено, так как текущий прогресс больше загруженного', {
+      // НО: Если есть >= 2 ответа (hasEnoughAnswers), ВСЕГДА показываем экран резюме, даже если индекс больше
+      if (currentInfoIndex > progressInfoIndex && currentInfoIndex > 0 && !hasEnoughAnswers) {
+        clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено, так как текущий прогресс больше загруженного и нет достаточно ответов', {
           currentInfoScreenIndex,
           currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
           progressInfoScreenIndex: progressInfoIndex,
           currentInfoIndex,
           restoredIndex,
           initialInfoScreensLength: initialInfoScreens.length,
+          hasEnoughAnswers,
         });
         return;
       }
