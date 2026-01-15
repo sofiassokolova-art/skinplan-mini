@@ -1,17 +1,31 @@
 // lib/validators.ts
 // Валидация входных данных для API
+// РЕФАКТОРИНГ P2: Заменены any на unknown для лучшей типобезопасности
 
-export interface ValidationResult {
+// Type guard для проверки объекта
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export interface ValidationResult<T = unknown> {
   success: boolean;
   error?: string;
-  data?: any;
+  data?: T;
+}
+
+export interface ValidatedAnswer {
+  questionId: number;
+  answerValue: string | null;
+  answerValues: string[] | null;
+  questionIndex: number | null;
+  infoScreenIndex: number | null;
 }
 
 /**
  * Валидация ответа на вопрос анкеты
  */
-export function validateAnswerInput(data: any): ValidationResult {
-  if (!data) {
+export function validateAnswerInput(data: unknown): ValidationResult<ValidatedAnswer> {
+  if (!data || !isRecord(data)) {
     return { success: false, error: 'Missing answer data' };
   }
 
@@ -38,10 +52,10 @@ export function validateAnswerInput(data: any): ValidationResult {
     success: true,
     data: {
       questionId,
-      answerValue: data.answerValue ?? null,
-      answerValues: data.answerValues ?? null,
-      questionIndex: data.questionIndex ?? null,
-      infoScreenIndex: data.infoScreenIndex ?? null,
+      answerValue: (data.answerValue as string) ?? null,
+      answerValues: (data.answerValues as string[]) ?? null,
+      questionIndex: (data.questionIndex as number) ?? null,
+      infoScreenIndex: (data.infoScreenIndex as number) ?? null,
     },
   };
 }
@@ -49,7 +63,7 @@ export function validateAnswerInput(data: any): ValidationResult {
 /**
  * Валидация productId
  */
-export function validateProductId(productId: any): ValidationResult {
+export function validateProductId(productId: unknown): ValidationResult<number> {
   if (productId === undefined || productId === null) {
     return { success: false, error: 'Missing productId' };
   }
@@ -65,7 +79,7 @@ export function validateProductId(productId: any): ValidationResult {
 /**
  * Валидация questionnaireId
  */
-export function validateQuestionnaireId(questionnaireId: any): ValidationResult {
+export function validateQuestionnaireId(questionnaireId: unknown): ValidationResult<number> {
   if (questionnaireId === undefined || questionnaireId === null) {
     return { success: false, error: 'Missing questionnaireId' };
   }
@@ -81,7 +95,7 @@ export function validateQuestionnaireId(questionnaireId: any): ValidationResult 
 /**
  * Валидация массива ответов
  */
-export function validateAnswersArray(answers: any): ValidationResult {
+export function validateAnswersArray(answers: unknown): ValidationResult<ValidatedAnswer[]> {
   if (!Array.isArray(answers)) {
     return { success: false, error: 'Answers must be an array' };
   }
@@ -90,41 +104,52 @@ export function validateAnswersArray(answers: any): ValidationResult {
     return { success: false, error: 'Answers array cannot be empty' };
   }
 
-  const validatedAnswers = [];
+  const validatedAnswers: ValidatedAnswer[] = [];
   for (const answer of answers) {
     const result = validateAnswerInput(answer);
     if (!result.success) {
-      return result;
+      return { success: false, error: result.error };
     }
-    validatedAnswers.push(result.data);
+    if (result.data) {
+      validatedAnswers.push(result.data);
+    }
   }
 
   return { success: true, data: validatedAnswers };
 }
 
+// Допустимые topicId
+export type TopicId = 
+  | 'skin-type'
+  | 'concerns-goals'
+  | 'diagnoses'
+  | 'allergies'
+  | 'current-products'
+  | 'lifestyle'
+  | 'spf-habits';
+
+const VALID_TOPIC_IDS: TopicId[] = [
+  'skin-type',
+  'concerns-goals',
+  'diagnoses',
+  'allergies',
+  'current-products',
+  'lifestyle',
+  'spf-habits',
+];
+
 /**
  * Валидация topicId для частичного обновления анкеты
  */
-export function validateTopicId(topicId: any): ValidationResult {
+export function validateTopicId(topicId: unknown): ValidationResult<TopicId> {
   if (!topicId || typeof topicId !== 'string') {
     return { success: false, error: 'Invalid topicId' };
   }
 
-  // Проверяем, что topicId валидный
-  const validTopicIds = [
-    'skin-type',
-    'concerns-goals',
-    'diagnoses',
-    'allergies',
-    'current-products',
-    'lifestyle',
-    'spf-habits',
-  ];
-
-  if (!validTopicIds.includes(topicId)) {
+  if (!VALID_TOPIC_IDS.includes(topicId as TopicId)) {
     return { success: false, error: 'Unknown topicId' };
   }
 
-  return { success: true, data: topicId };
+  return { success: true, data: topicId as TopicId };
 }
 

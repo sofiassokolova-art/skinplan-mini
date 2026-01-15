@@ -1,43 +1,32 @@
 // lib/plan-data.ts
 // Server-side функции для получения данных плана
+// РЕФАКТОРИНГ P2: Использование консолидированных типов из plan-types.ts
 
 import { headers } from 'next/headers';
 import { validateTelegramInitData } from './telegram';
 import { prisma } from '@/lib/db';
-import { calculateSkinAxes } from './skin-analysis-engine';
+import { calculateSkinAxes, SkinScore } from './skin-analysis-engine';
 import { getUserIdFromInitData } from './get-user-from-initdata';
+import type { PlanUserInfo, PlanProfileInfo, PlanProgressInfo, PlanWeekLegacy } from './plan-types';
 
-interface PlanData {
-  user: {
-    id: string;
-    telegramId: string;
-    firstName: string | null;
-    lastName: string | null;
-  };
-  profile: {
-    id: string;
-    skinType: string;
-    skinTypeRu: string;
-    primaryConcernRu: string;
-    sensitivityLevel: string | null;
-    acneLevel: number | null;
-    scores: any; // SkinScore[]
+/**
+ * Тип данных для server-side получения плана
+ * Использует консолидированные типы из lib/plan-types.ts
+ */
+interface ServerPlanData {
+  user: PlanUserInfo;
+  profile: PlanProfileInfo & {
+    scores: SkinScore[];
   };
   plan: {
-    weeks: Array<{
-      week: number;
-      days: Array<{
-        morning: number[];
-        evening: number[];
-      }>;
-    }>;
+    weeks: PlanWeekLegacy[];
   };
-  progress: {
-    currentDay: number;
-    completedDays: number[];
-  };
+  progress: PlanProgressInfo;
   wishlist: number[];
 }
+
+// Алиас для обратной совместимости
+type PlanData = ServerPlanData;
 
 /**
  * Получает все данные для страницы плана за один запрос

@@ -385,3 +385,180 @@ body {
 .admin-layout {
   animation: gradientShift 15s ease infinite;
 }
+
+/* ============================================
+   РЕФАКТОРИНГ P2: Унифицированные утилитарные классы
+   ============================================ */
+
+/* Основные фоны приложения */
+.bg-app-gradient {
+  background: linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%);
+}
+
+.bg-app-gradient-dark {
+  background: linear-gradient(135deg, #1A2F2D 0%, #0D1F1D 100%);
+}
+
+/* Минимальная высота для страниц */
+.min-h-page {
+  min-height: 100vh;
+}
+
+.min-h-page-safe {
+  min-height: calc(100vh - env(safe-area-inset-bottom) - 60px);
+}
+
+/* Стандартные отступы для страниц */
+.page-padding {
+  padding: 20px;
+}
+
+.page-padding-lg {
+  padding: 24px;
+}
+
+/* Стандартные радиусы */
+.radius-sm {
+  border-radius: 8px;
+}
+
+.radius-md {
+  border-radius: 12px;
+}
+
+.radius-lg {
+  border-radius: 16px;
+}
+
+.radius-xl {
+  border-radius: 24px;
+}
+
+.radius-full {
+  border-radius: 9999px;
+}
+
+/* Стандартные тени */
+.shadow-card {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.shadow-card-hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.shadow-button {
+  box-shadow: 0 4px 14px rgba(10, 95, 89, 0.25);
+}
+
+/* Цвета бренда */
+:root {
+  --color-primary: #0A5F59;
+  --color-primary-light: #E8FBF7;
+  --color-primary-dark: #073D39;
+  --color-secondary: #4ECDC4;
+  --color-accent: #FFD93D;
+  --color-text: #1A2F2D;
+  --color-text-muted: #6B7280;
+  --color-border: rgba(0, 0, 0, 0.1);
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+}
+
+/* Текстовые стили */
+.text-primary {
+  color: var(--color-primary);
+}
+
+.text-muted {
+  color: var(--color-text-muted);
+}
+
+/* Кнопки */
+.btn-primary {
+  background-color: var(--color-primary);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background-color: var(--color-primary-dark);
+  box-shadow: var(--shadow-button);
+}
+
+.btn-secondary {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background-color: #D1F7F0;
+}
+
+/* Карточки */
+.card {
+  background: white;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.card-lg {
+  background: white;
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Контейнер для полноэкранных страниц */
+.page-container {
+  min-height: 100vh;
+  padding: 20px;
+  background: linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%);
+}
+
+/* Центрирование контента */
+.center-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Анимация появления */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Анимация пульсации для загрузки */
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 1.5s ease-in-out infinite;
+}

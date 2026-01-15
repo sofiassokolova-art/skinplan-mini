@@ -62,3 +62,90 @@ export {
 
 // Реэкспортируем тип отдельно (интерфейс нужно экспортировать через export type)
 export type { StepDescription } from './plan-formatters';
+
+// ============================================
+// РЕФАКТОРИНГ P2: Консолидированные типы PlanData
+// ============================================
+
+/**
+ * Информация о пользователе для страницы плана
+ */
+export interface PlanUserInfo {
+  id: string;
+  telegramId: string;
+  firstName: string | null;
+  lastName: string | null;
+}
+
+/**
+ * Информация о профиле для страницы плана
+ * scores - может быть SkinScore[] или упрощенный формат
+ */
+export interface PlanProfileInfo {
+  id: string;
+  skinType: string;
+  skinTypeRu: string;
+  primaryConcernRu: string;
+  sensitivityLevel: string | null;
+  acneLevel: number | null;
+  scores?: unknown[]; // Может быть SkinScore[] или другой формат
+}
+
+/**
+ * Legacy формат дней плана (для обратной совместимости)
+ */
+export interface PlanWeekLegacy {
+  week: number;
+  days: Array<{
+    morning: number[];
+    evening: number[];
+  }>;
+}
+
+/**
+ * Информация о прогрессе плана
+ */
+export interface PlanProgressInfo {
+  currentDay: number;
+  completedDays: number[];
+}
+
+/**
+ * Информация о продукте в плане
+ */
+export interface PlanProductInfo {
+  id: number;
+  name: string;
+  brand: { name: string; id?: number };
+  price?: number | null;
+  volume?: string | null;
+  imageUrl?: string | null;
+  description?: string;
+  step?: string;
+  category?: string;
+}
+
+/**
+ * Консолидированный тип для данных страницы плана
+ * Объединяет новый формат (Plan28) и legacy формат
+ */
+export interface PlanPageData {
+  // Новый формат (plan28)
+  plan28?: Plan28;
+  productsMap?: Map<number, PlanProductInfo>;
+  planExpired?: boolean;
+  
+  // Legacy формат (для обратной совместимости)
+  user?: PlanUserInfo;
+  profile?: PlanProfileInfo;
+  plan?: {
+    weeks: PlanWeekLegacy[];
+  };
+  progress?: PlanProgressInfo;
+  
+  // Общие поля
+  wishlist: number[];
+  currentDay: number;
+  currentWeek?: number;
+  todayProducts?: PlanProductInfo[];
+}

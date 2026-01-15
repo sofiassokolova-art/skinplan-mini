@@ -8,6 +8,16 @@ import type { SkinProfile } from './skinprofile-types';
 import type { StepCategory } from './step-category-rules';
 import type { ConcernKey } from './concern-taxonomy';
 
+// РЕФАКТОРИНГ P2: Тип для ссылок на маркетплейсы
+export interface MarketLink {
+  url: string;
+  marketplace: 'ozon' | 'wildberries' | 'yandex' | 'sber' | 'other' | string;
+  price?: number;
+  available?: boolean;
+}
+
+export type MarketLinks = MarketLink[] | Record<string, string> | null;
+
 /**
  * ИСПРАВЛЕНО (P0): Доменные коды ошибок API
  * Позволяет фронту точно знать, что произошло
@@ -94,10 +104,33 @@ export interface InfographicProgress {
   oiliness?: number;
 }
 
+// РЕФАКТОРИНГ P2: Типизация ChartConfig
+export interface ChartDataset {
+  label?: string;
+  data: number[];
+  backgroundColor?: string | string[];
+  borderColor?: string | string[];
+  borderWidth?: number;
+  fill?: boolean;
+}
+
+export interface ChartData {
+  labels?: string[];
+  datasets?: ChartDataset[];
+}
+
+export interface ChartOptions {
+  responsive?: boolean;
+  maintainAspectRatio?: boolean;
+  plugins?: Record<string, unknown>;
+  scales?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
 export interface ChartConfig {
-  type: string;
-  data: any;
-  options: any;
+  type: 'line' | 'bar' | 'pie' | 'doughnut' | 'radar' | string;
+  data: ChartData;
+  options: ChartOptions;
 }
 
 export interface PlanProduct {
@@ -140,6 +173,13 @@ export interface GeneratedPlan {
   planStatus?: PlanProgressStatus;
 }
 
+// РЕФАКТОРИНГ P2: Типизация ProfileResponse
+export interface ProfileScore {
+  key: string;
+  value: number;
+  label?: string;
+}
+
 export interface ProfileResponse {
   id: string; // Всегда строка для совместимости с PlanData
   version: number;
@@ -149,10 +189,14 @@ export interface ProfileResponse {
   sensitivityLevel?: string | null;
   acneLevel?: number | null;
   ageGroup?: string | null;
-  scores?: any[];
+  scores?: ProfileScore[];
   createdAt?: string;
   updatedAt?: string;
-  [key: string]: any;
+  // РЕФАКТОРИНГ: Убран [key: string]: any для лучшей типизации
+  // Дополнительные поля добавляются явно при необходимости
+  concerns?: ConcernKey[];
+  primaryFocus?: GoalKey;
+  notes?: string | null;
 }
 
 // Типы для API ответов
@@ -199,7 +243,7 @@ export interface WishlistResponse {
       imageUrl: string | null;
       description?: string;
       link?: string | null;
-      marketLinks?: any;
+      marketLinks?: MarketLinks;
     };
     createdAt: string;
     feedback?: string | null;
@@ -219,7 +263,7 @@ export interface CartResponse {
       imageUrl: string | null;
       description?: string;
       link?: string | null;
-      marketLinks?: any;
+      marketLinks?: MarketLinks;
     };
     createdAt: string;
   }>;
@@ -320,7 +364,7 @@ export interface RecommendationsResponse {
     category: string;
     step: string;
     description: string;
-    marketLinks?: any;
+    marketLinks?: MarketLinks;
     imageUrl: string | null;
   }>>;
 }

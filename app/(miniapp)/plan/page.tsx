@@ -15,6 +15,9 @@ import { clientLogger } from '@/lib/client-logger';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { PLAN_TIMEOUTS } from '@/lib/config/timeouts';
 
+// РЕФАКТОРИНГ P2: Локальный тип данных для страницы плана
+// TODO: В будущем полностью унифицировать с PlanPageData из lib/plan-types.ts
+// Сейчас используем any для обратной совместимости
 interface PlanData {
   // Новый формат (plan28)
   plan28?: Plan28;
@@ -26,7 +29,7 @@ interface PlanData {
     imageUrl?: string | null;
     description?: string;
   }>;
-  planExpired?: boolean; // Флаг истечения плана (28+ дней)
+  planExpired?: boolean;
   // Старый формат (для обратной совместимости)
   user?: {
     id: string;
@@ -41,7 +44,7 @@ interface PlanData {
     primaryConcernRu: string;
     sensitivityLevel: string | null;
     acneLevel: number | null;
-    scores: any[];
+    scores: unknown[]; // РЕФАКТОРИНГ: any[] -> unknown[]
   };
   plan?: {
     weeks: Array<{
@@ -71,10 +74,9 @@ interface PlanData {
   }>;
   todayMorning?: number[];
   todayEvening?: number[];
-  // Общие поля
-  weeks?: any[];
-  products?: Map<number, any>;
-  scores?: any[];
+  weeks?: unknown[]; // РЕФАКТОРИНГ: any[] -> unknown[]
+  products?: Map<number, unknown>; // РЕФАКТОРИНГ: any -> unknown
+  scores?: unknown[]; // РЕФАКТОРИНГ: any[] -> unknown[]
 }
 
 export default function PlanPage() {
