@@ -94,27 +94,12 @@ function PersonalAnalysisScreenComponent({
             letterSpacing: '0px',
             textAlign: 'center',
             color: '#000000',
-            margin: '0 0 8px 0',
+            margin: '0 0 40px 0',
             maxWidth: '311px',
           }}>
           <span style={{ fontWeight: 700 }}>SkinIQ</span>
-          <span style={{ fontWeight: 400 }}> — ваш персональный анализ</span>
+          <span style={{ fontWeight: 400 }}> — ваш персональный анализ кожи</span>
         </h1>
-
-        {/* Подзаголовок */}
-        <div style={{
-          fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-          fontWeight: 400,
-          fontSize: '14px',
-          lineHeight: '34px',
-          letterSpacing: '0px',
-          textAlign: 'center',
-          color: '#9D9D9D',
-          marginBottom: '40px',
-          maxWidth: '320px',
-        }}>
-          Ваш полный анализ включает:
-        </div>
 
         {/* Список функций с иконками */}
         <div style={{
