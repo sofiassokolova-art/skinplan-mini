@@ -100,56 +100,54 @@ const sendLogToServer = async (
   }
 };
 
-// ИСПРАВЛЕНО: Вынесено в отдельную функцию для неблокирующей отправки
+// ИСПРАВЛЕНО: Вынесено в отдельную функцию для полностью неблокирующей отправки
+// В production временно отключено для снижения нагрузки
 const sendLogFetch = async (
   logPayload: any, 
   initData: string | null, 
   level: 'log' | 'warn' | 'debug' | 'error' | 'info',
   message: string
 ) => {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000); // Уменьшено до 3 секунд
+  // ИСПРАВЛЕНО: В production временно отключаем отправку логов для снижения нагрузки
+  // Логируем только в консоль браузера
+  if (!isDevelopment && level !== 'error') {
+    return; // В production отправляем только error
+  }
 
-    const response = await fetch('/api/logs', {
+  try {
+    // ИСПРАВЛЕНО: sendBeacon НЕ поддерживает кастомные заголовки (X-Telegram-Init-Data)
+    // Поэтому используем fetch с keepalive для неблокирующей отправки
+    // Fetch с keepalive работает так же как sendBeacon, но поддерживает заголовки
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000); // Таймаут 2 секунды
+
+    // ИСПРАВЛЕНО: Передаем initData в заголовках для авторизации
+    // Не ждем ответа - отправляем и забываем (fire and forget)
+    fetch('/api/logs', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...(initData ? { 'X-Telegram-Init-Data': initData } : {}),
       },
       body: JSON.stringify(logPayload),
+      keepalive: true, // Не блокирует закрытие страницы
       signal: controller.signal,
-      // ИСПРАВЛЕНО: Не ждем ответа - отправляем и забываем (fire and forget)
-      keepalive: true,
-    });
-
-    clearTimeout(timeoutId);
-
-    // ИСПРАВЛЕНО: Не логируем результат каждой отправки (слишком много шума)
-    // Логируем только ошибки и только в development
-    if (!response.ok) {
-      if (isDevelopment) {
-        const errorText = await response.text().catch(() => 'Unknown error');
-        console.warn('⚠️ Failed to send log:', { 
-          status: response.status, 
-          statusText: response.statusText,
-          error: errorText.substring(0, 200),
-          level,
-          message: message.substring(0, 50),
-        });
+    }).then((response) => {
+      clearTimeout(timeoutId);
+      // Не обрабатываем ответ - fire and forget
+      if (!response.ok && isDevelopment && level === 'error') {
+        // Только в development для error логируем 403/401 ошибки
+        if (response.status === 403 || response.status === 401) {
+          console.warn('⚠️ Log rejected by server (auth issue):', response.status);
+        }
       }
-    }
+    }).catch(() => {
+      clearTimeout(timeoutId);
+      // Игнорируем все ошибки - логирование не должно блокировать приложение
+    });
   } catch (err: any) {
-    // ИСПРАВЛЕНО: Не логируем каждую ошибку отправки (слишком много шума)
-    // Логируем только в development для отладки
-    if (isDevelopment && err?.name !== 'AbortError') {
-      console.warn('⚠️ Error sending log to server:', {
-        error: err?.message || err,
-        errorName: err?.name,
-        level,
-        message: message.substring(0, 50),
-      });
-    }
+    // Игнорируем все ошибки - логирование не должно блокировать приложение
+    // Не логируем в консоль, чтобы не создавать еще больше запросов
   }
 };
 
