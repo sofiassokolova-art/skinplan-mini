@@ -1852,6 +1852,7 @@ export default function QuizPage() {
     resumeQuizFn({
       savedProgress,
       questionnaire,
+      allQuestions, // ИСПРАВЛЕНО: Передаем allQuestions для определения следующего вопроса
       redirectInProgressRef,
       initCompletedRef,
       setInitCompleted,

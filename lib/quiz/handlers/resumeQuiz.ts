@@ -9,6 +9,7 @@ import type { SavedProgress, Questionnaire } from '@/lib/quiz/types';
 export interface ResumeQuizParams {
   savedProgress: SavedProgress | null;
   questionnaire: Questionnaire | null;
+  allQuestions: any[]; // Массив всех вопросов для определения следующего неотвеченного
   redirectInProgressRef: React.MutableRefObject<boolean>;
   initCompletedRef: React.MutableRefObject<boolean>;
   setInitCompleted: React.Dispatch<React.SetStateAction<boolean>>;
@@ -104,16 +105,61 @@ export function resumeQuiz(params: ResumeQuizParams): void {
   // Восстанавливаем прогресс из сохраненной копии
   params.setAnswers(progressToRestore.answers);
   
+  // ИСПРАВЛЕНО: Определяем следующий неотвеченный вопрос
+  // Вместо того чтобы показывать последний заполненный вопрос, показываем следующий после него
+  const answeredQuestionIds = Object.keys(progressToRestore.answers).map(id => Number(id));
+  let nextQuestionIndex = 0;
+  
+  // Находим индекс первого вопроса, на который еще не ответили
+  if (params.allQuestions && params.allQuestions.length > 0) {
+    const nextUnansweredQuestion = params.allQuestions.find((q, index) => {
+      return !answeredQuestionIds.includes(q.id) && index >= progressToRestore.questionIndex;
+    });
+    
+    if (nextUnansweredQuestion) {
+      nextQuestionIndex = params.allQuestions.findIndex(q => q.id === nextUnansweredQuestion.id);
+    } else {
+      // Если все вопросы после сохраненного индекса отвечены, ищем первый неотвеченный с начала
+      const firstUnansweredQuestion = params.allQuestions.find((q, index) => {
+        return !answeredQuestionIds.includes(q.id);
+      });
+      if (firstUnansweredQuestion) {
+        nextQuestionIndex = params.allQuestions.findIndex(q => q.id === firstUnansweredQuestion.id);
+      } else {
+        // Если все вопросы отвечены, переходим к последнему
+        nextQuestionIndex = params.allQuestions.length - 1;
+      }
+    }
+    
+    // Если nextQuestionIndex получился -1 (не найден), используем сохраненный индекс + 1
+    if (nextQuestionIndex === -1) {
+      nextQuestionIndex = Math.min(progressToRestore.questionIndex + 1, params.allQuestions.length - 1);
+    }
+  } else {
+    // Если allQuestions еще не загружен, используем сохраненный индекс + 1
+    nextQuestionIndex = progressToRestore.questionIndex + 1;
+  }
+  
+  clientLogger.log('🔍 resumeQuiz: Определен следующий вопрос', {
+    savedQuestionIndex: progressToRestore.questionIndex,
+    nextQuestionIndex,
+    answeredQuestionIds,
+    allQuestionsLength: params.allQuestions?.length || 0,
+  });
+  
   // ВАЖНО: Всегда пропускаем начальные экраны, если пользователь уже начал отвечать на вопросы
   // Если infoScreenIndex указывает на начальный экран, но вопрос уже начался - пропускаем начальные экраны
   if (progressToRestore.infoScreenIndex >= initialInfoScreens.length) {
-    // Начальные экраны пройдены, переходим к вопросам
-    clientLogger.log('✅ resumeQuiz: Начальные экраны пройдены, переходим к вопросу', progressToRestore.questionIndex);
-    params.setCurrentQuestionIndex(progressToRestore.questionIndex);
+    // Начальные экраны пройдены, переходим к следующему вопросу после последнего заполненного
+    clientLogger.log('✅ resumeQuiz: Начальные экраны пройдены, переходим к следующему вопросу', {
+      savedQuestionIndex: progressToRestore.questionIndex,
+      nextQuestionIndex,
+    });
+    params.setCurrentQuestionIndex(nextQuestionIndex);
     // ФИКС: Сохраняем currentQuestionIndex в sessionStorage при восстановлении прогресса
     if (typeof window !== 'undefined') {
       try {
-        sessionStorage.setItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION, String(progressToRestore.questionIndex));
+        sessionStorage.setItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION, String(nextQuestionIndex));
       } catch (err) {
         clientLogger.warn('⚠️ Не удалось сохранить currentQuestionIndex в sessionStorage', err);
       }
@@ -121,9 +167,12 @@ export function resumeQuiz(params: ResumeQuizParams): void {
     params.setCurrentInfoScreenIndex(progressToRestore.infoScreenIndex);
   } else if (progressToRestore.questionIndex > 0 || Object.keys(progressToRestore.answers).length > 0) {
     // Пользователь уже начал отвечать, но infoScreenIndex еще на начальных экранах
-    // Пропускаем все начальные экраны и переходим к сохранённому вопросу
-    clientLogger.log('✅ resumeQuiz: Пропускаем начальные экраны, переходим к вопросу', progressToRestore.questionIndex);
-    params.setCurrentQuestionIndex(progressToRestore.questionIndex);
+    // Пропускаем все начальные экраны и переходим к следующему вопросу
+    clientLogger.log('✅ resumeQuiz: Пропускаем начальные экраны, переходим к следующему вопросу', {
+      savedQuestionIndex: progressToRestore.questionIndex,
+      nextQuestionIndex,
+    });
+    params.setCurrentQuestionIndex(nextQuestionIndex);
     // ФИКС: Сохраняем currentQuestionIndex в sessionStorage при восстановлении прогресса
     if (typeof window !== 'undefined') {
       try {
