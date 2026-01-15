@@ -346,41 +346,48 @@ export default function QuizPage() {
   const isQuestionsFromStateMachine = quizStateMachine.isState('QUESTIONS');
   const isIntroFromStateMachine = quizStateMachine.isState('INTRO');
   
-  // КРИТИЧНО: Устанавливаем showResumeScreen = true, если есть savedProgress с >= 2 ответами
-  // Это исправляет проблему, когда loadSavedProgressFromServer не вызывается или блокируется
-  // Используем useEffect и ref, чтобы предотвратить бесконечный цикл обновлений
-  // ВАЖНО: Устанавливаем showResumeScreen только ПОСЛЕ того, как анкета загрузилась (!loading)
-  const hasSetResumeScreenRef = useRef(false);
+  // УПРОЩЕННАЯ ЛОГИКА РЕЗЮМ ЭКРАНА:
+  // 1. Если есть >= 2 ответов → показать резюм экран
+  // 2. Если 1 ответ (имя) → показать инфо экраны заново
+  // 3. Если 0 ответов → показать инфо экраны
+  // Вся логика в одном месте - после загрузки анкеты
   useEffect(() => {
-    // КРИТИЧНО: Не устанавливаем showResumeScreen во время загрузки анкеты, чтобы не блокировать загрузку вопросов
-    if (loading) {
+    // Не проверяем резюм экран во время загрузки или если пользователь начал заново
+    if (loading || isStartingOver || hasResumed) {
       return;
     }
     
-    // Проверяем, нужно ли установить showResumeScreen
-    if (savedProgress && !showResumeScreen && !isStartingOver && !hasResumed) {
-      const savedAnswersCount = savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0;
-      const savedQuestionIndex = savedProgress?.questionIndex ?? -1;
-      const shouldShowProgressScreen = savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN || 
-        savedQuestionIndex >= QUIZ_CONFIG.VALIDATION.MIN_QUESTION_INDEX_FOR_PROGRESS_SCREEN;
-      
-      // Используем ref для предотвращения повторных установок
-      if (shouldShowProgressScreen && !hasSetResumeScreenRef.current) {
-        clientLogger.log('✅ Устанавливаем showResumeScreen = true через useEffect, так как есть сохраненный прогресс', {
+    // Проверяем, есть ли сохраненный прогресс
+    if (!savedProgress || !savedProgress.answers) {
+      // Если нет прогресса, убедимся, что резюм экран скрыт
+      if (showResumeScreen) {
+        setShowResumeScreen(false);
+      }
+      return;
+    }
+    
+    const savedAnswersCount = Object.keys(savedProgress.answers).length;
+    
+    // Если >= 2 ответов → показать резюм экран
+    if (savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN) {
+      if (!showResumeScreen) {
+        clientLogger.log('✅ Показываем резюм экран: есть >= 2 ответов', {
           savedAnswersCount,
-          savedQuestionIndex,
-          shouldShowProgressScreen,
           MIN_ANSWERS: QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN,
-          loading,
         });
-        hasSetResumeScreenRef.current = true;
         setShowResumeScreen(true);
       }
-    } else if (!savedProgress || isStartingOver || hasResumed) {
-      // Сбрасываем ref, если savedProgress удален или пользователь начал заново
-      hasSetResumeScreenRef.current = false;
+    } else {
+      // Если < 2 ответов → не показываем резюм экран
+      if (showResumeScreen) {
+        clientLogger.log('❌ Скрываем резюм экран: < 2 ответов', {
+          savedAnswersCount,
+          MIN_ANSWERS: QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN,
+        });
+        setShowResumeScreen(false);
+      }
     }
-  }, [savedProgress, showResumeScreen, isStartingOver, hasResumed, loading]); // setShowResumeScreen не нужен в зависимостях (стабильная функция)
+  }, [loading, savedProgress, showResumeScreen, isStartingOver, hasResumed]);
   
   // РЕФАКТОРИНГ: Используем хук useQuizComputed для всех вычисляемых значений
   // Вынесены: effectiveAnswers, answersCount, allQuestionsRaw, allQuestions, 
@@ -3070,31 +3077,19 @@ export default function QuizPage() {
     return retakeScreenContent;
   }
 
-  // КРИТИЧНО: Экран resume должен проверяться ПЕРВЫМ, перед всеми остальными проверками
-  // Это гарантирует, что пользователь увидит экран "Вы не завершили анкету" до любых других экранов
-  // ВАЖНО: Не показываем экран "Вы не завершили анкету", если пользователь нажал "Начать заново"
-  // или уже продолжил анкету
-  // ИСПРАВЛЕНО: Добавлена проверка на минимальное количество ответов (>= 2) для показа экрана прогресса
+  // УПРОЩЕННАЯ ПРОВЕРКА РЕЗЮМ ЭКРАНА:
+  // Показываем экран только если:
+  // 1. showResumeScreen = true (устанавливается в useEffect выше)
+  // 2. Есть savedProgress с >= 2 ответов
+  // 3. Пользователь не начал заново и не продолжил анкету
   const savedAnswersCount = savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0;
-  const savedQuestionIndex = savedProgress?.questionIndex ?? -1;
-  const shouldShowProgressScreen = savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN || 
-    savedQuestionIndex >= QUIZ_CONFIG.VALIDATION.MIN_QUESTION_INDEX_FOR_PROGRESS_SCREEN;
+  const shouldShowResume = showResumeScreen && 
+                           savedProgress && 
+                           savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN &&
+                           !isStartingOverRef.current && 
+                           !hasResumedRef.current;
   
-  // КРИТИЧНО: Логируем проверку экрана resume для диагностики
-  if (savedProgress && (showResumeScreen || shouldShowProgressScreen)) {
-    clientLogger.log('🔍 Проверка экрана resume:', {
-      showResumeScreen,
-      hasSavedProgress: !!savedProgress,
-      savedAnswersCount,
-      savedQuestionIndex,
-      shouldShowProgressScreen,
-      isStartingOver: isStartingOverRef.current,
-      hasResumed: hasResumedRef.current,
-      willShowResume: showResumeScreen && savedProgress && !isStartingOverRef.current && !hasResumedRef.current && shouldShowProgressScreen,
-    });
-  }
-  
-  if (showResumeScreen && savedProgress && !isStartingOverRef.current && !hasResumedRef.current && shouldShowProgressScreen) {
+  if (shouldShowResume) {
     // Получаем все вопросы с фильтрацией
     // ИСПРАВЛЕНО: Добавляем проверку на существование groups и questions
     const allQuestionsRaw = questionnaire ? [
