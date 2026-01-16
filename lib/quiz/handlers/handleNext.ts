@@ -940,41 +940,32 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         currentPendingInfoScreenId: currentPendingInfoScreen?.id || null,
       });
       
-      // ИСПРАВЛЕНО: Очищаем pendingInfoScreen перед переходом к следующему вопросу
-      // Это предотвращает блокировку показа следующего вопроса, если pendingInfoScreen остался от предыдущего
-      // КРИТИЧНО: Очищаем только если нет инфо-экрана для следующего вопроса
-      // Если есть инфо-экран для следующего вопроса, он будет установлен после ответа на него
+      // КРИТИЧНО: ВСЕГДА очищаем pendingInfoScreen перед переходом к следующему вопросу
+      // Это предотвращает блокировку показа следующего вопроса
+      // Инфо-экран для следующего вопроса будет установлен ПОСЛЕ того, как пользователь ответит на него (строки 751-824)
+      // НЕ устанавливаем pendingInfoScreen для следующего вопроса до того, как на него ответили
       if (pendingInfoScreen || currentPendingInfoScreen) {
         const nextQuestionInfoScreen = getInfoScreenAfterQuestion(nextQuestion.code);
-        // Если для следующего вопроса нет инфо-экрана, очищаем pendingInfoScreen
-        if (!nextQuestionInfoScreen) {
-          clientLogger.warn('🧹 ИНФО-СКРИН: Очищаем pendingInfoScreen перед переходом к следующему вопросу (нет инфо-экрана для следующего вопроса)', {
-            currentQuestionCode: allQuestions[currentQuestionIndex]?.code || null,
-            currentQuestionIndex,
-            nextQuestionCode: nextQuestion.code,
-            nextQuestionIndex: newIndex,
-            pendingInfoScreenId: (pendingInfoScreen as InfoScreen | null)?.id || (currentPendingInfoScreen as InfoScreen | null)?.id || null,
-            nextQuestionInfoScreenFound: !!nextQuestionInfoScreen,
-            nextQuestionInfoScreenId: (nextQuestionInfoScreen as InfoScreen | null | undefined)?.id || null,
-          });
-          if (pendingInfoScreenRef) {
-            pendingInfoScreenRef.current = null;
-            clientLogger.warn('🧹 ИНФО-СКРИН: pendingInfoScreenRef.current очищен', {
-              previousPendingInfoScreenId: (pendingInfoScreen as InfoScreen | null)?.id || (currentPendingInfoScreen as InfoScreen | null)?.id || null,
-            });
-          }
-          setPendingInfoScreen(null);
-          clientLogger.warn('🧹 ИНФО-СКРИН: setPendingInfoScreen(null) вызван', {
-            previousPendingInfoScreenId: pendingInfoScreen?.id || currentPendingInfoScreen?.id || null,
-          });
-        } else {
-          clientLogger.warn('📋 ИНФО-СКРИН: НЕ очищаем pendingInfoScreen - для следующего вопроса есть инфо-экран', {
-            currentQuestionCode: allQuestions[currentQuestionIndex]?.code || null,
-            nextQuestionCode: nextQuestion.code,
-            nextQuestionInfoScreenId: nextQuestionInfoScreen.id,
-            currentPendingInfoScreenId: pendingInfoScreen?.id || currentPendingInfoScreen?.id || null,
+        clientLogger.warn('🧹 ИНФО-СКРИН: Очищаем pendingInfoScreen перед переходом к следующему вопросу', {
+          currentQuestionCode: allQuestions[currentQuestionIndex]?.code || null,
+          currentQuestionIndex,
+          nextQuestionCode: nextQuestion.code,
+          nextQuestionIndex: newIndex,
+          pendingInfoScreenId: (pendingInfoScreen as InfoScreen | null)?.id || (currentPendingInfoScreen as InfoScreen | null)?.id || null,
+          nextQuestionHasInfoScreen: !!nextQuestionInfoScreen,
+          nextQuestionInfoScreenId: (nextQuestionInfoScreen as InfoScreen | null | undefined)?.id || null,
+          note: 'Инфо-экран для следующего вопроса будет установлен после ответа на него',
+        });
+        if (pendingInfoScreenRef) {
+          pendingInfoScreenRef.current = null;
+          clientLogger.warn('🧹 ИНФО-СКРИН: pendingInfoScreenRef.current очищен', {
+            previousPendingInfoScreenId: (pendingInfoScreen as InfoScreen | null)?.id || (currentPendingInfoScreen as InfoScreen | null)?.id || null,
           });
         }
+        setPendingInfoScreen(null);
+        clientLogger.warn('🧹 ИНФО-СКРИН: setPendingInfoScreen(null) вызван', {
+          previousPendingInfoScreenId: pendingInfoScreen?.id || currentPendingInfoScreen?.id || null,
+        });
       }
       
       // КРИТИЧНО: Очищаем флаг justClosedInfoScreen после перехода к следующему вопросу
