@@ -192,42 +192,10 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
   // ГРУППА 1: Синхронизация questionnaire между React Query, state и State Machine
   // ============================================
   
-  // Примечание: Синхронизация setQuestionnaireInStateMachineRef выполняется в основном компоненте,
-  // так как setQuestionnaireInStateMachineRef находится в quizState и зависит от setQuestionnaireInStateMachine
-
-  // Синхронизация questionnaire из React Query с локальным state
-  useEffect(() => {
-    const queryId = questionnaireFromQuery?.id;
-    const currentId = questionnaire?.id;
-    
-    if (questionnaireFromQuery && queryId && queryId !== currentId) {
-      clientLogger.log('🔄 Syncing questionnaire from React Query', {
-        questionnaireId: questionnaireFromQuery.id,
-        currentQuestionnaireId: questionnaire?.id,
-      });
-      setQuestionnaire(questionnaireFromQuery);
-      questionnaireRef.current = questionnaireFromQuery;
-      setQuestionnaireInStateMachine(questionnaireFromQuery);
-    }
-  }, [questionnaireFromQuery?.id, questionnaire?.id, setQuestionnaire, setQuestionnaireInStateMachine]);
-
-  // Синхронизация loading из React Query
-  useEffect(() => {
-    const hasQuestionnaireAlready = !!questionnaire || !!questionnaireRef.current || !!quizStateMachine.questionnaire;
-    
-    if (isLoadingQuestionnaire && !hasQuestionnaireAlready) {
-      setLoading(true);
-    } else if (questionnaireFromQuery?.id) {
-      setLoading(false);
-    }
-  }, [isLoadingQuestionnaire, questionnaireFromQuery?.id, questionnaire?.id, quizStateMachine.questionnaire?.id, setLoading]);
-
-  // Синхронизация error из React Query
-  useEffect(() => {
-    if (questionnaireError) {
-      setError('Ошибка загрузки анкеты. Пожалуйста, обновите страницу.');
-    }
-  }, [questionnaireError, setError]);
+  // ИСПРАВЛЕНО: Синхронизация questionnaire теперь выполняется в useQuestionnaireSync
+  // Удалена дублирующая синхронизация, которая вызывала бесконечные циклы
+  // useQuestionnaireSync использует refs для setQuestionnaire, setLoading, setError,
+  // что предотвращает включение функций в зависимости useEffect
 
   // Синхронизация questionnaireRef с state
   useEffect(() => {

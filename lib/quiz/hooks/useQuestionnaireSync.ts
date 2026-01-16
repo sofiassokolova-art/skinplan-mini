@@ -38,38 +38,51 @@ export function useQuestionnaireSync({
   const lastSyncedFromQueryIdRef = useRef<number | null>(null);
   const setQuestionnaireInStateMachineRef = useRef<((questionnaire: Questionnaire | null) => void) | null>(null);
   const questionnaireForCallbackRef = useRef<Questionnaire | null>(null);
+  // ИСПРАВЛЕНО: Используем ref для setQuestionnaire, чтобы избежать включения функции в зависимости
+  const setQuestionnaireRef = useRef(setQuestionnaire);
 
-  // Обновляем ref для questionnaire
+  // Обновляем refs при каждом рендере
   useEffect(() => {
     questionnaireForCallbackRef.current = questionnaire;
-  }, [questionnaire]);
-
-  // Обновляем ref для setQuestionnaireInStateMachine
-  // ИСПРАВЛЕНО: Убрана зависимость от функции - обновляем ref при каждом рендере
-  useEffect(() => {
+    setQuestionnaireRef.current = setQuestionnaire;
     setQuestionnaireInStateMachineRef.current = quizStateMachine.setQuestionnaire;
   });
 
   // Синхронизация из React Query
-  // ИСПРАВЛЕНО: Убраны функции из зависимостей - используем refs для стабильности
+  // ИСПРАВЛЕНО: Предотвращаем бесконечные циклы - проверяем, что действительно нужно синхронизировать
   useEffect(() => {
     const queryId = questionnaireFromQuery?.id;
     const currentId = questionnaire?.id;
+    const stateMachineId = quizStateMachine.questionnaire?.id;
     
-    if (questionnaireFromQuery && queryId && queryId !== currentId && queryId !== lastSyncedFromQueryIdRef.current) {
+    // КРИТИЧНО: Синхронизируем только если:
+    // 1. Есть questionnaireFromQuery
+    // 2. ID отличается от текущего questionnaire (или текущий undefined/null)
+    // 3. ID отличается от последнего синхронизированного
+    // 4. ID отличается от State Machine (чтобы не синхронизировать то, что уже синхронизировано)
+    // 5. НЕ синхронизируем, если questionnaire уже установлен и совпадает с questionnaireFromQuery
+    const shouldSync = questionnaireFromQuery && 
+        queryId && 
+        (currentId === undefined || currentId === null || queryId !== currentId) && 
+        queryId !== lastSyncedFromQueryIdRef.current &&
+        (stateMachineId === undefined || stateMachineId === null || queryId !== stateMachineId);
+    
+    if (shouldSync) {
       lastSyncedFromQueryIdRef.current = queryId;
       clientLogger.log('🔄 Syncing questionnaire from React Query', {
         questionnaireId: questionnaireFromQuery.id,
         currentQuestionnaireId: questionnaire?.id,
+        stateMachineId,
       });
-      setQuestionnaire(questionnaireFromQuery);
+      // ИСПРАВЛЕНО: Используем ref для setQuestionnaire, чтобы избежать включения функции в зависимости
+      setQuestionnaireRef.current(questionnaireFromQuery);
       questionnaireRef.current = questionnaireFromQuery;
       if (setQuestionnaireInStateMachineRef.current) {
         setQuestionnaireInStateMachineRef.current(questionnaireFromQuery);
       }
     }
     // ИСПРАВЛЕНО: Только ID в зависимостях, функции убраны (они стабильны)
-  }, [questionnaireFromQuery?.id, questionnaire?.id]);
+  }, [questionnaireFromQuery?.id, questionnaire?.id, quizStateMachine.questionnaire?.id]);
 
   // Обертка для setQuestionnaire с синхронизацией State Machine
   const setQuestionnaireWithStateMachine = useCallback((
@@ -109,7 +122,7 @@ export function useQuestionnaireSync({
       clientLogger.warn('🛡️ [State Machine] Protection triggered: prevented setting questionnaire to null', {
         previousQuestionnaireId: previousStateMachineQuestionnaire.id,
       });
-      setQuestionnaire(previousStateMachineQuestionnaire);
+      setQuestionnaireRef.current(previousStateMachineQuestionnaire);
       questionnaireRef.current = previousStateMachineQuestionnaire;
       return;
     }
@@ -123,7 +136,7 @@ export function useQuestionnaireSync({
         localQuestionnaireId: currentQuestionnaire?.id || null,
       });
       
-      setQuestionnaire(questionnaireToSet);
+      setQuestionnaireRef.current(questionnaireToSet);
       questionnaireRef.current = questionnaireToSet;
     } else if (questionnaireToSet) {
       questionnaireRef.current = questionnaireToSet;
@@ -133,23 +146,33 @@ export function useQuestionnaireSync({
   }, [quizStateMachine]);
 
   // Синхронизация loading из React Query
-  // ИСПРАВЛЕНО: Убрана функция setLoading из зависимостей
+  // ИСПРАВЛЕНО: Убрана функция setLoading из зависимостей, используем ref для предотвращения циклов
+  const setLoadingRef = useRef(setLoading);
+  useEffect(() => {
+    setLoadingRef.current = setLoading;
+  }, [setLoading]);
+  
   useEffect(() => {
     const hasQuestionnaireAlready = !!questionnaire || !!questionnaireRef.current || !!quizStateMachine.questionnaire;
     
     if (isLoadingQuestionnaire && !hasQuestionnaireAlready) {
-      setLoading(true);
+      setLoadingRef.current(true);
     } else if (questionnaireFromQuery?.id) {
-      setLoading(false);
+      setLoadingRef.current(false);
     }
     // ИСПРАВЛЕНО: Только значения в зависимостях, функции убраны
   }, [isLoadingQuestionnaire, questionnaireFromQuery?.id, questionnaire?.id, quizStateMachine.questionnaire?.id]);
 
   // Синхронизация error из React Query
-  // ИСПРАВЛЕНО: Убрана функция setError из зависимостей
+  // ИСПРАВЛЕНО: Убрана функция setError из зависимостей, используем ref для предотвращения циклов
+  const setErrorRef = useRef(setError);
+  useEffect(() => {
+    setErrorRef.current = setError;
+  }, [setError]);
+  
   useEffect(() => {
     if (questionnaireError) {
-      setError('Ошибка загрузки анкеты. Пожалуйста, обновите страницу.');
+      setErrorRef.current('Ошибка загрузки анкеты. Пожалуйста, обновите страницу.');
     }
     // ИСПРАВЛЕНО: Только questionnaireError в зависимостях
   }, [questionnaireError]);
