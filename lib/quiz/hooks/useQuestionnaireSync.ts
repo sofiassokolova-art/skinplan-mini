@@ -62,11 +62,24 @@ export function useQuestionnaireSync({
     // 3. ID отличается от последнего синхронизированного (защита от повторных синхронизаций)
     // 4. ID отличается от State Machine (чтобы не синхронизировать то, что уже синхронизировано)
     // ВАЖНО: НЕ проверяем questionnaire?.id, так как он обновляется асинхронно и вызывает бесконечные циклы
-    const shouldSync = questionnaireFromQuery && 
-        queryId && 
+    const shouldSync = questionnaireFromQuery &&
+        queryId &&
         queryId !== refId &&
-        queryId !== lastSyncedFromQueryIdRef.current &&
-        queryId !== stateMachineId;
+        queryId !== lastSyncedFromQueryIdRef.current;
+
+    // DEBUG: Логируем условие синхронизации
+    if (questionnaireFromQuery && queryId) {
+      clientLogger.log('🔍 Sync condition check', {
+        queryId,
+        refId,
+        lastSyncedId: lastSyncedFromQueryIdRef.current,
+        stateMachineId,
+        queryId_ne_refId: queryId !== refId,
+        queryId_ne_lastSynced: queryId !== lastSyncedFromQueryIdRef.current,
+        queryId_ne_stateMachine: queryId !== stateMachineId,
+        shouldSync,
+      });
+    }
     
     if (shouldSync) {
       lastSyncedFromQueryIdRef.current = queryId;
@@ -87,7 +100,7 @@ export function useQuestionnaireSync({
     // ИСПРАВЛЕНО: Только ID в зависимостях, функции убраны (они стабильны)
     // ИСПРАВЛЕНО: Убрали questionnaire?.id из зависимостей, так как он меняется после синхронизации
     // и вызывает повторные срабатывания. Используем только queryId и stateMachineId.
-  }, [questionnaireFromQuery?.id, quizStateMachine.questionnaire?.id]);
+  }, [questionnaireFromQuery?.id]);
 
   // Обертка для setQuestionnaire с синхронизацией State Machine
   const setQuestionnaireWithStateMachine = useCallback((
