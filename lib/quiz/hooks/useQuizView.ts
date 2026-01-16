@@ -189,9 +189,9 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
     currentQuestionIndex,
     currentQuestion?.id ?? null, // ИСПРАВЛЕНО: Используем только ID вместо всего объекта, null для стабильности
     questionnaire?.id ?? null, // ИСПРАВЛЕНО: Используем только ID вместо всего объекта, null для стабильности
-    // ФИКС: Используем questionnaireRef?.current?.id вместо всего объекта, чтобы избежать лишних пересчетов
-    // Это предотвращает React error #300 и #310
-    questionnaireRef?.current?.id ?? null, // null для стабильности
+    // КРИТИЧНО ИСПРАВЛЕНО: Убрали questionnaireRef?.current?.id из зависимостей
+    // ref.current не должен быть в зависимостях, так как изменения ref не триггерят ререндер
+    // и это вызывает React Error #300
     questionnaireFromStateMachine?.id ?? null, // ФИКС: Используем только ID вместо всего объекта, null для стабильности
     loading,
     hasResumed,

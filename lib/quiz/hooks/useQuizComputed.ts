@@ -125,8 +125,9 @@ export function useQuizComputed(params: UseQuizComputedParams) {
 
     return stableId || null;
   }, [
-    // ИСПРАВЛЕНО: Используем только стабильные значения, которые не меняются после загрузки
-    questionnaireRef.current?.id,
+    // КРИТИЧНО ИСПРАВЛЕНО: Убрали questionnaireRef.current?.id из зависимостей
+    // ref.current не должен быть в зависимостях, так как изменения ref не триггерят ререндер
+    // и это вызывает React Error #300
     questionnaire?.id,
     quizStateMachine.questionnaire?.id,
     isDev
@@ -196,8 +197,10 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       return allQuestionsRawPrevRef.current.length > 0 ? allQuestionsRawPrevRef.current : [];
     }
   }, [
-    // КРИТИЧНО ИСПРАВЛЕНИЕ: Убираем все зависимости - allQuestionsRaw должен вычисляться только один раз
-    // при первом получении questionnaire
+    // КРИТИЧНО ИСПРАВЛЕНО: Добавляем правильные зависимости для триггера пересчета
+    // Используем только стабильные значения (ID), а не объекты или ref.current
+    questionnaire?.id,
+    quizStateMachine.questionnaire?.id,
     isDev
   ]);
 

@@ -528,7 +528,12 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
         }
       }
     }
-  }, [isLoadingProgress, quizProgressFromQuery?.progress?.answers ? JSON.stringify(quizProgressFromQuery.progress.answers) : null, setAnswers, setSavedProgress]);
+    // КРИТИЧНО ИСПРАВЛЕНО: Убрали JSON.stringify из зависимостей, так как это создает новую строку каждый раз
+    // и вызывает бесконечные циклы. Вместо этого используем стабильные значения:
+    // - isLoadingProgress (boolean)
+    // - количество ключей в answers (number)
+    // - setAnswers и setSavedProgress (стабильные функции из useState)
+  }, [isLoadingProgress, quizProgressFromQuery?.progress?.answers ? Object.keys(quizProgressFromQuery.progress.answers).length : 0, setAnswers, setSavedProgress]);
 
   // ============================================
   // ГРУППА 4: Проверка профиля и retake флагов
