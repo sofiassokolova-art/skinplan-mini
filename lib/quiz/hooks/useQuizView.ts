@@ -110,18 +110,14 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
       // Не показываем, если показывается retake screen
       if (showRetakeScreen && isRetakingQuiz) return false;
       
-      // ИСПРАВЛЕНО: Если есть сохраненный прогресс с >= 2 ответами, НЕ показываем инфо-экраны
-      // Такие пользователи должны увидеть резюм-экран (который проверяется выше)
-      // Но если только 1 ответ (имя), это новый пользователь - показываем инфо-экраны
-      if (savedProgress && savedProgress.answers) {
-        const savedAnswersCount = Object.keys(savedProgress.answers).length;
-        // Если >= 2 ответа - должен показаться резюм-экран (проверяется выше)
-        // Не показываем инфо-экраны
-        if (savedAnswersCount >= 2) {
-          return false;
-        }
-        // Если 1 ответ - это имя, считаем новым пользователем и показываем инфо-экраны
+      // КРИТИЧНО ИСПРАВЛЕНО: Используем предварительно вычисленное значение вместо прямого доступа к объекту
+      // Это предотвращает проблемы с зависимостями и stale closures
+      // Если >= 2 ответа - должен показаться резюм-экран (проверяется выше)
+      // Не показываем инфо-экраны
+      if (savedProgressAnswersCount >= 2) {
+        return false;
       }
+      // Если 1 ответ - это имя, считаем новым пользователем и показываем инфо-экраны
       
       // Не показываем, если пользователь уже возобновил анкету
       if (hasResumed) return false;
@@ -134,12 +130,10 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
       // и может привести к React error #300
       if (currentInfoScreenIndex >= initialInfoScreens.length) return false;
       
-      // ИСПРАВЛЕНО: Не показываем инфо-экраны, если пользователь уже начал отвечать на вопросы
-      // (currentQuestionIndex > 0 означает, что уже был переход к вопросам)
-      // Но если есть только 1 ответ (имя) и currentQuestionIndex = 0, это новый пользователь
-      const answersCount = Object.keys(answers).length;
+      // КРИТИЧНО ИСПРАВЛЕНО: Используем предварительно вычисленное значение вместо прямого доступа к объекту
+      // Это предотвращает проблемы с зависимостями и stale closures
       // Если >= 2 ответа, не показываем инфо-экраны (должен показаться резюм-экран)
-      if (answersCount >= 2) {
+      if (answersKeysCount >= 2) {
         return false;
       }
       // Если currentQuestionIndex > 0, уже перешли к вопросам

@@ -26,10 +26,11 @@ export function useQuizStateMachine(options: UseQuizStateMachineOptions = {}) {
     return stateMachineRef.current?.getState() || initialState;
   });
   
-  // КРИТИЧНО ИСПРАВЛЕНО: Инициализируем ref начальным состоянием стабильным значением
+  // КРИТИЧНО ИСПРАВЛЕНО: Инициализируем ref начальным состоянием из state machine
   // Используем ref для хранения предыдущего состояния в listener, чтобы избежать бесконечных циклов
-  // КРИТИЧНО: useRef не принимает функцию, поэтому используем стабильное значение initialState
-  const previousStateRef = useRef<QuizState>(initialState);
+  // КРИТИЧНО: useRef не принимает функцию, поэтому вычисляем значение заранее
+  const initialPreviousState = stateMachineRef.current?.getState() || initialState;
+  const previousStateRef = useRef<QuizState>(initialPreviousState);
   
   // Подписываемся на изменения состояния
   // ИСПРАВЛЕНО: Убрали state из зависимостей, чтобы избежать бесконечных циклов

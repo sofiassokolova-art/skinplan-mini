@@ -175,23 +175,23 @@ export function useQuizRenderDebug(params: UseQuizRenderDebugParams) {
       });
     }
   }, [
-    // КРИТИЧНО ИСПРАВЛЕНО: Минимальный набор зависимостей - только критичные примитивные значения
-    // КРИТИЧНО: Не используем объекты в зависимостях, только примитивы
-    // КРИТИЧНО: Используем стабильные значения для предотвращения React Error #300
-    // КРИТИЧНО: Убрали часто меняющиеся зависимости (questionnaire?.id, currentQuestion?.id, currentQuestionIndex)
-    // которые вызывают бесконечные циклы логирования
+    // КРИТИЧНО ИСПРАВЛЕНО: Добавляем стабильные примитивные значения для предотвращения stale closures
+    // Используем только ID и индексы, не объекты, чтобы избежать бесконечных циклов
     isDev,
-    // КРИТИЧНО: Оставляем только loading и error, которые меняются редко и критичны для отладки
     loading,
     error,
-    // УБРАНО: questionnaire?.id, currentQuestion?.id, currentQuestionIndex - вызывают бесконечные циклы
+    // КРИТИЧНО: Добавляем стабильные значения для предотвращения использования устаревших значений
+    // Используем ?? null для стабильности (null вместо undefined)
+    questionnaire?.id ?? null,
+    currentQuestion?.id ?? null,
+    currentQuestionIndex,
     // Убраны зависимости, которые часто меняются и не критичны для логирования:
-    // - questionnaireRef (ref не меняется)
+    // - questionnaireRef (ref не меняется, читаем внутри эффекта)
     // - allQuestionsLength, allQuestionsRawLength (меняются часто, но не критично)
-    // - showResumeScreen, showRetakeScreen, isShowingInitialInfoScreen (меняются редко)
-    // - pendingInfoScreen (может часто меняться)
-    // - isRetakingQuiz, hasResumed (меняются редко)
-    // - initCompletedRef, initInProgressRef (refs не меняются)
+    // - showResumeScreen, showRetakeScreen, isShowingInitialInfoScreen (меняются редко, читаем внутри эффекта)
+    // - pendingInfoScreen (может часто меняться, читаем внутри эффекта)
+    // - isRetakingQuiz, hasResumed (меняются редко, читаем внутри эффекта)
+    // - initCompletedRef, initInProgressRef (refs не меняются, читаем внутри эффекта)
     // КРИТИЧНО: lastCallTimeRef не включен в зависимости, так как это ref
   ]);
 }
