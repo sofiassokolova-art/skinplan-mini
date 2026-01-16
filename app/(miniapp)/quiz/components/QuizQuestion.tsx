@@ -120,11 +120,14 @@ export function QuizQuestion({
           <div style={{
             marginBottom: '24px',
             marginTop: '75px',
+            // ИСПРАВЛЕНО: Для skin_goals и skin_type используем отступы для создания такого же положения, как на экране "Возраст"
+            // На экране "Возраст": внешний padding 20px + внутренний padding 24px = 44px от края до контента шириной 600px
+            // Для skin_goals: внешний padding 0px, поэтому используем calc для центрирования с отступами 20px от края
+            // calc(50% - 300px) центрирует прогресс-бар шириной 600px, max(20px, ...) обеспечивает минимальный отступ 20px
             width: '100%',
             maxWidth: '600px',
-            marginLeft: 'auto',
-            marginRight: 'auto',
-            // ИСПРАВЛЕНО: Прогресс-бар должен быть одинаковой ширины на всех экранах без дополнительных отступов
+            marginLeft: useLimeStyle ? 'max(20px, calc(50% - 300px))' : 'auto',
+            marginRight: useLimeStyle ? 'max(20px, calc(50% - 300px))' : 'auto',
             paddingLeft: '0',
             paddingRight: '0',
             boxSizing: 'border-box',
