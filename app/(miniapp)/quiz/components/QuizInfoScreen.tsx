@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { Questionnaire } from '@/lib/quiz/types';
 import type { InfoScreen } from '../info-screens';
@@ -16,10 +16,34 @@ import { clientLogger } from '@/lib/client-logger';
 import { getInitialInfoScreens } from '../info-screens';
 import { QuizErrorDisplay } from './QuizErrorDisplay';
 
-// Компонент для плавной загрузки изображений
+// Компонент для плавной загрузки изображений с предзагрузкой
 function ImageWithLoading({ src, alt, maxWidth }: { src: string; alt: string; maxWidth: string }) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+
+  // ИСПРАВЛЕНО: Предзагрузка изображения для ускорения загрузки
+  useEffect(() => {
+    if (!src || typeof window === 'undefined') return;
+    
+    // Добавляем preload link в head для ранней загрузки
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.as = 'image';
+    link.href = src;
+    link.crossOrigin = 'anonymous';
+    document.head.appendChild(link);
+    
+    // Также создаем Image объект для предзагрузки в кэш браузера
+    const img = new Image();
+    img.src = src;
+    
+    return () => {
+      // Cleanup: удаляем link при размонтировании
+      if (document.head.contains(link)) {
+        document.head.removeChild(link);
+      }
+    };
+  }, [src]);
 
   return (
     <div style={{
@@ -47,6 +71,7 @@ function ImageWithLoading({ src, alt, maxWidth }: { src: string; alt: string; ma
           justifyContent: 'center',
           opacity: 1,
           transition: 'opacity 0.3s ease-out',
+          zIndex: 1,
         }}>
           <div style={{
             width: '40px',
@@ -64,10 +89,12 @@ function ImageWithLoading({ src, alt, maxWidth }: { src: string; alt: string; ma
         </div>
       )}
       
-      {/* Изображение */}
+      {/* Изображение с loading="eager" для важных изображений */}
       <img
         src={src}
         alt={alt}
+        loading="eager"
+        fetchPriority="high"
         onLoad={() => {
           setIsLoading(false);
           setHasError(false);
@@ -163,6 +190,32 @@ export function QuizInfoScreen({
   const isGoalsIntroScreen = screen.id === 'goals_intro';
   const isGeneralInfoIntroScreen = screen.id === 'general_info_intro';
 
+  // ИСПРАВЛЕНО: Предзагрузка изображения следующего экрана для ускорения загрузки
+  // Если текущий экран - testimonials, предзагружаем изображение для general_info_intro
+  useEffect(() => {
+    if (isTestimonialsScreen && typeof window !== 'undefined') {
+      // Предзагружаем изображение для экрана "Общая информация"
+      const nextImageSrc = '/info8.jpg';
+      const link = document.createElement('link');
+      link.rel = 'preload';
+      link.as = 'image';
+      link.href = nextImageSrc;
+      link.crossOrigin = 'anonymous';
+      document.head.appendChild(link);
+      
+      // Также создаем Image объект для предзагрузки в кэш браузера
+      const img = new Image();
+      img.src = nextImageSrc;
+      
+      return () => {
+        // Cleanup: удаляем link при размонтировании
+        if (document.head.contains(link)) {
+          document.head.removeChild(link);
+        }
+      };
+    }
+  }, [isTestimonialsScreen]);
+
   // РЕФАКТОРИНГ: Используем компонент WelcomeScreen
   if (isWelcomeScreen) {
     return (
@@ -196,7 +249,7 @@ export function QuizInfoScreen({
           position: 'fixed',
           top: 'clamp(20px, 4vh, 40px)',
           left: 'clamp(19px, 5vw, 24px)',
-          zIndex: 9999,
+          zIndex: 99999,
           width: '44px',
           height: '44px',
           background: 'transparent',
@@ -207,7 +260,9 @@ export function QuizInfoScreen({
           justifyContent: 'center',
           cursor: 'pointer',
           padding: 0,
-          willChange: 'transform',
+          transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
+          backfaceVisibility: 'hidden', // Оптимизация рендеринга
+          WebkitTransform: 'translateZ(0)', // Для Safari
         }}
       >
         <svg
@@ -436,7 +491,7 @@ export function QuizInfoScreen({
           position: 'fixed',
           top: 'clamp(20px, 4vh, 40px)',
           left: 'clamp(19px, 5vw, 24px)',
-          zIndex: 9999,
+          zIndex: 99999,
           width: '44px',
           height: '44px',
           background: 'transparent',
@@ -447,7 +502,9 @@ export function QuizInfoScreen({
           cursor: 'pointer',
           padding: 0,
           pointerEvents: 'auto',
-          willChange: 'transform',
+          transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
+          backfaceVisibility: 'hidden', // Оптимизация рендеринга
+          WebkitTransform: 'translateZ(0)', // Для Safari
         }}
       >
         <svg
@@ -598,7 +655,7 @@ export function QuizInfoScreen({
           position: 'fixed',
           top: 'clamp(20px, 4vh, 40px)',
           left: 'clamp(19px, 5vw, 24px)',
-          zIndex: 9999,
+          zIndex: 99999,
           pointerEvents: 'auto',
           width: '44px',
           height: '44px',
@@ -609,7 +666,9 @@ export function QuizInfoScreen({
           justifyContent: 'center',
           cursor: 'pointer',
           padding: 0,
-          willChange: 'transform',
+          transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
+          backfaceVisibility: 'hidden', // Оптимизация рендеринга
+          WebkitTransform: 'translateZ(0)', // Для Safari
         }}
       >
         <svg
@@ -756,7 +815,7 @@ export function QuizInfoScreen({
           position: 'fixed',
           top: 'clamp(20px, 4vh, 40px)',
           left: 'clamp(19px, 5vw, 24px)',
-          zIndex: 9999,
+          zIndex: 99999,
           pointerEvents: 'auto',
           width: '44px',
           height: '44px',
@@ -767,7 +826,9 @@ export function QuizInfoScreen({
           justifyContent: 'center',
           cursor: 'pointer',
           padding: 0,
-          willChange: 'transform',
+          transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
+          backfaceVisibility: 'hidden', // Оптимизация рендеринга
+          WebkitTransform: 'translateZ(0)', // Для Safari
         }}
       >
         <svg
@@ -925,7 +986,9 @@ export function QuizInfoScreen({
         cursor: 'pointer',
         padding: 0,
         pointerEvents: 'auto',
-        willChange: 'auto',
+        transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
+        backfaceVisibility: 'hidden', // Оптимизация рендеринга
+        WebkitTransform: 'translateZ(0)', // Для Safari
         isolation: 'isolate',
       }}
     >

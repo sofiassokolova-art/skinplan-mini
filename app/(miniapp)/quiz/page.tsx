@@ -1174,6 +1174,7 @@ export default function QuizPage() {
       questionnaireRef,
       pendingInfoScreen,
       currentInfoScreenIndexRef,
+      allQuestions, // ИСПРАВЛЕНО: Передаем allQuestions для поиска вопроса по коду
       setCurrentInfoScreenIndex,
       setCurrentQuestionIndex,
       setPendingInfoScreen,
@@ -2400,13 +2401,16 @@ export default function QuizPage() {
   // КРИТИЧНО: НЕ показываем инфо-экраны во время загрузки прогресса
   // Это предотвращает показ инфо-экранов при повторном заходе до загрузки savedProgress
   // Кнопка на первом экране уже имеет проверку загрузки анкеты
+  // ИСПРАВЛЕНО: Также проверяем savedProgress - если есть >= 2 ответов, не показываем начальные экраны
+  const hasEnoughSavedAnswers = savedProgress?.answers && Object.keys(savedProgress.answers).length >= 2;
   if (isShowingInitialInfoScreen && 
       currentInitialInfoScreen && 
       currentInfoScreenIndex < initialInfoScreens.length &&
       !isRetakingQuiz && 
       !showResumeScreen && 
       !pendingInfoScreen &&
-      !loading) {
+      !loading &&
+      !hasEnoughSavedAnswers) { // ИСПРАВЛЕНО: Не показываем начальные экраны, если есть >= 2 сохраненных ответов
     // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
     // if (isDev) {
     //   clientLogger.log('📺 Рендерим начальный инфо-экран', {

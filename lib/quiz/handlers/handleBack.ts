@@ -4,7 +4,7 @@
 import { clientLogger } from '@/lib/client-logger';
 import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
-import type { Questionnaire } from '@/lib/quiz/types';
+import type { Questionnaire, Question } from '@/lib/quiz/types';
 import { 
   saveIndexToSessionStorage, 
   saveProgressSafely, 
@@ -21,6 +21,7 @@ export interface HandleBackParams {
   questionnaireRef: React.MutableRefObject<Questionnaire | null>;
   pendingInfoScreen: InfoScreen | null;
   currentInfoScreenIndexRef: React.MutableRefObject<number>;
+  allQuestions: Question[]; // ИСПРАВЛЕНО: Добавлен allQuestions для поиска вопроса по коду
   setCurrentInfoScreenIndex: React.Dispatch<React.SetStateAction<number>>;
   setCurrentQuestionIndex: React.Dispatch<React.SetStateAction<number>>;
   setPendingInfoScreen: React.Dispatch<React.SetStateAction<InfoScreen | null>>;
@@ -35,6 +36,7 @@ export async function handleBack({
   questionnaireRef,
   pendingInfoScreen,
   currentInfoScreenIndexRef,
+  allQuestions,
   setCurrentInfoScreenIndex,
   setCurrentQuestionIndex,
   setPendingInfoScreen,
@@ -46,6 +48,8 @@ export async function handleBack({
     currentQuestionIndex,
     hasPendingInfoScreen: !!pendingInfoScreen,
     hasQuestionnaire: !!questionnaire || !!questionnaireRef.current,
+    pendingInfoScreenId: pendingInfoScreen?.id,
+    pendingInfoScreenShowAfter: pendingInfoScreen?.showAfterQuestionCode,
   });
 
   // ИСПРАВЛЕНО: Используем единую функцию для получения начальных инфо-экранов
@@ -66,24 +70,54 @@ export async function handleBack({
     clientLogger.log('🔙 handleBack: закрываем pendingInfoScreen и возвращаемся к предыдущему вопросу', {
       currentQuestionIndex,
       pendingInfoScreenId: pendingInfoScreen.id,
+      showAfterQuestionCode: pendingInfoScreen.showAfterQuestionCode,
     });
     setPendingInfoScreen(null);
     
-    // ИСПРАВЛЕНО: После закрытия pendingInfoScreen возвращаемся к предыдущему вопросу
-    // если мы не на первом вопросе
-    if (currentQuestionIndex > 0) {
-      const newQuestionIndex = currentQuestionIndex - 1;
-      clientLogger.log('🔙 handleBack: возвращаемся к предыдущему вопросу после закрытия pendingInfoScreen', {
-        oldIndex: currentQuestionIndex,
-        newIndex: newQuestionIndex,
+    // ИСПРАВЛЕНО: Находим вопрос, после которого был показан pendingInfoScreen
+    // Используем showAfterQuestionCode для точного определения вопроса
+    let targetQuestionIndex = -1;
+    
+    if (pendingInfoScreen.showAfterQuestionCode && allQuestions.length > 0) {
+      // Ищем вопрос с указанным кодом
+      targetQuestionIndex = allQuestions.findIndex(q => q.code === pendingInfoScreen.showAfterQuestionCode);
+      clientLogger.log('🔙 handleBack: ищем вопрос по showAfterQuestionCode', {
+        showAfterQuestionCode: pendingInfoScreen.showAfterQuestionCode,
+        foundIndex: targetQuestionIndex,
+        allQuestionsLength: allQuestions.length,
       });
-      updateQuestionIndex(newQuestionIndex, undefined, setCurrentQuestionIndex);
+    }
+    
+    // Если не нашли по коду или код не указан, используем текущий индекс - 1
+    if (targetQuestionIndex === -1) {
+      if (currentQuestionIndex > 0) {
+        targetQuestionIndex = currentQuestionIndex - 1;
+        clientLogger.log('🔙 handleBack: используем currentQuestionIndex - 1', {
+          currentQuestionIndex,
+          targetQuestionIndex,
+        });
+      } else {
+        clientLogger.warn('🔙 handleBack: не можем определить предыдущий вопрос', {
+          currentQuestionIndex,
+          showAfterQuestionCode: pendingInfoScreen.showAfterQuestionCode,
+        });
+        return;
+      }
+    }
+    
+    if (targetQuestionIndex >= 0 && targetQuestionIndex < allQuestions.length) {
+      clientLogger.log('🔙 handleBack: возвращаемся к вопросу после закрытия pendingInfoScreen', {
+        oldIndex: currentQuestionIndex,
+        newIndex: targetQuestionIndex,
+        questionCode: allQuestions[targetQuestionIndex]?.code,
+      });
+      updateQuestionIndex(targetQuestionIndex, undefined, setCurrentQuestionIndex);
       
       // Сохраняем прогресс
-      await saveProgressSafely(saveProgress, answers, newQuestionIndex, currentInfoScreenIndex);
+      await saveProgressSafely(saveProgress, answers, targetQuestionIndex, currentInfoScreenIndex);
       
       // Сохраняем в sessionStorage
-      saveIndexToSessionStorage('quiz_currentQuestionIndex', newQuestionIndex);
+      saveIndexToSessionStorage('quiz_currentQuestionIndex', targetQuestionIndex);
     }
     return;
   }

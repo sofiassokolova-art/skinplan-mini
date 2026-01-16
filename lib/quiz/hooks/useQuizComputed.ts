@@ -484,6 +484,18 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       // if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (user actively on questions)');
       return false;
     }
+    
+    // ИСПРАВЛЕНО: КРИТИЧЕСКАЯ ЗАЩИТА - не показываем начальные экраны, если есть >= 2 сохраненных ответов
+    // Это предотвращает показ начальных экранов для пользователей, которым должен показываться резюм-экран
+    if (savedProgress && savedProgress.answers) {
+      const savedAnswersCount = Object.keys(savedProgress.answers).length;
+      if (savedAnswersCount >= 2 && !showResumeScreen && !hasResumed) {
+        // Если есть >= 2 сохраненных ответов, но резюм-экран еще не показан, не показываем начальные экраны
+        // Это предотвращает показ начальных экранов до того, как резюм-экран будет установлен
+        return false;
+      }
+    }
+    
     // Иначе показываем, если currentInfoScreenIndex < initialInfoScreens.length
     // ИСПРАВЛЕНО: Дополнительная проверка ref для надежности
     const shouldShow = currentInfoScreenIndex < initialInfoScreens.length && 
@@ -510,7 +522,8 @@ export function useQuizComputed(params: UseQuizComputedParams) {
   }, [
     showResumeScreen, 
     showRetakeScreen, 
-    // ИСПРАВЛЕНО: Убрали savedProgress из зависимостей - используем только savedProgressAnswersKeysCount
+    // ИСПРАВЛЕНО: Добавляем savedProgress в зависимости для проверки количества ответов
+    savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0,
     hasResumed, 
     isRetakingQuiz, 
     currentQuestionIndex, 

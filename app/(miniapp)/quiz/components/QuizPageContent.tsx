@@ -77,7 +77,11 @@ export function QuizPageContent({
   finalizingStep,
   finalizeError,
 }: QuizPageContentProps) {
+  // ИСПРАВЛЕНО: Определяем экраны с лаймовым контейнером во всю ширину
   const isGoalsScreen = currentQuestion?.code === 'skin_goals' && currentQuestion?.type === 'multi_choice';
+  // ИСПРАВЛЕНО: skin_type может быть single_choice или multi_choice
+  const isSkinTypeScreen = currentQuestion?.code === 'skin_type';
+  const isLimeFullWidthScreen = isGoalsScreen || isSkinTypeScreen;
 
   return (
     <div style={{ 
@@ -95,10 +99,11 @@ export function QuizPageContent({
         />
       )}
       {/* Контейнер вопроса - все вопросы без blur, белый фон */}
+      {/* ИСПРАВЛЕНО: Для skin_goals и skin_type убираем ограничение ширины, чтобы лаймовый контейнер был во всю ширину */}
       <div style={{
-        maxWidth: '600px',
+        maxWidth: isLimeFullWidthScreen ? '100%' : '600px',
         margin: '0 auto',
-        padding: isGoalsScreen ? '0' : '24px',
+        padding: isLimeFullWidthScreen ? '0' : '24px',
       }}>
         {/* РЕФАКТОРИНГ: Используем компонент QuizQuestionState для отображения состояний */}
         <QuizQuestionState

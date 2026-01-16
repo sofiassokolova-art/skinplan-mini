@@ -41,9 +41,14 @@ export function calculateIsShowingInitialInfoScreen(
   // Не показываем, если показывается retake screen
   if (showRetakeScreen && isRetakingQuiz) return false;
   
-  // Не показываем, если есть сохраненный прогресс с ответами
-  if (savedProgress && savedProgress.answers && Object.keys(savedProgress.answers).length > 0) {
-    return false;
+  // ИСПРАВЛЕНО: Не показываем, если есть сохраненный прогресс с >= 2 ответами
+  // Это предотвращает показ начальных экранов для пользователей, которым должен показываться резюм-экран
+  if (savedProgress && savedProgress.answers) {
+    const savedAnswersCount = Object.keys(savedProgress.answers).length;
+    // Если >= 2 ответов, не показываем начальные экраны (должен показываться резюм-экран)
+    if (savedAnswersCount >= 2) {
+      return false;
+    }
   }
   
   // Не показываем, если пользователь уже возобновил анкету
