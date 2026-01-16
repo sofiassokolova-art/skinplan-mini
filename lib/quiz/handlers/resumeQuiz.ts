@@ -151,12 +151,33 @@ export function resumeQuiz(params: ResumeQuizParams): void {
       }
     }
   
+  // КРИТИЧНО: Проверяем, что nextQuestionIndex валиден перед восстановлением
+  // Это предотвращает ошибку "Вопрос не найден" при повторном заходе
+  const allQuestionsLength = params.allQuestions?.length || 0;
+  const isValidNextQuestionIndex = nextQuestionIndex >= 0 && nextQuestionIndex < allQuestionsLength;
+  
   clientLogger.log('🔍 resumeQuiz: Определен следующий вопрос', {
     savedQuestionIndex: progressToRestore.questionIndex,
     nextQuestionIndex,
     answeredQuestionIds,
-    allQuestionsLength: params.allQuestions?.length || 0,
+    allQuestionsLength,
+    isValidNextQuestionIndex,
+    nextQuestionExists: isValidNextQuestionIndex ? !!params.allQuestions?.[nextQuestionIndex] : false,
   });
+  
+  // КРИТИЧНО: Если nextQuestionIndex невалиден, корректируем его
+  if (!isValidNextQuestionIndex) {
+    clientLogger.warn('⚠️ resumeQuiz: nextQuestionIndex невалиден, корректируем', {
+      nextQuestionIndex,
+      allQuestionsLength,
+      savedQuestionIndex: progressToRestore.questionIndex,
+    });
+    // Корректируем индекс: если он выходит за пределы, используем последний валидный индекс
+    nextQuestionIndex = Math.max(0, Math.min(nextQuestionIndex, allQuestionsLength - 1));
+    clientLogger.log('✅ resumeQuiz: скорректирован nextQuestionIndex', {
+      correctedIndex: nextQuestionIndex,
+    });
+  }
   
   // ВАЖНО: Всегда пропускаем начальные экраны, если пользователь уже начал отвечать на вопросы
   // Если infoScreenIndex указывает на начальный экран, но вопрос уже начался - пропускаем начальные экраны
@@ -165,6 +186,7 @@ export function resumeQuiz(params: ResumeQuizParams): void {
     clientLogger.log('✅ resumeQuiz: Начальные экраны пройдены, переходим к следующему вопросу', {
       savedQuestionIndex: progressToRestore.questionIndex,
       nextQuestionIndex,
+      nextQuestionCode: params.allQuestions?.[nextQuestionIndex]?.code || null,
     });
     params.setCurrentQuestionIndex(nextQuestionIndex);
     // ФИКС: Сохраняем currentQuestionIndex в sessionStorage при восстановлении прогресса
@@ -179,9 +201,20 @@ export function resumeQuiz(params: ResumeQuizParams): void {
   } else if (progressToRestore.questionIndex > 0 || Object.keys(progressToRestore.answers).length > 0) {
     // Пользователь уже начал отвечать, но infoScreenIndex еще на начальных экранах
     // Пропускаем все начальные экраны и переходим к следующему вопросу
+    // КРИТИЧНО: Проверяем валидность nextQuestionIndex перед установкой
+    const isValidIndex = nextQuestionIndex >= 0 && nextQuestionIndex < allQuestionsLength;
+    if (!isValidIndex) {
+      clientLogger.warn('⚠️ resumeQuiz: nextQuestionIndex невалиден при пропуске начальных экранов, корректируем', {
+        nextQuestionIndex,
+        allQuestionsLength,
+        savedQuestionIndex: progressToRestore.questionIndex,
+      });
+      nextQuestionIndex = Math.max(0, Math.min(nextQuestionIndex, allQuestionsLength - 1));
+    }
     clientLogger.log('✅ resumeQuiz: Пропускаем начальные экраны, переходим к следующему вопросу', {
       savedQuestionIndex: progressToRestore.questionIndex,
       nextQuestionIndex,
+      nextQuestionCode: params.allQuestions?.[nextQuestionIndex]?.code || null,
     });
     params.setCurrentQuestionIndex(nextQuestionIndex);
     // ФИКС: Сохраняем currentQuestionIndex в sessionStorage при восстановлении прогресса

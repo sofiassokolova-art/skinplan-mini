@@ -685,13 +685,34 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     // Переходим к следующему вопросу
     if (currentQuestionIndex < allQuestions.length - 1) {
       const newIndex = currentQuestionIndex + 1;
+      
+      // КРИТИЧНО: Проверяем, что следующий вопрос существует перед переходом
+      // Это предотвращает пустой экран и ошибку "Вопрос не найден"
+      const nextQuestion = allQuestions[newIndex];
+      if (!nextQuestion) {
+        clientLogger.error('❌ handleNext: следующий вопрос не найден', {
+          currentQuestionIndex,
+          newIndex,
+          allQuestionsLength: allQuestions.length,
+          currentQuestionCode: allQuestions[currentQuestionIndex]?.code || null,
+          allQuestionCodes: allQuestions.map((q: Question, idx: number) => ({
+            index: idx,
+            code: q?.code || null,
+            id: q?.id || null,
+          })),
+        });
+        // НЕ переходим к следующему вопросу, если его нет
+        return;
+      }
+      
       // КРИТИЧНО: Логируем переход к следующему вопросу для диагностики
       clientLogger.warn('🔄 handleNext: переход к следующему вопросу', {
         currentQuestionIndex,
         newIndex,
         allQuestionsLength: allQuestions.length,
         currentQuestionCode: allQuestions[currentQuestionIndex]?.code || null,
-        nextQuestionCode: allQuestions[newIndex]?.code || null,
+        nextQuestionCode: nextQuestion?.code || null,
+        nextQuestionId: nextQuestion?.id || null,
         hasAnsweredCurrent: allQuestions[currentQuestionIndex] && answers[allQuestions[currentQuestionIndex].id] !== undefined,
       });
       updateQuestionIndex(newIndex, currentQuestionIndexRef, setCurrentQuestionIndex);

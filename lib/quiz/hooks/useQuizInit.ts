@@ -245,8 +245,8 @@ export function useQuizInit(params: UseQuizInitParams) {
       
       // ФИКС: Восстанавливаем currentInfoScreenIndex из sessionStorage при перемонтировании
       // Это предотвращает сброс индекса в 0 при ошибке React #310
-      // ИСПРАВЛЕНО: Восстанавливаем только если это НЕ новый пользователь
-      if (typeof window !== 'undefined' && !isNewUser) {
+      // ИСПРАВЛЕНО: Для нового пользователя тоже проверяем sessionStorage, чтобы не сбрасывать, если пользователь уже на втором экране
+      if (typeof window !== 'undefined') {
         try {
           const savedInfoScreenIndex = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
           if (savedInfoScreenIndex !== null) {
@@ -254,14 +254,24 @@ export function useQuizInit(params: UseQuizInitParams) {
             if (!isNaN(savedIndex) && savedIndex >= 0) {
               const initialInfoScreens = getInitialInfoScreens();
               // Восстанавливаем только если индекс валиден и не больше максимального
-              if (savedIndex <= initialInfoScreens.length) {
-                clientLogger.log('💾 Восстановлен currentInfoScreenIndex из sessionStorage', {
-                  savedIndex,
-                  currentIndex: currentInfoScreenIndex,
-                  initialInfoScreensLength: initialInfoScreens.length,
-                });
-                currentInfoScreenIndexRef.current = savedIndex;
-                setCurrentInfoScreenIndex(savedIndex);
+              if (savedIndex < initialInfoScreens.length) {
+                // КРИТИЧНО: Для нового пользователя восстанавливаем индекс из sessionStorage,
+                // если он валиден (в пределах начальных экранов), чтобы не сбрасывать на 0
+                // если пользователь уже на втором или последующем экране
+                const effectiveInfoScreenIndex = currentInfoScreenIndexRef.current >= 0 ? currentInfoScreenIndexRef.current : currentInfoScreenIndex;
+                // Восстанавливаем только если сохраненный индекс больше текущего (пользователь продвинулся дальше)
+                // или если текущий индекс равен 0 (начало)
+                if (savedIndex > effectiveInfoScreenIndex || effectiveInfoScreenIndex === 0) {
+                  clientLogger.log('💾 Восстановлен currentInfoScreenIndex из sessionStorage', {
+                    savedIndex,
+                    currentIndex: currentInfoScreenIndex,
+                    currentIndexRef: currentInfoScreenIndexRef.current,
+                    initialInfoScreensLength: initialInfoScreens.length,
+                    isNewUser,
+                  });
+                  currentInfoScreenIndexRef.current = savedIndex;
+                  setCurrentInfoScreenIndex(savedIndex);
+                }
               } else {
                 // Если сохраненный индекс больше максимального, очищаем его
                 sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
@@ -275,10 +285,12 @@ export function useQuizInit(params: UseQuizInitParams) {
         } catch (err) {
           clientLogger.warn('⚠️ Не удалось восстановить currentInfoScreenIndex из sessionStorage', err);
         }
-      } else if (isNewUser) {
-        // ИСПРАВЛЕНО: Для нового пользователя ВСЕГДА сбрасываем currentInfoScreenIndex на 0
-        // НО только если НЕТ showResumeScreen (т.е. нет прогресса с >= 2 ответами)
-        // Если showResumeScreen = true, значит прогресс загружается и нужно показать резюм-экран, а не инфо-экраны
+      }
+      
+      // ИСПРАВЛЕНО: Для нового пользователя проверяем, нужно ли сбрасывать на 0
+      // НО только если НЕТ showResumeScreen (т.е. нет прогресса с >= 2 ответами)
+      // Если showResumeScreen = true, значит прогресс загружается и нужно показать резюм-экран, а не инфо-экраны
+      if (isNewUser) {
         if (showResumeScreen) {
           // Если есть резюм-экран, не сбрасываем на 0 - пусть покажется резюм-экран
           clientLogger.log('⏸️ Пропускаем сброс currentInfoScreenIndex - показывается резюм-экран', {
@@ -286,25 +298,19 @@ export function useQuizInit(params: UseQuizInitParams) {
             showResumeScreen,
           });
         } else {
-          // ИСПРАВЛЕНО: Для нового пользователя ВСЕГДА сбрасываем currentInfoScreenIndex на 0
-          // Это гарантирует, что новый пользователь увидит все начальные инфо-экраны
-          // даже если initialInfoScreenIndex был восстановлен из sessionStorage в useQuizStateExtended
+          // ИСПРАВЛЕНО: Для нового пользователя проверяем, нужно ли сбрасывать currentInfoScreenIndex на 0
+          // НЕ сбрасываем, если пользователь уже на втором или последующем экране
           const initialInfoScreens = getInitialInfoScreens();
-          // ИСПРАВЛЕНО: НЕ сбрасываем currentInfoScreenIndex, если пользователь уже проходит анкету
-          // Проверяем, что пользователь еще не перешел к вопросам и не начал отвечать
           const isAlreadyOnQuestions = currentInfoScreenIndexRef.current >= initialInfoScreens.length;
           const hasStartedAnswering = currentQuestionIndex > 0;
           
-          // КРИТИЧНО: Сбрасываем на 0 только для нового пользователя, который еще не начал проходить анкету
-          // ИСПРАВЛЕНО: Не сбрасываем, если пользователь уже на втором или последующем экране
-          // Это предотвращает сброс во время активного прохождения анкеты
-          // ВАЖНО: Если пользователь уже на втором экране (индекс 1 или больше), НЕ сбрасываем
-          // ИСПРАВЛЕНО: Используем ref для более точной проверки, так как state может быть устаревшим
+          // КРИТИЧНО: Используем ref для более точной проверки, так как state может быть устаревшим
+          // После восстановления из sessionStorage ref должен содержать актуальное значение
           const effectiveInfoScreenIndex = currentInfoScreenIndexRef.current >= 0 ? currentInfoScreenIndexRef.current : currentInfoScreenIndex;
           const isOnSecondOrLaterScreen = effectiveInfoScreenIndex > 0;
           
           // ИСПРАВЛЕНО: Не сбрасываем, если пользователь уже на втором или последующем экране
-          // Это предотвращает переброс на первый экран во время прохождения анкеты
+          // Это предотвращает переброс на первый экран во время прохождения анкеты в Telegram
           // КРИТИЧНО: Проверяем effectiveInfoScreenIndex, чтобы не сбрасывать, если пользователь уже прошел первый экран
           if (!isAlreadyOnQuestions && !hasStartedAnswering && !isOnSecondOrLaterScreen && effectiveInfoScreenIndex !== 0) {
             clientLogger.log('🔄 Сброс currentInfoScreenIndex на 0 для нового пользователя', {
@@ -336,6 +342,7 @@ export function useQuizInit(params: UseQuizInitParams) {
               hasStartedAnswering,
               isOnSecondOrLaterScreen,
               currentInfoScreenIndex: currentInfoScreenIndexRef.current,
+              effectiveInfoScreenIndex,
               currentQuestionIndex,
             });
           }

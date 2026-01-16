@@ -830,12 +830,33 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     if (savedQuestionIndexFromStorage !== null && 
         savedQuestionIndexFromStorage !== currentQuestionIndex && 
         savedQuestionIndexFromStorage < allQuestions.length) {
-      // // clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage', {
-      //   savedQuestionIndex: savedQuestionIndexFromStorage,
-      //   currentQuestionIndex,
-      //   allQuestionsLength: allQuestions.length,
-      // });
-      setCurrentQuestionIndex(savedQuestionIndexFromStorage);
+      // КРИТИЧНО: Проверяем, что вопрос с таким индексом существует
+      // Это предотвращает ошибку "Вопрос не найден" при повторном заходе
+      const questionExists = allQuestions[savedQuestionIndexFromStorage] !== undefined;
+      if (questionExists) {
+        // // clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage', {
+        //   savedQuestionIndex: savedQuestionIndexFromStorage,
+        //   currentQuestionIndex,
+        //   allQuestionsLength: allQuestions.length,
+        // });
+        setCurrentQuestionIndex(savedQuestionIndexFromStorage);
+      } else {
+        // Если вопрос не существует, корректируем индекс
+        clientLogger.warn('⚠️ Восстановление из sessionStorage: вопрос не существует, корректируем индекс', {
+          savedQuestionIndex: savedQuestionIndexFromStorage,
+          allQuestionsLength: allQuestions.length,
+          allQuestionCodes: allQuestions.map((q: any, idx: number) => ({
+            index: idx,
+            code: q?.code || null,
+            id: q?.id || null,
+          })),
+        });
+        // Корректируем индекс: если он выходит за пределы, используем последний валидный индекс или 0
+        const correctedIndex = savedQuestionIndexFromStorage >= allQuestions.length 
+          ? Math.max(0, allQuestions.length - 1)
+          : 0;
+        setCurrentQuestionIndex(correctedIndex);
+      }
       return;
     }
     
