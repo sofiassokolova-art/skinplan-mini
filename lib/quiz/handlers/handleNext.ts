@@ -168,7 +168,10 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     // ИСПРАВЛЕНО: Не обрабатываем начальные инфо-экраны, если пользователь уже на вопросах
     // Это исправляет проблему, когда после возврата к первому вопросу по кнопке "Назад"
     // и нажатия "Продолжить" система пытается обработать начальные инфо-экраны
-    const isAlreadyOnQuestions = currentQuestionIndex >= 0 && currentQuestionIndex < allQuestions.length;
+    // КРИТИЧНО: isAlreadyOnQuestions должен проверять, что пользователь уже прошел все начальные инфо-экраны
+    // Просто проверка currentQuestionIndex >= 0 неправильна, так как для нового пользователя currentQuestionIndex = 0
+    // но он еще на инфо-экранах, а не на вопросах
+    const isAlreadyOnQuestions = currentInfoScreenIndex >= initialInfoScreens.length;
     
     if (isOnInitialInfoScreens && !isAlreadyOnQuestions && currentInfoScreenIndex < initialInfoScreens.length - 1) {
       const newIndex = currentInfoScreenIndex + 1;
@@ -267,7 +270,10 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       // просто переходим к следующему вопросу по порядку, а не ищем неотвеченные
       // Это исправляет проблему, когда после возврата к первому вопросу по кнопке "Назад"
       // и нажатия "Продолжить" система переходит к последнему заполненному вопросу
-      const isAlreadyOnQuestions = currentQuestionIndex >= 0 && currentQuestionIndex < allQuestions.length;
+      // КРИТИЧНО: isAlreadyOnQuestions должен проверять, что пользователь уже прошел все начальные инфо-экраны
+      // Просто проверка currentQuestionIndex >= 0 неправильна, так как для нового пользователя currentQuestionIndex = 0
+      // но он еще на инфо-экранах, а не на вопросах
+      const isAlreadyOnQuestions = currentInfoScreenIndex >= initialInfoScreens.length;
       
       if (isAlreadyOnQuestions) {
         // Пользователь уже на вопросах - переходим к следующему по порядку

@@ -1507,11 +1507,15 @@ export default function QuizPage() {
     // Это предотвращает перезапись правильного индекса после перехода к следующему вопросу
     // ИСПРАВЛЕНО: Также проверяем, прошел ли пользователь начальные инфо-экраны
     // Это предотвращает восстановление индекса после перехода к следующему вопросу
+    // КРИТИЧНО: НЕ восстанавливаем индекс, если есть сохраненный прогресс с >= 2 ответами
+    // Это исправляет проблему, когда на проде показывается первый вопрос вместо резюм-экрана
+    const hasSavedProgress = savedProgress && savedProgress.answers && Object.keys(savedProgress.answers).length >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN;
     const isActiveSession = currentQuestionIndex > 0 || 
                             Object.keys(answers).length > 0 || 
                             hasPassedInitialScreens;
     if (savedQuestionIndexFromStorage !== null && 
-        savedQuestionIndexFromStorage !== currentQuestionIndex && 
+        savedQuestionIndexFromStorage !== currentQuestionIndex &&
+        !hasSavedProgress && // КРИТИЧНО: НЕ восстанавливаем, если есть сохраненный прогресс 
         savedQuestionIndexFromStorage < allQuestions.length &&
         !isActiveSession) {
       clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage', {

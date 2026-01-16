@@ -369,13 +369,22 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
           // Это предотвращает перезапись правильного индекса после перехода к следующему вопросу
           // ИСПРАВЛЕНО: Также проверяем, прошел ли пользователь начальные инфо-экраны
           // Это предотвращает восстановление индекса после перехода к следующему вопросу
+          // КРИТИЧНО: НЕ восстанавливаем индекс, если есть сохраненный прогресс с >= 2 ответами
+          // Это исправляет проблему, когда на проде показывается первый вопрос вместо резюм-экрана
+          // Проблема: восстановление индекса из sessionStorage делает isActiveSession = true,
+          // что скрывает резюм-экран в useResumeScreenLogic
           const initialInfoScreens = getInitialInfoScreens();
           const hasPassedInitialScreens = currentInfoScreenIndex >= initialInfoScreens.length;
+          // КРИТИЧНО: НЕ восстанавливаем индекс, если есть сохраненный прогресс с >= 2 ответами
+          // Это гарантирует, что резюм-экран будет показан
+          const hasSavedProgress = savedProgress && savedProgress.answers && Object.keys(savedProgress.answers).length >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN;
           const isActiveSession = currentQuestionIndex > 0 || 
                                   Object.keys(answers).length > 0 || 
                                   hasPassedInitialScreens;
           const savedQuestionIndex = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
-          if (savedQuestionIndex !== null && !isActiveSession) {
+          // КРИТИЧНО: НЕ восстанавливаем индекс, если есть сохраненный прогресс с >= 2 ответами
+          // Это гарантирует, что резюм-экран будет показан
+          if (savedQuestionIndex !== null && !isActiveSession && !hasSavedProgress) {
             const questionIndex = parseInt(savedQuestionIndex, 10);
             if (!isNaN(questionIndex) && questionIndex >= 0) {
               const currentAllQuestionsLength = allQuestionsPrevRef.current.length || allQuestions.length;
