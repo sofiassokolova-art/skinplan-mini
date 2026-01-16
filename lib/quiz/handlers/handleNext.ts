@@ -421,10 +421,11 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
           currentQuestionIndex,
           currentInfoScreenIndex,
         });
-        setPendingInfoScreen(nextInfoScreen);
+        // ИСПРАВЛЕНО: Обновляем ref ПЕРЕД state, чтобы следующая проверка использовала актуальное значение
         if (pendingInfoScreenRef) {
           pendingInfoScreenRef.current = nextInfoScreen;
         }
+        setPendingInfoScreen(nextInfoScreen);
         await saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
         clientLogger.log('✅ Переход к следующему инфо-экрану в цепочке:', {
           from: currentPendingInfoScreen.id,
@@ -592,6 +593,10 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         if (infoScreen) {
           // КРИТИЧНО: Показываем инфо-экран для текущего вопроса ПЕРЕД переходом к следующему
           // Это исправляет проблему, когда инфо-экран не показывается при первом проходе
+          // ИСПРАВЛЕНО: Обновляем ref ПЕРЕД state для консистентности
+          if (pendingInfoScreenRef) {
+            pendingInfoScreenRef.current = infoScreen;
+          }
           setPendingInfoScreen(infoScreen);
           await saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
           clientLogger.log('✅ Показан инфо-экран после вопроса:', {

@@ -45,29 +45,45 @@ export function useResumeScreenLogic({
       return;
     }
     
-    // КРИТИЧНО ИСПРАВЛЕНО: Определяем активную сессию правильно
+    // ИСПРАВЛЕНО: Определяем активную сессию правильно
     // Активная сессия = пользователь активно отвечает на вопросы в текущей сессии
-    // НЕ считаем пользователя активно отвечающим, если:
-    // 1. Есть сохраненный прогресс с >= 2 ответами (это означает повторный заход)
-    // 2. currentQuestionIndex или answers восстановлены из sessionStorage, но savedProgress еще не загружен
+    const currentAnswersCount = Object.keys(answers).length;
+    const savedAnswersCount = savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0;
     const hasSavedProgress = savedProgress && savedProgress.answers && Object.keys(savedProgress.answers).length >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN;
     
-    // КРИТИЧНО: Если есть сохраненный прогресс с >= 2 ответами, это повторный заход
-    // В этом случае НЕ считаем пользователя активно отвечающим, даже если currentQuestionIndex > 0 или answers не пустые
-    // Это исправляет проблему, когда резюм-экран не показывается из-за восстановления состояния из sessionStorage
-    const isActivelyAnswering = hasSavedProgress 
-      ? false // Если есть сохраненный прогресс, это повторный заход, не активная сессия
-      : (currentQuestionIndex > 0 || Object.keys(answers).length > 0);
+    // КРИТИЧНО ИСПРАВЛЕНО: Пользователь активно отвечает, если:
+    // 1. Есть ответы в текущей сессии (answers не пустые) ИЛИ currentQuestionIndex > 0
+    // 2. И текущие ответы совпадают с сохраненными (пользователь продолжает текущую сессию)
+    // 3. ИЛИ текущих ответов больше или равно сохраненным (пользователь добавил новые ответы)
+    const isActivelyAnswering = (currentAnswersCount > 0 || currentQuestionIndex > 0);
     
-    // КРИТИЧНО: Если пользователь активно отвечает, НЕ показываем резюм-экран
+    // Проверяем, совпадают ли текущие ответы с сохраненными
+    // Если совпадают, это означает, что пользователь продолжает текущую сессию
+    let answersMatchSaved = false;
+    if (hasSavedProgress && currentAnswersCount > 0 && savedProgress.answers) {
+      // Проверяем, что все текущие ответы есть в savedProgress и совпадают
+      answersMatchSaved = Object.keys(answers).every(key => {
+        const answerKey = Number(key);
+        return savedProgress.answers && savedProgress.answers[answerKey] !== undefined && 
+               savedProgress.answers[answerKey] === answers[answerKey];
+      });
+    }
+    
+    // Если ответы совпадают с сохраненными ИЛИ текущих ответов больше/равно сохраненным, это активная сессия
+    const isContinuingSession = answersMatchSaved || (currentAnswersCount > 0 && currentAnswersCount >= savedAnswersCount);
+    
+    // КРИТИЧНО: Если пользователь активно отвечает или продолжает сессию, НЕ показываем резюм-экран
     // Это предотвращает показ резюм-экрана во время активного прохождения анкеты
-    if (isActivelyAnswering) {
+    if (isActivelyAnswering || isContinuingSession) {
       if (showResumeScreen) {
         clientLogger.log('❌ Скрываем резюм экран: пользователь активно отвечает в текущей сессии', {
           currentQuestionIndex,
-          answersCount: Object.keys(answers).length,
-          savedProgressAnswersCount: savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0,
+          currentAnswersCount,
+          savedAnswersCount,
           hasSavedProgress,
+          isActivelyAnswering,
+          isContinuingSession,
+          answersMatchSaved,
         });
         setShowResumeScreen(false);
       }

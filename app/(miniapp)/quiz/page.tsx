@@ -1310,6 +1310,7 @@ export default function QuizPage() {
       setAnswers,
       setCurrentQuestionIndex,
       setCurrentInfoScreenIndex,
+      setPendingInfoScreen, // ИСПРАВЛЕНО: Добавлено для очистки pendingInfoScreen при resume
       resumeCompletedRef,
     });
   };
@@ -2502,6 +2503,7 @@ export default function QuizPage() {
   // КРИТИЧНО: Не показываем начальные экраны, если пользователь начал заново (isStartingOver)
   // Это предотвращает двойной рендеринг вопроса после "Начать анкету заново"
   const hasEnoughSavedAnswers = savedProgress?.answers && Object.keys(savedProgress.answers).length >= 2;
+  // ИСПРАВЛЕНО: Добавляем проверку isLoadingProgress для предотвращения показа первого экрана перед резюм-экраном
   if (isShowingInitialInfoScreen && 
       currentInitialInfoScreen && 
       currentInfoScreenIndex < initialInfoScreens.length &&
@@ -2509,6 +2511,7 @@ export default function QuizPage() {
       !showResumeScreen && 
       !pendingInfoScreen &&
       !loading &&
+      !isLoadingProgress && // ИСПРАВЛЕНО: Не показываем начальные экраны во время загрузки прогресса
       !hasEnoughSavedAnswers) { // ИСПРАВЛЕНО: isStartingOver не блокирует начальные экраны - они должны показываться после "Начать заново"
     // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
     // if (isDev) {

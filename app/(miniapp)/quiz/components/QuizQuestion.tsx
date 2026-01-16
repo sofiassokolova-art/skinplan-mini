@@ -156,6 +156,10 @@ export function QuizQuestion({
         
         // ИСПРАВЛЕНО: Для вопроса avoid_ingredients делаем слово "исключить" жирным
         const isAvoidIngredientsQuestion = question?.code === 'avoid_ingredients';
+        // ИСПРАВЛЕНО: Убираем "из средств по уходу за кожей" из заголовка
+        if (title.includes('из средств по уходу за кожей')) {
+          title = title.replace(/\s*из средств по уходу за кожей\.?\s*/gi, '').trim();
+        }
         const renderTitle = () => {
           if (isAvoidIngredientsQuestion && title.includes('исключить')) {
             const parts = title.split('исключить');
@@ -391,9 +395,14 @@ export function QuizQuestion({
             {/* ИСПРАВЛЕНО: Для вопроса avoid_ingredients делаем слово "исключить" жирным */}
             {(() => {
               const isAvoidIngredientsQuestion = question?.code === 'avoid_ingredients';
+              // ИСПРАВЛЕНО: Убираем "из средств по уходу за кожей" из заголовка
+              let processedTitle = title;
+              if (processedTitle.includes('из средств по уходу за кожей')) {
+                processedTitle = processedTitle.replace(/\s*из средств по уходу за кожей\.?\s*/gi, '').trim();
+              }
               const renderTitle = () => {
-                if (isAvoidIngredientsQuestion && title.includes('исключить')) {
-                  const parts = title.split('исключить');
+                if (isAvoidIngredientsQuestion && processedTitle.includes('исключить')) {
+                  const parts = processedTitle.split('исключить');
                   return (
                     <>
                       {parts[0]}
@@ -402,7 +411,7 @@ export function QuizQuestion({
                     </>
                   );
                 }
-                return title;
+                return processedTitle;
               };
               
               return (
@@ -551,25 +560,27 @@ export function QuizQuestion({
                             }}>
                               {optionTitle}
                             </span>
-                            {/* Кружок-чекбокс */}
-                            <div style={{
-                              width: '28px',
-                              height: '28px',
-                              borderRadius: '50%',
-                              backgroundColor: isSelected ? '#000000' : '#D5FE61',
-                              border: 'none',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              flexShrink: 0,
-                              boxShadow: isSelected ? 'none' : 'inset 0 2px 4px rgba(0, 0, 0, 0.15)',
-                            }}>
-                              {isSelected && (
-                                <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
-                                  <path d="M1 5L5 9L13 1" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                </svg>
-                              )}
-                            </div>
+                            {/* ИСПРАВЛЕНО: Убираем кружок-чекбокс для skin_type */}
+                            {!isSkinTypeQuestion && (
+                              <div style={{
+                                width: '28px',
+                                height: '28px',
+                                borderRadius: '50%',
+                                backgroundColor: isSelected ? '#000000' : '#D5FE61',
+                                border: 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                                boxShadow: isSelected ? 'none' : 'inset 0 2px 4px rgba(0, 0, 0, 0.15)',
+                              }}>
+                                {isSelected && (
+                                  <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
+                                    <path d="M1 5L5 9L13 1" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
+                                )}
+                              </div>
+                            )}
                           </div>
                           {optionDescription && (
                             <div style={{

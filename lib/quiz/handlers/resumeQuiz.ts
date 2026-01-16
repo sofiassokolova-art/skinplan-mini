@@ -26,6 +26,7 @@ export interface ResumeQuizParams {
   setAnswers: React.Dispatch<React.SetStateAction<Record<number, string | string[]>>>;
   setCurrentQuestionIndex: React.Dispatch<React.SetStateAction<number>>;
   setCurrentInfoScreenIndex: React.Dispatch<React.SetStateAction<number>>;
+  setPendingInfoScreen?: React.Dispatch<React.SetStateAction<any | null>>; // ИСПРАВЛЕНО: Добавлено для очистки pendingInfoScreen
   resumeCompletedRef: React.MutableRefObject<boolean>;
 }
 
@@ -76,6 +77,11 @@ export function resumeQuiz(params: ResumeQuizParams): void {
   params.hasResumedRef.current = true;
   params.setHasResumed(true);
   params.setShowResumeScreen(false); // Устанавливаем сразу, чтобы предотвратить повторное появление экрана
+  // ИСПРАВЛЕНО: Очищаем pendingInfoScreen при resume, чтобы он не блокировал показ вопроса
+  if (params.setPendingInfoScreen) {
+    params.setPendingInfoScreen(null);
+    clientLogger.log('✅ resumeQuiz: Очищен pendingInfoScreen для показа вопроса');
+  }
   
   // ВАЖНО: Устанавливаем initCompletedRef, чтобы предотвратить повторную инициализацию
   // после того, как пользователь продолжил анкету
@@ -110,8 +116,16 @@ export function resumeQuiz(params: ResumeQuizParams): void {
   const answeredQuestionIds = Object.keys(progressToRestore.answers).map(id => Number(id));
   let nextQuestionIndex = 0;
   
-  // Находим индекс первого вопроса, на который еще не ответили
-  if (params.allQuestions && params.allQuestions.length > 0) {
+  // ИСПРАВЛЕНО: Проверяем, что allQuestions загружен перед определением следующего вопроса
+  if (!params.allQuestions || params.allQuestions.length === 0) {
+    clientLogger.warn('⚠️ resumeQuiz: allQuestions пустой, используем сохраненный индекс', {
+      allQuestionsLength: params.allQuestions?.length || 0,
+      savedQuestionIndex: progressToRestore.questionIndex,
+    });
+    // Если allQuestions еще не загружен, используем сохраненный индекс
+    nextQuestionIndex = progressToRestore.questionIndex;
+  } else {
+    // Находим индекс первого вопроса, на который еще не ответили
     const nextUnansweredQuestion = params.allQuestions.find((q, index) => {
       return !answeredQuestionIds.includes(q.id) && index >= progressToRestore.questionIndex;
     });
@@ -133,12 +147,9 @@ export function resumeQuiz(params: ResumeQuizParams): void {
     
     // Если nextQuestionIndex получился -1 (не найден), используем сохраненный индекс + 1
     if (nextQuestionIndex === -1) {
-      nextQuestionIndex = Math.min(progressToRestore.questionIndex + 1, params.allQuestions.length - 1);
+        nextQuestionIndex = Math.min(progressToRestore.questionIndex + 1, params.allQuestions.length - 1);
+      }
     }
-  } else {
-    // Если allQuestions еще не загружен, используем сохраненный индекс + 1
-    nextQuestionIndex = progressToRestore.questionIndex + 1;
-  }
   
   clientLogger.log('🔍 resumeQuiz: Определен следующий вопрос', {
     savedQuestionIndex: progressToRestore.questionIndex,
