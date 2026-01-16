@@ -2484,6 +2484,32 @@ export default function QuizPage() {
     // Продолжаем выполнение, чтобы показать вопросы
   }
   
+  // КРИТИЧНО: Все хуки должны вызываться ПЕРЕД любыми условными return
+  // РЕФАКТОРИНГ: Используем хук для логирования состояния рендеринга
+  // КРИТИЧНО: Хук должен вызываться всегда, но внутри проверяет isDev
+  // УБРАНО: Условный вызов хука вызывает React Error #300
+  useQuizRenderDebug({
+    isDev,
+    questionnaire,
+    questionnaireRef,
+    quizStateMachineQuestionnaire: quizStateMachine.questionnaire,
+    questionnaireFromQuery,
+    loading,
+    error,
+    currentQuestion,
+    currentQuestionIndex,
+    allQuestionsLength: allQuestions.length,
+    allQuestionsRawLength: allQuestionsRaw.length,
+    showResumeScreen,
+    showRetakeScreen,
+    isShowingInitialInfoScreen,
+    pendingInfoScreen,
+    isRetakingQuiz,
+    hasResumed,
+    initCompletedRef,
+    initInProgressRef: initInProgressRef,
+  });
+
   // ИСПРАВЛЕНО: useEffect для исправления currentInfoScreenIndex уже перемещен выше (перед useQuizView)
   // Это гарантирует, что все хуки вызываются до любых ранних return
 
@@ -2934,32 +2960,6 @@ export default function QuizPage() {
     // Вместо лоадера просто показываем пустой экран или первый вопрос
     // (вопрос должен найтись сразу после загрузки анкеты)
   }
-
-  // КРИТИЧНО: Все хуки должны вызываться ПЕРЕД любыми условными return
-  // РЕФАКТОРИНГ: Используем хук для логирования состояния рендеринга
-  // КРИТИЧНО: Хук должен вызываться всегда, но внутри проверяет isDev
-  // УБРАНО: Условный вызов хука вызывает React Error #300
-  useQuizRenderDebug({
-    isDev,
-    questionnaire,
-    questionnaireRef,
-    quizStateMachineQuestionnaire: quizStateMachine.questionnaire,
-    questionnaireFromQuery,
-    loading,
-    error,
-    currentQuestion,
-    currentQuestionIndex,
-    allQuestionsLength: allQuestions.length,
-    allQuestionsRawLength: allQuestionsRaw.length,
-    showResumeScreen,
-    showRetakeScreen,
-    isShowingInitialInfoScreen,
-    pendingInfoScreen,
-    isRetakingQuiz,
-    hasResumed,
-    initCompletedRef,
-    initInProgressRef: initInProgressRef,
-  });
 
   // РЕФАКТОРИНГ: Используем утилиту для проверки ошибок анкеты
   const errorScreen = checkQuizErrors({
