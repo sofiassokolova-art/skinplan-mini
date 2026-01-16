@@ -55,7 +55,7 @@ export function QuizQuestion({
 
   // Кнопка "Назад" - рендерим через портал, чтобы она была вне всех контейнеров
   // ИСПРАВЛЕНО: Используем position: fixed с правильным контекстом для предотвращения прокрутки
-  // Для skin_goals добавляем дополнительную гарантию фиксации
+  // Кнопка должна быть зафиксирована в левом верхнем углу на всех экранах
   const backButton = showBackButton && typeof window !== 'undefined' ? createPortal(
     <button
       onClick={(e) => {
@@ -67,12 +67,11 @@ export function QuizQuestion({
         position: 'fixed',
         top: 'clamp(20px, 4vh, 40px)',
         left: 'clamp(19px, 5vw, 24px)',
-        zIndex: isGoalsQuestion ? 100001 : 100000, // Еще больший z-index для skin_goals
+        zIndex: 99999,
         width: '44px',
         height: '44px',
-        background: isGoalsQuestion ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.9)', // Более плотный фон для skin_goals
-        border: '1px solid rgba(0, 0, 0, 0.1)',
-        borderRadius: '50%',
+        background: 'transparent',
+        border: 'none',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -85,7 +84,6 @@ export function QuizQuestion({
         isolation: 'isolate',
         willChange: 'transform',
         contain: 'layout style paint',
-        boxShadow: isGoalsQuestion ? '0 4px 12px rgba(0, 0, 0, 0.25)' : '0 2px 8px rgba(0, 0, 0, 0.15)', // Более сильная тень для skin_goals
       }}
     >
       <svg
