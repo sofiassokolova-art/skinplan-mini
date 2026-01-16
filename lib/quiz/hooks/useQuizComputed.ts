@@ -230,9 +230,12 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       return allQuestionsRawPrevRef.current.length > 0 ? allQuestionsRawPrevRef.current : [];
     }
   }, [
-    questionnaire?.id, 
-    quizStateMachine.questionnaire?.id, 
-    // ИСПРАВЛЕНО: Убрали questionnaireRef из зависимостей - ref не должен быть в зависимостях (вызывает React error #300)
+    // КРИТИЧНО ИСПРАВЛЕНО: Используем questionnaireRef.current?.id через стабильное значение
+    // Это необходимо, так как questionnaire?.id может быть undefined даже после синхронизации
+    // Используем questionnaireRef.current?.id как основной источник истины
+    questionnaireRef.current?.id ?? null,
+    questionnaire?.id ?? null, 
+    quizStateMachine.questionnaire?.id ?? null, 
     // ИСПРАВЛЕНО: Убрали allQuestionsRawPrevRef из зависимостей - ref не должен быть в зависимостях (вызывает React error #300)
     isDev
   ]);

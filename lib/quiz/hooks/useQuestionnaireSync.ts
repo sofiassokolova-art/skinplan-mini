@@ -49,25 +49,24 @@ export function useQuestionnaireSync({
   });
 
   // Синхронизация из React Query
-  // ИСПРАВЛЕНО: Предотвращаем бесконечные циклы - проверяем, что действительно нужно синхронизировать
+  // КРИТИЧНО ИСПРАВЛЕНО: Предотвращаем бесконечные циклы - используем только ref и lastSynced для проверки
+  // НЕ используем questionnaire?.id в условии, так как он обновляется асинхронно и вызывает циклы
   useEffect(() => {
     const queryId = questionnaireFromQuery?.id;
-    const currentId = questionnaire?.id;
     const refId = questionnaireRef.current?.id;
     const stateMachineId = quizStateMachine.questionnaire?.id;
     
     // КРИТИЧНО: Синхронизируем только если:
-    // 1. Есть questionnaireFromQuery
-    // 2. ID отличается от текущего questionnaire (или текущий undefined/null)
-    // 3. ID отличается от ref (чтобы не синхронизировать то, что уже в ref)
-    // 4. ID отличается от последнего синхронизированного
-    // 5. ID отличается от State Machine (чтобы не синхронизировать то, что уже синхронизировано)
+    // 1. Есть questionnaireFromQuery с валидным ID
+    // 2. ID отличается от ref (чтобы не синхронизировать то, что уже в ref)
+    // 3. ID отличается от последнего синхронизированного (защита от повторных синхронизаций)
+    // 4. ID отличается от State Machine (чтобы не синхронизировать то, что уже синхронизировано)
+    // ВАЖНО: НЕ проверяем questionnaire?.id, так как он обновляется асинхронно и вызывает бесконечные циклы
     const shouldSync = questionnaireFromQuery && 
         queryId && 
-        (currentId === undefined || currentId === null || queryId !== currentId) && 
-        (refId === undefined || refId === null || queryId !== refId) &&
+        queryId !== refId &&
         queryId !== lastSyncedFromQueryIdRef.current &&
-        (stateMachineId === undefined || stateMachineId === null || queryId !== stateMachineId);
+        queryId !== stateMachineId;
     
     if (shouldSync) {
       lastSyncedFromQueryIdRef.current = queryId;
@@ -76,6 +75,7 @@ export function useQuestionnaireSync({
         currentQuestionnaireId: questionnaire?.id,
         refId,
         stateMachineId,
+        lastSyncedId: lastSyncedFromQueryIdRef.current,
       });
       // ИСПРАВЛЕНО: Используем ref для setQuestionnaire, чтобы избежать включения функции в зависимости
       setQuestionnaireRef.current(questionnaireFromQuery);
