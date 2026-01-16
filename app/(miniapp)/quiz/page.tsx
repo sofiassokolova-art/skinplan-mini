@@ -130,20 +130,32 @@ export default function QuizPage() {
   // ФИКС: Используем данные из React Query, если они доступны
   const { questionnaire, setQuestionnaire, questionnaireRef } = quizState;
 
-  // ИСПРАВЛЕНО: Создаем скоупленные ключи sessionStorage с questionnaireId для изоляции данных
-  // ФИКС: Используем 'global' вместо 'pending', чтобы не создавать два разных мира данных
-  const questionnaireId = questionnaireRef.current?.id || questionnaire?.id || quizStateMachine.questionnaire?.id;
-  const scope = questionnaireId ?? 'global'; // ФИКС: Стабильный scope вместо 'pending'
-  const scopedStorageKeys = {
+  // ФИКС A: Фиксируем scope один раз через ref после первого определения questionnaireId
+  // Это предотвращает "прыгание" ключей sessionStorage между разными scope
+  const scopeRef = useRef<string | null>(null);
+  const currentQuestionnaireId = questionnaireRef.current?.id || questionnaire?.id || quizStateMachine.questionnaire?.id;
+  
+  // Фиксируем scope один раз, если questionnaireId появился
+  if (currentQuestionnaireId && !scopeRef.current) {
+    scopeRef.current = currentQuestionnaireId;
+  }
+  
+  // Используем зафиксированный scope или 'global' как fallback
+  const scope = scopeRef.current ?? 'global';
+  
+  // ФИКС D: useMemo для scopedStorageKeys по scope (предотвращает лишние срабатывания эффектов)
+  const scopedStorageKeys = useMemo(() => ({
     CURRENT_INFO_SCREEN: QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN, scope),
     CURRENT_QUESTION: QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION, scope),
     CURRENT_QUESTION_CODE: QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE, scope),
     INIT_CALLED: QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.INIT_CALLED, scope),
     JUST_SUBMITTED: QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED, scope),
-  };
+  }), [scope]);
 
-  // ИСПРАВЛЕНО: Определяем effectiveQuestionnaire раньше для использования в компонентах
-  const effectiveQuestionnaire = questionnaireRef.current || questionnaire || quizStateMachine.questionnaire;
+  // ФИКС B: Выбираем один source of truth для questionnaire (React Query + ref как кэш)
+  // Приоритет: questionnaireFromQuery (React Query) > questionnaireRef (кэш) > questionnaire (state)
+  // State Machine используется только для UI-стейтов, не для данных questionnaire
+  const effectiveQuestionnaire = questionnaireFromQuery || questionnaireRef.current || questionnaire;
 
   // РЕФАКТОРИНГ: Используем хук для синхронизации questionnaire
   const { loading, setLoading, error, setError } = quizState;
@@ -739,8 +751,8 @@ export default function QuizPage() {
     // ИСПРАВЛЕНО: Используем sessionStorage для предотвращения повторного вызова init() после ремоунта
     // Это критично, так как ErrorBoundary может размонтировать и заново смонтировать компонент
     if (typeof window !== 'undefined') {
-      // ФИКС: Используем scoped ключ для init_done
-      const initDoneKeyForCheck = QUIZ_CONFIG.getScopedKey('quiz_init_done', questionnaireId || 'pending');
+      // ФИКС: Используем scoped ключ для init_done (используем зафиксированный scope)
+      const initDoneKeyForCheck = QUIZ_CONFIG.getScopedKey('quiz_init_done', scope);
       const alreadyInit = sessionStorage.getItem(initDoneKeyForCheck) === 'true';
       if (alreadyInit) {
         // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
