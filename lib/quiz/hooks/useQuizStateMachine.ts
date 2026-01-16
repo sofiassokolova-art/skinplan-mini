@@ -30,6 +30,15 @@ export function useQuizStateMachine(options: UseQuizStateMachineOptions = {}) {
   // Подписываемся на изменения состояния
   // ИСПРАВЛЕНО: Убрали state из зависимостей, чтобы избежать бесконечных циклов
   
+  // КРИТИЧНО: Используем ref для onStateChange, чтобы избежать пересоздания подписки
+  const onStateChangeRef = useRef(onStateChange);
+  const onTransitionErrorRef = useRef(onTransitionError);
+  
+  useEffect(() => {
+    onStateChangeRef.current = onStateChange;
+    onTransitionErrorRef.current = onTransitionError;
+  }, [onStateChange, onTransitionError]);
+  
   useEffect(() => {
     const stateMachine = stateMachineRef.current;
     if (!stateMachine) return;
@@ -39,8 +48,8 @@ export function useQuizStateMachine(options: UseQuizStateMachineOptions = {}) {
       previousStateRef.current = newState;
       setState(newState);
       
-      if (onStateChange) {
-        onStateChange(newState, previousState);
+      if (onStateChangeRef.current) {
+        onStateChangeRef.current(newState, previousState);
       }
     };
     
@@ -56,7 +65,7 @@ export function useQuizStateMachine(options: UseQuizStateMachineOptions = {}) {
     }
     
     return unsubscribe;
-  }, [onStateChange]); // ИСПРАВЛЕНО: Убрали state из зависимостей
+  }, []); // ПУСТЫЕ ЗАВИСИМОСТИ - используем refs для колбэков
   
   // Функция для отправки событий
   const dispatch = useCallback((event: QuizEvent) => {
@@ -69,12 +78,12 @@ export function useQuizStateMachine(options: UseQuizStateMachineOptions = {}) {
     const previousState = stateMachine.getState();
     const success = stateMachine.dispatch(event);
     
-    if (!success && onTransitionError) {
-      onTransitionError(event, previousState);
+    if (!success && onTransitionErrorRef.current) {
+      onTransitionErrorRef.current(event, previousState);
     }
     
     return success;
-  }, [onTransitionError]);
+  }, []); // ПУСТЫЕ ЗАВИСИМОСТИ - используем ref для onTransitionError
   
   // Функция для получения текущего состояния
   const getState = useCallback(() => {

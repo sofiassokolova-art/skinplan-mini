@@ -78,6 +78,7 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
     }
 
     // 3. Информационный экран между вопросами (pendingInfoScreen)
+    // КРИТИЧНО: Проверяем наличие pendingInfoScreen по ID, чтобы избежать проблем с нестабильными объектами
     if (pendingInfoScreen && !isRetakingQuiz) {
       return { type: 'pendingInfo', screen: pendingInfoScreen };
     }
@@ -180,17 +181,18 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
     showResumeScreen,
     showRetakeScreen,
     isRetakingQuiz,
-    pendingInfoScreen,
+    // КРИТИЧНО: Используем только ID pendingInfoScreen, чтобы избежать проблем с нестабильными объектами
+    pendingInfoScreen?.id ?? null, // null вместо undefined для стабильности
     currentInfoScreenIndex,
     // ФИКС: НЕ включаем currentInfoScreenIndexRef в зависимости, так как ref не триггерит рендер
     // Используем currentInfoScreenIndex вместо этого
     currentQuestionIndex,
-    currentQuestion?.id, // ИСПРАВЛЕНО: Используем только ID вместо всего объекта
-    questionnaire?.id, // ИСПРАВЛЕНО: Используем только ID вместо всего объекта
+    currentQuestion?.id ?? null, // ИСПРАВЛЕНО: Используем только ID вместо всего объекта, null для стабильности
+    questionnaire?.id ?? null, // ИСПРАВЛЕНО: Используем только ID вместо всего объекта, null для стабильности
     // ФИКС: Используем questionnaireRef?.current?.id вместо всего объекта, чтобы избежать лишних пересчетов
     // Это предотвращает React error #300 и #310
-    questionnaireRef?.current?.id,
-    questionnaireFromStateMachine?.id, // ФИКС: Используем только ID вместо всего объекта
+    questionnaireRef?.current?.id ?? null, // null для стабильности
+    questionnaireFromStateMachine?.id ?? null, // ФИКС: Используем только ID вместо всего объекта, null для стабильности
     loading,
     hasResumed,
     // ИСПРАВЛЕНО: Используем только количество ответов вместо всего объекта

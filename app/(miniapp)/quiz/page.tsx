@@ -71,20 +71,29 @@ export default function QuizPage() {
   const { initialize, initData } = useTelegram();
   
   // РЕФАКТОРИНГ: State Machine для управления UI состояниями
-  const quizStateMachine = useQuizStateMachine({
-    initialState: 'LOADING',
-    onStateChange: (newState, previousState) => {
+  // КРИТИЧНО: Используем useCallback для стабильности колбэков, чтобы избежать бесконечных циклов
+  const onStateChangeCallback = useCallback((newState: any, previousState: any) => {
+    if (isDev) {
       clientLogger.log('🔄 State Machine transition', { 
         from: previousState, 
         to: newState 
       });
-    },
-    onTransitionError: (event, from) => {
+    }
+  }, [isDev]);
+  
+  const onTransitionErrorCallback = useCallback((event: any, from: any) => {
+    if (isDev) {
       clientLogger.warn('⚠️ Invalid State Machine transition', { 
         event, 
         from 
       });
-    },
+    }
+  }, [isDev]);
+  
+  const quizStateMachine = useQuizStateMachine({
+    initialState: 'LOADING',
+    onStateChange: onStateChangeCallback,
+    onTransitionError: onTransitionErrorCallback,
   });
   
   // ИСПРАВЛЕНО: Используем questionnaire из State Machine для защиты от случайного сброса

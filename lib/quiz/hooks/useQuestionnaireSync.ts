@@ -71,43 +71,39 @@ export function useQuestionnaireSync({
   }, []); // ПУСТЫЕ ЗАВИСИМОСТИ - синхронизация происходит только один раз
 
   // Обертка для setQuestionnaire с синхронизацией State Machine
+  // КРИТИЧНО: Используем ref для quizStateMachine, чтобы избежать пересоздания useCallback
+  const quizStateMachineRef = useRef(quizStateMachine);
+  useEffect(() => {
+    quizStateMachineRef.current = quizStateMachine;
+  }, [quizStateMachine]);
+  
   const setQuestionnaireWithStateMachine = useCallback((
     newQuestionnaireOrUpdater: Questionnaire | null | ((prev: Questionnaire | null) => Questionnaire | null)
   ) => {
     let newQuestionnaire: Questionnaire | null;
     if (typeof newQuestionnaireOrUpdater === 'function') {
       const currentQuestionnaire = questionnaireForCallbackRef.current;
-      clientLogger.log('🔄 setQuestionnaireWithStateMachine: calling function updater', {
-        currentQuestionnaireId: currentQuestionnaire?.id || null,
-        hasCurrentQuestionnaire: !!currentQuestionnaire,
-      });
+      // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+      // clientLogger.log('🔄 setQuestionnaireWithStateMachine: calling function updater', {...});
       newQuestionnaire = newQuestionnaireOrUpdater(currentQuestionnaire);
-      clientLogger.log('🔄 setQuestionnaireWithStateMachine: function updater returned', {
-        returnedQuestionnaireId: newQuestionnaire?.id || null,
-        hasReturnedQuestionnaire: !!newQuestionnaire,
-        returnedType: typeof newQuestionnaire,
-      });
+      // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+      // clientLogger.log('🔄 setQuestionnaireWithStateMachine: function updater returned', {...});
     } else {
       newQuestionnaire = newQuestionnaireOrUpdater;
     }
     
-    clientLogger.log('🔄 setQuestionnaireWithStateMachine called', {
-      newQuestionnaireId: newQuestionnaire?.id || null,
-      currentStateMachineQuestionnaireId: quizStateMachine.questionnaire?.id || null,
-      currentLocalQuestionnaireId: questionnaireForCallbackRef.current?.id || null,
-      currentRefQuestionnaireId: questionnaireRef.current?.id || null,
-      isFunctionalForm: typeof newQuestionnaireOrUpdater === 'function',
-    });
+    // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+    // clientLogger.log('🔄 setQuestionnaireWithStateMachine called', {...});
     
-    const previousStateMachineQuestionnaire = quizStateMachine.questionnaire;
-    quizStateMachine.setQuestionnaire(newQuestionnaire);
-    const questionnaireFromStateMachine = quizStateMachine.getQuestionnaire();
+    const stateMachine = quizStateMachineRef.current;
+    const previousStateMachineQuestionnaire = stateMachine.questionnaire;
+    stateMachine.setQuestionnaire(newQuestionnaire);
+    const questionnaireFromStateMachine = stateMachine.getQuestionnaire();
     const questionnaireToSet = questionnaireFromStateMachine || previousStateMachineQuestionnaire;
     
     if (newQuestionnaire === null && questionnaireFromStateMachine === null && previousStateMachineQuestionnaire !== null) {
-      clientLogger.warn('🛡️ [State Machine] Protection triggered: prevented setting questionnaire to null', {
-        previousQuestionnaireId: previousStateMachineQuestionnaire.id,
-      });
+      // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+      // clientLogger.warn('🛡️ [State Machine] Protection triggered: prevented setting questionnaire to null', {...});
       setQuestionnaireRef.current(previousStateMachineQuestionnaire);
       questionnaireRef.current = previousStateMachineQuestionnaire;
       return;
@@ -115,21 +111,17 @@ export function useQuestionnaireSync({
     
     const currentQuestionnaire = questionnaireForCallbackRef.current;
     if (questionnaireToSet !== currentQuestionnaire) {
-      clientLogger.log('🔄 Updating local questionnaire state from State Machine', {
-        stateMachineQuestionnaireId: questionnaireFromStateMachine?.id || null,
-        previousStateMachineQuestionnaireId: previousStateMachineQuestionnaire?.id || null,
-        questionnaireToSetId: questionnaireToSet?.id || null,
-        localQuestionnaireId: currentQuestionnaire?.id || null,
-      });
+      // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+      // clientLogger.log('🔄 Updating local questionnaire state from State Machine', {...});
       
       setQuestionnaireRef.current(questionnaireToSet);
       questionnaireRef.current = questionnaireToSet;
     } else if (questionnaireToSet) {
       questionnaireRef.current = questionnaireToSet;
     }
-    // ИСПРАВЛЕНО: Убраны функции из зависимостей - используем refs для стабильности
-    // quizStateMachine - объект, но мы используем только его методы, которые стабильны
-  }, [quizStateMachine]);
+    // ИСПРАВЛЕНО: Убраны все зависимости - используем refs для стабильности
+    // Это предотвращает пересоздание функции на каждом рендере
+  }, []); // ПУСТЫЕ ЗАВИСИМОСТИ - используем refs для всех значений
 
   // Синхронизация loading из React Query
   // ИСПРАВЛЕНО: Убрана функция setLoading из зависимостей, используем ref для предотвращения циклов
