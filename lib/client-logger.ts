@@ -6,17 +6,39 @@ const isDevelopment = process.env.NODE_ENV === 'development';
 // ИСПРАВЛЕНО: Увеличен троттлинг для снижения нагрузки на /api/logs
 // Внутренний троттлинг для отправки логов на сервер, чтобы избежать спама одинаковыми сообщениями
 const LOG_THROTTLE_MS = 30_000; // 30 секунд для одинаковых сообщений (увеличено для снижения нагрузки)
+const DIAGNOSTIC_LOG_THROTTLE_MS = 5_000; // 5 секунд для диагностических логов (меньше троттлинг для диагностики)
 const lastSentLogMap = new Map<string, number>();
 // Глобальный счетчик для ограничения количества логов в секунду
 let logsInLastSecond = 0;
 let lastSecondReset = Date.now();
 const MAX_LOGS_PER_SECOND = 3; // ИСПРАВЛЕНО: Максимум 3 лога в секунду (уменьшено с 10 для снижения нагрузки)
+const MAX_DIAGNOSTIC_LOGS_PER_SECOND = 10; // ИСПРАВЛЕНО: Максимум 10 диагностических логов в секунду
+
+// Проверяем, является ли лог диагностическим
+const isDiagnosticLog = (message: string): boolean => {
+  return (
+    message.includes('🔍') || // ДИАГНОСТИКА
+    message.includes('📋') || // ИНФО-СКРИН
+    message.includes('✅') || // УСПЕХ
+    message.includes('📺') || // РЕНДЕРИНГ
+    message.includes('🧹') || // ОЧИСТКА
+    message.includes('⏸️') || // ПАУЗА/БЛОКИРОВКА
+    message.includes('🛑') || // СТОП
+    message.includes('🔄') || // ПЕРЕХОД
+    message.includes('ИНФО-СКРИН') ||
+    message.includes('ДИАГНОСТИКА') ||
+    message.includes('ВОПРОС')
+  );
+};
 
 const shouldSendToServer = (
   level: 'log' | 'warn' | 'debug' | 'error' | 'info',
   message: string
 ): boolean => {
   const now = Date.now();
+  const isDiagnostic = isDiagnosticLog(message);
+  const maxLogsPerSecond = isDiagnostic ? MAX_DIAGNOSTIC_LOGS_PER_SECOND : MAX_LOGS_PER_SECOND;
+  const throttleMs = isDiagnostic ? DIAGNOSTIC_LOG_THROTTLE_MS : LOG_THROTTLE_MS;
   
   // Сбрасываем счетчик каждую секунду
   if (now - lastSecondReset >= 1000) {
@@ -25,15 +47,16 @@ const shouldSendToServer = (
   }
   
   // Ограничиваем количество логов в секунду
-  if (logsInLastSecond >= MAX_LOGS_PER_SECOND) {
+  if (logsInLastSecond >= maxLogsPerSecond) {
     return false;
   }
   
-  // Ключ по уровню и усечённому сообщению
-  const key = `${level}:${message.substring(0, 200)}`;
+  // Ключ по уровню и усечённому сообщению (для диагностических логов используем более короткий ключ)
+  const keyLength = isDiagnostic ? 100 : 200;
+  const key = `${level}:${message.substring(0, keyLength)}`;
   const last = lastSentLogMap.get(key) ?? 0;
 
-  if (now - last < LOG_THROTTLE_MS) {
+  if (now - last < throttleMs) {
     // Недавно уже отправляли такой же лог — пропускаем отправку на сервер
     return false;
   }
@@ -108,11 +131,12 @@ const sendLogFetch = async (
   level: 'log' | 'warn' | 'debug' | 'error' | 'info',
   message: string
 ) => {
-  // ИСПРАВЛЕНО: В production отправляем логи на сервер, но только ошибки
+  // ИСПРАВЛЕНО: В production отправляем логи на сервер, но только ошибки и критичные warn
   // Логи сохраняются в PostgreSQL, а не в Redis/KV
   // Отправка логов не блокирует работу приложения (fire-and-forget)
-  if (!isDevelopment && level !== 'error') {
-    return; // В production отправляем на сервер только error логи
+  // ИСПРАВЛЕНО: Также отправляем warn логи (включая диагностические) в production
+  if (!isDevelopment && level !== 'error' && level !== 'warn') {
+    return; // В production отправляем на сервер только error и warn логи
   }
 
   try {
@@ -210,7 +234,7 @@ export const clientLogger = {
     const message = formatMessage(...args);
     console.warn(...args); // Предупреждения всегда выводим
     // ИСПРАВЛЕНО: Предупреждения отправляем с троттлингом
-    // В production отправляем только критичные предупреждения
+    // В production отправляем только критичные предупреждения и диагностические логи
     try {
       const isCriticalWarn = 
         message.includes('CRITICAL') || 
@@ -219,7 +243,19 @@ export const clientLogger = {
         message.includes('failed') ||
         message.includes('Failed');
       
-      if (isDevelopment || isCriticalWarn) {
+      // ИСПРАВЛЕНО: Также отправляем диагностические логи для инфо-экранов и вопросов
+      const isDiagnosticLog = 
+        message.includes('🔍') || // ДИАГНОСТИКА
+        message.includes('📋') || // ИНФО-СКРИН
+        message.includes('✅') || // УСПЕХ
+        message.includes('📺') || // РЕНДЕРИНГ
+        message.includes('🧹') || // ОЧИСТКА
+        message.includes('⏸️') || // ПАУЗА/БЛОКИРОВКА
+        message.includes('ИНФО-СКРИН') ||
+        message.includes('ДИАГНОСТИКА') ||
+        message.includes('ВОПРОС');
+      
+      if (isDevelopment || isCriticalWarn || isDiagnosticLog) {
         if (shouldSendToServer('warn', message)) {
           sendLogToServer('warn', message, args.length > 1 ? args.slice(1) : null);
         }

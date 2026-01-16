@@ -108,6 +108,33 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     // ИСПРАВЛЕНО: Используем единую функцию для получения начальных инфо-экранов
     const initialInfoScreens = getInitialInfoScreens();
     
+    // КРИТИЧНО: Если вызывается handleNext и есть pendingInfoScreen, это означает, что пользователь закрывает инфо-экран
+    // В этом случае нужно очистить pendingInfoScreen ПЕРЕД дальнейшей обработкой, чтобы разблокировать переход к следующему вопросу
+    if (currentPendingInfoScreen) {
+      clientLogger.warn('🧹 ИНФО-СКРИН: Закрываем pendingInfoScreen при вызове handleNext', {
+        pendingInfoScreenId: currentPendingInfoScreen.id,
+        pendingInfoScreenTitle: currentPendingInfoScreen.title,
+        currentQuestionIndex,
+        currentInfoScreenIndex,
+      });
+      
+      // Очищаем pendingInfoScreen и ref перед дальнейшей обработкой
+      if (pendingInfoScreenRef) {
+        pendingInfoScreenRef.current = null;
+      }
+      setPendingInfoScreen(null);
+      
+      // Сохраняем флаг в sessionStorage, что инфо-экран только что закрыт
+      // Это поможет правильно обработать следующий шаг
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem('quiz_justClosedInfoScreen', 'true');
+        } catch (err) {
+          // Игнорируем ошибки
+        }
+      }
+    }
+    
     // ИСПРАВЛЕНО: Проверяем анкету только если мы НЕ на начальных инфо-экранах
     // Для начальных инфо-экранов анкета не нужна - они должны показываться независимо от загрузки анкеты
     const isOnInitialInfoScreens = currentInfoScreenIndex < initialInfoScreens.length;
@@ -757,6 +784,15 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
             hasAnswered: true,
             justClosedInfoScreenWasSet: justClosedInfoScreen,
           });
+          // КРИТИЧНО: Возвращаемся, НЕ переходим к следующему вопросу
+          // Инфо-экран будет показан, и после его закрытия пользователь перейдет к следующему вопросу
+          clientLogger.warn('🛑 handleNext: ВЫХОД после установки pendingInfoScreen - НЕ переходим к следующему вопросу', {
+            questionCode: currentQuestion.code,
+            questionIndex: currentQuestionIndex,
+            infoScreenId: infoScreen.id,
+            pendingInfoScreenRefSet: !!pendingInfoScreenRef,
+            pendingInfoScreenRefCurrent: pendingInfoScreenRef?.current?.id || null,
+          });
           return;
         } else {
           // ФИКС: Логирование, если инфо-экран не найден для вопроса
@@ -815,6 +851,9 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     }
 
     // Переходим к следующему вопросу
+    // ИСПРАВЛЕНО: pendingInfoScreen теперь очищается в начале handleNext при закрытии инфо-экрана
+    // Поэтому здесь мы всегда можем перейти к следующему вопросу, если он существует
+    
     if (currentQuestionIndex < allQuestions.length - 1) {
       const newIndex = currentQuestionIndex + 1;
       

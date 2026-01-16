@@ -112,10 +112,18 @@ export function QuizQuestion({
       {/* Контейнер с анимацией для всего контента вопроса */}
       <div className="animate-fade-in">
         {/* Прогресс-бар - черный фон с лаймовым прогрессом */}
+        {/* ИСПРАВЛЕНО: Прогресс-бар должен быть одинаковой ширины на всех экранах (600px) */}
         {!hideProgressBar && (
           <div style={{ 
             marginBottom: '24px',
             marginTop: '75px',
+            width: '100%',
+            maxWidth: '600px',
+            marginLeft: 'auto',
+            marginRight: 'auto',
+            paddingLeft: useLimeStyle ? '20px' : '0',
+            paddingRight: useLimeStyle ? '20px' : '0',
+            boxSizing: 'border-box',
           }}>
             <div style={{
               width: '100%',
