@@ -300,7 +300,7 @@ async function seedQuestionnaireV2() {
       questions: [
         {
           code: 'retinoid_usage',
-          text: 'Использовали ли вы когда-либо ретинол или ретиноиды (например, третиноин, адапален и др.)?',
+          text: 'Использовали ли вы когда-либо ретинол или ретиноиды?\nНапример, третиноин, адапален и др.',
           type: 'single_choice',
           position: 1,
           isRequired: false,

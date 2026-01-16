@@ -165,7 +165,12 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     }
 
     // Если мы на начальных информационных экранах, переходим к следующему или к вопросам
-    if (currentInfoScreenIndex < initialInfoScreens.length - 1) {
+    // ИСПРАВЛЕНО: Не обрабатываем начальные инфо-экраны, если пользователь уже на вопросах
+    // Это исправляет проблему, когда после возврата к первому вопросу по кнопке "Назад"
+    // и нажатия "Продолжить" система пытается обработать начальные инфо-экраны
+    const isAlreadyOnQuestions = currentQuestionIndex >= 0 && currentQuestionIndex < allQuestions.length;
+    
+    if (isOnInitialInfoScreens && !isAlreadyOnQuestions && currentInfoScreenIndex < initialInfoScreens.length - 1) {
       const newIndex = currentInfoScreenIndex + 1;
       // ФИКС: Логируем переход на следующий экран
       clientLogger.warn('🔄 handleNext: переход на следующий инфо-экран', {
@@ -258,8 +263,25 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       const answeredQuestionIds = Object.keys(answers).map(id => Number(id));
       let nextQuestionIndex = 0;
       
-      // Если есть ответы, находим следующий неотвеченный вопрос
-      if (answeredQuestionIds.length > 0 && allQuestions.length > 0) {
+      // ИСПРАВЛЕНО: Если пользователь уже на вопросах (currentQuestionIndex >= 0), 
+      // просто переходим к следующему вопросу по порядку, а не ищем неотвеченные
+      // Это исправляет проблему, когда после возврата к первому вопросу по кнопке "Назад"
+      // и нажатия "Продолжить" система переходит к последнему заполненному вопросу
+      const isAlreadyOnQuestions = currentQuestionIndex >= 0 && currentQuestionIndex < allQuestions.length;
+      
+      if (isAlreadyOnQuestions) {
+        // Пользователь уже на вопросах - переходим к следующему по порядку
+        nextQuestionIndex = currentQuestionIndex + 1;
+        if (nextQuestionIndex >= allQuestions.length) {
+          nextQuestionIndex = allQuestions.length - 1;
+        }
+        clientLogger.log('🔄 Переход к вопросам: пользователь уже на вопросах, переходим к следующему по порядку', {
+          currentQuestionIndex,
+          nextQuestionIndex,
+          allQuestionsLength: allQuestions.length,
+        });
+      } else if (answeredQuestionIds.length > 0 && allQuestions.length > 0) {
+        // Если есть ответы и пользователь НЕ на вопросах, находим следующий неотвеченный вопрос
         const nextUnansweredQuestion = allQuestions.find((q, index) => {
           return !answeredQuestionIds.includes(q.id) && index >= currentQuestionIndex;
         });

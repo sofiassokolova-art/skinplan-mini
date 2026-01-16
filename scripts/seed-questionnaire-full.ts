@@ -246,7 +246,7 @@ async function seedFullQuestionnaire() {
         },
         {
           code: 'AVOID_INGREDIENTS',
-          text: 'Выберите ингредиенты, которые вы хотели бы исключить из средств по уходу за кожей',
+          text: 'Выберите ингредиенты, которые вы хотели бы исключить',
           type: 'multi_choice',
           position: 4,
           isRequired: false,

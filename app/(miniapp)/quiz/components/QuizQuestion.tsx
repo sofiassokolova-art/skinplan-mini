@@ -177,7 +177,7 @@ export function QuizQuestion({
               fontSize: '24px', 
               fontWeight: 700, 
               color: '#000000',
-              marginBottom: subtitle ? '12px' : '24px',
+              marginBottom: subtitle ? '4px' : '24px',
               marginTop: hideProgressBar ? '60px' : '0',
             }}>
               {renderTitle()}
@@ -185,10 +185,11 @@ export function QuizQuestion({
             {subtitle && (
               <div style={{
                 fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontSize: '16px',
+                fontSize: '14px',
                 fontWeight: 400,
                 color: '#9D9D9D',
                 marginBottom: '24px',
+                marginTop: '0',
                 lineHeight: '1.5',
                 whiteSpace: 'pre-line',
               }}>
@@ -200,7 +201,8 @@ export function QuizQuestion({
       })()}
 
       {/* Single Choice - белые кнопки с серой окантовкой, #F2F2F2 при выборе */}
-      {question?.type === 'single_choice' && question?.options && (
+      {/* ИСПРАВЛЕНО: Исключаем skin_type из обычного рендеринга, так как он использует лаймовый стиль */}
+      {question?.type === 'single_choice' && question?.options && !isSkinTypeQuestion && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {question.options.map((option) => {
             const isSelected = answers[question.id] === option.value;
@@ -409,7 +411,7 @@ export function QuizQuestion({
                   fontSize: '24px', 
                   fontWeight: 700, 
                   color: '#000000',
-                  marginBottom: subtitle ? '12px' : '20px',
+                  marginBottom: subtitle ? '4px' : '20px',
                   marginTop: '0',
                 }}>
                   {renderTitle()}
@@ -420,10 +422,11 @@ export function QuizQuestion({
             {subtitle && (
               <div style={{
                 fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontSize: '16px',
+                fontSize: '14px',
                 fontWeight: 400,
                 color: '#9D9D9D',
                 marginBottom: '20px',
+                marginTop: '0',
                 lineHeight: '1.5',
                 whiteSpace: 'pre-line',
               }}>
