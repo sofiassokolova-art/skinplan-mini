@@ -111,8 +111,10 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
   setIsHandlingNext(true);
   
   try {
-    // ИСПРАВЛЕНО: Получаем questionnaireId для скоупирования ключей sessionStorage
+    // ФИКС: Получаем questionnaireId для скоупирования ключей sessionStorage с fallback
+    // Это предотвращает нестабильные ключи, когда анкета еще не загружена
     const questionnaireId = questionnaire?.id?.toString() || questionnaireRef.current?.id?.toString();
+    const qid = questionnaireId ?? 'pending';
     
     // ИСПРАВЛЕНО: Используем единую функцию для получения начальных инфо-экранов
     const initialInfoScreens = getInitialInfoScreens();
@@ -146,12 +148,18 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       // ИСПРАВЛЕНО: Устанавливаем null в state, но не ждем его обновления - ref уже очищен
       setPendingInfoScreen(null);
       
-      // ИСПРАВЛЕНО: БАГ #4 - используем ref вместо sessionStorage для justClosedInfoScreen
-      // Это предотвращает "залипание" флага и блокировку инфо-скринов
+      // ФИКС: Используем queueMicrotask для сброса флага после одного tick
+      // Это предотвращает "залипание" флага и позволяет ему работать на следующем клике
       if (justClosedInfoScreenRef) {
         justClosedInfoScreenRef.current = true;
         clientLogger.warn('🧹 ИНФО-СКРИН: justClosedInfoScreenRef.current установлен', {
           pendingInfoScreenId: currentPendingInfoScreen.id,
+        });
+        // Сбрасываем флаг через queueMicrotask, чтобы он пережил один tick
+        queueMicrotask(() => {
+          if (justClosedInfoScreenRef) {
+            justClosedInfoScreenRef.current = false;
+          }
         });
       }
       
@@ -234,7 +242,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       updateInfoScreenIndex(newIndex, currentInfoScreenIndexRef, setCurrentInfoScreenIndex);
       // ИСПРАВЛЕНО: БАГ #3 - используем QUIZ_CONFIG.STORAGE_KEYS со скоупированием
       // ФИКС: Сохраняем newIndex в sessionStorage для восстановления при перемонтировании
-      const scopedInfoScreenKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN, questionnaireId);
+      const scopedInfoScreenKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN, qid);
       saveIndexToSessionStorage(scopedInfoScreenKey, newIndex, '💾 Сохранен currentInfoScreenIndex в sessionStorage');
       // ИСПРАВЛЕНО: БАГ #5 - обеспечиваем консистентность ref/state для pendingInfoScreen
       // ФИКС: Если после инкремента мы прошли все начальные экраны, очищаем pendingInfoScreen
@@ -303,20 +311,20 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       updateInfoScreenIndex(newInfoIndex, currentInfoScreenIndexRef, setCurrentInfoScreenIndex);
       // ИСПРАВЛЕНО: БАГ #3 - используем QUIZ_CONFIG.STORAGE_KEYS со скоупированием
       // ФИКС: Сохраняем newInfoIndex в sessionStorage для восстановления при перемонтировании
-      const scopedInfoScreenKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN, questionnaireId);
+      const scopedInfoScreenKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN, qid);
       saveIndexToSessionStorage(scopedInfoScreenKey, newInfoIndex, '💾 Сохранен currentInfoScreenIndex в sessionStorage при переходе к вопросам');
       
       // ИСПРАВЛЕНО: Не сбрасываем currentQuestionIndex на 0, если у пользователя уже есть ответы
       // Это предотвращает возврат к первому вопросу для пользователей, которые уже отвечали
       // КРИТИЧНО: Проверяем, что allQuestions не пустой перед установкой индекса
+      // ФИКС: Не сохраняем прогресс, если allQuestions пустой - это может привести к "вопрос не найден"
       if (allQuestions.length === 0) {
-        clientLogger.warn('⚠️ handleNext: allQuestions пустой, не устанавливаем currentQuestionIndex', {
+        clientLogger.warn('⚠️ handleNext: allQuestions пустой, не устанавливаем currentQuestionIndex и не сохраняем прогресс', {
           allQuestionsLength: allQuestions.length,
           hasQuestionnaire: !!questionnaire || !!questionnaireRef.current,
           loading,
         });
-        // Не устанавливаем индекс, если вопросов нет - анкета еще загружается
-        await saveProgress(answers, currentQuestionIndex, newInfoIndex);
+        // Не устанавливаем индекс и не сохраняем прогресс, если вопросов нет - анкета еще загружается
         return;
       }
       
@@ -326,8 +334,8 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       // ФИКС: Восстанавливаем questionCode из sessionStorage для пользователей с прогрессом
       // Если это первый заход после интро → ставим 0
       // Если пользователь вернулся на интро (back) → восстанавливаем сохранённый questionCode/индекс
-      // ИСПРАВЛЕНО: questionnaireId уже объявлен выше (строка 115), не дублируем объявление
-      const scopedQuestionCodeKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE, questionnaireId);
+      // ФИКС: Используем qid вместо questionnaireId (который может быть undefined)
+      const scopedQuestionCodeKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE, qid);
       const savedQuestionCode = typeof window !== 'undefined' ? sessionStorage.getItem(scopedQuestionCodeKey) : null;
       const answeredQuestionIds = Object.keys(answers).map(id => Number(id));
       let nextQuestionIndex = 0;
@@ -385,9 +393,10 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       updateQuestionIndex(nextQuestionIndex, currentQuestionIndexRef, setCurrentQuestionIndex);
       // ИСПРАВЛЕНО: БАГ #3 - используем QUIZ_CONFIG.STORAGE_KEYS со скоупированием
       // Сохраняем код вопроса вместо индекса для стабильного восстановления
+      // ФИКС: Не сохраняем, если allQuestions пустой
       const questionCode = allQuestions[nextQuestionIndex]?.code;
-      if (questionCode) {
-        const scopedQuestionCodeKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE, questionnaireId);
+      if (questionCode && allQuestions.length > 0) {
+        const scopedQuestionCodeKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE, qid);
         saveIndexToSessionStorage(scopedQuestionCodeKey, questionCode, '💾 Сохранен код вопроса в sessionStorage при переходе к вопросам');
       }
       // ИСПРАВЛЕНО: БАГ #5 - обеспечиваем консистентность ref/state для pendingInfoScreen
@@ -441,18 +450,19 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     // ИСПРАВЛЕНО: Проверяем, что currentQuestionIndex валиден для текущего allQuestions
     // При перепрохождении анкета может загружаться асинхронно, поэтому нужно корректно обрабатывать
     if (currentQuestionIndex >= allQuestions.length && allQuestions.length > 0) {
-      clientLogger.warn('⚠️ currentQuestionIndex выходит за пределы allQuestions, корректируем', {
+      clientLogger.warn('⚠️ currentQuestionIndex выходит за пределы allQuestions, корректируем на 0', {
         currentQuestionIndex,
         allQuestionsLength: allQuestions.length,
         questionIds: allQuestions.map((q: Question) => q.id),
         isRetakingQuiz,
         showRetakeScreen,
       });
-      // Корректируем индекс на последний валидный вопрос
-      const correctedIndex = Math.max(0, allQuestions.length - 1);
+      // ФИКС: Корректируем индекс на 0 (начало), а не на последний вопрос
+      // Это предотвращает телепортацию пользователя в конец квиза
+      const correctedIndex = 0;
       setCurrentQuestionIndex(correctedIndex);
-      // ИСПРАВЛЕНО: Не сохраняем прогресс при перепрохождении, если анкета еще не полностью загружена
-      if (!isRetakingQuiz && !showRetakeScreen) {
+      // ФИКС: Не сохраняем прогресс, если allQuestions пустой
+      if (allQuestions.length > 0 && !isRetakingQuiz && !showRetakeScreen) {
         await saveProgress(answers, correctedIndex, currentInfoScreenIndex);
       }
       return;
@@ -467,11 +477,19 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         allQuestionIds: allQuestions.map((q: Question) => q.id),
       });
       
-      // ИСПРАВЛЕНО: Если вопрос не найден по индексу, корректируем на последний валидный индекс
-      // Это может произойти после изменения фильтрации (например, после ответа на вопрос про бюджет)
-      const correctedIndex = Math.max(0, allQuestions.length - 1);
+      // ФИКС: Если вопрос не найден по индексу, корректируем на 0 (начало)
+      // Это предотвращает телепортацию пользователя на последний вопрос, что выглядит как баг
+      const correctedIndex = 0;
+      clientLogger.warn('⚠️ Текущий вопрос не найден в allQuestions, корректируем на 0', {
+        currentQuestionIndex,
+        allQuestionsLength: allQuestions.length,
+        correctedIndex,
+      });
       setCurrentQuestionIndex(correctedIndex);
-      await saveProgress(answers, correctedIndex, currentInfoScreenIndex);
+      // ФИКС: Не сохраняем прогресс, если allQuestions пустой
+      if (allQuestions.length > 0) {
+        await saveProgress(answers, correctedIndex, currentInfoScreenIndex);
+      }
       return;
     }
 
@@ -599,17 +617,21 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       // Сохраняем код вопроса вместо индекса для стабильного восстановления
       const questionCode = allQuestions[newIndex]?.code;
       if (questionCode) {
-        const scopedQuestionCodeKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE, questionnaireId);
+        const scopedQuestionCodeKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE, qid);
         saveIndexToSessionStorage(scopedQuestionCodeKey, questionCode, '💾 Сохранен код вопроса в sessionStorage');
       }
 
-      // ИСПРАВЛЕНО: БАГ #4 - используем ref вместо sessionStorage для justClosedInfoScreen
-      // Устанавливаем флаг, что мы только что закрыли инфо-экран
-      // Флаг будет очищен в finally блоке после перехода к следующему вопросу
+      // ФИКС: Используем queueMicrotask для сброса флага после одного tick
       if (justClosedInfoScreenRef) {
         justClosedInfoScreenRef.current = true;
         clientLogger.warn('🧹 ИНФО-СКРИН: justClosedInfoScreenRef.current установлен после перехода', {
           newIndex,
+        });
+        // Сбрасываем флаг через queueMicrotask, чтобы он пережил один tick
+        queueMicrotask(() => {
+          if (justClosedInfoScreenRef) {
+            justClosedInfoScreenRef.current = false;
+          }
         });
       }
       await saveProgressSafely(saveProgress, answers, newIndex, currentInfoScreenIndex);
@@ -1003,12 +1025,16 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       updateQuestionIndex(newIndex, currentQuestionIndexRef, setCurrentQuestionIndex);
       // ИСПРАВЛЕНО: БАГ #3 - используем QUIZ_CONFIG.STORAGE_KEYS со скоупированием
       // Сохраняем код вопроса вместо индекса для стабильного восстановления
+      // ФИКС: Не сохраняем, если allQuestions пустой
       const questionCode = allQuestions[newIndex]?.code;
-      if (questionCode) {
-        const scopedQuestionCodeKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE, questionnaireId);
+      if (questionCode && allQuestions.length > 0) {
+        const scopedQuestionCodeKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE, qid);
         saveIndexToSessionStorage(scopedQuestionCodeKey, questionCode, '💾 Сохранен код вопроса в sessionStorage');
       }
-      await saveProgressSafely(saveProgress, answers, newIndex, currentInfoScreenIndex);
+      // ФИКС: Не сохраняем прогресс, если allQuestions пустой
+      if (allQuestions.length > 0) {
+        await saveProgressSafely(saveProgress, answers, newIndex, currentInfoScreenIndex);
+      }
 
       // КРИТИЧНО: Логируем успешный переход к следующему вопросу
       clientLogger.warn('✅ handleNext: успешно перешли к следующему вопросу', {
@@ -1033,11 +1059,9 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     // ФИКС: Сбрасываем флаг после завершения handleNext
     handleNextInProgressRef.current = false;
     setIsHandlingNext(false);
-    // ИСПРАВЛЕНО: БАГ #4 - всегда очищаем justClosedInfoScreenRef в finally блоке
-    // Это гарантирует, что флаг не останется установленным, даже если произошла ошибка
-    if (justClosedInfoScreenRef) {
-      justClosedInfoScreenRef.current = false;
-    }
+    // ФИКС: Убрали безусловный сброс justClosedInfoScreenRef из finally
+    // Теперь флаг сбрасывается через queueMicrotask в местах установки
+    // Это позволяет флагу работать на следующем клике/вызове
   }
 }
 
