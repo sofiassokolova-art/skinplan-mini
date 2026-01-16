@@ -71,8 +71,20 @@ export function useQuizRenderDebug(params: UseQuizRenderDebugParams) {
 
   // ИСПРАВЛЕНО: Уменьшены зависимости - используем только критичные значения
   // Остальные значения читаем из refs или параметров внутри эффекта
+  // КРИТИЧНО: Отключаем хук в продакшене, чтобы избежать React Error #300
+  // КРИТИЧНО: Используем ref для предотвращения бесконечных циклов
+  const lastCallTimeRef = useRef<number>(0);
+  
   useEffect(() => {
     if (!isDev) return;
+    
+    // КРИТИЧНО: Используем ref для предотвращения бесконечных циклов
+    // Если хук вызывается слишком часто, пропускаем выполнение
+    const now = Date.now();
+    if (now - lastCallTimeRef.current < 100) {
+      return; // Пропускаем, если вызывается слишком часто (менее 100мс)
+    }
+    lastCallTimeRef.current = now;
 
     const questionnaireToRender = questionnaire || questionnaireRef.current;
     const questionnaireId = questionnaireToRender?.id || null;
@@ -161,12 +173,16 @@ export function useQuizRenderDebug(params: UseQuizRenderDebugParams) {
       });
     }
   }, [
-    // ИСПРАВЛЕНО: Минимальный набор зависимостей - только критичные значения
+    // ИСПРАВЛЕНО: Минимальный набор зависимостей - только критичные примитивные значения
+    // КРИТИЧНО: Не используем объекты в зависимостях, только примитивы
+    // КРИТИЧНО: Используем стабильные значения для предотвращения React Error #300
     isDev,
-    questionnaire?.id, // Только ID, не весь объект
+    // Используем только ID, не весь объект, чтобы избежать пересоздания зависимостей
+    // КРИТИЧНО: Используем стабильное значение null вместо undefined
+    questionnaire?.id ?? null, // null вместо undefined для стабильности
     loading,
     error,
-    currentQuestion?.id, // Только ID, не весь объект
+    currentQuestion?.id ?? null, // null вместо undefined для стабильности
     currentQuestionIndex,
     // Убраны зависимости, которые часто меняются и не критичны для логирования:
     // - questionnaireRef (ref не меняется)
@@ -175,5 +191,6 @@ export function useQuizRenderDebug(params: UseQuizRenderDebugParams) {
     // - pendingInfoScreen (может часто меняться)
     // - isRetakingQuiz, hasResumed (меняются редко)
     // - initCompletedRef, initInProgressRef (refs не меняются)
+    // КРИТИЧНО: lastCallTimeRef не включен в зависимости, так как это ref
   ]);
 }
