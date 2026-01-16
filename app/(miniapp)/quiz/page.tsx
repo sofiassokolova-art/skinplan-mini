@@ -2341,61 +2341,42 @@ export default function QuizPage() {
     const handleStartFromBeginning = async () => {
       clientLogger.log('🔄 Пользователь нажал "Начать анкету заново"');
       
-      // Очищаем sessionStorage
-      if (typeof window !== 'undefined') {
-        sessionStorage.removeItem(scopedStorageKeys.CURRENT_INFO_SCREEN);
-        sessionStorage.removeItem(scopedStorageKeys.CURRENT_QUESTION);
-        // ФИКС: Используем scoped ключ для answers_backup
-        const answersBackupKey = QUIZ_CONFIG.getScopedKey('quiz_answers_backup', scope);
-        sessionStorage.removeItem(answersBackupKey);
-        sessionStorage.removeItem(scopedStorageKeys.INIT_CALLED);
-        clientLogger.log('✅ sessionStorage очищен для нового старта');
-      }
-      
-      // КРИТИЧНО: Сначала очищаем ответы и прогресс, чтобы предотвратить двойной рендеринг
-      // КРИТИЧНО: Очищаем ответы из state и ref, чтобы они не восстанавливались
-      setAnswers({});
-      answersRef.current = {};
-      answersCountRef.current = 0;
-      setSavedProgress(null);
-      setShowResumeScreen(false);
-      setHasResumed(false);
-      hasResumedRef.current = false;
-      
-      // КРИТИЧНО: Сбрасываем pendingInfoScreen ПЕРЕД установкой isStartingOver
-      // Это предотвращает двойной рендеринг вопроса
-      setPendingInfoScreen(null);
-      
-      // КРИТИЧНО: Устанавливаем isStartingOver ПЕРЕД сбросом индексов
-      // Это гарантирует, что резюм-экран не будет показан на следующем рендере
-      setIsStartingOver(true);
+      // ФИКС: Правильный порядок очистки для безопасного "старта заново"
+      // 1. Сначала ставим защитные флаги, чтобы блокировать восстановление прогресса
       isStartingOverRef.current = true;
+      setIsStartingOver(true);
+      autoSubmitTriggeredRef.current = false;
+      setAutoSubmitTriggered(false);
+      resumeCompletedRef.current = false;
+      hasResumedRef.current = false;
+      setHasResumed(false);
       
-      // Сбрасываем на первый инфо экран ПОСЛЕ установки isStartingOver
-      // Это гарантирует, что начальные инфо-экраны будут показаны (isStartingOver не блокирует их)
-      setCurrentInfoScreenIndex(0);
-      currentInfoScreenIndexRef.current = 0;
-      setCurrentQuestionIndex(0);
-      
-      // КРИТИЧНО: Очищаем все данные из sessionStorage, включая ответы
-      // Это предотвращает восстановление ответов после очистки
+      // 2. Полностью стираем sessionStorage ключи (все критичные ключи)
       if (typeof window !== 'undefined') {
         try {
-          // ФИКС: Используем scoped ключ для answers_backup
-        const answersBackupKey = QUIZ_CONFIG.getScopedKey('quiz_answers_backup', scope);
-        sessionStorage.removeItem(answersBackupKey);
           sessionStorage.removeItem(scopedStorageKeys.CURRENT_INFO_SCREEN);
           sessionStorage.removeItem(scopedStorageKeys.CURRENT_QUESTION);
+          sessionStorage.removeItem(scopedStorageKeys.CURRENT_QUESTION_CODE); // ФИКС: Очищаем CURRENT_QUESTION_CODE
           sessionStorage.removeItem(scopedStorageKeys.INIT_CALLED);
-          clientLogger.log('✅ sessionStorage полностью очищен, включая ответы');
+          sessionStorage.removeItem(scopedStorageKeys.JUST_SUBMITTED); // ФИКС: Очищаем JUST_SUBMITTED
+          // ФИКС: Используем scoped ключ для answers_backup
+          const answersBackupKey = QUIZ_CONFIG.getScopedKey('quiz_answers_backup', scope);
+          sessionStorage.removeItem(answersBackupKey);
+          clientLogger.log('✅ sessionStorage полностью очищен (включая CURRENT_QUESTION_CODE и JUST_SUBMITTED)');
         } catch (err) {
           clientLogger.warn('⚠️ Ошибка при очистке sessionStorage:', err);
         }
       }
       
-      // КРИТИЧНО: Очищаем прогресс на сервере (удаляем ответы из БД)
-      // ФИКС: Используем React Query мутацию для автоматической инвалидации кэша
-      // Это гарантирует, что quizProgressFromQuery обновится и станет null
+      // 3. Стираем локальные стейты/рефы
+      setAnswers({});
+      answersRef.current = {};
+      answersCountRef.current = 0;
+      setSavedProgress(null);
+      setShowResumeScreen(false);
+      setPendingInfoScreen(null);
+      
+      // 4. Удаляем серверный прогресс (с инвалидацией кэша React Query)
       try {
         await clearQuizProgressMutation.mutateAsync(undefined);
         clientLogger.log('✅ Ответы удалены на сервере при "Начать заново", кэш инвалидирован');
@@ -2403,20 +2384,23 @@ export default function QuizPage() {
         clientLogger.warn('⚠️ Ошибка при удалении ответов на сервере:', err);
       }
       
-      // Также вызываем clearProgress для очистки локального состояния
-      // Это дополнительно очищает savedProgress и другие флаги
+      // 5. Также вызываем clearProgress для дополнительной очистки локального состояния
       await clearProgress();
       
-      // ФИКС: Дополнительно очищаем savedProgress из state, чтобы гарантировать сброс
-      // Это предотвращает показ резюм-экрана после очистки
-      setSavedProgress(null);
+      // 6. Сбрасываем индексы на старт
+      setCurrentInfoScreenIndex(0);
+      currentInfoScreenIndexRef.current = 0;
+      setCurrentQuestionIndex(0);
+      
+      // 7. ФИКС: Снимаем isStartingOver после того, как стартовый экран уже показался
+      // Используем setTimeout для следующего тика, чтобы гарантировать рендер стартового экрана
+      setTimeout(() => {
+        setIsStartingOver(false);
+        isStartingOverRef.current = false;
+        clientLogger.log('✅ isStartingOver снят после показа стартового экрана');
+      }, 0);
 
-      // ИСПРАВЛЕНО: После полного сброса выключаем isStartingOver
-      // Это предотвращает конфликт логики - флаг больше не блокирует начальные инфо-экраны
-      setIsStartingOver(false);
-      isStartingOverRef.current = false;
-
-      clientLogger.log('✅ Состояние сброшено, переход на первый инфо экран');
+      clientLogger.log('✅ Состояние полностью сброшено, переход на первый инфо экран');
     };
 
     // ИСПРАВЛЕНО: Блокируем кнопки во время загрузки/инициализации
