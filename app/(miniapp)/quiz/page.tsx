@@ -2378,6 +2378,10 @@ export default function QuizPage() {
       clientLogger.log('✅ Состояние сброшено, переход на первый инфо экран');
     };
 
+    // ИСПРАВЛЕНО: Блокируем кнопки во время загрузки/инициализации
+    // Это предотвращает клики, когда quiz state еще не стабилен
+    const isBusy = loading || isLoadingProgress;
+    
     return (
       <QuizResumeScreen
         savedProgress={savedProgress}
@@ -2387,6 +2391,7 @@ export default function QuizPage() {
         showRetakeScreen={showRetakeScreen}
         onResume={resumeQuiz}
         onStartOver={handleStartFromBeginning}
+        isBusy={isBusy}
       />
     );
   }

@@ -3,8 +3,6 @@
 
 'use client';
 
-import { BackButton } from '../components/BackButton';
-
 interface ResumeScreenProps {
   answeredCount: number;
   totalQuestions: number;

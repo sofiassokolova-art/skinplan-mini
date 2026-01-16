@@ -3,6 +3,7 @@
 
 'use client';
 
+import { useState, useRef } from 'react';
 import { clientLogger } from '@/lib/client-logger';
 import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 import { filterQuestions } from '@/lib/quiz/filterQuestions';
@@ -16,6 +17,7 @@ interface QuizResumeScreenProps {
   showRetakeScreen: boolean;
   onResume: () => void;
   onStartOver: () => Promise<void>;
+  isBusy?: boolean; // ИСПРАВЛЕНО: Блокирует кнопки во время загрузки/инициализации
 }
 
 export function QuizResumeScreen({
@@ -26,7 +28,51 @@ export function QuizResumeScreen({
   showRetakeScreen,
   onResume,
   onStartOver,
+  isBusy = false,
 }: QuizResumeScreenProps) {
+  // ИСПРАВЛЕНО: Защита от двойного клика на мобильных устройствах
+  const [clickedButton, setClickedButton] = useState<'resume' | 'startOver' | null>(null);
+  const resumeInProgressRef = useRef(false);
+  
+  const handleResume = () => {
+    // Защита от двойного клика
+    if (resumeInProgressRef.current || isBusy || clickedButton) {
+      return;
+    }
+    
+    resumeInProgressRef.current = true;
+    setClickedButton('resume');
+    
+    try {
+      onResume();
+    } catch (error) {
+      clientLogger.error('❌ Ошибка при возобновлении анкеты:', error);
+      // Сбрасываем флаг при ошибке
+      resumeInProgressRef.current = false;
+      setClickedButton(null);
+    }
+  };
+  
+  const handleStartOver = async () => {
+    // Защита от двойного клика
+    if (resumeInProgressRef.current || isBusy || clickedButton) {
+      return;
+    }
+    
+    resumeInProgressRef.current = true;
+    setClickedButton('startOver');
+    
+    try {
+      await onStartOver();
+    } catch (error) {
+      clientLogger.error('❌ Ошибка при начале заново:', error);
+      // Сбрасываем флаг при ошибке
+      resumeInProgressRef.current = false;
+      setClickedButton(null);
+    }
+  };
+  
+  const isDisabled = isBusy || !!clickedButton;
   // Получаем все вопросы с фильтрацией
   const allQuestionsRaw = questionnaire ? [
     ...(questionnaire.groups || []).flatMap((g) => g.questions || []),
@@ -118,19 +164,22 @@ export function QuizResumeScreen({
         }}>
           {/* Кнопка "Продолжить с вопроса N" */}
           <button
-            onClick={onResume}
+            onClick={handleResume}
+            disabled={isDisabled}
             style={{
               width: '100%',
               height: '56px',
-              background: '#D5FE61',
-              color: '#000000',
+              background: isDisabled ? '#E0E0E0' : '#D5FE61',
+              color: isDisabled ? '#9D9D9D' : '#000000',
               border: 'none',
               borderRadius: '20px',
               fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 600,
               fontSize: '16px',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+              cursor: isDisabled ? 'not-allowed' : 'pointer',
+              boxShadow: isDisabled ? 'none' : '0 4px 12px rgba(0, 0, 0, 0.1)',
+              opacity: isDisabled ? 0.6 : 1,
+              transition: 'all 0.2s',
             }}
           >
             Продолжить с вопроса {displayQuestionNumber}
@@ -138,18 +187,21 @@ export function QuizResumeScreen({
 
           {/* Кнопка "Начать анкету заново" */}
           <button
-            onClick={onStartOver}
+            onClick={handleStartOver}
+            disabled={isDisabled}
             style={{
               width: '100%',
               height: '56px',
               background: 'transparent',
-              color: '#000000',
-              border: '2px solid #000000',
+              color: isDisabled ? '#9D9D9D' : '#000000',
+              border: `2px solid ${isDisabled ? '#9D9D9D' : '#000000'}`,
               borderRadius: '20px',
               fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 600,
               fontSize: '16px',
-              cursor: 'pointer',
+              cursor: isDisabled ? 'not-allowed' : 'pointer',
+              opacity: isDisabled ? 0.6 : 1,
+              transition: 'all 0.2s',
             }}
           >
             Начать анкету заново
