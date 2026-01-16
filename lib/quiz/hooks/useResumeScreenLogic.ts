@@ -99,7 +99,7 @@ export function useResumeScreenLogic({
       return;
     }
     
-    const savedAnswersCount = Object.keys(savedProgress.answers).length;
+    // ИСПРАВЛЕНО: savedAnswersCount уже объявлен выше, не объявляем повторно
     
     // КРИТИЧНО ИСПРАВЛЕНО: Показываем резюм-экран ТОЛЬКО если:
     // 1. Есть >= 2 сохраненных ответов
