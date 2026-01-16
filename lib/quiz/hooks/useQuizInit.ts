@@ -551,10 +551,13 @@ export function useQuizInit(params: UseQuizInitParams) {
       const initialInfoScreens = getInitialInfoScreens();
       const isAlreadyOnQuestions = currentInfoScreenIndexRef.current >= initialInfoScreens.length;
       
+      // ФИКС: Не загружаем прогресс если пользователь нажал "Начать заново"
+      // Это предотвращает повторную загрузку прогресса после очистки
       if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && 
           !hasResumedRef.current && 
           !loadProgressInProgressRef.current && !progressLoadInProgressRef.current &&
-          !isAlreadyOnQuestions) {
+          !isAlreadyOnQuestions &&
+          !isStartingOverRef.current) { // ФИКС: Блокируем загрузку прогресса при isStartingOver
         try {
           // Загружаем прогресс для всех пользователей (новые пользователи получат прогресс из KV)
           await Promise.race([
