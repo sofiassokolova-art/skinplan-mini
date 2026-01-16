@@ -286,6 +286,7 @@ export default function QuizPage() {
     currentInfoScreenIndexRef,
     allQuestionsRawPrevRef,
     allQuestionsPrevRef,
+    pendingInfoScreenRef: quizState.pendingInfoScreenRef, // ИСПРАВЛЕНО: Передаем ref для проверки актуального состояния
     quizStateMachine,
     isDev,
   });
@@ -1199,6 +1200,7 @@ export default function QuizPage() {
       currentInfoScreenIndex,
       saveQuizProgressMutation,
       lastSavedAnswerRef,
+      answersRef, // ИСПРАВЛЕНО: Передаем ref для синхронного обновления
       addDebugLog,
     });
   };
@@ -1211,6 +1213,7 @@ export default function QuizPage() {
       currentQuestionIndexRef,
       questionnaireRef,
       initCompletedRef,
+      answersRef, // ИСПРАВЛЕНО: Передаем ref для проверки актуального ответа
       questionnaire,
         loading,
         currentInfoScreenIndex,

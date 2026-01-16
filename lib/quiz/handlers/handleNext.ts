@@ -22,6 +22,7 @@ export interface HandleNextParams {
   currentQuestionIndexRef?: React.MutableRefObject<number>;
   questionnaireRef: React.MutableRefObject<Questionnaire | null>;
   initCompletedRef: React.MutableRefObject<boolean>;
+  answersRef?: React.MutableRefObject<Record<number, string | string[]>>; // ИСПРАВЛЕНО: Добавлен ref для проверки актуального ответа
   
   // State getters
   questionnaire: Questionnaire | null;
@@ -54,6 +55,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     currentQuestionIndexRef,
     questionnaireRef,
     initCompletedRef,
+    answersRef,
     questionnaire,
     loading,
     currentInfoScreenIndex,
@@ -126,10 +128,15 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         isOnInitialInfoScreens,
       });
       
-      // Очищаем pendingInfoScreen и ref перед дальнейшей обработкой
+      // ИСПРАВЛЕНО: Очищаем pendingInfoScreen и ref СРАЗУ и синхронно для предотвращения currentQuestion = null
+      // КРИТИЧНО: Очистка должна происходить ДО любого использования currentQuestion
       if (pendingInfoScreenRef) {
         pendingInfoScreenRef.current = null;
+        clientLogger.warn('🧹 ИНФО-СКРИН: pendingInfoScreenRef.current очищен синхронно', {
+          pendingInfoScreenId: currentPendingInfoScreen.id,
+        });
       }
+      // ИСПРАВЛЕНО: Устанавливаем null в state, но не ждем его обновления - ref уже очищен
       setPendingInfoScreen(null);
       
       // Сохраняем флаг в sessionStorage, что инфо-экран только что закрыт
@@ -599,7 +606,12 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     // Это предотвращает застревание на инфо-экранах, когда пользователь уже ответил на следующий вопрос
     const currentQuestion = allQuestions[currentQuestionIndex];
     const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
-    const hasAnsweredCurrentQuestion = currentQuestion && answers[currentQuestion.id] !== undefined;
+    // ИСПРАВЛЕНО: Используем ref для проверки актуального ответа, так как для single_choice handleNext вызывается через setTimeout
+    // и answers из замыкания может быть устаревшим
+    const effectiveAnswers = (answersRef?.current !== undefined && Object.keys(answersRef.current).length > 0)
+      ? answersRef.current
+      : answers;
+    const hasAnsweredCurrentQuestion = currentQuestion && effectiveAnswers[currentQuestion.id] !== undefined;
     
     // КРИТИЧНО: Проверяем инфо-экран только если:
     // 1. Пользователь УЖЕ ответил на текущий вопрос
@@ -862,9 +874,27 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     // Переходим к следующему вопросу
     // ИСПРАВЛЕНО: pendingInfoScreen теперь очищается в начале handleNext при закрытии инфо-экрана
     // Поэтому здесь мы всегда можем перейти к следующему вопросу, если он существует
+    // КРИТИЧНО: Если мы только что закрыли инфо-экран (shouldSkipToNextQuestion = true),
+    // нужно перейти к следующему вопросу, даже если мы не проверяли инфо-экран для текущего вопроса
     
-    if (currentQuestionIndex < allQuestions.length - 1) {
-      const newIndex = currentQuestionIndex + 1;
+    // КРИТИЧНО: Если мы только что закрыли инфо-экран, нужно убедиться, что мы переходим к следующему вопросу
+    if (shouldSkipToNextQuestion || currentQuestionIndex < allQuestions.length - 1) {
+      // Если мы только что закрыли инфо-экран, используем текущий индекс + 1
+      // Иначе используем стандартную логику
+      const newIndex = shouldSkipToNextQuestion 
+        ? (currentQuestionIndex < allQuestions.length - 1 ? currentQuestionIndex + 1 : currentQuestionIndex)
+        : currentQuestionIndex + 1;
+      
+      // Если мы уже на последнем вопросе и закрыли инфо-экран, не переходим дальше
+      if (newIndex >= allQuestions.length) {
+        clientLogger.warn('⚠️ handleNext: не переходим к следующему вопросу - уже на последнем', {
+          currentQuestionIndex,
+          newIndex,
+          allQuestionsLength: allQuestions.length,
+          shouldSkipToNextQuestion,
+        });
+        return;
+      }
       
       // КРИТИЧНО: Проверяем, что следующий вопрос существует перед переходом
       // Это предотвращает пустой экран и ошибку "Вопрос не найден"
@@ -880,10 +910,13 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
             code: q?.code || null,
             id: q?.id || null,
           })),
+          shouldSkipToNextQuestion,
         });
         // НЕ переходим к следующему вопросу, если его нет
         return;
       }
+      
+      // ИСПРАВЛЕНО: Удалена дублирующая очистка - она уже выполнена выше
       
       // КРИТИЧНО: Логируем переход к следующему вопросу для диагностики
       clientLogger.warn('🔄 handleNext: переход к следующему вопросу', {
@@ -938,17 +971,42 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         }
       }
       
+      // КРИТИЧНО: Очищаем флаг justClosedInfoScreen после перехода к следующему вопросу
+      // Это позволяет инфо-экранам показываться для следующего вопроса, если они есть
+      if (shouldSkipToNextQuestion && typeof window !== 'undefined') {
+        try {
+          sessionStorage.removeItem('quiz_justClosedInfoScreen');
+          clientLogger.warn('🧹 ИНФО-СКРИН: Очищаем флаг justClosedInfoScreen после перехода к следующему вопросу', {
+            previousIndex: currentQuestionIndex,
+            newIndex,
+          });
+        } catch (err) {
+          // Игнорируем ошибки
+        }
+      }
+      
       updateQuestionIndex(newIndex, currentQuestionIndexRef, setCurrentQuestionIndex);
       // ФИКС: Сохраняем newIndex в sessionStorage для восстановления при перемонтировании
       saveIndexToSessionStorage('quiz_currentQuestionIndex', newIndex, '💾 Сохранен currentQuestionIndex в sessionStorage');
       await saveProgressSafely(saveProgress, answers, newIndex, currentInfoScreenIndex);
-    } else {
-      // КРИТИЧНО: Логируем, если не переходим к следующему вопросу
+      
+      // КРИТИЧНО: Логируем успешный переход к следующему вопросу
+      clientLogger.warn('✅ handleNext: успешно перешли к следующему вопросу', {
+        previousIndex: currentQuestionIndex,
+        newIndex,
+        allQuestionsLength: allQuestions.length,
+        nextQuestionExists: !!allQuestions[newIndex],
+        nextQuestionCode: allQuestions[newIndex]?.code || null,
+        shouldSkipToNextQuestion,
+      });
+    } else if (!shouldSkipToNextQuestion) {
+      // КРИТИЧНО: Логируем, если не переходим к следующему вопросу (только если не из-за shouldSkipToNextQuestion)
       clientLogger.warn('⚠️ handleNext: не переходим к следующему вопросу', {
         currentQuestionIndex,
         allQuestionsLength: allQuestions.length,
         isLastQuestion: currentQuestionIndex === allQuestions.length - 1,
         condition: currentQuestionIndex < allQuestions.length - 1,
+        shouldSkipToNextQuestion,
       });
     }
   } finally {

@@ -34,6 +34,7 @@ export interface UseQuizComputedParams {
   currentInfoScreenIndexRef: React.MutableRefObject<number>;
   allQuestionsRawPrevRef: React.MutableRefObject<Question[]>;
   allQuestionsPrevRef: React.MutableRefObject<Question[]>;
+  pendingInfoScreenRef?: React.MutableRefObject<any | null>; // ИСПРАВЛЕНО: Добавлен для проверки актуального состояния
   
   // State Machine
   quizStateMachine: any;
@@ -64,6 +65,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     currentInfoScreenIndexRef,
     allQuestionsRawPrevRef,
     allQuestionsPrevRef,
+    pendingInfoScreenRef,
     quizStateMachine,
     isDev,
   } = params;
@@ -621,7 +623,12 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     // КРИТИЧНО: pendingInfoScreen блокирует вопросы только если мы УЖЕ на вопросах (isOnQuestions = true)
     const isOnQuestions = currentInfoScreenIndex >= initialInfoScreens.length || currentInfoScreenIndexRef.current >= initialInfoScreens.length;
     // ИСПРАВЛЕНО: pendingInfoScreen блокирует вопросы только если мы УЖЕ на вопросах (не на начальных экранах)
-    const shouldBlockPendingInfoScreen = pendingInfoScreen && !isRetakingQuiz && isOnQuestions;
+    // КРИТИЧНО: Проверяем ref для более точного определения состояния - ref обновляется синхронно
+    // Если ref уже null, значит инфо-экран уже закрыт и не должен блокировать, даже если state еще не обновился
+    const effectivePendingInfoScreen = (pendingInfoScreenRef?.current !== undefined && pendingInfoScreenRef?.current !== null)
+      ? pendingInfoScreenRef.current
+      : pendingInfoScreen;
+    const shouldBlockPendingInfoScreen = effectivePendingInfoScreen && !isRetakingQuiz && isOnQuestions;
     const shouldBlock = (!isPastInitialScreensAny && isShowingInitialInfoScreen && currentInitialInfoScreen && isStillOnInitialScreens) || shouldBlockPendingInfoScreen;
     
     // ИСПРАВЛЕНО: Детальное логирование для диагностики всех инфо-скринов
@@ -640,6 +647,9 @@ export function useQuizComputed(params: UseQuizComputedParams) {
         hasAnyPendingInfoScreen,
         pendingInfoScreenId: pendingInfoScreen?.id || null,
         pendingInfoScreenTitle: pendingInfoScreen?.title || null,
+        effectivePendingInfoScreenId: (effectivePendingInfoScreen as any)?.id || null,
+        effectivePendingInfoScreenTitle: (effectivePendingInfoScreen as any)?.title || null,
+        pendingInfoScreenRefCurrent: pendingInfoScreenRef?.current?.id || null,
         shouldBlockPendingInfoScreen,
         shouldBlock,
         isPastInitialScreensAny,
@@ -679,6 +689,9 @@ export function useQuizComputed(params: UseQuizComputedParams) {
         isPastInitialScreensAny,
         shouldBlockPendingInfoScreen,
         shouldBlock,
+        effectivePendingInfoScreen: !!effectivePendingInfoScreen,
+        effectivePendingInfoScreenId: (effectivePendingInfoScreen as any)?.id || null,
+        pendingInfoScreenRefCurrent: pendingInfoScreenRef?.current?.id || null,
         blockingReason: shouldBlockPendingInfoScreen ? 'pendingInfoScreen' : (isShowingInitialInfoScreen ? 'initialInfoScreen' : 'unknown'),
       });
       return null;

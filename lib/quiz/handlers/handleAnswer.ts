@@ -26,6 +26,7 @@ export interface HandleAnswerParams {
     }) => Promise<any>;
   };
   lastSavedAnswerRef: React.MutableRefObject<{ questionId: number; answer: string | string[] } | null>;
+  answersRef?: React.MutableRefObject<Record<number, string | string[]>>; // ИСПРАВЛЕНО: Добавлен ref для синхронного обновления
   addDebugLog?: (message: string, context?: any) => void;
 }
 
@@ -42,6 +43,7 @@ export async function handleAnswer({
   currentInfoScreenIndex,
   saveQuizProgressMutation,
   lastSavedAnswerRef,
+  answersRef,
   addDebugLog,
 }: HandleAnswerParams): Promise<void> {
   if (addDebugLog) {
@@ -109,6 +111,11 @@ export async function handleAnswer({
   // Всегда обновляем состояние (даже если не изменилось, для консистентности)
   const newAnswers = { ...answers, [actualQuestionId]: value };
   setAnswers(newAnswers);
+  
+  // ИСПРАВЛЕНО: Обновляем ref синхронно для немедленного использования в handleNext (особенно важно для single_choice)
+  if (answersRef) {
+    answersRef.current = newAnswers;
+  }
   
   // КРИТИЧНО: Сохраняем answers в sessionStorage для восстановления после перемонтирования
   // Это необходимо, так как без initData ответы не сохраняются в БД и не попадают в React Query кэш

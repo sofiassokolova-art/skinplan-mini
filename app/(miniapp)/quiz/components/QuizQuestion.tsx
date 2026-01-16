@@ -121,8 +121,9 @@ export function QuizQuestion({
             maxWidth: '600px',
             marginLeft: 'auto',
             marginRight: 'auto',
-            paddingLeft: useLimeStyle ? '20px' : '0',
-            paddingRight: useLimeStyle ? '20px' : '0',
+            // ИСПРАВЛЕНО: Прогресс-бар должен быть одинаковой ширины на всех экранах без дополнительных отступов
+            paddingLeft: '0',
+            paddingRight: '0',
             boxSizing: 'border-box',
           }}>
             <div style={{
@@ -393,7 +394,14 @@ export function QuizQuestion({
         return (
           <div style={{ 
             backgroundColor: '#D5FE61',
-            borderRadius: isGoalsQuestion ? '0' : '24px', // ИСПРАВЛЕНО: Для skin_goals убираем скругление
+            borderRadius: isGoalsQuestion ? '0' : '24px', // ИСПРАВЛЕНО: Для skin_goals скругление только сверху
+            // ИСПРАВЛЕНО: Для skin_goals добавляем скругление только верхних углов
+            ...(isGoalsQuestion ? {
+              borderTopLeftRadius: '24px',
+              borderTopRightRadius: '24px',
+              borderBottomLeftRadius: '0',
+              borderBottomRightRadius: '0',
+            } : {}),
             padding: '20px',
             marginTop: '0px',
             paddingTop: '20px',
@@ -401,9 +409,9 @@ export function QuizQuestion({
             width: (isGoalsQuestion || isSkinTypeQuestion) ? '100%' : 'auto',
             marginLeft: (isGoalsQuestion || isSkinTypeQuestion) ? '0' : 'auto',
             marginRight: (isGoalsQuestion || isSkinTypeQuestion) ? '0' : 'auto',
-            // ИСПРАВЛЕНО: Для skin_goals делаем контейнер на всю высоту экрана
+            // ИСПРАВЛЕНО: Для skin_goals делаем контейнер на всю высоту экрана, но позволяем расти если контент больше
             minHeight: isGoalsQuestion ? '100vh' : 'auto',
-            height: isGoalsQuestion ? '100vh' : 'auto',
+            // ИСПРАВЛЕНО: Убираем фиксированную height, используем только minHeight, чтобы контейнер мог расти при большом контенте
             position: isGoalsQuestion ? 'relative' : 'static',
             boxSizing: 'border-box',
             display: isGoalsQuestion ? 'flex' : 'block',
@@ -465,6 +473,11 @@ export function QuizQuestion({
             display: 'flex', 
             flexDirection: 'column', 
             gap: '16px',
+            // ИСПРАВЛЕНО: Для skin_goals позволяем контенту занимать доступное пространство и прокручиваться
+            flex: isGoalsQuestion ? '1 1 0' : '0 0 auto',
+            minHeight: isGoalsQuestion ? '0' : 'auto',
+            overflowY: isGoalsQuestion ? 'auto' : 'visible',
+            overflowX: isGoalsQuestion ? 'hidden' : 'visible',
           }}>
             {(() => {
               // ИСПРАВЛЕНО: Определяем isMultiChoice один раз для всего блока
