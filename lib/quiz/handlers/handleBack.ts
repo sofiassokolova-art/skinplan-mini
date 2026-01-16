@@ -27,6 +27,7 @@ export interface HandleBackParams {
   setPendingInfoScreen: React.Dispatch<React.SetStateAction<InfoScreen | null>>;
   saveProgress: (answers: Record<number, string | string[]>, questionIndex: number, infoScreenIndex: number) => Promise<void>;
   answers: Record<number, string | string[]>;
+  setAnswers: React.Dispatch<React.SetStateAction<Record<number, string | string[]>>>;
 }
 
 export async function handleBack({
@@ -42,6 +43,7 @@ export async function handleBack({
   setPendingInfoScreen,
   saveProgress,
   answers,
+  setAnswers,
 }: HandleBackParams): Promise<void> {
   clientLogger.log('🔙 handleBack вызван', {
     currentInfoScreenIndex,
@@ -137,6 +139,21 @@ export async function handleBack({
     }
     
     if (targetQuestionIndex >= 0 && targetQuestionIndex < allQuestions.length) {
+      // ИСПРАВЛЕНО: Сбрасываем ответ на текущий вопрос при переходе назад
+      const currentQuestion = allQuestions[currentQuestionIndex];
+      if (currentQuestion && answers[currentQuestion.id] !== undefined) {
+        clientLogger.log('🔙 handleBack: сбрасываем ответ на текущий вопрос', {
+          questionId: currentQuestion.id,
+          questionCode: currentQuestion.code,
+          oldAnswer: answers[currentQuestion.id],
+        });
+        setAnswers(prev => {
+          const newAnswers = { ...prev };
+          delete newAnswers[currentQuestion.id];
+          return newAnswers;
+        });
+      }
+      
       clientLogger.log('🔙 handleBack: возвращаемся к вопросу после закрытия pendingInfoScreen', {
         oldIndex: currentQuestionIndex,
         newIndex: targetQuestionIndex,
@@ -144,8 +161,12 @@ export async function handleBack({
       });
       updateQuestionIndex(targetQuestionIndex, undefined, setCurrentQuestionIndex);
       
-      // Сохраняем прогресс
-      await saveProgressSafely(saveProgress, answers, targetQuestionIndex, currentInfoScreenIndex);
+      // Сохраняем прогресс (с обновленными answers без ответа на текущий вопрос)
+      const updatedAnswers = { ...answers };
+      if (currentQuestion) {
+        delete updatedAnswers[currentQuestion.id];
+      }
+      await saveProgressSafely(saveProgress, updatedAnswers, targetQuestionIndex, currentInfoScreenIndex);
       
       // Сохраняем в sessionStorage
       saveIndexToSessionStorage('quiz_currentQuestionIndex', targetQuestionIndex);
@@ -186,6 +207,20 @@ export async function handleBack({
     const newQuestionIndex = currentQuestionIndex - 1;
     const previousQuestion = allQuestions[newQuestionIndex];
     
+    // ИСПРАВЛЕНО: Сбрасываем ответ на текущий вопрос при переходе назад
+    if (currentQuestion && answers[currentQuestion.id] !== undefined) {
+      clientLogger.log('🔙 handleBack: сбрасываем ответ на текущий вопрос', {
+        questionId: currentQuestion.id,
+        questionCode: currentQuestion.code,
+        oldAnswer: answers[currentQuestion.id],
+      });
+      setAnswers(prev => {
+        const newAnswers = { ...prev };
+        delete newAnswers[currentQuestion.id];
+        return newAnswers;
+      });
+    }
+    
     // ИСПРАВЛЕНО: Если текущий вопрос - это age или gender, нужно найти инфо-экран general_info_intro,
     // который показывается перед этими вопросами (после testimonials)
     // Это должно работать ПЕРЕД проверкой инфо-экрана после предыдущего вопроса
@@ -208,8 +243,12 @@ export async function handleBack({
         // Обновляем индекс вопроса на предыдущий (skin_goals)
         updateQuestionIndex(newQuestionIndex, undefined, setCurrentQuestionIndex);
         
-        // Сохраняем прогресс
-        await saveProgressSafely(saveProgress, answers, newQuestionIndex, currentInfoScreenIndex);
+        // Сохраняем прогресс (с обновленными answers без ответа на текущий вопрос)
+        const updatedAnswers = { ...answers };
+        if (currentQuestion) {
+          delete updatedAnswers[currentQuestion.id];
+        }
+        await saveProgressSafely(saveProgress, updatedAnswers, newQuestionIndex, currentInfoScreenIndex);
         
         // Сохраняем в sessionStorage
         saveIndexToSessionStorage('quiz_currentQuestionIndex', newQuestionIndex);
@@ -256,8 +295,12 @@ export async function handleBack({
         // Обновляем индекс вопроса на предыдущий
         updateQuestionIndex(newQuestionIndex, undefined, setCurrentQuestionIndex);
         
-        // Сохраняем прогресс
-        await saveProgressSafely(saveProgress, answers, newQuestionIndex, currentInfoScreenIndex);
+        // Сохраняем прогресс (с обновленными answers без ответа на текущий вопрос)
+        const updatedAnswers = { ...answers };
+        if (currentQuestion) {
+          delete updatedAnswers[currentQuestion.id];
+        }
+        await saveProgressSafely(saveProgress, updatedAnswers, newQuestionIndex, currentInfoScreenIndex);
         
         // Сохраняем в sessionStorage
         saveIndexToSessionStorage('quiz_currentQuestionIndex', newQuestionIndex);
@@ -271,8 +314,12 @@ export async function handleBack({
     });
     updateQuestionIndex(newQuestionIndex, undefined, setCurrentQuestionIndex);
     
-    // Сохраняем прогресс
-    await saveProgressSafely(saveProgress, answers, newQuestionIndex, currentInfoScreenIndex);
+    // Сохраняем прогресс (с обновленными answers без ответа на текущий вопрос)
+    const updatedAnswers = { ...answers };
+    if (currentQuestion) {
+      delete updatedAnswers[currentQuestion.id];
+    }
+    await saveProgressSafely(saveProgress, updatedAnswers, newQuestionIndex, currentInfoScreenIndex);
     
     // Сохраняем в sessionStorage
     saveIndexToSessionStorage('quiz_currentQuestionIndex', newQuestionIndex);
@@ -284,11 +331,15 @@ export async function handleBack({
   const isOnInfoScreens = (currentInfoScreenIndex >= 0 && currentInfoScreenIndex < initialInfoScreens.length) ||
                           (currentInfoScreenIndexRef.current >= 0 && currentInfoScreenIndexRef.current < initialInfoScreens.length);
   
-  if (isOnInfoScreens && currentInfoScreenIndex > 0) {
-    const newInfoScreenIndex = currentInfoScreenIndex - 1;
+  // ИСПРАВЛЕНО: Используем ref для проверки, так как state может быть устаревшим
+  const effectiveInfoScreenIndex = currentInfoScreenIndexRef.current >= 0 ? currentInfoScreenIndexRef.current : currentInfoScreenIndex;
+  
+  if (isOnInfoScreens && effectiveInfoScreenIndex > 0) {
+    const newInfoScreenIndex = effectiveInfoScreenIndex - 1;
     clientLogger.log('🔙 handleBack: переходим к предыдущему инфо-экрану', {
       oldIndex: currentInfoScreenIndex,
       oldIndexRef: currentInfoScreenIndexRef.current,
+      effectiveIndex: effectiveInfoScreenIndex,
       newIndex: newInfoScreenIndex,
       initialInfoScreensLength: initialInfoScreens.length,
     });

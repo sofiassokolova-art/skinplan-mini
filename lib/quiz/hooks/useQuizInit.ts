@@ -296,11 +296,17 @@ export function useQuizInit(params: UseQuizInitParams) {
           const hasStartedAnswering = currentQuestionIndex > 0;
           
           // КРИТИЧНО: Сбрасываем на 0 только для нового пользователя, который еще не начал проходить анкету
-          // ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА: Не сбрасываем, если пользователь уже на втором или последующем экране
+          // ИСПРАВЛЕНО: Не сбрасываем, если пользователь уже на втором или последующем экране
           // Это предотвращает сброс во время активного прохождения анкеты
-          const isOnSecondOrLaterScreen = currentInfoScreenIndex > 0 || currentInfoScreenIndexRef.current > 0;
+          // ВАЖНО: Если пользователь уже на втором экране (индекс 1 или больше), НЕ сбрасываем
+          // ИСПРАВЛЕНО: Используем ref для более точной проверки, так как state может быть устаревшим
+          const effectiveInfoScreenIndex = currentInfoScreenIndexRef.current >= 0 ? currentInfoScreenIndexRef.current : currentInfoScreenIndex;
+          const isOnSecondOrLaterScreen = effectiveInfoScreenIndex > 0;
           
-          if (!isAlreadyOnQuestions && !hasStartedAnswering && !isOnSecondOrLaterScreen && (currentInfoScreenIndex !== 0 || currentInfoScreenIndexRef.current !== 0)) {
+          // ИСПРАВЛЕНО: Не сбрасываем, если пользователь уже на втором или последующем экране
+          // Это предотвращает переброс на первый экран во время прохождения анкеты
+          // КРИТИЧНО: Проверяем effectiveInfoScreenIndex, чтобы не сбрасывать, если пользователь уже прошел первый экран
+          if (!isAlreadyOnQuestions && !hasStartedAnswering && !isOnSecondOrLaterScreen && effectiveInfoScreenIndex !== 0) {
             clientLogger.log('🔄 Сброс currentInfoScreenIndex на 0 для нового пользователя', {
               currentIndex: currentInfoScreenIndex,
               currentIndexRef: currentInfoScreenIndexRef.current,

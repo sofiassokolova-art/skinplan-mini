@@ -186,11 +186,13 @@ export function QuizInfoScreen({
   const isTestimonialsScreen = screen.type === 'testimonials';
   const isComparisonScreen = screen.type === 'comparison';
   const isProductsScreen = screen.type === 'products';
+  const isTransformationScreen = screen.type === 'transformation';
   const isWelcomeScreen = screen.id === 'welcome';
   const isHowItWorksScreen = screen.id === 'how_it_works';
   const isPersonalAnalysisScreen = screen.id === 'personal_analysis';
   const isGoalsIntroScreen = screen.id === 'goals_intro';
   const isGeneralInfoIntroScreen = screen.id === 'general_info_intro';
+  const isHealthDataScreen = screen.id === 'health_data';
 
   // ИСПРАВЛЕНО: Предзагрузка изображения следующего экрана для ускорения загрузки
   // Если текущий экран - testimonials, предзагружаем изображение для general_info_intro
@@ -647,7 +649,10 @@ export function QuizInfoScreen({
   // Экран "Какую цель вы ставите перед собой?" (goals_intro)
   if (isGoalsIntroScreen) {
     // Кнопка "Назад" через портал для гарантированной фиксации
-    const goalsBackButton = currentInfoScreenIndex > 0 && typeof window !== 'undefined' && handleBack ? createPortal(
+    // ИСПРАВЛЕНО: Проверяем, что handleBack существует и currentInfoScreenIndex > 0
+    // ВАЖНО: goals_intro - это 4-й экран (индекс 3), поэтому кнопка должна показываться
+    const shouldShowBackButton = currentInfoScreenIndex > 0 && typeof window !== 'undefined' && handleBack;
+    const goalsBackButton = shouldShowBackButton ? createPortal(
       <button
         onClick={(e) => {
           e.preventDefault();
@@ -964,6 +969,168 @@ export function QuizInfoScreen({
     );
   }
 
+  // Экран "Нам важно учесть ваши данные о здоровье" (health_data) - такая же верстка как у general_info_intro
+  if (isHealthDataScreen) {
+    // Кнопка "Назад" через портал для гарантированной фиксации
+    const healthBackButton = currentInfoScreenIndex > 0 && typeof window !== 'undefined' && handleBack ? createPortal(
+      <button
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleBack();
+        }}
+        style={{
+          position: 'fixed',
+          top: 'clamp(20px, 4vh, 40px)',
+          left: 'clamp(19px, 5vw, 24px)',
+          zIndex: 99999,
+          pointerEvents: 'auto',
+          width: '44px',
+          height: '44px',
+          background: 'transparent',
+          border: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          padding: 0,
+          transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
+          backfaceVisibility: 'hidden', // Оптимизация рендеринга
+          WebkitTransform: 'translateZ(0)', // Для Safari
+        }}
+      >
+        <svg
+          width="12"
+          height="20"
+          viewBox="0 0 12 20"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M10 2L2 10L10 18"
+            stroke="#1A1A1A"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>,
+      document.body
+    ) : null;
+
+    return (
+      <>
+        {healthBackButton}
+        <div style={{ 
+          padding: 0,
+          margin: 0,
+          minHeight: '100vh',
+          background: '#FFFFFF',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
+          width: '100%',
+        }}>
+
+        {/* Контент с анимацией */}
+        <div 
+          className="animate-fade-in"
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'flex-start',
+            paddingTop: '100px',
+            paddingBottom: '120px',
+            paddingLeft: '20px',
+            paddingRight: '20px',
+            width: '100%',
+            boxSizing: 'border-box',
+          }}
+        >
+          {/* Картинка с плавной загрузкой */}
+          {screen.image && (
+            <ImageWithLoading 
+              src={screen.image}
+              alt={screen.title}
+              maxWidth="240px"
+            />
+          )}
+
+          {/* Заголовок */}
+          <h1 style={{
+            fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 700,
+            fontSize: '32px',
+            lineHeight: '120%',
+            letterSpacing: '0px',
+            textAlign: 'left',
+            color: '#000000',
+            margin: '0 0 16px 0',
+            width: '100%',
+            maxWidth: '320px',
+            whiteSpace: 'pre-line',
+          }}>
+            {screen.title}
+          </h1>
+
+          {/* Подзаголовок */}
+          {screen.subtitle && (
+            <div style={{
+              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 400,
+              fontSize: '18px',
+              lineHeight: '140%',
+              letterSpacing: '0px',
+              textAlign: 'left',
+              color: '#000000',
+              width: '100%',
+              maxWidth: '320px',
+            }}>
+              {screen.subtitle}
+            </div>
+          )}
+        </div>
+        
+        {/* Фиксированная кнопка "Продолжить" внизу экрана */}
+        <div style={{
+          position: 'fixed',
+          bottom: '40px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '100%',
+          maxWidth: '320px',
+          padding: '0 20px',
+          boxSizing: 'border-box',
+          zIndex: 100,
+        }}>
+          <button
+            onClick={handleNext}
+            style={{
+              width: '100%',
+              height: '56px',
+              borderRadius: '20px',
+              background: '#D5FE61',
+              border: 'none',
+              color: '#000000',
+              fontSize: '16px',
+              fontWeight: 600,
+              cursor: isHandlingNext ? 'not-allowed' : 'pointer',
+              opacity: isHandlingNext ? 0.7 : 1,
+              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              transition: 'opacity 0.2s',
+            }}
+            disabled={isHandlingNext}
+          >
+            {screen.ctaText || 'Продолжить'}
+          </button>
+        </div>
+      </div>
+      </>
+    );
+  }
+
   // Кнопка "Назад" - рендерим через портал, чтобы она была вне прокручиваемого контейнера
   // ИСПРАВЛЕНО: Кнопка всегда зафиксирована наверху и не листается вместе с инфо-экранами
   const shouldShowBackButton = (currentInfoScreenIndex > 0) || (pendingInfoScreenRef?.current && handleBack);
@@ -1131,8 +1298,60 @@ export function QuizInfoScreen({
 
         {/* Сравнение (comparison) */}
         {isComparisonScreen && (
-          <div style={{ marginBottom: '28px' }}>
+          <div style={{ 
+            marginBottom: '28px',
+            padding: '20px',
+            backgroundColor: 'rgba(255, 255, 255, 0.5)',
+            borderRadius: '16px',
+            border: '1px solid rgba(0, 0, 0, 0.05)',
+          }}>
             {/* Текст уже в subtitle, здесь можем добавить визуальные элементы если нужно */}
+            {/* ИСПРАВЛЕНО: Добавлен контейнер для визуального отображения comparison экрана */}
+          </div>
+        )}
+
+        {/* Transformation экран */}
+        {isTransformationScreen && screen.content && (
+          <div style={{ 
+            marginBottom: '28px',
+            padding: '20px',
+            backgroundColor: 'rgba(255, 255, 255, 0.5)',
+            borderRadius: '16px',
+            border: '1px solid rgba(0, 0, 0, 0.05)',
+            textAlign: 'center',
+          }}>
+            {/* ИСПРАВЛЕНО: Добавлен рендеринг для transformation экрана */}
+            {screen.content.from && screen.content.to && (
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginTop: '16px',
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '14px', color: '#6B7280', marginBottom: '8px' }}>
+                    {screen.content.from}
+                  </div>
+                  <div style={{ fontSize: '18px', fontWeight: 600, color: '#0A5F59' }}>
+                    {screen.content.indicator || 'Прогресс'}
+                  </div>
+                </div>
+                <div style={{ 
+                  width: '40px', 
+                  height: '2px', 
+                  background: 'linear-gradient(90deg, #D5FE61 0%, #0A5F59 100%)',
+                  margin: '0 16px',
+                }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '14px', color: '#6B7280', marginBottom: '8px' }}>
+                    {screen.content.to}
+                  </div>
+                  <div style={{ fontSize: '18px', fontWeight: 600, color: '#0A5F59' }}>
+                    {screen.content.indicator || 'Цель'}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

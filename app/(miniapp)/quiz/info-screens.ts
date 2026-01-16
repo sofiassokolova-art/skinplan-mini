@@ -154,6 +154,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'health_data',
     title: 'Нам важно учесть ваши данные о здоровье',
     subtitle: 'чтобы подобрать безопасный уход\n\nВаши данные защищены — они нужны только для точных рекомендаций',
+    image: '/infohealth.png', // ИСПРАВЛЕНО: Добавлена картинка
     showAfterInfoScreenId: 'simple_care', // ИСПРАВЛЕНО: После экрана simple_care, а не вопроса
     ctaText: 'Продолжить',
   },

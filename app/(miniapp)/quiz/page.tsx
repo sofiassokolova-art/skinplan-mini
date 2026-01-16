@@ -1246,6 +1246,7 @@ export default function QuizPage() {
       setPendingInfoScreen,
       saveProgress,
       answers,
+      setAnswers, // ИСПРАВЛЕНО: Передаем setAnswers для сброса ответа при переходе назад
     });
   };
 
@@ -2658,16 +2659,61 @@ export default function QuizPage() {
         // Индекс в пределах массива, но вопрос не найден - это временное состояние
         // ФИКС: Показываем fallback "Загрузка вопросов..." вместо продолжения выполнения
         // Это предотвращает показ "Вопрос не найден" слишком рано
-        clientLogger.warn('⚠️ currentQuestion null: индекс валидный, но вопрос не найден - показываем fallback', {
+        // ИСПРАВЛЕНО: Добавляем проверку isLoadingProgress, чтобы не показывать лоадер бесконечно
+        if (isLoadingProgress || loading) {
+          clientLogger.warn('⚠️ currentQuestion null: индекс валидный, но вопрос не найден - показываем fallback (загрузка)', {
+            currentQuestionIndex,
+            allQuestionsLength: allQuestions.length,
+            hasResumed,
+            showResumeScreen,
+            currentInfoScreenIndex,
+            isShowingInitialInfoScreen,
+            pendingInfoScreen: !!pendingInfoScreen,
+            isLoadingProgress,
+            loading,
+          });
+          // Показываем fallback для временного состояния только во время загрузки
+          return (
+            <div style={{ 
+              padding: '20px',
+              minHeight: '100vh',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+            }}>
+              <div style={{ color: '#0A5F59', fontSize: '18px' }}>
+                Загрузка вопросов...
+              </div>
+            </div>
+          );
+        } else {
+          // ИСПРАВЛЕНО: Если загрузка завершена, но вопрос не найден - это ошибка, продолжаем выполнение
+          clientLogger.warn('⚠️ currentQuestion null: индекс валидный, но вопрос не найден - загрузка завершена, продолжаем', {
+            currentQuestionIndex,
+            allQuestionsLength: allQuestions.length,
+            hasResumed,
+            showResumeScreen,
+            currentInfoScreenIndex,
+            isShowingInitialInfoScreen,
+            pendingInfoScreen: !!pendingInfoScreen,
+            isLoadingProgress,
+            loading,
+          });
+          // Продолжаем выполнение, чтобы показать ошибку или следующий экран
+        }
+      } else if (allQuestions.length === 0 && (isLoadingProgress || loading)) {
+        // ИСПРАВЛЕНО: Если allQuestions пустой и идет загрузка, показываем лоадер
+        // Это исправляет проблему бесконечного лоадера при повторном заходе
+        clientLogger.warn('⚠️ allQuestions пустой во время загрузки - показываем лоадер', {
           currentQuestionIndex,
           allQuestionsLength: allQuestions.length,
+          isLoadingProgress,
+          loading,
           hasResumed,
           showResumeScreen,
-          currentInfoScreenIndex,
-          isShowingInitialInfoScreen,
-          pendingInfoScreen: !!pendingInfoScreen,
         });
-        // Показываем fallback для временного состояния
         return (
           <div style={{ 
             padding: '20px',
@@ -2691,12 +2737,19 @@ export default function QuizPage() {
   }
   
   // Если вопрос не найден, но hasResumed = true - это временное состояние, показываем загрузку
-  if (!currentQuestion && hasResumed) {
+  // ИСПРАВЛЕНО: Добавляем проверку isLoadingProgress, чтобы не показывать лоадер бесконечно
+  if (!currentQuestion && hasResumed && isLoadingProgress) {
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
         <div>Загрузка вопроса...</div>
       </div>
     );
+  }
+  
+  // ИСПРАВЛЕНО: Если hasResumed, но isLoadingProgress = false и currentQuestion = null,
+  // значит загрузка завершена, но вопрос не найден - это ошибка, не показываем бесконечный лоадер
+  if (!currentQuestion && hasResumed && !isLoadingProgress && allQuestions.length > 0) {
+    // Продолжаем выполнение, чтобы показать ошибку или следующий экран
   }
   
   // ИСПРАВЛЕНО: Не блокируем отображение вопросов, если они должны показываться

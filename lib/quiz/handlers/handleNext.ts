@@ -397,26 +397,34 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     // Если показывается информационный экран между вопросами, проверяем, есть ли следующий инфо-экран в цепочке
     // При повторном прохождении пропускаем все info screens
     // ФИКС: Используем currentPendingInfoScreen из ref для получения актуального значения
-    if (currentPendingInfoScreen && !isRetakingQuiz) {
+    // ИСПРАВЛЕНО: Также проверяем pendingInfoScreenRef для получения актуального значения
+    const currentPendingInfoScreenFromRef = pendingInfoScreenRef?.current;
+    const effectivePendingInfoScreen = currentPendingInfoScreenFromRef || currentPendingInfoScreen;
+    
+    if (effectivePendingInfoScreen && !isRetakingQuiz) {
       // ИСПРАВЛЕНО: Используем getNextInfoScreenAfterScreen для цепочки экранов
       // Это правильно разделяет триггеры: showAfterQuestionCode для вопросов, showAfterInfoScreenId для экранов
-      const nextInfoScreen = getNextInfoScreenAfterScreen(currentPendingInfoScreen.id);
+      const nextInfoScreen = getNextInfoScreenAfterScreen(effectivePendingInfoScreen.id);
       
       // ФИКС: Логирование для диагностики проблемы с цепочкой инфо-экранов
-      if (isDev || true) { // Всегда логируем для диагностики
-        clientLogger.warn('🔍 Проверка следующего инфо-экрана в цепочке:', {
-          currentPendingInfoScreenId: currentPendingInfoScreen.id,
-          nextInfoScreenFound: !!nextInfoScreen,
-          nextInfoScreenId: nextInfoScreen?.id || null,
-          currentQuestionIndex,
-          isLastQuestion: currentQuestionIndex === allQuestions.length - 1,
-          allInfoScreens: INFO_SCREENS.map(s => ({ id: s.id, showAfterInfoScreenId: s.showAfterInfoScreenId })),
-        });
-      }
+      // ИСПРАВЛЕНО: Всегда логируем для диагностики проблем с цепочками
+      clientLogger.warn('🔍 Проверка следующего инфо-экрана в цепочке:', {
+        currentPendingInfoScreenId: effectivePendingInfoScreen.id,
+        currentPendingInfoScreenFromState: currentPendingInfoScreen?.id || null,
+        currentPendingInfoScreenFromRef: currentPendingInfoScreenFromRef?.id || null,
+        nextInfoScreenFound: !!nextInfoScreen,
+        nextInfoScreenId: nextInfoScreen?.id || null,
+        currentQuestionIndex,
+        isLastQuestion: currentQuestionIndex === allQuestions.length - 1,
+        // ИСПРАВЛЕНО: Добавляем детальное логирование всех инфо-экранов с showAfterInfoScreenId
+        allInfoScreensWithChains: INFO_SCREENS
+          .filter(s => s.showAfterInfoScreenId)
+          .map(s => ({ id: s.id, showAfterInfoScreenId: s.showAfterInfoScreenId })),
+      });
       
       if (nextInfoScreen) {
         clientLogger.warn('✅ Найден следующий инфо-экран в цепочке, устанавливаем pendingInfoScreen', {
-          from: currentPendingInfoScreen.id,
+          from: effectivePendingInfoScreen.id,
           to: nextInfoScreen.id,
           currentQuestionIndex,
           currentInfoScreenIndex,
@@ -428,15 +436,20 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         setPendingInfoScreen(nextInfoScreen);
         await saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
         clientLogger.log('✅ Переход к следующему инфо-экрану в цепочке:', {
-          from: currentPendingInfoScreen.id,
+          from: effectivePendingInfoScreen.id,
           to: nextInfoScreen.id,
         });
         return;
       } else {
         clientLogger.warn('⚠️ Следующий инфо-экран в цепочке НЕ найден, закрываем pendingInfoScreen', {
-          currentPendingInfoScreenId: currentPendingInfoScreen.id,
+          currentPendingInfoScreenId: effectivePendingInfoScreen.id,
           currentQuestionIndex,
           currentInfoScreenIndex,
+          // ИСПРАВЛЕНО: Добавляем детальное логирование для диагностики
+          searchedForScreenId: effectivePendingInfoScreen.id,
+          availableChains: INFO_SCREENS
+            .filter(s => s.showAfterInfoScreenId === effectivePendingInfoScreen.id)
+            .map(s => s.id),
         });
       }
       
@@ -545,6 +558,9 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     // ИСПРАВЛЕНО: Флаг блокирует показ инфо-экрана только если пользователь еще НЕ ответил на вопрос
     // Если пользователь уже ответил на вопрос и нажимает "Продолжить", инфо-экран должен показываться
     // Это исправляет проблему, когда после ответа на второй вопрос инфо-экран не показывается
+    // КРИТИЧНО ИСПРАВЛЕНО: Если пользователь уже ответил на вопрос, НЕ блокируем показ инфо-экрана
+    // даже если флаг justClosedInfoScreen установлен - это исправляет проблему, когда инфо-экран
+    // не показывается после ответа на вопрос gender
     const shouldBlockInfoScreen = justClosedInfoScreen && !hasAnsweredCurrentQuestion;
     
     // ФИКС: Логирование для диагностики проблемы с застреванием на втором вопросе
@@ -578,6 +594,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     
     // КРИТИЧНО: Проверяем инфо-экран для текущего вопроса ПЕРЕД переходом к следующему
     // Это исправляет проблему, когда инфо-экран не показывается при первом проходе
+    // ИСПРАВЛЕНО: Если пользователь уже ответил на вопрос, проверяем инфо-экран независимо от флага justClosedInfoScreen
     if (currentQuestion && !isRetakingQuiz && !pendingInfoScreen && hasAnsweredCurrentQuestion && !shouldBlockInfoScreen) {
       // ФИКС: Проверяем, что у вопроса есть код перед вызовом getInfoScreenAfterQuestion
       // Это предотвращает возврат info screen для вопросов без кода
@@ -594,6 +611,15 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
           // КРИТИЧНО: Показываем инфо-экран для текущего вопроса ПЕРЕД переходом к следующему
           // Это исправляет проблему, когда инфо-экран не показывается при первом проходе
           // ИСПРАВЛЕНО: Обновляем ref ПЕРЕД state для консистентности
+          // ИСПРАВЛЕНО: Сбрасываем флаг justClosedInfoScreen сразу после нахождения инфо-экрана
+          // чтобы он не блокировал показ инфо-экрана для следующего вопроса
+          if (typeof window !== 'undefined' && justClosedInfoScreen) {
+            try {
+              sessionStorage.removeItem('quiz_justClosedInfoScreen');
+            } catch (err) {
+              // Игнорируем ошибки при очистке
+            }
+          }
           if (pendingInfoScreenRef) {
             pendingInfoScreenRef.current = infoScreen;
           }
@@ -605,6 +631,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
             infoScreenId: infoScreen.id,
             isLastQuestion,
             hasAnswered: true,
+            justClosedInfoScreenWasSet: justClosedInfoScreen,
           });
           return;
         } else {
@@ -615,6 +642,12 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
             questionIndex: currentQuestionIndex,
             questionId: currentQuestion.id,
             allInfoScreens: INFO_SCREENS.map(s => ({ id: s.id, showAfterQuestionCode: s.showAfterQuestionCode })),
+            // ИСПРАВЛЕНО: Добавляем детальное логирование для диагностики проблемы с gender
+            searchedForCode: currentQuestion.code,
+            availableInfoScreens: INFO_SCREENS.filter(s => s.showAfterQuestionCode).map(s => ({
+              id: s.id,
+              showAfterQuestionCode: s.showAfterQuestionCode,
+            })),
           });
         }
       }
