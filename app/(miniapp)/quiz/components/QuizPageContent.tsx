@@ -125,7 +125,9 @@ export function QuizPageContent({
           isDev={isDev}
         />
         {/* РЕФАКТОРИНГ: Используем компонент QuizQuestion для рендеринга вопроса */}
-        {currentQuestion && currentQuestion.id && (
+        {/* КРИТИЧНО: Не показываем вопрос, если показываются начальные инфо-экраны
+            Это предотвращает двойной рендеринг после "Начать анкету заново" */}
+        {currentQuestion && currentQuestion.id && !isShowingInitialInfoScreen && (
           <QuizQuestion
             question={currentQuestion}
             currentQuestionIndex={currentQuestionIndex}
@@ -137,7 +139,7 @@ export function QuizPageContent({
             onNext={onNext}
             onSubmit={onSubmit}
             onBack={onBack}
-            showBackButton={currentQuestionIndex > 0 || currentInfoScreenIndex > 0}
+            showBackButton={currentQuestionIndex > 0 || (currentQuestionIndex === 0 && isPastInitialScreens)}
           />
         )}
       </div>

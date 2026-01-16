@@ -278,6 +278,7 @@ export default function QuizPage() {
     showRetakeScreen,
     showResumeScreen,
     hasResumed,
+    isStartingOver, // КРИТИЧНО: Передаем isStartingOver для блокировки начальных инфо-экранов
     pendingInfoScreen,
     questionnaireRef,
     currentInfoScreenIndexRef,
@@ -722,18 +723,14 @@ export default function QuizPage() {
                   allQuestionsLength: currentAllQuestionsLength,
                 });
               } else {
-                // Если allQuestions еще не загружен, используем setTimeout
-                setTimeout(() => {
-                  const finalLength = allQuestions.length || allQuestionsPrevRef.current.length;
-                  const finalValidIndex = finalLength > 0 
-                    ? (questionIndex < finalLength ? questionIndex : Math.max(0, finalLength - 1))
-                    : 0;
-                  setCurrentQuestionIndex(finalValidIndex);
-                  clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage (асинхронно)', { 
-                    questionIndex: finalValidIndex,
-                    allQuestionsLength: finalLength,
-                  });
-                }, 100);
+                // КРИТИЧНО: Если allQuestions еще не загружен, НЕ устанавливаем индекс в 0
+                // Вместо этого ждем, пока вопросы загрузятся, и восстанавливаем индекс в useEffect в useQuizEffects
+                // Это исправляет проблему, когда после перезагрузки индекс сбрасывается на 0
+                // до того, как вопросы загружены
+                clientLogger.log('⏸️ Пропускаем восстановление currentQuestionIndex: вопросы еще не загружены', { 
+                  savedIndex: questionIndex,
+                  allQuestionsLength: currentAllQuestionsLength,
+                });
               }
             }
           }
@@ -863,7 +860,9 @@ export default function QuizPage() {
   useLayoutEffect(() => {
     // КРИТИЧНО: Сначала пытаемся восстановить из sessionStorage (быстро и синхронно)
     // Используем answersCountRef вместо answers для проверки пустоты
-    if (typeof window !== 'undefined' && answersCountRef.current === 0) {
+    // КРИТИЧНО: НЕ восстанавливаем ответы, если пользователь начал заново (isStartingOver)
+    // Это предотвращает восстановление ответов после "Начать анкету заново"
+    if (typeof window !== 'undefined' && answersCountRef.current === 0 && !isStartingOver && !isStartingOverRef.current) {
       try {
         const savedAnswersStr = sessionStorage.getItem('quiz_answers_backup');
         if (savedAnswersStr) {
@@ -891,7 +890,9 @@ export default function QuizPage() {
     
     // Затем пытаемся восстановить из React Query кэша (если есть)
     // Не восстанавливаем, если React Query еще загружает
-    if (isLoadingProgress) {
+    // КРИТИЧНО: НЕ восстанавливаем ответы, если пользователь начал заново (isStartingOver)
+    // Это предотвращает восстановление ответов после "Начать анкету заново"
+    if (isLoadingProgress || isStartingOver || isStartingOverRef.current) {
       return;
     }
     
@@ -936,7 +937,7 @@ export default function QuizPage() {
         }
       }
     }
-  }, [isLoadingProgress, quizProgressFromQuery?.progress?.answers ? JSON.stringify(quizProgressFromQuery.progress.answers) : null, setAnswers, setSavedProgress]); // ИСПРАВЛЕНО: Убран answers из зависимостей, используем answersCountRef вместо этого
+  }, [isLoadingProgress, isStartingOver, quizProgressFromQuery?.progress?.answers ? JSON.stringify(quizProgressFromQuery.progress.answers) : null, setAnswers, setSavedProgress]); // ИСПРАВЛЕНО: Убран answers из зависимостей, используем answersCountRef вместо этого
 
   // ИСПРАВЛЕНО: Проверка профиля и определение isRetakingQuiz/showRetakeScreen
   // Вынесено в отдельный useEffect после завершения init
@@ -1387,6 +1388,7 @@ export default function QuizPage() {
     loadSavedProgressFromServer,
     isDev,
     hasResumed,
+    isStartingOver,
     answersCount,
   });
 
@@ -2280,10 +2282,12 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Резюм-экран должен показываться сразу при заходе в приложение для пользователей, которым он положен
   // Упрощаем условие - показываем если showResumeScreen = true и есть savedProgress
   // Не проверяем quizView.type, так как это может блокировать показ при загрузке
+  // КРИТИЧНО: Также проверяем isStartingOver из state, а не только из ref, для немедленного обновления
   const savedAnswersCount = savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0;
   const shouldShowResume = showResumeScreen && 
                            savedProgress && 
                            savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN &&
+                           !isStartingOver && 
                            !isStartingOverRef.current && 
                            !hasResumedRef.current;
   
@@ -2302,24 +2306,47 @@ export default function QuizPage() {
         clientLogger.log('✅ sessionStorage очищен для нового старта');
       }
       
-      // Сбрасываем состояние
-      setIsStartingOver(true);
-      isStartingOverRef.current = true;
-      
-      // Очищаем ответы и прогресс
+      // КРИТИЧНО: Сначала очищаем ответы и прогресс, чтобы предотвратить двойной рендеринг
+      // КРИТИЧНО: Очищаем ответы из state и ref, чтобы они не восстанавливались
       setAnswers({});
+      answersRef.current = {};
+      answersCountRef.current = 0;
       setSavedProgress(null);
       setShowResumeScreen(false);
       setHasResumed(false);
       hasResumedRef.current = false;
       
-      // Сбрасываем на первый инфо экран
+      // КРИТИЧНО: Сбрасываем pendingInfoScreen ПЕРЕД установкой isStartingOver
+      // Это предотвращает двойной рендеринг вопроса
+      setPendingInfoScreen(null);
+      
+      // КРИТИЧНО: Устанавливаем isStartingOver ПЕРЕД сбросом индексов
+      // Это гарантирует, что резюм-экран не будет показан на следующем рендере
+      setIsStartingOver(true);
+      isStartingOverRef.current = true;
+      
+      // Сбрасываем на первый инфо экран ПОСЛЕ установки isStartingOver
+      // Это гарантирует, что начальные инфо-экраны будут показаны (isStartingOver не блокирует их)
       setCurrentInfoScreenIndex(0);
       currentInfoScreenIndexRef.current = 0;
       setCurrentQuestionIndex(0);
-      setPendingInfoScreen(null);
       
-      // Очищаем прогресс на сервере (удаляем ответы из БД)
+      // КРИТИЧНО: Очищаем все данные из sessionStorage, включая ответы
+      // Это предотвращает восстановление ответов после очистки
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.removeItem('quiz_answers_backup');
+          sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
+          sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
+          sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.INIT_CALLED);
+          clientLogger.log('✅ sessionStorage полностью очищен, включая ответы');
+        } catch (err) {
+          clientLogger.warn('⚠️ Ошибка при очистке sessionStorage:', err);
+        }
+      }
+      
+      // КРИТИЧНО: Очищаем прогресс на сервере (удаляем ответы из БД)
+      // Выполняем это ПЕРЕД clearProgress, чтобы гарантировать удаление на сервере
       try {
         const response = await fetch('/api/questionnaire/progress', {
           method: 'DELETE',
@@ -2337,7 +2364,8 @@ export default function QuizPage() {
       }
       
       // Также вызываем clearProgress для очистки локального состояния
-      clearProgress();
+      // Это дополнительно очищает savedProgress и другие флаги
+      await clearProgress();
       
       clientLogger.log('✅ Состояние сброшено, переход на первый инфо экран');
     };
@@ -2406,6 +2434,8 @@ export default function QuizPage() {
   // Это предотвращает показ инфо-экранов при повторном заходе до загрузки savedProgress
   // Кнопка на первом экране уже имеет проверку загрузки анкеты
   // ИСПРАВЛЕНО: Также проверяем savedProgress - если есть >= 2 ответов, не показываем начальные экраны
+  // КРИТИЧНО: Не показываем начальные экраны, если пользователь начал заново (isStartingOver)
+  // Это предотвращает двойной рендеринг вопроса после "Начать анкету заново"
   const hasEnoughSavedAnswers = savedProgress?.answers && Object.keys(savedProgress.answers).length >= 2;
   if (isShowingInitialInfoScreen && 
       currentInitialInfoScreen && 
@@ -2414,7 +2444,7 @@ export default function QuizPage() {
       !showResumeScreen && 
       !pendingInfoScreen &&
       !loading &&
-      !hasEnoughSavedAnswers) { // ИСПРАВЛЕНО: Не показываем начальные экраны, если есть >= 2 сохраненных ответов
+      !hasEnoughSavedAnswers) { // ИСПРАВЛЕНО: isStartingOver не блокирует начальные экраны - они должны показываться после "Начать заново"
     // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
     // if (isDev) {
     //   clientLogger.log('📺 Рендерим начальный инфо-экран', {
@@ -2534,7 +2564,9 @@ export default function QuizPage() {
   const isPastInitialScreensRef = currentInfoScreenIndexRef.current >= initialInfoScreens.length;
   // ИСПРАВЛЕНО: Не проверяем currentQuestion, если показываются начальные экраны
   // Это предотвращает блокировку инфо-экранов из-за null currentQuestion
-  if (!currentQuestion && !hasResumed && !showResumeScreen && !pendingInfoScreen && !isShowingInitialInfoScreen && !isPastInitialScreens && !isPastInitialScreensRef) {
+  // КРИТИЧНО: Также не проверяем, если пользователь начал заново (isStartingOver)
+  // Это предотвращает двойной рендеринг вопроса после "Начать анкету заново"
+  if (!currentQuestion && !hasResumed && !showResumeScreen && !pendingInfoScreen && !isShowingInitialInfoScreen && !isPastInitialScreens && !isPastInitialScreensRef && !isStartingOver) {
     // Если анкета загружена и есть вопросы, но currentQuestionIndex выходит за пределы
     if (questionnaire && allQuestions.length > 0) {
       // ИСПРАВЛЕНО: Если индекс выходит за пределы и нет ответов - показываем сообщение "Начать заново"

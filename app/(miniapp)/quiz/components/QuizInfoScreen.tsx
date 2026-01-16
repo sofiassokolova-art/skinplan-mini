@@ -35,6 +35,7 @@ function ImageWithLoading({ src, alt, maxWidth }: { src: string; alt: string; ma
     
     // Также создаем Image объект для предзагрузки в кэш браузера
     const img = new Image();
+    img.crossOrigin = 'anonymous';
     img.src = src;
     
     return () => {
@@ -95,6 +96,7 @@ function ImageWithLoading({ src, alt, maxWidth }: { src: string; alt: string; ma
         alt={alt}
         loading="eager"
         fetchPriority="high"
+        crossOrigin="anonymous"
         onLoad={() => {
           setIsLoading(false);
           setHasError(false);
@@ -205,6 +207,7 @@ export function QuizInfoScreen({
       
       // Также создаем Image объект для предзагрузки в кэш браузера
       const img = new Image();
+      img.crossOrigin = 'anonymous';
       img.src = nextImageSrc;
       
       return () => {

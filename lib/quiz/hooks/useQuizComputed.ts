@@ -7,6 +7,7 @@ import { clientLogger } from '@/lib/client-logger';
 import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
 import { filterQuestions, getEffectiveAnswers } from '@/lib/quiz/filterQuestions';
 import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
+import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 import type { Questionnaire, Question } from '@/lib/quiz/types';
 
 export interface UseQuizComputedParams {
@@ -24,6 +25,7 @@ export interface UseQuizComputedParams {
   showRetakeScreen: boolean;
   showResumeScreen: boolean;
   hasResumed: boolean;
+  isStartingOver: boolean;
   pendingInfoScreen: any | null;
   
   // Refs
@@ -54,6 +56,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     showRetakeScreen,
     showResumeScreen,
     hasResumed,
+    isStartingOver,
     pendingInfoScreen,
     questionnaireRef,
     currentInfoScreenIndexRef,
@@ -424,6 +427,21 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       return false;
     }
     
+    // КРИТИЧНО: Проверяем savedProgress ПЕРЕД проверкой isOnInfoScreens
+    // Если есть сохраненный прогресс с >= 2 ответами, НЕ показываем инфо-экраны (должен показаться резюм-экран)
+    // Это предотвращает показ начальных инфо-экранов до того, как резюм-экран будет показан
+    const savedAnswersCount = savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0;
+    if (savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN) {
+      // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+      // if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (savedProgress >= 2 answers)');
+      return false;
+    }
+    
+    // ИСПРАВЛЕНО: НЕ блокируем начальные экраны при isStartingOver
+    // isStartingOver используется только для блокировки резюм-экрана
+    // После "Начать заново" должны показываться начальные инфо-экраны, а не первый вопрос
+    // КРИТИЧНО: Убрана проверка isStartingOver, чтобы начальные инфо-экраны показывались после "Начать заново"
+    
     // Если показывается экран выбора тем при перепрохождении - не показываем начальные экраны
     if (showRetakeScreen && isRetakingQuiz) {
       // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
@@ -526,6 +544,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0,
     hasResumed, 
     isRetakingQuiz, 
+    isStartingOver, // КРИТИЧНО: Добавляем isStartingOver в зависимости
     currentQuestionIndex, 
     answersKeysCount, // ИСПРАВЛЕНО: Используем стабильное значение вместо объекта
     currentInfoScreenIndex, 

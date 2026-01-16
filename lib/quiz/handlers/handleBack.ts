@@ -58,9 +58,14 @@ export async function handleBack({
   // ИСПРАВЛЕНО: Используем утилиту для проверки, находимся ли мы на вопросах
   const isOnQuestionsValue = isOnQuestions(currentInfoScreenIndex, currentInfoScreenIndexRef);
   
+  // КРИТИЧНО: Если мы на первом вопросе (currentQuestionIndex === 0), 
+  // разрешаем возврат к начальным инфо-экранам даже без анкеты
+  // Это позволяет пользователю вернуться к начальным экранам с первого вопроса
+  const isOnFirstQuestion = currentQuestionIndex === 0 && allQuestions.length > 0;
+  
   // ИСПРАВЛЕНО: Для начальных инфо-экранов анкета не нужна
-  // Проверяем анкету только если мы на вопросах
-  if (isOnQuestionsValue && !hasQuestionnaire(questionnaire, questionnaireRef)) {
+  // Проверяем анкету только если мы на вопросах (но не на первом вопросе, где можно вернуться к инфо-экранам)
+  if (isOnQuestionsValue && !isOnFirstQuestion && !hasQuestionnaire(questionnaire, questionnaireRef)) {
     clientLogger.warn('⏸️ handleBack: анкета не загружена, но мы на вопросах - блокируем');
     return;
   }

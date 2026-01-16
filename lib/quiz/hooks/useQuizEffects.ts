@@ -106,6 +106,7 @@ export interface UseQuizEffectsParams {
   // Other
   isDev: boolean;
   hasResumed: boolean;
+  isStartingOver: boolean;
   answersCount: number;
 }
 
@@ -185,6 +186,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     loadSavedProgressFromServer,
     isDev,
     hasResumed,
+    isStartingOver,
     answersCount,
   } = params;
 
@@ -400,18 +402,14 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
                     //   isActiveSession,
                     // });
               } else {
-                setTimeout(() => {
-                  const finalLength = allQuestions.length || allQuestionsPrevRef.current.length;
-                  const finalValidIndex = finalLength > 0 
-                    ? (questionIndex < finalLength ? questionIndex : Math.max(0, finalLength - 1))
-                    : 0;
-                  setCurrentQuestionIndex(finalValidIndex);
-                  // // clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage (асинхронно)', {
-                  //   questionIndex: finalValidIndex,
-                  //   allQuestionsLength: finalLength,
-                  //   isActiveSession,
-                  // });
-                }, 100);
+                // КРИТИЧНО: Если allQuestions еще не загружены, НЕ устанавливаем индекс в 0
+                // Вместо этого ждем, пока вопросы загрузятся, и восстанавливаем индекс в useEffect выше
+                // Это исправляет проблему, когда после перезагрузки индекс сбрасывается на 0
+                // до того, как вопросы загружены
+                // // clientLogger.log('⏸️ Пропускаем восстановление currentQuestionIndex: вопросы еще не загружены', {
+                //   savedIndex: questionIndex,
+                //   allQuestionsLength: currentAllQuestionsLength,
+                // });
               }
             }
           } else if (savedQuestionIndex !== null && isActiveSession) {
@@ -514,6 +512,12 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     }
     
     const progressAnswers = quizProgressFromQuery?.progress?.answers;
+    // КРИТИЧНО: НЕ восстанавливаем ответы, если пользователь начал заново (isStartingOver)
+    // Это предотвращает восстановление ответов после "Начать анкету заново"
+    if (isStartingOverRef.current || isStartingOver) {
+      return;
+    }
+    
     if (progressAnswers && Object.keys(progressAnswers).length > 0) {
       const answersId = JSON.stringify(progressAnswers);
       const progressAnswersCount = Object.keys(progressAnswers).length;
@@ -544,8 +548,9 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     // и вызывает бесконечные циклы. Вместо этого используем стабильные значения:
     // - isLoadingProgress (boolean)
     // - количество ключей в answers (number)
+    // - isStartingOver (boolean) - для предотвращения восстановления ответов после "Начать заново"
     // Убрали setAnswers и setSavedProgress - функции из useState стабильны, но не должны быть в зависимостях
-  }, [isLoadingProgress, progressAnswersKeysCount]);
+  }, [isLoadingProgress, progressAnswersKeysCount, isStartingOver]);
 
   // ============================================
   // ГРУППА 4: Проверка профиля и retake флагов
@@ -603,6 +608,51 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
       // });
     }
   }, [allQuestions]);
+
+  // КРИТИЧНО: Восстанавливаем currentQuestionIndex из sessionStorage только когда вопросы загружены
+  // Это исправляет проблему, когда после перезагрузки индекс восстанавливается до загрузки вопросов
+  // и устанавливается в 0, хотя должен быть сохраненным значением
+  useEffect(() => {
+    if (allQuestions.length === 0 || loading || !initCompletedRef.current) {
+      return;
+    }
+    
+    if (typeof window === 'undefined') {
+      return;
+    }
+    
+    const savedQuestionIndex = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
+    if (savedQuestionIndex === null) {
+      return;
+    }
+    
+    const questionIndex = parseInt(savedQuestionIndex, 10);
+    if (isNaN(questionIndex) || questionIndex < 0) {
+      return;
+    }
+    
+    // Проверяем, что текущий индекс не совпадает с сохраненным
+    // и что сохраненный индекс валиден
+    const validIndex = questionIndex < allQuestions.length 
+      ? questionIndex 
+      : Math.max(0, allQuestions.length - 1);
+    
+    // Восстанавливаем только если текущий индекс отличается от сохраненного
+    // и если пользователь не активно отвечает (нет ответов в текущей сессии)
+    const hasActiveAnswers = Object.keys(answers).length > 0;
+    const hasSavedProgress = savedProgress && savedProgress.answers && Object.keys(savedProgress.answers).length >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN;
+    
+    // Не восстанавливаем, если есть активные ответы или сохраненный прогресс (резюм-экран)
+    if (!hasActiveAnswers && !hasSavedProgress && currentQuestionIndex !== validIndex) {
+      setCurrentQuestionIndex(validIndex);
+      clientLogger.log('🔄 Восстановлен currentQuestionIndex из sessionStorage после загрузки вопросов', {
+        savedIndex: questionIndex,
+        restoredIndex: validIndex,
+        allQuestionsLength: allQuestions.length,
+        currentIndex: currentQuestionIndex,
+      });
+    }
+  }, [allQuestions.length, loading, currentQuestionIndex, answers, savedProgress]);
 
   // useEffect(() => {
   //   // clientLogger.log('📊 allQuestions state updated', {

@@ -36,27 +36,21 @@ export function useResumeScreenLogic({
       return;
     }
     
-    // ИСПРАВЛЕНО: Не показываем резюм экран, если пользователь уже активно отвечает в текущей сессии
-    // Это предотвращает показ резюм экрана для новых пользователей, которые только что ответили на вопросы
-    // КРИТИЧНО: НЕ считаем сессию активной, если есть сохраненный прогресс с >= 2 ответами
-    // Это исправляет проблему, когда на проде показывается первый вопрос вместо резюм-экрана
-    // Проблема: currentQuestionIndex может быть восстановлен из sessionStorage до загрузки savedProgress,
-    // что делает isActiveSession = true и скрывает резюм-экран
-    const hasSavedProgress = savedProgress && savedProgress.answers && Object.keys(savedProgress.answers).length >= 2;
+    // КРИТИЧНО ИСПРАВЛЕНО: Определяем активную сессию правильно
+    // Активная сессия = пользователь активно отвечает на вопросы в текущей сессии
+    // Это определяется по наличию активных ответов (answers) или текущему индексу вопроса > 0
+    // НЕ используем savedProgress для определения активной сессии, так как savedProgress
+    // обновляется во время активного прохождения анкеты (ответы сохраняются на сервер)
+    const isActivelyAnswering = currentQuestionIndex > 0 || Object.keys(answers).length > 0;
     
-    // КРИТИЧНО: Если есть сохраненный прогресс с >= 2 ответами, НЕ считаем сессию активной
-    // Это гарантирует, что резюм-экран будет показан, даже если currentQuestionIndex > 0 из sessionStorage
-    const isActiveSession = hasSavedProgress 
-      ? false // Если есть сохраненный прогресс, сессия НЕ активна - показываем резюм-экран
-      : (currentQuestionIndex > 0 || Object.keys(answers).length > 0); // Иначе проверяем обычные условия
-    
-    if (isActiveSession) {
-      // Если пользователь уже отвечает в активной сессии (без сохраненного прогресса), скрываем резюм экран
+    // КРИТИЧНО: Если пользователь активно отвечает, НЕ показываем резюм-экран
+    // Это предотвращает показ резюм-экрана во время активного прохождения анкеты
+    if (isActivelyAnswering) {
       if (showResumeScreen) {
         clientLogger.log('❌ Скрываем резюм экран: пользователь активно отвечает в текущей сессии', {
           currentQuestionIndex,
           answersCount: Object.keys(answers).length,
-          hasSavedProgress,
+          savedProgressAnswersCount: savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0,
         });
         setShowResumeScreen(false);
       }
@@ -74,14 +68,19 @@ export function useResumeScreenLogic({
     
     const savedAnswersCount = Object.keys(savedProgress.answers).length;
     
-    // Если >= 2 ответов → показать резюм экран ТОЛЬКО при первой загрузке (не в активной сессии)
+    // КРИТИЧНО ИСПРАВЛЕНО: Показываем резюм-экран ТОЛЬКО если:
+    // 1. Есть >= 2 сохраненных ответов
+    // 2. Пользователь НЕ активно отвечает (проверено выше)
+    // Это гарантирует, что резюм-экран показывается только при повторном заходе в приложение,
+    // а не во время активного прохождения анкеты
     if (savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN) {
       if (!showResumeScreen) {
-        clientLogger.log('✅ Показываем резюм экран: есть >= 2 ответов в сохраненном прогрессе (первая загрузка)', {
+        clientLogger.log('✅ Показываем резюм экран: есть >= 2 ответов в сохраненном прогрессе (повторный заход)', {
           savedAnswersCount,
           MIN_ANSWERS: QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN,
           currentQuestionIndex,
           currentAnswersCount: Object.keys(answers).length,
+          isActivelyAnswering: false, // Гарантировано проверкой выше
         });
         setShowResumeScreen(true);
       }
