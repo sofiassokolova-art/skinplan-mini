@@ -663,13 +663,11 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       // ФИКС: Проверяем, что у вопроса есть код перед вызовом getInfoScreenAfterQuestion
       // Это предотвращает возврат info screen для вопросов без кода
       if (!currentQuestion.code) {
-        if (isDev || isGenderQuestion) {
-          clientLogger.warn('⚠️ Вопрос без кода, пропускаем проверку info screen', {
-            questionId: currentQuestion.id,
-            questionIndex: currentQuestionIndex,
-            isGenderQuestion,
-          });
-        }
+        clientLogger.warn('⚠️ Вопрос без кода, пропускаем проверку info screen', {
+          questionId: currentQuestion.id,
+          questionIndex: currentQuestionIndex,
+          questionCode: currentQuestion.code,
+        });
       } else {
         // ИСПРАВЛЕНО: Детальное логирование для всех вопросов с инфо-экранами
         const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
@@ -719,7 +717,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
             infoScreenTitle: infoScreen.title,
             showAfterQuestionCode: infoScreen.showAfterQuestionCode,
             showAfterInfoScreenId: infoScreen.showAfterInfoScreenId,
-            previousPendingInfoScreen: pendingInfoScreen?.id || currentPendingInfoScreen?.id || null,
+            previousPendingInfoScreen: (pendingInfoScreen as InfoScreen | null)?.id || (currentPendingInfoScreen as InfoScreen | null)?.id || null,
             pendingInfoScreenRefExists: !!pendingInfoScreenRef,
           });
           
@@ -763,22 +761,20 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         } else {
           // ФИКС: Логирование, если инфо-экран не найден для вопроса
           // КРИТИЧНО: Это может быть причиной проблемы, когда инфо-экран не показывается при первом проходе
-          // ИСПРАВЛЕНО: Усиленное логирование для gender вопроса
-          const logLevel = isGenderQuestion ? 'warn' : 'warn';
+          // ИСПРАВЛЕНО: Логирование для всех вопросов
           clientLogger.warn('⚠️ Инфо-экран не найден для вопроса:', {
             questionCode: currentQuestion.code,
             questionIndex: currentQuestionIndex,
             questionId: currentQuestion.id,
-            isGenderQuestion,
             allInfoScreens: INFO_SCREENS.map(s => ({ id: s.id, showAfterQuestionCode: s.showAfterQuestionCode })),
-            // ИСПРАВЛЕНО: Добавляем детальное логирование для диагностики проблемы с gender
+            // ИСПРАВЛЕНО: Добавляем детальное логирование для диагностики
             searchedForCode: currentQuestion.code,
             availableInfoScreens: INFO_SCREENS.filter(s => s.showAfterQuestionCode).map(s => ({
               id: s.id,
               showAfterQuestionCode: s.showAfterQuestionCode,
             })),
-            // ИСПРАВЛЕНО: Специальная проверка для gender
-            genderInfoScreens: INFO_SCREENS.filter(s => s.showAfterQuestionCode === 'gender').map(s => ({
+            // ИСПРАВЛЕНО: Специальная проверка для текущего вопроса
+            infoScreensForThisQuestion: INFO_SCREENS.filter(s => s.showAfterQuestionCode === currentQuestion.code).map(s => ({
               id: s.id,
               title: s.title,
               showAfterQuestionCode: s.showAfterQuestionCode,
@@ -870,14 +866,14 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
             currentQuestionIndex,
             nextQuestionCode: nextQuestion.code,
             nextQuestionIndex: newIndex,
-            pendingInfoScreenId: pendingInfoScreen?.id || currentPendingInfoScreen?.id || null,
+            pendingInfoScreenId: (pendingInfoScreen as InfoScreen | null)?.id || (currentPendingInfoScreen as InfoScreen | null)?.id || null,
             nextQuestionInfoScreenFound: !!nextQuestionInfoScreen,
-            nextQuestionInfoScreenId: nextQuestionInfoScreen?.id || null,
+            nextQuestionInfoScreenId: (nextQuestionInfoScreen as InfoScreen | null | undefined)?.id || null,
           });
           if (pendingInfoScreenRef) {
             pendingInfoScreenRef.current = null;
             clientLogger.warn('🧹 ИНФО-СКРИН: pendingInfoScreenRef.current очищен', {
-              previousPendingInfoScreenId: pendingInfoScreen?.id || currentPendingInfoScreen?.id || null,
+              previousPendingInfoScreenId: (pendingInfoScreen as InfoScreen | null)?.id || (currentPendingInfoScreen as InfoScreen | null)?.id || null,
             });
           }
           setPendingInfoScreen(null);
