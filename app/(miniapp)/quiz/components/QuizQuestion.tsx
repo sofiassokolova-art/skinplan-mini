@@ -80,6 +80,9 @@ export function QuizQuestion({
         transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
         backfaceVisibility: 'hidden', // Оптимизация рендеринга
         WebkitTransform: 'translateZ(0)', // Для Safari
+        isolation: 'isolate', // Создаем новый контекст стекирования
+        willChange: 'transform', // Оптимизация для браузера
+        contain: 'layout style paint', // Изолируем кнопку от остального контента
       }}
     >
       <svg
@@ -382,14 +385,14 @@ export function QuizQuestion({
         return (
           <div style={{ 
             backgroundColor: '#D5FE61',
-            borderRadius: '24px',
+            borderRadius: isSkinTypeQuestion ? '0' : '24px',
             padding: '20px',
             marginTop: '0px',
             paddingTop: '20px',
-            // ИСПРАВЛЕНО: Для skin_goals и skin_type делаем контейнер во всю ширину
-            width: (isGoalsQuestion || isSkinTypeQuestion) ? '100%' : 'auto',
-            marginLeft: (isGoalsQuestion || isSkinTypeQuestion) ? '0' : 'auto',
-            marginRight: (isGoalsQuestion || isSkinTypeQuestion) ? '0' : 'auto',
+            // ИСПРАВЛЕНО: Для skin_type делаем контейнер во всю ширину, для skin_goals - обычная верстка
+            width: isSkinTypeQuestion ? '100%' : 'auto',
+            marginLeft: isSkinTypeQuestion ? '0' : 'auto',
+            marginRight: isSkinTypeQuestion ? '0' : 'auto',
           }}>
             {/* Заголовок внутри лаймового контейнера */}
             {/* ИСПРАВЛЕНО: Для вопроса avoid_ingredients делаем слово "исключить" жирным */}

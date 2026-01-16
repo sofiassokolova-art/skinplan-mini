@@ -131,7 +131,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'skin_features_intro',
     title: 'Узнаем особенности вашей кожи',
     subtitle: 'Мы поймем какой у вас тип кожи и как о нем заботиться лучше всего',
-    image: '/featuresinfo',
+    image: '/featuresinfo.jpg', // ИСПРАВЛЕНО: Добавлено расширение .jpg
     showAfterQuestionCode: 'gender',
     ctaText: 'Продолжить',
   },

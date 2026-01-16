@@ -623,29 +623,56 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     // ИСПРАВЛЕНО: pendingInfoScreen блокирует вопросы только если мы УЖЕ на вопросах (не на начальных экранах)
     const shouldBlockPendingInfoScreen = pendingInfoScreen && !isRetakingQuiz && isOnQuestions;
     const shouldBlock = (!isPastInitialScreensAny && isShowingInitialInfoScreen && currentInitialInfoScreen && isStillOnInitialScreens) || shouldBlockPendingInfoScreen;
+    
+    // ИСПРАВЛЕНО: Детальное логирование для диагностики skin_features_intro
+    const isGenderQuestionIndex = currentQuestionIndex >= 0 && allQuestions.length > 0 && allQuestions[currentQuestionIndex]?.code === 'gender';
+    const isSkinFeaturesIntroPending = pendingInfoScreen?.id === 'skin_features_intro';
+    
+    if (isGenderQuestionIndex || isSkinFeaturesIntroPending) {
+      clientLogger.warn('🔍 ДИАГНОСТИКА skin_features_intro в useQuizComputed:', {
+        currentQuestionIndex,
+        currentQuestionCode: allQuestions[currentQuestionIndex]?.code || null,
+        isGenderQuestionIndex,
+        isSkinFeaturesIntroPending,
+        pendingInfoScreenId: pendingInfoScreen?.id || null,
+        shouldBlockPendingInfoScreen,
+        shouldBlock,
+        isPastInitialScreensAny,
+        isShowingInitialInfoScreen,
+        hasCurrentInitialInfoScreen: !!currentInitialInfoScreen,
+        isStillOnInitialScreens,
+        isOnQuestions,
+        showResumeScreen,
+        isRetakingQuiz,
+        willBlock: shouldBlock && !showResumeScreen,
+      });
+    }
+    
     if (shouldBlock && !showResumeScreen) {
-      // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
-      // if (isDev) {
-      //   clientLogger.warn('⏸️ currentQuestion: null (blocked by info screen)', {
-      //     isShowingInitialInfoScreen,
-      //     hasCurrentInitialInfoScreen: !!currentInitialInfoScreen,
-      //     currentInitialInfoScreenId: currentInitialInfoScreen?.id || null,
-      //     pendingInfoScreen: !!pendingInfoScreen,
-      //     pendingInfoScreenId: pendingInfoScreen?.id || null,
-      //     isRetakingQuiz,
-      //     showResumeScreen,
-      //     currentInfoScreenIndex,
-      //     initialInfoScreensLength: initialInfoScreens.length,
-      //     currentQuestionIndex,
-      //     allQuestionsLength: allQuestions.length,
-      //     hasResumed,
-      //     savedProgressExists: !!savedProgress,
-      //     answersCount: Object.keys(answers).length,
-      //     isOnQuestions: currentInfoScreenIndex >= initialInfoScreens.length || currentInfoScreenIndexRef.current >= initialInfoScreens.length,
-      //     isStillOnInitialScreens,
-      //     isPastInitialScreensAny,
-      //   });
-      // }
+      // ИСПРАВЛЕНО: Логирование для диагностики skin_features_intro (только для этого случая)
+      if (isSkinFeaturesIntroPending || isGenderQuestionIndex) {
+        clientLogger.warn('⏸️ currentQuestion: null (blocked by info screen) - ДИАГНОСТИКА skin_features_intro', {
+          isShowingInitialInfoScreen,
+          hasCurrentInitialInfoScreen: !!currentInitialInfoScreen,
+          currentInitialInfoScreenId: currentInitialInfoScreen?.id || null,
+          pendingInfoScreen: !!pendingInfoScreen,
+          pendingInfoScreenId: pendingInfoScreen?.id || null,
+          isRetakingQuiz,
+          showResumeScreen,
+          currentInfoScreenIndex,
+          initialInfoScreensLength: initialInfoScreens.length,
+          currentQuestionIndex,
+          allQuestionsLength: allQuestions.length,
+          hasResumed,
+          savedProgressExists: !!savedProgress,
+          answersCount: Object.keys(answers).length,
+          isOnQuestions: currentInfoScreenIndex >= initialInfoScreens.length || currentInfoScreenIndexRef.current >= initialInfoScreens.length,
+          isStillOnInitialScreens,
+          isPastInitialScreensAny,
+          shouldBlockPendingInfoScreen,
+          shouldBlock,
+        });
+      }
       return null;
     }
     

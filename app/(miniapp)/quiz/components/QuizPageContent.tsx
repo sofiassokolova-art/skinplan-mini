@@ -81,7 +81,7 @@ export function QuizPageContent({
   const isGoalsScreen = currentQuestion?.code === 'skin_goals' && currentQuestion?.type === 'multi_choice';
   // ИСПРАВЛЕНО: skin_type может быть single_choice или multi_choice
   const isSkinTypeScreen = currentQuestion?.code === 'skin_type';
-  const isLimeFullWidthScreen = isGoalsScreen || isSkinTypeScreen;
+  const isLimeFullWidthScreen = isSkinTypeScreen; // ИСПРАВЛЕНО: Только skin_type на всю ширину, skin_goals возвращен к обычной верстке
 
   return (
     <div style={{ 
@@ -99,7 +99,7 @@ export function QuizPageContent({
         />
       )}
       {/* Контейнер вопроса - все вопросы без blur, белый фон */}
-      {/* ИСПРАВЛЕНО: Для skin_goals и skin_type убираем ограничение ширины, чтобы лаймовый контейнер был во всю ширину */}
+      {/* ИСПРАВЛЕНО: Для skin_type убираем ограничение ширины, чтобы лаймовый контейнер был во всю ширину */}
       <div style={{
         maxWidth: isLimeFullWidthScreen ? '100%' : '600px',
         margin: '0 auto',

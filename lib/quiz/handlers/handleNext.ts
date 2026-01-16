@@ -621,18 +621,69 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     // Это исправляет проблему, когда инфо-экран не показывается при первом проходе
     // ИСПРАВЛЕНО: Если пользователь уже ответил на вопрос, проверяем инфо-экран независимо от флага justClosedInfoScreen
     // ИСПРАВЛЕНО: Используем currentPendingInfoScreen из ref для более точной проверки
+    
+    // ИСПРАВЛЕНО: Детальное логирование для диагностики проблемы с skin_features_intro
+    const isGenderQuestion = currentQuestion?.code === 'gender';
+    if (isGenderQuestion) {
+      clientLogger.warn('🔍 ДИАГНОСТИКА gender: Проверка условий для показа инфо-экрана', {
+        hasCurrentQuestion: !!currentQuestion,
+        questionCode: currentQuestion?.code,
+        questionId: currentQuestion?.id,
+        questionIndex: currentQuestionIndex,
+        isRetakingQuiz,
+        hasCurrentPendingInfoScreen: !!currentPendingInfoScreen,
+        currentPendingInfoScreenId: currentPendingInfoScreen?.id || null,
+        hasAnsweredCurrentQuestion,
+        shouldBlockInfoScreen,
+        justClosedInfoScreen,
+        willCheckInfoScreen: currentQuestion && !isRetakingQuiz && !currentPendingInfoScreen && hasAnsweredCurrentQuestion && !shouldBlockInfoScreen,
+        allInfoScreensWithGender: INFO_SCREENS.filter(s => s.showAfterQuestionCode === 'gender').map(s => ({
+          id: s.id,
+          title: s.title,
+          showAfterQuestionCode: s.showAfterQuestionCode,
+        })),
+      });
+    }
+    
     if (currentQuestion && !isRetakingQuiz && !currentPendingInfoScreen && hasAnsweredCurrentQuestion && !shouldBlockInfoScreen) {
       // ФИКС: Проверяем, что у вопроса есть код перед вызовом getInfoScreenAfterQuestion
       // Это предотвращает возврат info screen для вопросов без кода
       if (!currentQuestion.code) {
-        if (isDev) {
+        if (isDev || isGenderQuestion) {
           clientLogger.warn('⚠️ Вопрос без кода, пропускаем проверку info screen', {
             questionId: currentQuestion.id,
             questionIndex: currentQuestionIndex,
+            isGenderQuestion,
           });
         }
       } else {
+        // ИСПРАВЛЕНО: Детальное логирование для gender вопроса
+        if (isGenderQuestion) {
+          clientLogger.warn('🔍 ДИАГНОСТИКА gender: Вызываем getInfoScreenAfterQuestion', {
+            questionCode: currentQuestion.code,
+            questionIndex: currentQuestionIndex,
+            allInfoScreensCount: INFO_SCREENS.length,
+            infoScreensWithShowAfter: INFO_SCREENS.filter(s => s.showAfterQuestionCode).length,
+            infoScreensWithGender: INFO_SCREENS.filter(s => s.showAfterQuestionCode === 'gender').map(s => ({
+              id: s.id,
+              title: s.title,
+            })),
+          });
+        }
+        
         const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
+        
+        // ИСПРАВЛЕНО: Детальное логирование результата поиска инфо-экрана
+        if (isGenderQuestion) {
+          clientLogger.warn('🔍 ДИАГНОСТИКА gender: Результат поиска инфо-экрана', {
+            questionCode: currentQuestion.code,
+            infoScreenFound: !!infoScreen,
+            infoScreenId: infoScreen?.id || null,
+            infoScreenTitle: infoScreen?.title || null,
+            searchedCode: currentQuestion.code,
+          });
+        }
+        
         if (infoScreen) {
           // КРИТИЧНО: Показываем инфо-экран для текущего вопроса ПЕРЕД переходом к следующему
           // Это исправляет проблему, когда инфо-экран не показывается при первом проходе
@@ -651,6 +702,21 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
           }
           setPendingInfoScreen(infoScreen);
           await saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
+          
+          // ИСПРАВЛЕНО: Детальное логирование для gender вопроса
+          if (isGenderQuestion) {
+            clientLogger.warn('✅ ДИАГНОСТИКА gender: Инфо-экран УСТАНОВЛЕН в pendingInfoScreen', {
+              questionCode: currentQuestion.code,
+              questionIndex: currentQuestionIndex,
+              infoScreenId: infoScreen.id,
+              infoScreenTitle: infoScreen.title,
+              pendingInfoScreenRefSet: !!pendingInfoScreenRef,
+              isLastQuestion,
+              hasAnswered: true,
+              justClosedInfoScreenWasSet: justClosedInfoScreen,
+            });
+          }
+          
           clientLogger.log('✅ Показан инфо-экран после вопроса:', {
             questionCode: currentQuestion.code,
             questionIndex: currentQuestionIndex,
@@ -663,10 +729,13 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         } else {
           // ФИКС: Логирование, если инфо-экран не найден для вопроса
           // КРИТИЧНО: Это может быть причиной проблемы, когда инфо-экран не показывается при первом проходе
+          // ИСПРАВЛЕНО: Усиленное логирование для gender вопроса
+          const logLevel = isGenderQuestion ? 'warn' : 'warn';
           clientLogger.warn('⚠️ Инфо-экран не найден для вопроса:', {
             questionCode: currentQuestion.code,
             questionIndex: currentQuestionIndex,
             questionId: currentQuestion.id,
+            isGenderQuestion,
             allInfoScreens: INFO_SCREENS.map(s => ({ id: s.id, showAfterQuestionCode: s.showAfterQuestionCode })),
             // ИСПРАВЛЕНО: Добавляем детальное логирование для диагностики проблемы с gender
             searchedForCode: currentQuestion.code,
@@ -674,6 +743,13 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
               id: s.id,
               showAfterQuestionCode: s.showAfterQuestionCode,
             })),
+            // ИСПРАВЛЕНО: Специальная проверка для gender
+            genderInfoScreens: INFO_SCREENS.filter(s => s.showAfterQuestionCode === 'gender').map(s => ({
+              id: s.id,
+              title: s.title,
+              showAfterQuestionCode: s.showAfterQuestionCode,
+            })),
+            getInfoScreenAfterQuestionResult: getInfoScreenAfterQuestion(currentQuestion.code) || null,
           });
         }
       }
@@ -740,7 +816,33 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         nextQuestionCode: nextQuestion?.code || null,
         nextQuestionId: nextQuestion?.id || null,
         hasAnsweredCurrent: allQuestions[currentQuestionIndex] && answers[allQuestions[currentQuestionIndex].id] !== undefined,
+        // ИСПРАВЛЕНО: Добавляем проверку pendingInfoScreen для диагностики пустого экрана
+        pendingInfoScreen: !!pendingInfoScreen,
+        pendingInfoScreenId: pendingInfoScreen?.id || null,
+        currentPendingInfoScreen: !!currentPendingInfoScreen,
+        currentPendingInfoScreenId: currentPendingInfoScreen?.id || null,
       });
+      
+      // ИСПРАВЛЕНО: Очищаем pendingInfoScreen перед переходом к следующему вопросу
+      // Это предотвращает блокировку показа следующего вопроса, если pendingInfoScreen остался от предыдущего
+      // КРИТИЧНО: Очищаем только если нет инфо-экрана для следующего вопроса
+      // Если есть инфо-экран для следующего вопроса, он будет установлен после ответа на него
+      if (pendingInfoScreen || currentPendingInfoScreen) {
+        const nextQuestionInfoScreen = getInfoScreenAfterQuestion(nextQuestion.code);
+        // Если для следующего вопроса нет инфо-экрана, очищаем pendingInfoScreen
+        if (!nextQuestionInfoScreen) {
+          clientLogger.log('🧹 handleNext: очищаем pendingInfoScreen перед переходом к следующему вопросу (нет инфо-экрана для следующего вопроса)', {
+            currentQuestionCode: allQuestions[currentQuestionIndex]?.code || null,
+            nextQuestionCode: nextQuestion.code,
+            pendingInfoScreenId: pendingInfoScreen?.id || currentPendingInfoScreen?.id || null,
+          });
+          if (pendingInfoScreenRef) {
+            pendingInfoScreenRef.current = null;
+          }
+          setPendingInfoScreen(null);
+        }
+      }
+      
       updateQuestionIndex(newIndex, currentQuestionIndexRef, setCurrentQuestionIndex);
       // ФИКС: Сохраняем newIndex в sessionStorage для восстановления при перемонтировании
       saveIndexToSessionStorage('quiz_currentQuestionIndex', newIndex, '💾 Сохранен currentQuestionIndex в sessionStorage');

@@ -269,6 +269,9 @@ export function QuizInfoScreen({
           transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
           backfaceVisibility: 'hidden', // Оптимизация рендеринга
           WebkitTransform: 'translateZ(0)', // Для Safari
+          isolation: 'isolate', // Создаем новый контекст стекирования
+          willChange: 'transform', // Оптимизация для браузера
+          contain: 'layout style paint', // Изолируем кнопку от остального контента
         }}
       >
         <svg
@@ -511,6 +514,9 @@ export function QuizInfoScreen({
           transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
           backfaceVisibility: 'hidden', // Оптимизация рендеринга
           WebkitTransform: 'translateZ(0)', // Для Safari
+          isolation: 'isolate', // Создаем новый контекст стекирования
+          willChange: 'transform', // Оптимизация для браузера
+          contain: 'layout style paint', // Изолируем кнопку от остального контента
         }}
       >
         <svg
@@ -678,6 +684,9 @@ export function QuizInfoScreen({
           transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
           backfaceVisibility: 'hidden', // Оптимизация рендеринга
           WebkitTransform: 'translateZ(0)', // Для Safari
+          isolation: 'isolate', // Создаем новый контекст стекирования
+          willChange: 'transform', // Оптимизация для браузера
+          contain: 'layout style paint', // Изолируем кнопку от остального контента
         }}
       >
         <svg
@@ -1347,7 +1356,9 @@ export function QuizInfoScreen({
         transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
         backfaceVisibility: 'hidden', // Оптимизация рендеринга
         WebkitTransform: 'translateZ(0)', // Для Safari
-        isolation: 'isolate',
+        isolation: 'isolate', // Создаем новый контекст стекирования
+        willChange: 'transform', // Оптимизация для браузера
+        contain: 'layout style paint', // Изолируем кнопку от остального контента
       }}
     >
       <svg
