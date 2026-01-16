@@ -385,14 +385,14 @@ export function QuizQuestion({
         return (
           <div style={{ 
             backgroundColor: '#D5FE61',
-            borderRadius: isSkinTypeQuestion ? '0' : '24px',
+            borderRadius: '24px', // ИСПРАВЛЕНО: Возвращена верстка из коммита 72b6ea7
             padding: '20px',
             marginTop: '0px',
             paddingTop: '20px',
-            // ИСПРАВЛЕНО: Для skin_type делаем контейнер во всю ширину, для skin_goals - обычная верстка
-            width: isSkinTypeQuestion ? '100%' : 'auto',
-            marginLeft: isSkinTypeQuestion ? '0' : 'auto',
-            marginRight: isSkinTypeQuestion ? '0' : 'auto',
+            // ИСПРАВЛЕНО: Для skin_goals и skin_type делаем контейнер во всю ширину (верстка из коммита 72b6ea7)
+            width: (isGoalsQuestion || isSkinTypeQuestion) ? '100%' : 'auto',
+            marginLeft: (isGoalsQuestion || isSkinTypeQuestion) ? '0' : 'auto',
+            marginRight: (isGoalsQuestion || isSkinTypeQuestion) ? '0' : 'auto',
           }}>
             {/* Заголовок внутри лаймового контейнера */}
             {/* ИСПРАВЛЕНО: Для вопроса avoid_ingredients делаем слово "исключить" жирным */}

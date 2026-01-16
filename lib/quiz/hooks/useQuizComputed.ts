@@ -4,7 +4,7 @@
 
 import { useMemo, useRef } from 'react';
 import { clientLogger } from '@/lib/client-logger';
-import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
+import { getInitialInfoScreens, getInfoScreenAfterQuestion } from '@/app/(miniapp)/quiz/info-screens';
 import { filterQuestions, getEffectiveAnswers } from '@/lib/quiz/filterQuestions';
 import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
 import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
@@ -624,55 +624,63 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     const shouldBlockPendingInfoScreen = pendingInfoScreen && !isRetakingQuiz && isOnQuestions;
     const shouldBlock = (!isPastInitialScreensAny && isShowingInitialInfoScreen && currentInitialInfoScreen && isStillOnInitialScreens) || shouldBlockPendingInfoScreen;
     
-    // ИСПРАВЛЕНО: Детальное логирование для диагностики skin_features_intro
-    const isGenderQuestionIndex = currentQuestionIndex >= 0 && allQuestions.length > 0 && allQuestions[currentQuestionIndex]?.code === 'gender';
-    const isSkinFeaturesIntroPending = pendingInfoScreen?.id === 'skin_features_intro';
+    // ИСПРАВЛЕНО: Детальное логирование для диагностики всех инфо-скринов
+    const currentQuestionCode = currentQuestionIndex >= 0 && allQuestions.length > 0 ? allQuestions[currentQuestionIndex]?.code : null;
+    const hasAnyPendingInfoScreen = !!pendingInfoScreen;
     
-    if (isGenderQuestionIndex || isSkinFeaturesIntroPending) {
-      clientLogger.warn('🔍 ДИАГНОСТИКА skin_features_intro в useQuizComputed:', {
+    // ИСПРАВЛЕНО: Логируем для всех инфо-скринов и всех вопросов, которые должны показывать инфо-экраны
+    const shouldHaveInfoScreen = currentQuestionCode ? !!getInfoScreenAfterQuestion(currentQuestionCode) : false;
+    
+    if (hasAnyPendingInfoScreen || shouldHaveInfoScreen) {
+      clientLogger.warn('🔍 ДИАГНОСТИКА ИНФО-СКРИНА в useQuizComputed:', {
         currentQuestionIndex,
-        currentQuestionCode: allQuestions[currentQuestionIndex]?.code || null,
-        isGenderQuestionIndex,
-        isSkinFeaturesIntroPending,
+        currentQuestionCode: currentQuestionCode,
+        currentQuestionId: allQuestions[currentQuestionIndex]?.id || null,
+        shouldHaveInfoScreen,
+        hasAnyPendingInfoScreen,
         pendingInfoScreenId: pendingInfoScreen?.id || null,
+        pendingInfoScreenTitle: pendingInfoScreen?.title || null,
         shouldBlockPendingInfoScreen,
         shouldBlock,
         isPastInitialScreensAny,
         isShowingInitialInfoScreen,
         hasCurrentInitialInfoScreen: !!currentInitialInfoScreen,
+        currentInitialInfoScreenId: currentInitialInfoScreen?.id || null,
         isStillOnInitialScreens,
         isOnQuestions,
         showResumeScreen,
         isRetakingQuiz,
         willBlock: shouldBlock && !showResumeScreen,
+        allQuestionsLength: allQuestions.length,
       });
     }
     
     if (shouldBlock && !showResumeScreen) {
-      // ИСПРАВЛЕНО: Логирование для диагностики skin_features_intro (только для этого случая)
-      if (isSkinFeaturesIntroPending || isGenderQuestionIndex) {
-        clientLogger.warn('⏸️ currentQuestion: null (blocked by info screen) - ДИАГНОСТИКА skin_features_intro', {
-          isShowingInitialInfoScreen,
-          hasCurrentInitialInfoScreen: !!currentInitialInfoScreen,
-          currentInitialInfoScreenId: currentInitialInfoScreen?.id || null,
-          pendingInfoScreen: !!pendingInfoScreen,
-          pendingInfoScreenId: pendingInfoScreen?.id || null,
-          isRetakingQuiz,
-          showResumeScreen,
-          currentInfoScreenIndex,
-          initialInfoScreensLength: initialInfoScreens.length,
-          currentQuestionIndex,
-          allQuestionsLength: allQuestions.length,
-          hasResumed,
-          savedProgressExists: !!savedProgress,
-          answersCount: Object.keys(answers).length,
-          isOnQuestions: currentInfoScreenIndex >= initialInfoScreens.length || currentInfoScreenIndexRef.current >= initialInfoScreens.length,
-          isStillOnInitialScreens,
-          isPastInitialScreensAny,
-          shouldBlockPendingInfoScreen,
-          shouldBlock,
-        });
-      }
+      // ИСПРАВЛЕНО: Логирование для всех случаев блокировки вопроса инфо-скрином
+      clientLogger.warn('⏸️ ВОПРОС ЗАБЛОКИРОВАН: currentQuestion = null (blocked by info screen)', {
+        isShowingInitialInfoScreen,
+        hasCurrentInitialInfoScreen: !!currentInitialInfoScreen,
+        currentInitialInfoScreenId: currentInitialInfoScreen?.id || null,
+        pendingInfoScreen: !!pendingInfoScreen,
+        pendingInfoScreenId: pendingInfoScreen?.id || null,
+        pendingInfoScreenTitle: pendingInfoScreen?.title || null,
+        isRetakingQuiz,
+        showResumeScreen,
+        currentInfoScreenIndex,
+        initialInfoScreensLength: initialInfoScreens.length,
+        currentQuestionIndex,
+        currentQuestionCode: allQuestions[currentQuestionIndex]?.code || null,
+        allQuestionsLength: allQuestions.length,
+        hasResumed,
+        savedProgressExists: !!savedProgress,
+        answersCount: Object.keys(answers).length,
+        isOnQuestions: currentInfoScreenIndex >= initialInfoScreens.length || currentInfoScreenIndexRef.current >= initialInfoScreens.length,
+        isStillOnInitialScreens,
+        isPastInitialScreensAny,
+        shouldBlockPendingInfoScreen,
+        shouldBlock,
+        blockingReason: shouldBlockPendingInfoScreen ? 'pendingInfoScreen' : (isShowingInitialInfoScreen ? 'initialInfoScreen' : 'unknown'),
+      });
       return null;
     }
     

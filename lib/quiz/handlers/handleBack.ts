@@ -115,6 +115,11 @@ export async function handleBack({
     }
     
     // Если нет предыдущего инфо-экрана в цепочке, возвращаемся к вопросу
+    clientLogger.warn('🧹 ИНФО-СКРИН: Закрываем pendingInfoScreen (возврат к вопросу)', {
+      currentPendingInfoScreenId: pendingInfoScreen.id,
+      currentPendingInfoScreenTitle: pendingInfoScreen.title,
+      currentQuestionIndex,
+    });
     setPendingInfoScreen(null);
     
     // ИСПРАВЛЕНО: Находим вопрос, после которого был показан pendingInfoScreen

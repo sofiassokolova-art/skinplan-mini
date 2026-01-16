@@ -79,6 +79,11 @@ export function resumeQuiz(params: ResumeQuizParams): void {
   params.setShowResumeScreen(false); // Устанавливаем сразу, чтобы предотвратить повторное появление экрана
   // ИСПРАВЛЕНО: Очищаем pendingInfoScreen при resume, чтобы он не блокировал показ вопроса
   if (params.setPendingInfoScreen) {
+    clientLogger.warn('🧹 ИНФО-СКРИН: Очищаем pendingInfoScreen в resumeQuiz', {
+      previousPendingInfoScreen: params.pendingInfoScreen?.id || null,
+      nextQuestionIndex,
+      allQuestionsLength: params.allQuestions?.length || 0,
+    });
     params.setPendingInfoScreen(null);
     clientLogger.log('✅ resumeQuiz: Очищен pendingInfoScreen для показа вопроса');
   }

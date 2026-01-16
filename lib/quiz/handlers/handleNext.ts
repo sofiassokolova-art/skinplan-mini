@@ -467,6 +467,12 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       }
       
       // Если нет следующего info screen, закрываем pending и переходим к следующему вопросу
+      clientLogger.warn('🧹 ИНФО-СКРИН: Закрываем pendingInfoScreen (нет следующего в цепочке)', {
+        currentPendingInfoScreenId: effectivePendingInfoScreen.id,
+        currentPendingInfoScreenTitle: effectivePendingInfoScreen.title,
+        currentQuestionIndex,
+        isLastQuestion,
+      });
       setPendingInfoScreen(null);
       
       if (isLastQuestion) {
@@ -622,12 +628,17 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     // ИСПРАВЛЕНО: Если пользователь уже ответил на вопрос, проверяем инфо-экран независимо от флага justClosedInfoScreen
     // ИСПРАВЛЕНО: Используем currentPendingInfoScreen из ref для более точной проверки
     
-    // ИСПРАВЛЕНО: Детальное логирование для диагностики проблемы с skin_features_intro
-    const isGenderQuestion = currentQuestion?.code === 'gender';
-    if (isGenderQuestion) {
-      clientLogger.warn('🔍 ДИАГНОСТИКА gender: Проверка условий для показа инфо-экрана', {
+    // ИСПРАВЛЕНО: Детальное логирование для диагностики проблемы с инфо-экранами
+    // Логируем для ВСЕХ вопросов, которые должны показывать инфо-экраны
+    const questionCode = currentQuestion?.code;
+    const hasInfoScreenAfterQuestion = questionCode ? !!getInfoScreenAfterQuestion(questionCode) : false;
+    
+    // ИСПРАВЛЕНО: Логируем для всех вопросов с инфо-экранами, не только для gender
+    if (hasInfoScreenAfterQuestion || questionCode === 'gender') {
+      const infoScreenAfterQuestion = questionCode ? getInfoScreenAfterQuestion(questionCode) : null;
+      clientLogger.warn('🔍 ДИАГНОСТИКА ИНФО-ЭКРАНА: Проверка условий для показа инфо-экрана', {
         hasCurrentQuestion: !!currentQuestion,
-        questionCode: currentQuestion?.code,
+        questionCode: questionCode,
         questionId: currentQuestion?.id,
         questionIndex: currentQuestionIndex,
         isRetakingQuiz,
@@ -637,7 +648,10 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         shouldBlockInfoScreen,
         justClosedInfoScreen,
         willCheckInfoScreen: currentQuestion && !isRetakingQuiz && !currentPendingInfoScreen && hasAnsweredCurrentQuestion && !shouldBlockInfoScreen,
-        allInfoScreensWithGender: INFO_SCREENS.filter(s => s.showAfterQuestionCode === 'gender').map(s => ({
+        hasInfoScreenAfterQuestion,
+        infoScreenAfterQuestionId: infoScreenAfterQuestion?.id || null,
+        infoScreenAfterQuestionTitle: infoScreenAfterQuestion?.title || null,
+        allInfoScreensForThisQuestion: INFO_SCREENS.filter(s => s.showAfterQuestionCode === questionCode).map(s => ({
           id: s.id,
           title: s.title,
           showAfterQuestionCode: s.showAfterQuestionCode,
@@ -657,25 +671,23 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
           });
         }
       } else {
-        // ИСПРАВЛЕНО: Детальное логирование для gender вопроса
-        if (isGenderQuestion) {
-          clientLogger.warn('🔍 ДИАГНОСТИКА gender: Вызываем getInfoScreenAfterQuestion', {
+        // ИСПРАВЛЕНО: Детальное логирование для всех вопросов с инфо-экранами
+        const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
+        
+        // ИСПРАВЛЕНО: Логируем для всех вопросов, которые должны показывать инфо-экраны
+        if (infoScreen || currentQuestion.code === 'gender') {
+          clientLogger.warn('🔍 ДИАГНОСТИКА ИНФО-ЭКРАНА: Вызываем getInfoScreenAfterQuestion', {
             questionCode: currentQuestion.code,
             questionIndex: currentQuestionIndex,
             allInfoScreensCount: INFO_SCREENS.length,
             infoScreensWithShowAfter: INFO_SCREENS.filter(s => s.showAfterQuestionCode).length,
-            infoScreensWithGender: INFO_SCREENS.filter(s => s.showAfterQuestionCode === 'gender').map(s => ({
+            infoScreensForThisQuestion: INFO_SCREENS.filter(s => s.showAfterQuestionCode === currentQuestion.code).map(s => ({
               id: s.id,
               title: s.title,
             })),
           });
-        }
-        
-        const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
-        
-        // ИСПРАВЛЕНО: Детальное логирование результата поиска инфо-экрана
-        if (isGenderQuestion) {
-          clientLogger.warn('🔍 ДИАГНОСТИКА gender: Результат поиска инфо-экрана', {
+          
+          clientLogger.warn('🔍 ДИАГНОСТИКА ИНФО-ЭКРАНА: Результат поиска инфо-экрана', {
             questionCode: currentQuestion.code,
             infoScreenFound: !!infoScreen,
             infoScreenId: infoScreen?.id || null,
@@ -697,25 +709,47 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
               // Игнорируем ошибки при очистке
             }
           }
+          
+          // ИСПРАВЛЕНО: Логирование установки pendingInfoScreen для всех инфо-скринов
+          clientLogger.warn('📋 ИНФО-СКРИН: Устанавливаем pendingInfoScreen', {
+            questionCode: currentQuestion.code,
+            questionIndex: currentQuestionIndex,
+            questionId: currentQuestion.id,
+            infoScreenId: infoScreen.id,
+            infoScreenTitle: infoScreen.title,
+            showAfterQuestionCode: infoScreen.showAfterQuestionCode,
+            showAfterInfoScreenId: infoScreen.showAfterInfoScreenId,
+            previousPendingInfoScreen: pendingInfoScreen?.id || currentPendingInfoScreen?.id || null,
+            pendingInfoScreenRefExists: !!pendingInfoScreenRef,
+          });
+          
           if (pendingInfoScreenRef) {
             pendingInfoScreenRef.current = infoScreen;
-          }
-          setPendingInfoScreen(infoScreen);
-          await saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
-          
-          // ИСПРАВЛЕНО: Детальное логирование для gender вопроса
-          if (isGenderQuestion) {
-            clientLogger.warn('✅ ДИАГНОСТИКА gender: Инфо-экран УСТАНОВЛЕН в pendingInfoScreen', {
-              questionCode: currentQuestion.code,
-              questionIndex: currentQuestionIndex,
+            clientLogger.warn('📋 ИНФО-СКРИН: pendingInfoScreenRef.current установлен', {
               infoScreenId: infoScreen.id,
               infoScreenTitle: infoScreen.title,
-              pendingInfoScreenRefSet: !!pendingInfoScreenRef,
-              isLastQuestion,
-              hasAnswered: true,
-              justClosedInfoScreenWasSet: justClosedInfoScreen,
             });
           }
+          
+          setPendingInfoScreen(infoScreen);
+          clientLogger.warn('📋 ИНФО-СКРИН: setPendingInfoScreen вызван', {
+            infoScreenId: infoScreen.id,
+            infoScreenTitle: infoScreen.title,
+          });
+          
+          await saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
+          
+          // ИСПРАВЛЕНО: Детальное логирование для всех инфо-экранов
+          clientLogger.warn('✅ ДИАГНОСТИКА ИНФО-ЭКРАНА: Инфо-экран УСТАНОВЛЕН в pendingInfoScreen', {
+            questionCode: currentQuestion.code,
+            questionIndex: currentQuestionIndex,
+            infoScreenId: infoScreen.id,
+            infoScreenTitle: infoScreen.title,
+            pendingInfoScreenRefSet: !!pendingInfoScreenRef,
+            isLastQuestion,
+            hasAnswered: true,
+            justClosedInfoScreenWasSet: justClosedInfoScreen,
+          });
           
           clientLogger.log('✅ Показан инфо-экран после вопроса:', {
             questionCode: currentQuestion.code,
@@ -831,15 +865,32 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         const nextQuestionInfoScreen = getInfoScreenAfterQuestion(nextQuestion.code);
         // Если для следующего вопроса нет инфо-экрана, очищаем pendingInfoScreen
         if (!nextQuestionInfoScreen) {
-          clientLogger.log('🧹 handleNext: очищаем pendingInfoScreen перед переходом к следующему вопросу (нет инфо-экрана для следующего вопроса)', {
+          clientLogger.warn('🧹 ИНФО-СКРИН: Очищаем pendingInfoScreen перед переходом к следующему вопросу (нет инфо-экрана для следующего вопроса)', {
             currentQuestionCode: allQuestions[currentQuestionIndex]?.code || null,
+            currentQuestionIndex,
             nextQuestionCode: nextQuestion.code,
+            nextQuestionIndex: newIndex,
             pendingInfoScreenId: pendingInfoScreen?.id || currentPendingInfoScreen?.id || null,
+            nextQuestionInfoScreenFound: !!nextQuestionInfoScreen,
+            nextQuestionInfoScreenId: nextQuestionInfoScreen?.id || null,
           });
           if (pendingInfoScreenRef) {
             pendingInfoScreenRef.current = null;
+            clientLogger.warn('🧹 ИНФО-СКРИН: pendingInfoScreenRef.current очищен', {
+              previousPendingInfoScreenId: pendingInfoScreen?.id || currentPendingInfoScreen?.id || null,
+            });
           }
           setPendingInfoScreen(null);
+          clientLogger.warn('🧹 ИНФО-СКРИН: setPendingInfoScreen(null) вызван', {
+            previousPendingInfoScreenId: pendingInfoScreen?.id || currentPendingInfoScreen?.id || null,
+          });
+        } else {
+          clientLogger.warn('📋 ИНФО-СКРИН: НЕ очищаем pendingInfoScreen - для следующего вопроса есть инфо-экран', {
+            currentQuestionCode: allQuestions[currentQuestionIndex]?.code || null,
+            nextQuestionCode: nextQuestion.code,
+            nextQuestionInfoScreenId: nextQuestionInfoScreen.id,
+            currentPendingInfoScreenId: pendingInfoScreen?.id || currentPendingInfoScreen?.id || null,
+          });
         }
       }
       

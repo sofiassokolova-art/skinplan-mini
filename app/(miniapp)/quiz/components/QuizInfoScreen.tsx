@@ -56,6 +56,10 @@ function ImageWithLoading({ src, alt, maxWidth }: { src: string; alt: string; ma
       borderRadius: '0',
       position: 'relative',
       minHeight: isLoading ? '200px' : 'auto',
+      // ИСПРАВЛЕНО: Убираем все возможные фоны для прозрачности
+      boxShadow: 'none',
+      border: 'none',
+      outline: 'none',
     }}>
       {/* Placeholder во время загрузки */}
       {isLoading && (
@@ -66,6 +70,7 @@ function ImageWithLoading({ src, alt, maxWidth }: { src: string; alt: string; ma
           width: '100%',
           height: '100%',
           background: 'transparent',
+          backgroundColor: 'transparent',
           borderRadius: '0',
           display: 'flex',
           alignItems: 'center',
@@ -73,6 +78,9 @@ function ImageWithLoading({ src, alt, maxWidth }: { src: string; alt: string; ma
           opacity: 1,
           transition: 'opacity 0.3s ease-out',
           zIndex: 1,
+          // ИСПРАВЛЕНО: Убираем все возможные фоны для прозрачности
+          boxShadow: 'none',
+          border: 'none',
         }}>
           <div style={{
             width: '40px',
@@ -1075,6 +1083,9 @@ export function QuizInfoScreen({
             paddingRight: '20px',
             width: '100%',
             boxSizing: 'border-box',
+            // ИСПРАВЛЕНО: Убираем все возможные фоны для прозрачности контейнера изображения
+            background: 'transparent',
+            backgroundColor: 'transparent',
           }}
         >
           {/* Картинка с плавной загрузкой */}

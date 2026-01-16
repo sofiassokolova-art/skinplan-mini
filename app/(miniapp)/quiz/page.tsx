@@ -2455,6 +2455,19 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Не блокируем, если показывается resume screen
   // РЕФАКТОРИНГ: Используем компонент QuizInfoScreen
   if (pendingInfoScreen && !isRetakingQuiz && !showResumeScreen) {
+    // ИСПРАВЛЕНО: Логирование для диагностики рендеринга инфо-экрана
+    clientLogger.warn('📺 РЕНДЕРИНГ ИНФО-ЭКРАНА: pendingInfoScreen рендерится', {
+      pendingInfoScreenId: pendingInfoScreen.id,
+      pendingInfoScreenTitle: pendingInfoScreen.title,
+      currentQuestionIndex,
+      currentInfoScreenIndex,
+      isRetakingQuiz,
+      showResumeScreen,
+      hasResumed,
+      isShowingInitialInfoScreen,
+      currentQuestion: currentQuestion ? { id: currentQuestion.id, code: currentQuestion.code } : null,
+    });
+    
     return (
       <QuizInfoScreen
         screen={pendingInfoScreen}
@@ -2647,6 +2660,30 @@ export default function QuizPage() {
     !isPastInitialScreensRef && 
     !isStartingOver &&
     !isValidQuestionIndex; // ИСПРАВЛЕНО: Показываем ошибку только если индекс невалиден
+  
+  // ИСПРАВЛЕНО: Детальное логирование для диагностики пропадающего вопроса
+  if (!currentQuestion && !isLoadingProgress && !loading && !showResumeScreen) {
+    clientLogger.warn('❌ ВОПРОС ПРОПАЛ: currentQuestion = null в page.tsx', {
+      currentQuestionIndex,
+      allQuestionsLength: allQuestions.length,
+      isValidQuestionIndex,
+      hasResumed,
+      showResumeScreen,
+      pendingInfoScreen: !!pendingInfoScreen,
+      pendingInfoScreenId: pendingInfoScreen?.id || null,
+      isShowingInitialInfoScreen,
+      isPastInitialScreens,
+      isPastInitialScreensRef,
+      isStartingOver,
+      isLoadingProgress,
+      loading,
+      hasQuestionnaire: !!questionnaire,
+      shouldShowEmptyScreenError,
+      currentInfoScreenIndex,
+      answersCount: Object.keys(answers || {}).length,
+    });
+  }
+  
   if (shouldShowEmptyScreenError) {
     // Если анкета загружена и есть вопросы, но currentQuestionIndex выходит за пределы
     if (questionnaire && allQuestions.length > 0) {
