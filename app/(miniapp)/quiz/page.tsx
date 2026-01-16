@@ -736,13 +736,44 @@ export default function QuizPage() {
           }
           
           // Восстанавливаем currentInfoScreenIndex из sessionStorage
+          // КРИТИЧНО: НЕ восстанавливаем, если пользователь активно проходит анкету
+          // Это предотвращает сброс индекса во время активного прохождения
           const savedInfoScreenIndex = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
           if (savedInfoScreenIndex !== null) {
             const infoScreenIndex = parseInt(savedInfoScreenIndex, 10);
             if (!isNaN(infoScreenIndex) && infoScreenIndex >= 0) {
-              clientLogger.log('🔄 Восстанавливаем currentInfoScreenIndex из sessionStorage', { infoScreenIndex });
-              setCurrentInfoScreenIndex(infoScreenIndex);
-              currentInfoScreenIndexRef.current = infoScreenIndex;
+              // КРИТИЧНО: НЕ восстанавливаем, если текущий индекс больше сохраненного
+              // Это означает, что пользователь уже продвинулся дальше
+              // Также не восстанавливаем, если пользователь активно проходит анкету
+              const initialInfoScreens = getInitialInfoScreens();
+              const isActivelyOnInfoScreens = currentInfoScreenIndex > 0 && currentInfoScreenIndex < initialInfoScreens.length;
+              const isOnQuestions = currentInfoScreenIndex >= initialInfoScreens.length;
+              
+              // Восстанавливаем только если:
+              // 1. Текущий индекс равен 0 (начало) ИЛИ
+              // 2. Сохраненный индекс больше текущего (пользователь вернулся назад) ИЛИ
+              // 3. Пользователь не активно проходит анкету
+              const shouldRestore = currentInfoScreenIndex === 0 || 
+                                   infoScreenIndex > currentInfoScreenIndex || 
+                                   (!isActivelyOnInfoScreens && !isOnQuestions);
+              
+              if (shouldRestore) {
+                clientLogger.log('🔄 Восстанавливаем currentInfoScreenIndex из sessionStorage', { 
+                  savedIndex: infoScreenIndex,
+                  currentIndex: currentInfoScreenIndex,
+                  isActivelyOnInfoScreens,
+                  isOnQuestions,
+                });
+                setCurrentInfoScreenIndex(infoScreenIndex);
+                currentInfoScreenIndexRef.current = infoScreenIndex;
+              } else {
+                clientLogger.log('⏸️ Пропускаем восстановление currentInfoScreenIndex - пользователь активно проходит анкету', {
+                  savedIndex: infoScreenIndex,
+                  currentIndex: currentInfoScreenIndex,
+                  isActivelyOnInfoScreens,
+                  isOnQuestions,
+                });
+              }
             }
           }
           

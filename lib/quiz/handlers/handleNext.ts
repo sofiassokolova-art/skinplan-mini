@@ -184,6 +184,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       // КРИТИЧНО: Обновляем ref СИНХРОННО перед установкой state
       updateInfoScreenIndex(newIndex, currentInfoScreenIndexRef, setCurrentInfoScreenIndex);
       // ФИКС: Сохраняем newIndex в sessionStorage для восстановления при перемонтировании
+      // КРИТИЧНО: Сохраняем правильный ключ для currentInfoScreenIndex
       saveIndexToSessionStorage('quiz_currentInfoScreenIndex', newIndex, '💾 Сохранен currentInfoScreenIndex в sessionStorage');
       // ФИКС: Если после инкремента мы прошли все начальные экраны, очищаем pendingInfoScreen
       if (newIndex >= initialInfoScreens.length) {
@@ -546,7 +547,8 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     const shouldBlockInfoScreen = justClosedInfoScreen && !hasAnsweredCurrentQuestion;
     
     // ФИКС: Логирование для диагностики проблемы с застреванием на втором вопросе
-    if (isDev && currentQuestion && hasAnsweredCurrentQuestion) {
+    // КРИТИЧНО: Логируем всегда (не только в dev), чтобы понять, почему инфо-экран не показывается при первом проходе
+    if (currentQuestion && hasAnsweredCurrentQuestion) {
       clientLogger.warn('🔍 Проверка инфо-экрана для вопроса:', {
         questionIndex: currentQuestionIndex,
         questionCode: currentQuestion.code,
@@ -556,6 +558,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         shouldBlockInfoScreen,
         pendingInfoScreen: !!pendingInfoScreen,
         isRetakingQuiz,
+        willCheckInfoScreen: currentQuestion && !isRetakingQuiz && !pendingInfoScreen && hasAnsweredCurrentQuestion && !shouldBlockInfoScreen,
       });
     }
     
@@ -572,6 +575,8 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       });
     }
     
+    // КРИТИЧНО: Проверяем инфо-экран для текущего вопроса ПЕРЕД переходом к следующему
+    // Это исправляет проблему, когда инфо-экран не показывается при первом проходе
     if (currentQuestion && !isRetakingQuiz && !pendingInfoScreen && hasAnsweredCurrentQuestion && !shouldBlockInfoScreen) {
       // ФИКС: Проверяем, что у вопроса есть код перед вызовом getInfoScreenAfterQuestion
       // Это предотвращает возврат info screen для вопросов без кода
@@ -585,12 +590,8 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       } else {
         const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
         if (infoScreen) {
-          // ФИКС: Проверяем, не был ли этот инфо-экран уже показан для этого вопроса
-          // Это предотвращает повторное показ инфо-экрана после закрытия предыдущего
-          // Если мы только что закрыли инфо-экран и перешли к следующему вопросу,
-          // не показываем инфо-экран сразу - он будет показан после того, как пользователь ответит
-          // Но если пользователь уже ответил на этот вопрос ДО перехода к нему (например, из-за быстрых кликов),
-          // то все равно показываем инфо-экран
+          // КРИТИЧНО: Показываем инфо-экран для текущего вопроса ПЕРЕД переходом к следующему
+          // Это исправляет проблему, когда инфо-экран не показывается при первом проходе
           setPendingInfoScreen(infoScreen);
           await saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
           clientLogger.log('✅ Показан инфо-экран после вопроса:', {
@@ -603,13 +604,13 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
           return;
         } else {
           // ФИКС: Логирование, если инфо-экран не найден для вопроса
-          if (isDev) {
-            clientLogger.warn('⚠️ Инфо-экран не найден для вопроса:', {
-              questionCode: currentQuestion.code,
-              questionIndex: currentQuestionIndex,
-              questionId: currentQuestion.id,
-            });
-          }
+          // КРИТИЧНО: Это может быть причиной проблемы, когда инфо-экран не показывается при первом проходе
+          clientLogger.warn('⚠️ Инфо-экран не найден для вопроса:', {
+            questionCode: currentQuestion.code,
+            questionIndex: currentQuestionIndex,
+            questionId: currentQuestion.id,
+            allInfoScreens: INFO_SCREENS.map(s => ({ id: s.id, showAfterQuestionCode: s.showAfterQuestionCode })),
+          });
         }
       }
     }

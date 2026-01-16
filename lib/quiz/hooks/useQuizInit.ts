@@ -296,7 +296,11 @@ export function useQuizInit(params: UseQuizInitParams) {
           const hasStartedAnswering = currentQuestionIndex > 0;
           
           // КРИТИЧНО: Сбрасываем на 0 только для нового пользователя, который еще не начал проходить анкету
-          if (!isAlreadyOnQuestions && !hasStartedAnswering && (currentInfoScreenIndex !== 0 || currentInfoScreenIndexRef.current !== 0)) {
+          // ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА: Не сбрасываем, если пользователь уже на втором или последующем экране
+          // Это предотвращает сброс во время активного прохождения анкеты
+          const isOnSecondOrLaterScreen = currentInfoScreenIndex > 0 || currentInfoScreenIndexRef.current > 0;
+          
+          if (!isAlreadyOnQuestions && !hasStartedAnswering && !isOnSecondOrLaterScreen && (currentInfoScreenIndex !== 0 || currentInfoScreenIndexRef.current !== 0)) {
             clientLogger.log('🔄 Сброс currentInfoScreenIndex на 0 для нового пользователя', {
               currentIndex: currentInfoScreenIndex,
               currentIndexRef: currentInfoScreenIndexRef.current,
@@ -304,6 +308,7 @@ export function useQuizInit(params: UseQuizInitParams) {
               hasNoSavedProgress,
               isAlreadyOnQuestions,
               hasStartedAnswering,
+              isOnSecondOrLaterScreen,
             });
             currentInfoScreenIndexRef.current = 0;
             setCurrentInfoScreenIndex(0);
@@ -323,6 +328,7 @@ export function useQuizInit(params: UseQuizInitParams) {
             clientLogger.warn('⚠️ Пропускаем сброс currentInfoScreenIndex - пользователь уже проходит анкету', {
               isAlreadyOnQuestions,
               hasStartedAnswering,
+              isOnSecondOrLaterScreen,
               currentInfoScreenIndex: currentInfoScreenIndexRef.current,
               currentQuestionIndex,
             });
