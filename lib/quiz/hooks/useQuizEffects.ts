@@ -397,11 +397,11 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
                     ? (questionIndex < finalLength ? questionIndex : Math.max(0, finalLength - 1))
                     : 0;
                   setCurrentQuestionIndex(finalValidIndex);
-                  // clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage (асинхронно)', { 
-                    questionIndex: finalValidIndex,
-                    allQuestionsLength: finalLength,
-                    isActiveSession,
-                  });
+                  // // clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage (асинхронно)', {
+                  //   questionIndex: finalValidIndex,
+                  //   allQuestionsLength: finalLength,
+                  //   isActiveSession,
+                  // });
                 }, 100);
               }
             }
@@ -629,24 +629,24 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     if (!questionnaire) return;
     
     if (allQuestions.length === 0 && Object.keys(answers).length > 0) {
-      clientLogger.error('⚠️ Edge case: allQuestions.length === 0 but answers exist', {
-	//         answersCount: Object.keys(answers).length,
-	//         questionnaireId: questionnaire.id,
-	//         allQuestionsRawLength: questionnaire.groups?.flatMap(g => g.questions || []).length + (questionnaire.questions || []).length,
-        isRetakingQuiz,
-        showRetakeScreen,
-//       });
+      // // clientLogger.error('⚠️ Edge case: allQuestions.length === 0 but answers exist', {
+      //   answersCount: Object.keys(answers).length,
+      //   questionnaireId: questionnaire.id,
+      //   allQuestionsRawLength: questionnaire.groups?.flatMap(g => g.questions || []).length + (questionnaire.questions || []).length,
+      //   isRetakingQuiz,
+      //   showRetakeScreen,
+      // });
     }
     
     if (allQuestions.length === 0) {
-      clientLogger.warn('⚠️ allQuestions.length === 0 после фильтрации', {
-	//         questionnaireId: questionnaire.id,
-	//         allQuestionsRawLength: allQuestionsRaw.length,
-	//         answersCount: Object.keys(answers).length,
-	//         savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
-        isRetakingQuiz,
-        showRetakeScreen,
-//       });
+      // // clientLogger.warn('⚠️ allQuestions.length === 0 после фильтрации', {
+      //   questionnaireId: questionnaire.id,
+      //   allQuestionsRawLength: allQuestionsRaw.length,
+      //   answersCount: Object.keys(answers).length,
+      //   savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
+      //   isRetakingQuiz,
+      //   showRetakeScreen,
+      // });
       return;
     }
     
@@ -724,21 +724,21 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
         ? allQuestions.length
         : (hasNoSavedProgress && answersCountLocal === 0 ? 0 : Math.max(0, Math.min(currentQuestionIndex, allQuestions.length - 1)));
       
-      clientLogger.warn('⚠️ currentQuestionIndex выходит за пределы, корректируем', {
-        currentQuestionIndex,
-	//         allQuestionsLength: allQuestions.length,
-        correctedIndex,
-	//         answersCount: answersCountLocal,
-        isQuizCompleted,
-        isSubmitting,
-        hasResumed,
-        showResumeScreen,
-        isRetakingQuiz,
-        showRetakeScreen,
-	//         hasQuestionnaire: !!questionnaire,
-        hasNoSavedProgress,
-	//         allQuestionsRawLength: allQuestionsRaw.length,
-//       });
+      // // clientLogger.warn('⚠️ currentQuestionIndex выходит за пределы, корректируем', {
+      //   currentQuestionIndex,
+      //   allQuestionsLength: allQuestions.length,
+      //   correctedIndex,
+      //   answersCount: answersCountLocal,
+      //   isQuizCompleted,
+      //   isSubmitting,
+      //   hasResumed,
+      //   showResumeScreen,
+      //   isRetakingQuiz,
+      //   showRetakeScreen,
+      //   hasQuestionnaire: !!questionnaire,
+      //   hasNoSavedProgress,
+      //   allQuestionsRawLength: allQuestionsRaw.length,
+      // });
       
       if (correctedIndex !== currentQuestionIndex) {
         setTimeout(() => {
