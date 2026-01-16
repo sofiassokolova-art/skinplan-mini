@@ -8,9 +8,10 @@ import type { Questionnaire } from '@/lib/quiz/types';
 
 /**
  * Сохраняет индекс или код вопроса в sessionStorage с обработкой ошибок
+ * ИСПРАВЛЕНО: БАГ #3 - принимает string для поддержки скоупленных ключей
  */
 export function saveIndexToSessionStorage(
-  key: 'quiz_currentQuestionIndex' | 'quiz_currentQuestionCode' | 'quiz_currentInfoScreenIndex',
+  key: string,
   value: number | string,
   logMessage?: string
 ): void {
@@ -19,7 +20,7 @@ export function saveIndexToSessionStorage(
   try {
     sessionStorage.setItem(key, String(value));
     if (logMessage) {
-      clientLogger.log(logMessage, { value });
+      clientLogger.log(logMessage, { value, key });
     }
   } catch (err) {
     clientLogger.warn(`⚠️ Не удалось сохранить ${key} в sessionStorage`, err);

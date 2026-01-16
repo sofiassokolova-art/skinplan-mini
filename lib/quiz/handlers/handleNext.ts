@@ -1,7 +1,9 @@
 // lib/quiz/handlers/handleNext.ts
 // Вынесена функция handleNext из quiz/page.tsx для улучшения читаемости и поддержки
 
+import type React from 'react';
 import { clientLogger } from '@/lib/client-logger';
+import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 import { INFO_SCREENS, getInitialInfoScreens, getInfoScreenAfterQuestion, getNextInfoScreenAfterScreen, type InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 import { 
   saveIndexToSessionStorage, 
@@ -35,6 +37,7 @@ export interface HandleNextParams {
   hasResumed: boolean;
   pendingInfoScreen: InfoScreen | null;
   pendingInfoScreenRef?: React.MutableRefObject<InfoScreen | null>;
+  justClosedInfoScreenRef?: React.MutableRefObject<boolean>; // ИСПРАВЛЕНО: Заменяем sessionStorage на ref
   answers: Record<number, string | string[]>;
   
   // State setters
@@ -66,6 +69,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     hasResumed,
     pendingInfoScreen,
     pendingInfoScreenRef,
+    justClosedInfoScreenRef,
     answers,
     setIsHandlingNext,
     setCurrentInfoScreenIndex,
@@ -107,6 +111,9 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
   setIsHandlingNext(true);
   
   try {
+    // ИСПРАВЛЕНО: Получаем questionnaireId для скоупирования ключей sessionStorage
+    const questionnaireId = questionnaire?.id?.toString() || questionnaireRef.current?.id?.toString();
+    
     // ИСПРАВЛЕНО: Используем единую функцию для получения начальных инфо-экранов
     const initialInfoScreens = getInitialInfoScreens();
     
@@ -139,14 +146,13 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       // ИСПРАВЛЕНО: Устанавливаем null в state, но не ждем его обновления - ref уже очищен
       setPendingInfoScreen(null);
       
-      // Сохраняем флаг в sessionStorage, что инфо-экран только что закрыт
-      // Это поможет правильно обработать следующий шаг
-      if (typeof window !== 'undefined') {
-        try {
-          sessionStorage.setItem('quiz_justClosedInfoScreen', 'true');
-        } catch (err) {
-          // Игнорируем ошибки
-        }
+      // ИСПРАВЛЕНО: БАГ #4 - используем ref вместо sessionStorage для justClosedInfoScreen
+      // Это предотвращает "залипание" флага и блокировку инфо-скринов
+      if (justClosedInfoScreenRef) {
+        justClosedInfoScreenRef.current = true;
+        clientLogger.warn('🧹 ИНФО-СКРИН: justClosedInfoScreenRef.current установлен', {
+          pendingInfoScreenId: currentPendingInfoScreen.id,
+        });
       }
       
       // КРИТИЧНО: После закрытия инфо-экрана нужно перейти к следующему вопросу
@@ -226,11 +232,16 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       });
       // КРИТИЧНО: Обновляем ref СИНХРОННО перед установкой state
       updateInfoScreenIndex(newIndex, currentInfoScreenIndexRef, setCurrentInfoScreenIndex);
+      // ИСПРАВЛЕНО: БАГ #3 - используем QUIZ_CONFIG.STORAGE_KEYS со скоупированием
       // ФИКС: Сохраняем newIndex в sessionStorage для восстановления при перемонтировании
-      // КРИТИЧНО: Сохраняем правильный ключ для currentInfoScreenIndex
-      saveIndexToSessionStorage('quiz_currentInfoScreenIndex', newIndex, '💾 Сохранен currentInfoScreenIndex в sessionStorage');
+      const scopedInfoScreenKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN, questionnaireId);
+      saveIndexToSessionStorage(scopedInfoScreenKey, newIndex, '💾 Сохранен currentInfoScreenIndex в sessionStorage');
+      // ИСПРАВЛЕНО: БАГ #5 - обеспечиваем консистентность ref/state для pendingInfoScreen
       // ФИКС: Если после инкремента мы прошли все начальные экраны, очищаем pendingInfoScreen
       if (newIndex >= initialInfoScreens.length) {
+        if (pendingInfoScreenRef) {
+          pendingInfoScreenRef.current = null;
+        }
         setPendingInfoScreen(null);
         // Если мы прошли все начальные экраны, переходим к первому вопросу
         if (currentQuestionIndex === 0 && allQuestions.length > 0) {
@@ -290,8 +301,10 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       });
       // КРИТИЧНО: Обновляем ref СИНХРОННО перед установкой state, чтобы другие функции видели новое значение
       updateInfoScreenIndex(newInfoIndex, currentInfoScreenIndexRef, setCurrentInfoScreenIndex);
+      // ИСПРАВЛЕНО: БАГ #3 - используем QUIZ_CONFIG.STORAGE_KEYS со скоупированием
       // ФИКС: Сохраняем newInfoIndex в sessionStorage для восстановления при перемонтировании
-      saveIndexToSessionStorage('quiz_currentInfoScreenIndex', newInfoIndex, '💾 Сохранен currentInfoScreenIndex в sessionStorage при переходе к вопросам');
+      const scopedInfoScreenKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN, questionnaireId);
+      saveIndexToSessionStorage(scopedInfoScreenKey, newInfoIndex, '💾 Сохранен currentInfoScreenIndex в sessionStorage при переходе к вопросам');
       
       // ИСПРАВЛЕНО: Не сбрасываем currentQuestionIndex на 0, если у пользователя уже есть ответы
       // Это предотвращает возврат к первому вопросу для пользователей, которые уже отвечали
@@ -307,37 +320,53 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         return;
       }
       
-      // КРИТИЧНО: Всегда переходим к следующему вопросу по порядку, а не ищем неотвеченные
-      // Это исправляет проблему, когда после возврата к вопросу по кнопке "Назад"
-      // и нажатия "Продолжить" система переходит к последнему заполненному вопросу
-      // Логика поиска неотвеченных вопросов используется только при первом переходе с инфо-экранов к вопросам
-      // После того, как пользователь уже на вопросах, всегда переходим по порядку
+      // ИСПРАВЛЕНО: БАГ #1 - isAlreadyOnQuestions всегда false в этом блоке
+      // Мы находимся в блоке currentInfoScreenIndex === initialInfoScreens.length - 1,
+      // поэтому currentInfoScreenIndex >= initialInfoScreens.length всегда false
+      // ФИКС: Восстанавливаем questionCode из sessionStorage для пользователей с прогрессом
+      // Если это первый заход после интро → ставим 0
+      // Если пользователь вернулся на интро (back) → восстанавливаем сохранённый questionCode/индекс
+      // ИСПРАВЛЕНО: questionnaireId уже объявлен выше (строка 115), не дублируем объявление
+      const scopedQuestionCodeKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE, questionnaireId);
+      const savedQuestionCode = typeof window !== 'undefined' ? sessionStorage.getItem(scopedQuestionCodeKey) : null;
       const answeredQuestionIds = Object.keys(answers).map(id => Number(id));
       let nextQuestionIndex = 0;
       
-      // КРИТИЧНО: isAlreadyOnQuestions должен проверять, что пользователь уже прошел все начальные инфо-экраны
-      // Просто проверка currentQuestionIndex >= 0 неправильна, так как для нового пользователя currentQuestionIndex = 0
-      // но он еще на инфо-экранах, а не на вопросах
-      const isAlreadyOnQuestions = currentInfoScreenIndex >= initialInfoScreens.length;
+      // Проверяем, есть ли сохраненный вопрос или ответы (пользователь возвращается)
+      const hasSavedProgress = savedQuestionCode || answeredQuestionIds.length > 0 || currentQuestionIndex > 0;
       
-      if (isAlreadyOnQuestions) {
-        // Пользователь уже на вопросах - переходим к следующему по порядку
-        nextQuestionIndex = currentQuestionIndex + 1;
-        if (nextQuestionIndex >= allQuestions.length) {
-          nextQuestionIndex = allQuestions.length - 1;
+      if (hasSavedProgress && savedQuestionCode) {
+        // Восстанавливаем индекс по сохраненному коду вопроса
+        const savedIndex = allQuestions.findIndex((q: Question) => q.code === savedQuestionCode);
+        if (savedIndex >= 0 && savedIndex < allQuestions.length) {
+          nextQuestionIndex = savedIndex;
+          clientLogger.log('🔄 Переход к вопросам: восстановлен индекс по сохраненному коду', {
+            savedQuestionCode,
+            savedIndex,
+            nextQuestionIndex,
+            currentQuestionIndex,
+            allQuestionsLength: allQuestions.length,
+          });
+        } else {
+          // Если вопрос не найден, начинаем с 0
+          nextQuestionIndex = 0;
+          clientLogger.warn('⚠️ Переход к вопросам: сохраненный вопрос не найден, начинаем с 0', {
+            savedQuestionCode,
+            allQuestionsLength: allQuestions.length,
+          });
         }
-        clientLogger.log('🔄 Переход к вопросам: пользователь уже на вопросах, переходим к следующему по порядку', {
+      } else if (hasSavedProgress && currentQuestionIndex > 0) {
+        // Используем сохраненный индекс, если код не найден
+        nextQuestionIndex = Math.min(currentQuestionIndex, allQuestions.length - 1);
+        clientLogger.log('🔄 Переход к вопросам: восстановлен индекс из currentQuestionIndex', {
           currentQuestionIndex,
           nextQuestionIndex,
           allQuestionsLength: allQuestions.length,
         });
       } else {
-        // Пользователь еще не на вопросах (переходит с последнего инфо-экрана)
-        // Для нового пользователя без ответов начинаем с первого вопроса (индекс 0)
-        // Для пользователя с ответами также начинаем с первого вопроса (индекс 0)
-        // НЕ ищем неотвеченные вопросы - это может привести к прыжкам на последний отвеченный вопрос
+        // Первый заход после интро - начинаем с первого вопроса
         nextQuestionIndex = 0;
-        clientLogger.log('🔄 Переход к вопросам: переход с инфо-экранов, начинаем с первого вопроса', {
+        clientLogger.log('🔄 Переход к вопросам: первый заход, начинаем с первого вопроса', {
           currentQuestionIndex,
           nextQuestionIndex,
           allQuestionsLength: allQuestions.length,
@@ -354,13 +383,19 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       }
       
       updateQuestionIndex(nextQuestionIndex, currentQuestionIndexRef, setCurrentQuestionIndex);
-      // ИСПРАВЛЕНО: Сохраняем код вопроса вместо индекса для стабильного восстановления
+      // ИСПРАВЛЕНО: БАГ #3 - используем QUIZ_CONFIG.STORAGE_KEYS со скоупированием
+      // Сохраняем код вопроса вместо индекса для стабильного восстановления
       const questionCode = allQuestions[nextQuestionIndex]?.code;
       if (questionCode) {
-        saveIndexToSessionStorage('quiz_currentQuestionCode', questionCode, '💾 Сохранен код вопроса в sessionStorage при переходе к вопросам');
+        const scopedQuestionCodeKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE, questionnaireId);
+        saveIndexToSessionStorage(scopedQuestionCodeKey, questionCode, '💾 Сохранен код вопроса в sessionStorage при переходе к вопросам');
       }
+      // ИСПРАВЛЕНО: БАГ #5 - обеспечиваем консистентность ref/state для pendingInfoScreen
       // ФИКС: Принудительно очищаем pendingInfoScreen при переходе к вопросам
       // Это предотвращает застревание на info screens
+      if (pendingInfoScreenRef) {
+        pendingInfoScreenRef.current = null;
+      }
       setPendingInfoScreen(null);
       // ФИКС: Детальное логирование установки вопросов для диагностики
       clientLogger.log('✅ Завершены все начальные инфо-экраны, переходим к вопросам', {
@@ -454,19 +489,19 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       
       // ФИКС: Логирование для диагностики проблемы с цепочкой инфо-экранов
       // ИСПРАВЛЕНО: Всегда логируем для диагностики проблем с цепочками
-      clientLogger.warn('🔍 Проверка следующего инфо-экрана в цепочке:', {
+        clientLogger.warn('🔍 Проверка следующего инфо-экрана в цепочке:', {
         currentPendingInfoScreenId: effectivePendingInfoScreen.id,
         currentPendingInfoScreenFromState: currentPendingInfoScreen?.id || null,
         currentPendingInfoScreenFromRef: currentPendingInfoScreenFromRef?.id || null,
-        nextInfoScreenFound: !!nextInfoScreen,
-        nextInfoScreenId: nextInfoScreen?.id || null,
-        currentQuestionIndex,
-        isLastQuestion: currentQuestionIndex === allQuestions.length - 1,
+          nextInfoScreenFound: !!nextInfoScreen,
+          nextInfoScreenId: nextInfoScreen?.id || null,
+          currentQuestionIndex,
+          isLastQuestion: currentQuestionIndex === allQuestions.length - 1,
         // ИСПРАВЛЕНО: Добавляем детальное логирование всех инфо-экранов с showAfterInfoScreenId
         allInfoScreensWithChains: INFO_SCREENS
           .filter(s => s.showAfterInfoScreenId)
           .map(s => ({ id: s.id, showAfterInfoScreenId: s.showAfterInfoScreenId })),
-      });
+        });
       
       if (nextInfoScreen) {
         clientLogger.warn('✅ Найден следующий инфо-экран в цепочке, устанавливаем pendingInfoScreen', {
@@ -560,33 +595,22 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       }
 
       updateQuestionIndex(newIndex, currentQuestionIndexRef, setCurrentQuestionIndex);
-      // ИСПРАВЛЕНО: Сохраняем код вопроса вместо индекса для стабильного восстановления
+      // ИСПРАВЛЕНО: БАГ #3 - используем QUIZ_CONFIG.STORAGE_KEYS со скоупированием
+      // Сохраняем код вопроса вместо индекса для стабильного восстановления
       const questionCode = allQuestions[newIndex]?.code;
       if (questionCode) {
-        saveIndexToSessionStorage('quiz_currentQuestionCode', questionCode, '💾 Сохранен код вопроса в sessionStorage');
+        const scopedQuestionCodeKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE, questionnaireId);
+        saveIndexToSessionStorage(scopedQuestionCodeKey, questionCode, '💾 Сохранен код вопроса в sessionStorage');
       }
 
-      // КРИТИЧНО: После закрытия инфо-экрана просто переходим к следующему вопросу
-      // НЕ проверяем инфо-экран для следующего вопроса сразу - он будет проверен ПОСЛЕ того, как пользователь ответит
-      // Это предотвращает застревание на инфо-экранах
-      // ФИКС: Сохраняем информацию о том, что мы только что закрыли инфо-экран
-      // Это предотвратит повторную проверку инфо-экрана для следующего вопроса сразу после перехода
-      if (typeof window !== 'undefined') {
-        try {
-          sessionStorage.setItem('quiz_justClosedInfoScreen', 'true');
-          // Очищаем флаг через небольшую задержку, чтобы следующий вызов handleNext не видел его
-          // ИСПРАВЛЕНО: Сохраняем timeout ID для возможной очистки при размонтировании
-          const timeoutId = setTimeout(() => {
-            try {
-              sessionStorage.removeItem('quiz_justClosedInfoScreen');
-            } catch (err) {
-              // Игнорируем ошибки при очистке
-            }
-          }, 100);
-          // Примечание: timeout очистится автоматически при завершении, но можно добавить cleanup в useEffect
-        } catch (err) {
-          // Игнорируем ошибки при сохранении
-        }
+      // ИСПРАВЛЕНО: БАГ #4 - используем ref вместо sessionStorage для justClosedInfoScreen
+      // Устанавливаем флаг, что мы только что закрыли инфо-экран
+      // Флаг будет очищен в finally блоке после перехода к следующему вопросу
+      if (justClosedInfoScreenRef) {
+        justClosedInfoScreenRef.current = true;
+        clientLogger.warn('🧹 ИНФО-СКРИН: justClosedInfoScreenRef.current установлен после перехода', {
+          newIndex,
+        });
       }
       await saveProgressSafely(saveProgress, answers, newIndex, currentInfoScreenIndex);
       clientLogger.log('✅ Закрыт инфо-экран, переходим к следующему вопросу', {
@@ -633,10 +657,9 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     // ФИКС: Проверяем, что мы НЕ только что закрыли инфо-экран и перешли к этому вопросу
     // Это предотвращает повторное показ инфо-экрана сразу после перехода к вопросу
     // Проверяем это через sessionStorage - если мы только что закрыли инфо-экран, не показываем его снова
-    // ИСПРАВЛЕНО: Флаг блокирует показ инфо-экрана только если пользователь еще НЕ ответил на вопрос
-    // Если пользователь уже ответил на вопрос и нажимает "Продолжить", инфо-экран должен показываться
-    const justClosedInfoScreen = typeof window !== 'undefined' && 
-      sessionStorage.getItem('quiz_justClosedInfoScreen') === 'true';
+    // ИСПРАВЛЕНО: БАГ #4 - используем ref вместо sessionStorage для justClosedInfoScreen
+    // Проверяем флаг через ref - он очищается в finally блоке после перехода к следующему вопросу
+    const justClosedInfoScreen = justClosedInfoScreenRef?.current || false;
     
     // ИСПРАВЛЕНО: Флаг блокирует показ инфо-экрана только если пользователь еще НЕ ответил на вопрос
     // Если пользователь уже ответил на вопрос и нажимает "Продолжить", инфо-экран должен показываться
@@ -717,11 +740,11 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       // ФИКС: Проверяем, что у вопроса есть код перед вызовом getInfoScreenAfterQuestion
       // Это предотвращает возврат info screen для вопросов без кода
       if (!currentQuestion.code) {
-        clientLogger.warn('⚠️ Вопрос без кода, пропускаем проверку info screen', {
-          questionId: currentQuestion.id,
-          questionIndex: currentQuestionIndex,
+          clientLogger.warn('⚠️ Вопрос без кода, пропускаем проверку info screen', {
+            questionId: currentQuestion.id,
+            questionIndex: currentQuestionIndex,
           questionCode: currentQuestion.code,
-        });
+          });
       } else {
         // ИСПРАВЛЕНО: Детальное логирование для всех вопросов с инфо-экранами
         const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
@@ -752,14 +775,11 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
           // КРИТИЧНО: Показываем инфо-экран для текущего вопроса ПЕРЕД переходом к следующему
           // Это исправляет проблему, когда инфо-экран не показывается при первом проходе
           // ИСПРАВЛЕНО: Обновляем ref ПЕРЕД state для консистентности
-          // ИСПРАВЛЕНО: Сбрасываем флаг justClosedInfoScreen сразу после нахождения инфо-экрана
-          // чтобы он не блокировал показ инфо-экрана для следующего вопроса
-          if (typeof window !== 'undefined' && justClosedInfoScreen) {
-            try {
-              sessionStorage.removeItem('quiz_justClosedInfoScreen');
-            } catch (err) {
-              // Игнорируем ошибки при очистке
-            }
+          // ИСПРАВЛЕНО: БАГ #4 - используем ref вместо sessionStorage для justClosedInfoScreen
+          // Сбрасываем флаг сразу после нахождения инфо-экрана, чтобы он не блокировал показ
+          if (justClosedInfoScreenRef && justClosedInfoScreen) {
+            justClosedInfoScreenRef.current = false;
+            clientLogger.warn('🧹 ИНФО-СКРИН: justClosedInfoScreenRef.current очищен после нахождения инфо-экрана');
           }
           
           // ИСПРАВЛЕНО: Логирование установки pendingInfoScreen для всех инфо-скринов
@@ -855,6 +875,10 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       if (!isRetakingQuiz && currentQuestion) {
         const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
         if (infoScreen) {
+          // ИСПРАВЛЕНО: БАГ #5 - обеспечиваем консистентность ref/state для pendingInfoScreen
+          if (pendingInfoScreenRef) {
+            pendingInfoScreenRef.current = infoScreen;
+          }
           setPendingInfoScreen(infoScreen);
           // ИСПРАВЛЕНО: НЕ увеличиваем currentQuestionIndex, чтобы не запустить автоотправку
           // Автоотправка запустится только после закрытия инфо-экрана или при нажатии кнопки "Получить план"
@@ -883,13 +907,11 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     // КРИТИЧНО: Если мы только что закрыли инфо-экран (shouldSkipToNextQuestion = true),
     // нужно перейти к следующему вопросу, даже если мы не проверяли инфо-экран для текущего вопроса
     
-    // КРИТИЧНО: Если мы только что закрыли инфо-экран, нужно убедиться, что мы переходим к следующему вопросу
+    // ИСПРАВЛЕНО: Упростили логику shouldSkipToNextQuestion
+    // Если мы закрыли инфо-экран или не на последнем вопросе - переходим к следующему
     if (shouldSkipToNextQuestion || currentQuestionIndex < allQuestions.length - 1) {
-      // Если мы только что закрыли инфо-экран, используем текущий индекс + 1
-      // Иначе используем стандартную логику
-      const newIndex = shouldSkipToNextQuestion 
-        ? (currentQuestionIndex < allQuestions.length - 1 ? currentQuestionIndex + 1 : currentQuestionIndex)
-        : currentQuestionIndex + 1;
+      // Упрощенная логика: всегда переходим к следующему вопросу (индекс + 1)
+      const newIndex = currentQuestionIndex + 1;
       
       // Если мы уже на последнем вопросе и закрыли инфо-экран, не переходим дальше
       if (newIndex >= allQuestions.length) {
@@ -968,25 +990,23 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         });
       }
       
-      // КРИТИЧНО: Очищаем флаг justClosedInfoScreen после перехода к следующему вопросу
-      // Это позволяет инфо-экранам показываться для следующего вопроса, если они есть
-      if (shouldSkipToNextQuestion && typeof window !== 'undefined') {
-        try {
-          sessionStorage.removeItem('quiz_justClosedInfoScreen');
-          clientLogger.warn('🧹 ИНФО-СКРИН: Очищаем флаг justClosedInfoScreen после перехода к следующему вопросу', {
-            previousIndex: currentQuestionIndex,
-            newIndex,
-          });
-        } catch (err) {
-          // Игнорируем ошибки
-        }
+      // ИСПРАВЛЕНО: БАГ #4 - используем ref вместо sessionStorage для justClosedInfoScreen
+      // Очищаем флаг после перехода к следующему вопросу - это позволяет инфо-экранам показываться для следующего вопроса
+      if (shouldSkipToNextQuestion && justClosedInfoScreenRef) {
+        justClosedInfoScreenRef.current = false;
+        clientLogger.warn('🧹 ИНФО-СКРИН: justClosedInfoScreenRef.current очищен после перехода к следующему вопросу', {
+          previousIndex: currentQuestionIndex,
+          newIndex,
+        });
       }
 
       updateQuestionIndex(newIndex, currentQuestionIndexRef, setCurrentQuestionIndex);
-      // ИСПРАВЛЕНО: Сохраняем код вопроса вместо индекса для стабильного восстановления
+      // ИСПРАВЛЕНО: БАГ #3 - используем QUIZ_CONFIG.STORAGE_KEYS со скоупированием
+      // Сохраняем код вопроса вместо индекса для стабильного восстановления
       const questionCode = allQuestions[newIndex]?.code;
       if (questionCode) {
-        saveIndexToSessionStorage('quiz_currentQuestionCode', questionCode, '💾 Сохранен код вопроса в sessionStorage');
+        const scopedQuestionCodeKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE, questionnaireId);
+        saveIndexToSessionStorage(scopedQuestionCodeKey, questionCode, '💾 Сохранен код вопроса в sessionStorage');
       }
       await saveProgressSafely(saveProgress, answers, newIndex, currentInfoScreenIndex);
 
@@ -1013,6 +1033,11 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     // ФИКС: Сбрасываем флаг после завершения handleNext
     handleNextInProgressRef.current = false;
     setIsHandlingNext(false);
+    // ИСПРАВЛЕНО: БАГ #4 - всегда очищаем justClosedInfoScreenRef в finally блоке
+    // Это гарантирует, что флаг не останется установленным, даже если произошла ошибка
+    if (justClosedInfoScreenRef) {
+      justClosedInfoScreenRef.current = false;
+    }
   }
 }
 
