@@ -76,14 +76,10 @@ export function useQuizComputed(params: UseQuizComputedParams) {
   
   const effectiveAnswers = useMemo(() => {
     const result = getEffectiveAnswers(answers, savedProgress?.answers);
-    if (isDev) {
-      clientLogger.log('📊 effectiveAnswers: computed', {
-        answersCount: Object.keys(answers || {}).length,
-        savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
-        effectiveAnswersCount: Object.keys(result).length,
-        answerKeys: Object.keys(result).slice(0, 10),
-      });
-    }
+    // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+    // if (isDev) {
+    //   clientLogger.log('📊 effectiveAnswers: computed', {...});
+    // }
     return result;
   }, [
     // ИСПРАВЛЕНО: Используем стабильные зависимости для предотвращения React error #300
@@ -101,12 +97,10 @@ export function useQuizComputed(params: UseQuizComputedParams) {
   const effectiveAnswersKeysCount = Object.keys(effectiveAnswers).length;
   const answersCount = useMemo(() => {
     const count = Object.keys(effectiveAnswers).length;
-    if (isDev) {
-      clientLogger.log('📊 answersCount: computed', {
-        count,
-        effectiveAnswersKeys: Object.keys(effectiveAnswers).slice(0, 10),
-      });
-    }
+    // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+    // if (isDev) {
+    //   clientLogger.log('📊 answersCount: computed', {...});
+    // }
     return count;
   }, [effectiveAnswersKeysCount, isDev]);
 
@@ -124,15 +118,10 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     // Используем первый доступный ID как стабильный идентификатор
     const stableId = refId || stateId || stateMachineId;
 
-    if (isDev && stableId) {
-      clientLogger.log('🔒 stableQuestionnaireId computed', {
-        stableId,
-        refId,
-        stateId,
-        stateMachineId,
-        source: refId ? 'ref' : stateId ? 'state' : stateMachineId ? 'stateMachine' : 'none'
-      });
-    }
+    // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+    // if (isDev && stableId) {
+    //   clientLogger.log('🔒 stableQuestionnaireId computed', {...});
+    // }
 
     return stableId || null;
   }, [
@@ -191,67 +180,37 @@ export function useQuizComputed(params: UseQuizComputedParams) {
         allQuestionsRawPrevRef.current = result;
       }
       
-      // Логируем только в development, чтобы не создавать спам
-      if (isDev) {
-        const groups = effectiveQuestionnaire.groups || [];
-        const questions = effectiveQuestionnaire.questions || [];
-        clientLogger.log('📊 allQuestionsRaw: extracting questions', {
-          questionnaireId: effectiveQuestionnaire.id,
-          groupsCount: groups.length,
-          questionsCount: questions.length,
-          extractedCount: result.length,
-          fromState: !!questionnaire,
-          fromRef: !!questionnaireRef.current,
-          usingRef: effectiveQuestionnaire === questionnaireRef.current,
-        });
-      }
+      // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+      // if (isDev) {
+      //   const groups = effectiveQuestionnaire.groups || [];
+      //   const questions = effectiveQuestionnaire.questions || [];
+      //   clientLogger.log('📊 allQuestionsRaw: extracting questions', {...});
+      // }
       
       if (result.length === 0) {
-        const groups = effectiveQuestionnaire.groups || [];
-        const questions = effectiveQuestionnaire.questions || [];
-        clientLogger.warn('⚠️ allQuestionsRaw: No questions extracted', {
-          questionnaireId: effectiveQuestionnaire.id,
-          groupsCount: groups.length,
-          questionsCount: questions.length,
-          fromState: !!questionnaire,
-          fromRef: !!questionnaireRef.current,
-          previousLength: allQuestionsRawPrevRef.current.length,
-        });
+        // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+        // const groups = effectiveQuestionnaire.groups || [];
+        // const questions = effectiveQuestionnaire.questions || [];
+        // clientLogger.warn('⚠️ allQuestionsRaw: No questions extracted', {...});
         // ИСПРАВЛЕНО: Если результат пустой, но есть предыдущее значение - используем его
         if (allQuestionsRawPrevRef.current.length > 0) {
-          clientLogger.log('✅ allQuestionsRaw: using previous value from ref', {
-            previousLength: allQuestionsRawPrevRef.current.length,
-          });
+          // clientLogger.log('✅ allQuestionsRaw: using previous value from ref', {...});
           return allQuestionsRawPrevRef.current;
         }
-      } else if (isDev) {
-        const groups = effectiveQuestionnaire.groups || [];
-        const questions = effectiveQuestionnaire.questions || [];
-        clientLogger.log('✅ allQuestionsRaw: extracted successfully', {
-          total: result.length,
-          fromGroups: groups.flatMap((g: any) => g.questions || []).length,
-          fromQuestions: questions.length,
-          fromState: !!questionnaire,
-          fromRef: !!questionnaireRef.current,
-          usingRef: effectiveQuestionnaire === questionnaireRef.current,
-        });
-      }
+      // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+      // } else if (isDev) {
+      //   const groups = effectiveQuestionnaire.groups || [];
+      //   const questions = effectiveQuestionnaire.questions || [];
+      //   clientLogger.log('✅ allQuestionsRaw: extracted successfully', {...});
+      // }
       
       return result;
     } catch (err) {
-      clientLogger.error('❌ Error computing allQuestionsRaw:', {
-        err,
-        hasQuestionnaire: !!questionnaire,
-        hasQuestionnaireRef: !!questionnaireRef.current,
-        hasQuestionnaireStateMachine: !!quizStateMachine.questionnaire,
-        questionnaireId: questionnaire?.id || questionnaireRef.current?.id || quizStateMachine.questionnaire?.id,
-        previousLength: allQuestionsRawPrevRef.current.length,
-      });
+      // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+      // clientLogger.error('❌ Error computing allQuestionsRaw:', {...});
       // ИСПРАВЛЕНО: При ошибке используем предыдущее значение, если оно есть
       if (allQuestionsRawPrevRef.current.length > 0) {
-        clientLogger.log('✅ allQuestionsRaw: using previous value from ref after error', {
-          previousLength: allQuestionsRawPrevRef.current.length,
-        });
+        // clientLogger.log('✅ allQuestionsRaw: using previous value from ref after error', {...});
         return allQuestionsRawPrevRef.current;
       }
       return allQuestionsRawPrevRef.current.length > 0 ? allQuestionsRawPrevRef.current : [];
@@ -590,15 +549,10 @@ export function useQuizComputed(params: UseQuizComputedParams) {
                    currentInfoScreenIndex < initialInfoScreens.length
                     ? initialInfoScreens[currentInfoScreenIndex]
                     : null;
-    if (isDev) {
-      clientLogger.log('📊 currentInitialInfoScreen: computed', {
-        hasScreen: !!screen,
-        screenId: screen?.id || null,
-        currentInfoScreenIndex,
-        initialInfoScreensLength: initialInfoScreens.length,
-        isInRange: currentInfoScreenIndex >= 0 && currentInfoScreenIndex < initialInfoScreens.length,
-      });
-    }
+    // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+    // if (isDev) {
+    //   clientLogger.log('📊 currentInitialInfoScreen: computed', {...});
+    // }
     return screen;
   }, [currentInfoScreenIndex, initialInfoScreens, isDev]);
 
@@ -700,15 +654,8 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       return null;
     }
     
-    // ФИКС: Логируем успешное отображение вопроса (info уровень для диагностики)
-    clientLogger.log('✅ currentQuestion: показываем вопрос', {
-          currentQuestionIndex,
-          allQuestionsLength: allQuestions.length,
-      questionId: question.id,
-      isShowingInitialInfoScreen,
-      currentInfoScreenIndex,
-      initialInfoScreensLength: initialInfoScreens.length,
-        });
+    // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+    // clientLogger.log('✅ currentQuestion: показываем вопрос', {...});
       return question;
   }, [
     isShowingInitialInfoScreen, 

@@ -50,26 +50,19 @@ export function useQuestionnaireSync({
     setQuestionnaireInStateMachineRef.current = quizStateMachine.setQuestionnaire;
   });
 
-  // Синхронизация из React Query
-  // КРИТИЧНО ИСПРАВЛЕНИЕ: Синхронизация только при изменении questionnaireFromQuery
-  const lastProcessedQuestionnaireRef = useRef<Questionnaire | null>(null);
+  // Синхронизация из React Query - ОДНОРАЗОВАЯ, без зависимостей
+  const hasSyncedRef = useRef(false);
 
   useEffect(() => {
-    // Проверяем, изменился ли questionnaireFromQuery
-    if (!questionnaireFromQuery ||
-        questionnaireFromQuery === lastProcessedQuestionnaireRef.current ||
-        (lastProcessedQuestionnaireRef.current && questionnaireFromQuery.id === lastProcessedQuestionnaireRef.current.id)) {
+    // Синхронизируем только один раз при первой загрузке данных
+    if (hasSyncedRef.current || !questionnaireFromQuery) {
       return;
     }
 
-    lastProcessedQuestionnaireRef.current = questionnaireFromQuery;
+    hasSyncedRef.current = true;
 
-    clientLogger.log('🔄 Syncing questionnaire from React Query (STABLE)', {
-      questionnaireId: questionnaireFromQuery.id,
-      currentQuestionnaireId: questionnaire?.id,
-      refId: questionnaireRef.current?.id,
-      stateMachineId: quizStateMachine.questionnaire?.id,
-    });
+    // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+    // clientLogger.log('🔄 ONE-TIME Syncing questionnaire from React Query', {...});
 
     // ИСПРАВЛЕНО: Используем ref для setQuestionnaire, чтобы избежать включения функции в зависимости
     setQuestionnaireRef.current(questionnaireFromQuery);
@@ -77,7 +70,7 @@ export function useQuestionnaireSync({
     if (setQuestionnaireInStateMachineRef.current) {
       setQuestionnaireInStateMachineRef.current(questionnaireFromQuery);
     }
-  }, [questionnaireFromQuery]); // Зависимость от questionnaireFromQuery объекта
+  }, []); // ПУСТЫЕ ЗАВИСИМОСТИ - синхронизация происходит только один раз
 
   // Обертка для setQuestionnaire с синхронизацией State Machine
   const setQuestionnaireWithStateMachine = useCallback((

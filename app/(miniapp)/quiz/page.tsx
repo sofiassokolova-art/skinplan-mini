@@ -171,7 +171,7 @@ export default function QuizPage() {
   useEffect(() => {
     stateMachineQuestionnaireRef.current = quizStateMachine.questionnaire;
     stateMachineQuestionnaireIdRef.current = quizStateMachine.questionnaire?.id || null;
-  }, [quizStateMachine.questionnaire, stateMachineQuestionnaireRef]);
+  }, [quizStateMachine.questionnaire?.id, stateMachineQuestionnaireRef]);
   
   // РЕФАКТОРИНГ: Refs для useQuizComputed (объявляем ДО использования)
   // ИСПРАВЛЕНО: Используем ref для хранения предыдущего значения allQuestionsRaw
@@ -825,7 +825,7 @@ export default function QuizPage() {
         initCompletedTimeRef.current = null;
       }
     }
-  }, [questionnaire]);
+  }, [questionnaire?.id]);
 
   // КРИТИЧНО: Отдельный useEffect для восстановления answers из React Query после ремоунта
   // Это гарантирует, что answers восстановятся даже если компонент ремоунтится из-за ошибки
@@ -940,7 +940,7 @@ export default function QuizPage() {
     }
     // Для нового пользователя без сохраненного прогресса флаги уже установлены в init()
     // Не нужно делать дополнительные проверки
-  }, [questionnaire, loading, savedProgress]);
+  }, [questionnaire?.id, loading, savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0]);
 
   // ИСПРАВЛЕНО: useEffect для загрузки анкеты при перепрохождении
   // Убрали вызов loadQuestionnaire() из render - это плохая практика
@@ -978,7 +978,7 @@ export default function QuizPage() {
       loadQuestionnaireInProgressRef.current = false;
       loadQuestionnaireAttemptedRef.current = false;
     });
-  }, [isRetakingQuiz, showRetakeScreen, questionnaire, loading]); // ИСПРАВЛЕНО: Убрали loadQuestionnaire из зависимостей, используем ref
+  }, [isRetakingQuiz, showRetakeScreen, questionnaire?.id, loading]); // ИСПРАВЛЕНО: Стабильные зависимости
 
   // РЕФАКТОРИНГ: Функция вынесена в lib/quiz/handlers/loadSavedProgress.ts
   const loadSavedProgressFromServer = async () => {
@@ -1097,7 +1097,7 @@ export default function QuizPage() {
       userPreferences,
       addDebugLog,
     });
-  }, [isDev, isRetakingQuiz, showRetakeScreen, questionnaire, loading, error, savedProgress, currentQuestionIndex, hasResumed]);
+  }, [isDev, isRetakingQuiz, showRetakeScreen, questionnaire?.id, loading, error, savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0, currentQuestionIndex, hasResumed]);
   // ИСПРАВЛЕНО: Сохраняем функцию в ref для использования в init
   // КРИТИЧНО: Устанавливаем ref СИНХРОННО при объявлении функции, чтобы он был доступен в init ДО того, как init() начнет ждать
   // ИСПРАВЛЕНО: Не используем useEffect, так как он может выполниться после того, как init() уже начал ждать
@@ -1204,7 +1204,7 @@ export default function QuizPage() {
       isRetakingQuiz,
       getInitData: () => getInitData(initData || null),
     });
-  }, [questionnaire, answers, isSubmitting, isRetakingQuiz, isMountedRef, initData, setAnswers, setIsSubmitting, setLoading, setError, setFinalizing, setFinalizingStep, setFinalizeError, redirectInProgressRef, submitAnswersRef, isSubmittingRef, getInitData]);
+  }, []); // ПУСТЫЕ ЗАВИСИМОСТИ - функция submitAnswers не должна пересоздаваться
 
   // Продолжить с сохранённого места
   const resumeQuiz = () => {
@@ -1287,34 +1287,16 @@ export default function QuizPage() {
     }
   }, [allQuestions]);
   
-  // КРИТИЧНО: Логируем состояние allQuestions после каждого вычисления
-  // ИСПРАВЛЕНО: Используем примитивные значения в зависимостях, чтобы избежать React Error #310
-  useEffect(() => {
-    clientLogger.log('📊 allQuestions state updated', {
-      allQuestionsRawLength: allQuestionsRaw.length,
-      allQuestionsLength: allQuestions.length,
-      allQuestionsPrevRefLength: allQuestionsPrevRef.current.length,
-      hasQuestionnaire: !!questionnaire,
-      hasQuestionnaireRef: !!questionnaireRef.current,
-      questionnaireId: questionnaire?.id || questionnaireRef.current?.id,
-      questionIds: allQuestions.length > 0 ? allQuestions.map((q: Question) => q?.id).slice(0, 10) : [],
-    });
-  }, [allQuestions.length, allQuestionsRaw.length, questionnaire?.id]);
-  
-  // РЕФАКТОРИНГ: savedProgressAnswersCount теперь в useQuizComputed
-  useEffect(() => {
-    // Логируем всегда для отладки
-    clientLogger.log('📊 allQuestions state', {
-      allQuestionsRawLength: allQuestionsRaw.length,
-      allQuestionsLength: allQuestions.length,
-      isRetakingQuiz,
-      showRetakeScreen,
-      answersCount,
-      savedProgressAnswersCount,
-      questionIds: allQuestions.map((q: Question) => q.id),
-      questionCodes: allQuestions.map((q: Question) => q.code),
-    });
-  }, [allQuestions.length, allQuestionsRaw.length, isRetakingQuiz, showRetakeScreen, answersCount, savedProgressAnswersCount]);
+  // УБРАНО: Логирующие useEffect вызывают бесконечные циклы в продакшене
+  // useEffect(() => {
+  //   if (!isDev) return; // Только в dev режиме
+  //   clientLogger.log('📊 allQuestions state updated', {...});
+  // }, [allQuestions.length, allQuestionsRaw.length, questionnaire?.id]);
+
+  // useEffect(() => {
+  //   if (!isDev) return; // Только в dev режиме
+  //   clientLogger.log('📊 allQuestions state', {...});
+  // }, [allQuestions.length, allQuestionsRaw.length, isRetakingQuiz, showRetakeScreen, answersCount, savedProgressAnswersCount]);
 
   // РЕФАКТОРИНГ: Используем хук useQuizEffects для группировки всех useEffect
   // Вынесены основные группы эффектов, остальные остаются в компоненте для постепенного рефакторинга
@@ -1573,7 +1555,7 @@ export default function QuizPage() {
       }
       return;
     }
-  }, [questionnaire, allQuestions, currentQuestionIndex, isSubmitting, loading, hasResumed, showResumeScreen, answers, savedProgress, isRetakingQuiz, showRetakeScreen, allQuestionsRaw.length]);
+  }, [questionnaire?.id, allQuestions.length, currentQuestionIndex, isSubmitting, loading, hasResumed, showResumeScreen, Object.keys(answers).length, savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0, isRetakingQuiz, showRetakeScreen, allQuestionsRaw.length]);
 
   // Корректируем currentQuestionIndex после восстановления прогресса
   // Это важно, потому что после фильтрации вопросов индекс может стать невалидным
@@ -1642,7 +1624,7 @@ export default function QuizPage() {
       clientLogger.log('✅ Корректируем infoScreenIndex после восстановления');
       setCurrentInfoScreenIndex(initialInfoScreens.length);
     }
-  }, [hasResumed, allQuestions, currentQuestionIndex, questionnaire]); // ИСПРАВЛЕНО: Убрали currentQuestion из зависимостей, используем allQuestions[currentQuestionIndex] внутри
+  }, [hasResumed, allQuestions.length, currentQuestionIndex, questionnaire?.id]); // ИСПРАВЛЕНО: Стабильные примитивные зависимости
 
   // При повторном прохождении сразу переходим к вопросам
   // ВАЖНО: Эта логика должна выполняться только один раз при инициализации, а не при каждом рендере
@@ -1712,7 +1694,7 @@ export default function QuizPage() {
         clientLogger.log('✅ Full retake: Starting from first question, skipping all info screens');
       }
     }
-  }, [isRetakingQuiz, questionnaire, currentQuestionIndex, showResumeScreen, savedProgress, hasResumed, answers, showRetakeScreen]); // ИСПРАВЛЕНО: Убрали currentInfoScreenIndex из зависимостей, чтобы избежать бесконечного цикла
+  }, [isRetakingQuiz, questionnaire?.id, currentQuestionIndex, showResumeScreen, savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0, hasResumed, Object.keys(answers).length, showRetakeScreen]); // ИСПРАВЛЕНО: Стабильные зависимости
 
   // РЕФАКТОРИНГ: initialInfoScreens теперь в useQuizComputed
 
@@ -1771,7 +1753,7 @@ export default function QuizPage() {
     // Теперь начальные инфо-экраны всегда показываются для нового пользователя
     // Пользователь должен пройти все начальные инфо-экраны, нажимая "Продолжить"
     // Это обеспечивает правильный UX - пользователь видит все начальные экраны перед началом вопросов
-  }, [currentInfoScreenIndex, initialInfoScreens.length, pendingInfoScreen, isRetakingQuiz, showResumeScreen, hasResumed, currentQuestionIndex, allQuestions.length, Object.keys(answers).length, isDev, savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0, loading, questionnaire?.id, setCurrentQuestionIndex, setCurrentInfoScreenIndex, setPendingInfoScreen]);
+  }, [currentInfoScreenIndex, initialInfoScreens.length, pendingInfoScreen?.id, isRetakingQuiz, showResumeScreen, hasResumed, currentQuestionIndex, allQuestions.length, Object.keys(answers).length, isDev, savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0, loading, questionnaire?.id]); // ИСПРАВЛЕНО: Убрали функции из зависимостей
 
   // РЕФАКТОРИНГ: isShowingInitialInfoScreen, currentInitialInfoScreen, currentQuestion теперь в useQuizComputed
   // УДАЛЕНО: Весь блок кода для isShowingInitialInfoScreen, currentInitialInfoScreen и currentQuestion
@@ -1893,7 +1875,7 @@ export default function QuizPage() {
         clearTimeout(timeoutId);
       };
     }
-  }, [currentQuestionIndex, allQuestions.length, answersCount, questionnaire, isSubmitting, showResumeScreen, autoSubmitTriggered, error, pendingInfoScreen, initCompletedRef]);
+  }, [currentQuestionIndex, allQuestions.length, answersCount, questionnaire?.id, isSubmitting, showResumeScreen, autoSubmitTriggered, error, pendingInfoScreen?.id, initCompletedRef]);
 
   // ВАЖНО: ранние return'ы должны быть ПОСЛЕ всех хуков
   // Проверяем состояние загрузки, ошибку и наличие анкеты после вызова всех хуков
@@ -2217,7 +2199,7 @@ export default function QuizPage() {
         error: error || null,
       });
     }
-  }, [loading, questionnaire?.id, allQuestions.length, currentQuestionIndex, currentQuestion?.id, isShowingInitialInfoScreen, pendingInfoScreen?.id, showResumeScreen, hasResumed, isRetakingQuiz, showRetakeScreen, Object.keys(answers).length, savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0, currentInfoScreenIndex, error, allQuestionsRaw.length]);
+  }, [loading, questionnaire?.id, allQuestions.length, currentQuestionIndex, currentQuestion?.id, isShowingInitialInfoScreen, pendingInfoScreen?.id, showResumeScreen, hasResumed, isRetakingQuiz, showRetakeScreen, Object.keys(answers).length, savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0, currentInfoScreenIndex, error, allQuestionsRaw.length]); // Уже исправлено
 
   // ИСПРАВЛЕНО: КРИТИЧЕСКАЯ ЗАЩИТА - НЕ сбрасываем currentInfoScreenIndex, если пользователь уже перешел к вопросам
   // Это предотвращает редирект на первый экран после 4-го инфо-экрана

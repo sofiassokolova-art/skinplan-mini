@@ -202,12 +202,11 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     if (questionnaire) {
       if (questionnaireRef.current?.id !== questionnaire.id) {
         questionnaireRef.current = questionnaire;
-        clientLogger.log('🔄 questionnaireRef synchronized with state', {
-          questionnaireId: questionnaire.id,
-        });
+        // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+        // // clientLogger.log('🔄 questionnaireRef synchronized with state', {...});
       }
       if (initCompletedTimeRef.current) {
-        clientLogger.log('✅ Questionnaire loaded, clearing fallback loader timer');
+        // clientLogger.log('✅ Questionnaire loaded, clearing fallback loader timer');
         initCompletedTimeRef.current = null;
       }
     }
@@ -223,11 +222,11 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
       if (typeof window !== 'undefined') {
         const justSubmitted = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED);
         if (justSubmitted === 'true') {
-          clientLogger.log('🧹 Очищаем залипший флаг quiz_just_submitted при входе на /quiz');
+          // clientLogger.log('🧹 Очищаем залипший флаг quiz_just_submitted при входе на /quiz');
           sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED);
         }
         
-        clientLogger.log('🧹 Сбрасываем isSubmitting при входе на /quiz (защита от залипшего состояния)');
+        // clientLogger.log('🧹 Сбрасываем isSubmitting при входе на /quiz (защита от залипшего состояния)');
         setIsSubmitting(false);
         isSubmittingRef.current = false;
         
@@ -253,7 +252,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
       const justSubmitted = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED) === 'true';
       if (justSubmitted) {
         redirectInProgressRef.current = true;
-        clientLogger.log('✅ Анкета только что отправлена, редиректим на /plan?state=generating (ранняя проверка)');
+        // clientLogger.log('✅ Анкета только что отправлена, редиректим на /plan?state=generating (ранняя проверка)');
         sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED);
         sessionStorage.removeItem('quiz_init_done');
         initCompletedRef.current = true;
@@ -274,7 +273,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
           const hasPlanProgress = userPreferencesData?.hasPlanProgress ?? false;
           
           if (!hasPlanProgress) {
-            clientLogger.log('ℹ️ Новый пользователь (нет hasPlanProgress) - пропускаем проверку флагов перепрохождения');
+            // clientLogger.log('ℹ️ Новый пользователь (нет hasPlanProgress) - пропускаем проверку флагов перепрохождения');
             return;
           }
           
@@ -285,7 +284,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
             try {
               const profile = await api.getCurrentProfile();
               if (!profile || !profile.id) {
-                clientLogger.log('⚠️ Флаги перепрохождения установлены, но профиля нет - очищаем флаги');
+                // clientLogger.log('⚠️ Флаги перепрохождения установлены, но профиля нет - очищаем флаги');
                 await userPreferences.setIsRetakingQuiz(false);
                 await userPreferences.setFullRetakeFromHome(false);
                 return;
@@ -296,7 +295,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
                                 profileErr?.message?.includes('No profile') ||
                                 profileErr?.message?.includes('Profile not found');
               if (isNotFound) {
-                clientLogger.log('⚠️ Профиля нет, но флаги перепрохождения установлены - очищаем флаги');
+                // clientLogger.log('⚠️ Профиля нет, но флаги перепрохождения установлены - очищаем флаги');
                 try {
                   const { setIsRetakingQuiz, setFullRetakeFromHome } = await import('@/lib/user-preferences');
                   await setIsRetakingQuiz(false);
@@ -321,12 +320,12 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     isMountedRef.current = true;
     
     if (resumeCompletedRef.current) {
-      clientLogger.log('⛔ useEffect: init() skipped: resumeQuiz already completed, not resetting state');
+      // clientLogger.log('⛔ useEffect: init() skipped: resumeQuiz already completed, not resetting state');
       return;
     }
     
     if (initCalledRef.current || initInProgressRef.current) {
-      clientLogger.log('⛔ useEffect: init() already called or in progress, skipping', {
+      // clientLogger.log('⛔ useEffect: init() already called or in progress, skipping', {
         initCalled: initCalledRef.current,
         initInProgress: initInProgressRef.current,
         initCompleted: initCompletedRef.current,
@@ -335,7 +334,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     }
     
     if (initCompletedRef.current && !isStartingOverRef.current && questionnaireRef.current) {
-      clientLogger.log('⛔ useEffect: init() already completed with questionnaire, skipping', {
+      // clientLogger.log('⛔ useEffect: init() already completed with questionnaire, skipping', {
         questionnaireId: questionnaireRef.current?.id,
       });
       return;
@@ -346,14 +345,14 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     if (typeof window !== 'undefined') {
       const alreadyInit = sessionStorage.getItem('quiz_init_done') === 'true';
       if (alreadyInit) {
-        clientLogger.log('⛔ useEffect: init() skipped: quiz_init_done in sessionStorage');
+        // clientLogger.log('⛔ useEffect: init() skipped: quiz_init_done in sessionStorage');
         
         // Восстановление состояния после ремоунта
         try {
           if (!questionnaire && (questionnaireRef.current || quizStateMachine.questionnaire)) {
             const restoredQuestionnaire = questionnaireRef.current || quizStateMachine.questionnaire;
             if (restoredQuestionnaire) {
-              clientLogger.log('🔄 Восстанавливаем questionnaire из ref/State Machine после ремоунта', {
+              // clientLogger.log('🔄 Восстанавливаем questionnaire из ref/State Machine после ремоунта', {
                 questionnaireId: restoredQuestionnaire.id,
                 fromRef: !!questionnaireRef.current,
                 fromStateMachine: !!quizStateMachine.questionnaire,
@@ -386,7 +385,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
               
               if (currentAllQuestionsLength > 0) {
                 setCurrentQuestionIndex(validIndex);
-                clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage (синхронно)', { 
+                // clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage (синхронно)', { 
                   questionIndex: validIndex,
                   allQuestionsLength: currentAllQuestionsLength,
                   isActiveSession,
@@ -398,7 +397,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
                     ? (questionIndex < finalLength ? questionIndex : Math.max(0, finalLength - 1))
                     : 0;
                   setCurrentQuestionIndex(finalValidIndex);
-                  clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage (асинхронно)', { 
+                  // clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage (асинхронно)', { 
                     questionIndex: finalValidIndex,
                     allQuestionsLength: finalLength,
                     isActiveSession,
@@ -407,7 +406,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
               }
             }
           } else if (savedQuestionIndex !== null && isActiveSession) {
-            clientLogger.log('⏸️ Пропускаем восстановление currentQuestionIndex: пользователь активно отвечает', {
+            // clientLogger.log('⏸️ Пропускаем восстановление currentQuestionIndex: пользователь активно отвечает', {
               savedQuestionIndex,
               currentQuestionIndex,
               answersCount: Object.keys(answers).length,
@@ -419,7 +418,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
           if (savedInfoScreenIndex !== null) {
             const infoScreenIndex = parseInt(savedInfoScreenIndex, 10);
             if (!isNaN(infoScreenIndex) && infoScreenIndex >= 0) {
-              clientLogger.log('🔄 Восстанавливаем currentInfoScreenIndex из sessionStorage', { infoScreenIndex });
+              // clientLogger.log('🔄 Восстанавливаем currentInfoScreenIndex из sessionStorage', { infoScreenIndex });
               setCurrentInfoScreenIndex(infoScreenIndex);
               currentInfoScreenIndexRef.current = infoScreenIndex;
             }
@@ -429,7 +428,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
           if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
             if (quizProgressFromQuery?.progress?.answers && Object.keys(quizProgressFromQuery.progress.answers).length > 0) {
               const progressAnswers = quizProgressFromQuery.progress.answers;
-              clientLogger.log('🔄 Восстанавливаем ответы из React Query кэша после ремоунта', {
+              // clientLogger.log('🔄 Восстанавливаем ответы из React Query кэша после ремоунта', {
                 answersCount: Object.keys(progressAnswers).length,
               });
               setAnswers(progressAnswers);
@@ -449,7 +448,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
                     } | null;
                   };
                   if (response?.progress?.answers && Object.keys(response.progress.answers).length > 0) {
-                    clientLogger.log('🔄 Восстанавливаем ответы из API после ремоунта (fallback)', {
+                    // clientLogger.log('🔄 Восстанавливаем ответы из API после ремоунта (fallback)', {
                       answersCount: Object.keys(response.progress.answers).length,
                     });
                     setAnswers(response.progress.answers);
@@ -474,7 +473,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
       sessionStorage.setItem('quiz_init_done', 'true');
     }
     
-    clientLogger.log('🚀 useEffect: calling init()', {
+    // clientLogger.log('🚀 useEffect: calling init()', {
       initCalled: initCalledRef.current,
       initInProgress: initInProgressRef.current,
       initCompleted: initCompletedRef.current,
@@ -511,7 +510,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
       if (answersId !== lastRestoredAnswersIdRef.current || progressAnswersCount > answersCountRef.current || answersCountRef.current === 0) {
         const currentAnswersId = JSON.stringify(answersRef.current);
         if (answersId !== currentAnswersId) {
-          clientLogger.log('🔄 Восстанавливаем answers из React Query кэша (после ремоунта или обновления)', {
+          // clientLogger.log('🔄 Восстанавливаем answers из React Query кэша (после ремоунта или обновления)', {
             answersCount: progressAnswersCount,
             previousAnswersCount: answersCountRef.current,
             wasEmpty: answersCountRef.current === 0,
@@ -563,7 +562,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     loadQuestionnaireInProgressRef.current = true;
     loadQuestionnaireAttemptedRef.current = true;
 
-    clientLogger.log('ℹ️ Retaking quiz, loading questionnaire in background for retake screen (useEffect)', {
+    // clientLogger.log('ℹ️ Retaking quiz, loading questionnaire in background for retake screen (useEffect)', {
       loading,
       inProgress: loadQuestionnaireInProgressRef.current,
       attempted: loadQuestionnaireAttemptedRef.current,
@@ -581,7 +580,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
   useEffect(() => {
     if (allQuestions.length > 0) {
       allQuestionsPrevRef.current = allQuestions;
-      clientLogger.log('💾 allQuestionsPrevRef synced with allQuestions', {
+      // clientLogger.log('💾 allQuestionsPrevRef synced with allQuestions', {
         length: allQuestions.length,
         questionIds: allQuestions.map((q: Question) => q?.id).slice(0, 10),
       });
@@ -589,7 +588,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
   }, [allQuestions]);
 
   useEffect(() => {
-    clientLogger.log('📊 allQuestions state updated', {
+    // clientLogger.log('📊 allQuestions state updated', {
       allQuestionsRawLength: allQuestionsRaw.length,
       allQuestionsLength: allQuestions.length,
       allQuestionsPrevRefLength: allQuestionsPrevRef.current.length,
@@ -602,7 +601,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
 
   const savedProgressAnswersCount = Object.keys(savedProgress?.answers || {}).length;
   useEffect(() => {
-    clientLogger.log('📊 allQuestions state', {
+    // clientLogger.log('📊 allQuestions state', {
       allQuestionsRawLength: allQuestionsRaw.length,
       allQuestionsLength: allQuestions.length,
       isRetakingQuiz,
@@ -695,7 +694,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
                                !hasPassedInitialScreens;
     
     if (shouldResetToZero) {
-      clientLogger.log('🔄 Сбрасываем currentQuestionIndex на 0 для нового пользователя', {
+      // clientLogger.log('🔄 Сбрасываем currentQuestionIndex на 0 для нового пользователя', {
         currentQuestionIndex,
         allQuestionsLength: allQuestions.length,
         hasNoSavedProgress,
@@ -711,7 +710,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     if (savedQuestionIndexFromStorage !== null && 
         savedQuestionIndexFromStorage !== currentQuestionIndex && 
         savedQuestionIndexFromStorage < allQuestions.length) {
-      clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage', {
+      // clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage', {
         savedQuestionIndex: savedQuestionIndexFromStorage,
         currentQuestionIndex,
         allQuestionsLength: allQuestions.length,
@@ -766,7 +765,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     loadQuestionnaireInProgressRef.current = true;
     loadQuestionnaireAttemptedRef.current = true;
 
-    clientLogger.log('ℹ️ Retaking quiz, loading questionnaire in background for retake screen (useEffect)', {
+    // clientLogger.log('ℹ️ Retaking quiz, loading questionnaire in background for retake screen (useEffect)', {
       loading,
       inProgress: loadQuestionnaireInProgressRef.current,
       attempted: loadQuestionnaireAttemptedRef.current,
@@ -788,7 +787,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
       typeof window !== 'undefined' &&
       window.Telegram?.WebApp?.initData
     ) {
-      clientLogger.log('🔄 Загружаем предыдущие ответы для повторного прохождения...');
+      // clientLogger.log('🔄 Загружаем предыдущие ответы для повторного прохождения...');
       (async () => {
         const quiz = questionnaire;
         if (!quiz) {
@@ -815,7 +814,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
             };
             
             if (data?.progress?.answers && Object.keys(data.progress.answers).length > 0) {
-              clientLogger.log('✅ Загружены предыдущие ответы для повторного прохождения:', Object.keys(data.progress.answers).length, 'ответов');
+              // clientLogger.log('✅ Загружены предыдущие ответы для повторного прохождения:', Object.keys(data.progress.answers).length, 'ответов');
               setAnswers(data.progress.answers);
               if (data.progress.questionIndex !== undefined && data.progress.questionIndex >= 0) {
                 setCurrentQuestionIndex(data.progress.questionIndex);
@@ -848,7 +847,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
           ) || false;
           setHasRetakingPayment(hasRetakeTopic);
           setHasFullRetakePayment(hasRetakeFull);
-          clientLogger.log('✅ Entitlements checked for retake screen', {
+          // clientLogger.log('✅ Entitlements checked for retake screen', {
             hasRetakeTopic,
             hasRetakeFull,
           });
@@ -883,7 +882,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
         !error &&
         !pendingInfoScreen) {
       
-      clientLogger.log('✅ Все вопросы отвечены, автоматически отправляем ответы через 5 секунд...', {
+      // clientLogger.log('✅ Все вопросы отвечены, автоматически отправляем ответы через 5 секунд...', {
         currentQuestionIndex,
         allQuestionsLength: allQuestions.length,
         answersCount: Object.keys(answers).length,
