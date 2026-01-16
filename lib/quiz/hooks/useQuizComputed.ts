@@ -157,21 +157,6 @@ export function useQuizComputed(params: UseQuizComputedParams) {
 
     // Теперь выполняем вычисление только если questionnaire изменился
     try {
-      
-      // ИСПРАВЛЕНО: Логируем источник questionnaire для диагностики
-      const source = effectiveQuestionnaire === questionnaireRef.current ? 'ref' :
-                     effectiveQuestionnaire === questionnaire ? 'state' :
-                     effectiveQuestionnaire === quizStateMachine.questionnaire ? 'stateMachine' : 'unknown';
-      
-      if (isDev && source !== 'ref') {
-        clientLogger.log('📊 allQuestionsRaw: using questionnaire from ' + source, {
-          questionnaireId: effectiveQuestionnaire.id,
-          hasQuestionnaireRef: !!questionnaireRef.current,
-          hasQuestionnaireState: !!questionnaire,
-          hasQuestionnaireStateMachine: !!quizStateMachine.questionnaire,
-        });
-      }
-      
       // РЕФАКТОРИНГ: Используем единую функцию для извлечения вопросов
       const result = extractQuestionsFromQuestionnaire(effectiveQuestionnaire);
       
@@ -197,13 +182,8 @@ export function useQuizComputed(params: UseQuizComputedParams) {
           // clientLogger.log('✅ allQuestionsRaw: using previous value from ref', {...});
           return allQuestionsRawPrevRef.current;
         }
-      // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
-      // } else if (isDev) {
-      //   const groups = effectiveQuestionnaire.groups || [];
-      //   const questions = effectiveQuestionnaire.questions || [];
-      //   clientLogger.log('✅ allQuestionsRaw: extracted successfully', {...});
-      // }
-      
+      }
+
       return result;
     } catch (err) {
       // УБРАНО: Логирование вызывает бесконечные циклы в продакшене

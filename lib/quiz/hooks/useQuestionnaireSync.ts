@@ -40,8 +40,6 @@ export function useQuestionnaireSync({
   // ИСПРАВЛЕНО: Используем ref для setQuestionnaire, чтобы избежать включения функции в зависимости
   const setQuestionnaireRef = useRef(setQuestionnaire);
 
-  // КРИТИЧНОЕ ИСПРАВЛЕНИЕ: Ref для отслеживания последнего обработанного questionnaire
-  const lastProcessedQuestionnaireRef = useRef<Questionnaire | null>(null);
 
   // Обновляем refs при каждом рендере
   useEffect(() => {
@@ -169,7 +167,6 @@ export function useQuestionnaireSync({
 
   return {
     setQuestionnaireWithStateMachine,
-    lastSyncedFromQueryIdRef,
     setQuestionnaireInStateMachineRef,
   };
 }

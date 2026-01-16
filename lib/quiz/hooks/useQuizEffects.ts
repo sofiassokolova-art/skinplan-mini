@@ -325,18 +325,18 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     }
     
     if (initCalledRef.current || initInProgressRef.current) {
-      // clientLogger.log('⛔ useEffect: init() already called or in progress, skipping', {
-        initCalled: initCalledRef.current,
-        initInProgress: initInProgressRef.current,
-        initCompleted: initCompletedRef.current,
-      });
+      // // clientLogger.log('⛔ useEffect: init() already called or in progress, skipping', {
+      //   initCalled: initCalledRef.current,
+      //   initInProgress: initInProgressRef.current,
+      //   initCompleted: initCompletedRef.current,
+      // });
       return;
     }
     
     if (initCompletedRef.current && !isStartingOverRef.current && questionnaireRef.current) {
-      // clientLogger.log('⛔ useEffect: init() already completed with questionnaire, skipping', {
-        questionnaireId: questionnaireRef.current?.id,
-      });
+      // // clientLogger.log('⛔ useEffect: init() already completed with questionnaire, skipping', {
+      //   questionnaireId: questionnaireRef.current?.id,
+      // });
       return;
     }
     
@@ -352,11 +352,11 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
           if (!questionnaire && (questionnaireRef.current || quizStateMachine.questionnaire)) {
             const restoredQuestionnaire = questionnaireRef.current || quizStateMachine.questionnaire;
             if (restoredQuestionnaire) {
-              // clientLogger.log('🔄 Восстанавливаем questionnaire из ref/State Machine после ремоунта', {
-                questionnaireId: restoredQuestionnaire.id,
-                fromRef: !!questionnaireRef.current,
-                fromStateMachine: !!quizStateMachine.questionnaire,
-              });
+              // // clientLogger.log('🔄 Восстанавливаем questionnaire из ref/State Machine после ремоунта', {
+              //   questionnaireId: restoredQuestionnaire.id,
+              //   fromRef: !!questionnaireRef.current,
+              //   fromStateMachine: !!quizStateMachine.questionnaire,
+              // });
               setQuestionnaire(restoredQuestionnaire);
               if (!quizStateMachine.questionnaire && questionnaireRef.current) {
                 setQuestionnaireInStateMachine(questionnaireRef.current);
@@ -385,11 +385,11 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
               
               if (currentAllQuestionsLength > 0) {
                 setCurrentQuestionIndex(validIndex);
-                // clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage (синхронно)', { 
-                  questionIndex: validIndex,
-                  allQuestionsLength: currentAllQuestionsLength,
-                  isActiveSession,
-                });
+                    // // clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage (синхронно)', {
+                    //   questionIndex: validIndex,
+                    //   allQuestionsLength: currentAllQuestionsLength,
+                    //   isActiveSession,
+                    // });
               } else {
                 setTimeout(() => {
                   const finalLength = allQuestions.length || allQuestionsPrevRef.current.length;
@@ -406,11 +406,11 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
               }
             }
           } else if (savedQuestionIndex !== null && isActiveSession) {
-            // clientLogger.log('⏸️ Пропускаем восстановление currentQuestionIndex: пользователь активно отвечает', {
-              savedQuestionIndex,
-              currentQuestionIndex,
-              answersCount: Object.keys(answers).length,
-            });
+            // // clientLogger.log('⏸️ Пропускаем восстановление currentQuestionIndex: пользователь активно отвечает', {
+            //   savedQuestionIndex,
+            //   currentQuestionIndex,
+            //   answersCount: Object.keys(answers).length,
+            // });
           }
           
           // Восстановление currentInfoScreenIndex
@@ -428,9 +428,9 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
           if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
             if (quizProgressFromQuery?.progress?.answers && Object.keys(quizProgressFromQuery.progress.answers).length > 0) {
               const progressAnswers = quizProgressFromQuery.progress.answers;
-              // clientLogger.log('🔄 Восстанавливаем ответы из React Query кэша после ремоунта', {
-                answersCount: Object.keys(progressAnswers).length,
-              });
+              // // clientLogger.log('🔄 Восстанавливаем ответы из React Query кэша после ремоунта', {
+              //   answersCount: Object.keys(progressAnswers).length,
+              // });
               setAnswers(progressAnswers);
               setSavedProgress({
                 answers: progressAnswers,
@@ -448,9 +448,9 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
                     } | null;
                   };
                   if (response?.progress?.answers && Object.keys(response.progress.answers).length > 0) {
-                    // clientLogger.log('🔄 Восстанавливаем ответы из API после ремоунта (fallback)', {
-                      answersCount: Object.keys(response.progress.answers).length,
-                    });
+                    // // clientLogger.log('🔄 Восстанавливаем ответы из API после ремоунта (fallback)', {
+                    //   answersCount: Object.keys(response.progress.answers).length,
+                    // });
                     setAnswers(response.progress.answers);
                     setSavedProgress({
                       answers: response.progress.answers,
@@ -473,12 +473,12 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
       sessionStorage.setItem('quiz_init_done', 'true');
     }
     
-    // clientLogger.log('🚀 useEffect: calling init()', {
-      initCalled: initCalledRef.current,
-      initInProgress: initInProgressRef.current,
-      initCompleted: initCompletedRef.current,
-      hasLoadQuestionnaireRef: !!loadQuestionnaireRef.current,
-    });
+    // // clientLogger.log('🚀 useEffect: calling init()', {
+    //   initCalled: initCalledRef.current,
+    //   initInProgress: initInProgressRef.current,
+    //   initCompleted: initCompletedRef.current,
+    //   hasLoadQuestionnaireRef: !!loadQuestionnaireRef.current,
+    // });
     
     init();
 
@@ -510,11 +510,11 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
       if (answersId !== lastRestoredAnswersIdRef.current || progressAnswersCount > answersCountRef.current || answersCountRef.current === 0) {
         const currentAnswersId = JSON.stringify(answersRef.current);
         if (answersId !== currentAnswersId) {
-          // clientLogger.log('🔄 Восстанавливаем answers из React Query кэша (после ремоунта или обновления)', {
-            answersCount: progressAnswersCount,
-            previousAnswersCount: answersCountRef.current,
-            wasEmpty: answersCountRef.current === 0,
-          });
+          // // clientLogger.log('🔄 Восстанавливаем answers из React Query кэша (после ремоунта или обновления)', {
+          //   answersCount: progressAnswersCount,
+          //   previousAnswersCount: answersCountRef.current,
+          //   wasEmpty: answersCountRef.current === 0,
+          // });
           setAnswers(progressAnswers);
           // Также обновляем ref синхронно для немедленного использования
           answersRef.current = progressAnswers;
@@ -562,11 +562,11 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     loadQuestionnaireInProgressRef.current = true;
     loadQuestionnaireAttemptedRef.current = true;
 
-    // clientLogger.log('ℹ️ Retaking quiz, loading questionnaire in background for retake screen (useEffect)', {
-      loading,
-      inProgress: loadQuestionnaireInProgressRef.current,
-      attempted: loadQuestionnaireAttemptedRef.current,
-    });
+    // // clientLogger.log('ℹ️ Retaking quiz, loading questionnaire in background for retake screen (useEffect)', {
+    //   loading,
+    //   inProgress: loadQuestionnaireInProgressRef.current,
+    //   attempted: loadQuestionnaireAttemptedRef.current,
+    // });
 
     loadQuestionnaire().finally(() => {
       loadQuestionnaireInProgressRef.current = false;
@@ -580,38 +580,38 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
   useEffect(() => {
     if (allQuestions.length > 0) {
       allQuestionsPrevRef.current = allQuestions;
-      // clientLogger.log('💾 allQuestionsPrevRef synced with allQuestions', {
-        length: allQuestions.length,
-        questionIds: allQuestions.map((q: Question) => q?.id).slice(0, 10),
-      });
+      // // clientLogger.log('💾 allQuestionsPrevRef synced with allQuestions', {
+      //   length: allQuestions.length,
+      //   questionIds: allQuestions.map((q: Question) => q?.id).slice(0, 10),
+      // });
     }
   }, [allQuestions]);
 
-  useEffect(() => {
-    // clientLogger.log('📊 allQuestions state updated', {
-      allQuestionsRawLength: allQuestionsRaw.length,
-      allQuestionsLength: allQuestions.length,
-      allQuestionsPrevRefLength: allQuestionsPrevRef.current.length,
-      hasQuestionnaire: !!questionnaire,
-      hasQuestionnaireRef: !!questionnaireRef.current,
-      questionnaireId: questionnaire?.id || questionnaireRef.current?.id,
-      questionIds: allQuestions.length > 0 ? allQuestions.map((q: Question) => q?.id).slice(0, 10) : [],
-    });
-  }, [allQuestions.length, allQuestionsRaw.length, questionnaire?.id]);
+  // useEffect(() => {
+  //   // clientLogger.log('📊 allQuestions state updated', {
+  //     allQuestionsRawLength: allQuestionsRaw.length,
+  //     allQuestionsLength: allQuestions.length,
+  //     allQuestionsPrevRefLength: allQuestionsPrevRef.current.length,
+  //     hasQuestionnaire: !!questionnaire,
+  //     hasQuestionnaireRef: !!questionnaireRef.current,
+  //     questionnaireId: questionnaire?.id || questionnaireRef.current?.id,
+  //     questionIds: allQuestions.length > 0 ? allQuestions.map((q: Question) => q?.id).slice(0, 10) : [],
+  //   });
+  // }, [allQuestions.length, allQuestionsRaw.length, questionnaire?.id]);
 
   const savedProgressAnswersCount = Object.keys(savedProgress?.answers || {}).length;
-  useEffect(() => {
-    // clientLogger.log('📊 allQuestions state', {
-      allQuestionsRawLength: allQuestionsRaw.length,
-      allQuestionsLength: allQuestions.length,
-      isRetakingQuiz,
-      showRetakeScreen,
-      answersCount,
-      savedProgressAnswersCount,
-      questionIds: allQuestions.map((q: Question) => q.id),
-      questionCodes: allQuestions.map((q: Question) => q.code),
-    });
-  }, [allQuestions.length, allQuestionsRaw.length, isRetakingQuiz, showRetakeScreen, answersCount, savedProgressAnswersCount]);
+  // useEffect(() => {
+  //   // clientLogger.log('📊 allQuestions state', {
+  //     allQuestionsRawLength: allQuestionsRaw.length,
+  //     allQuestionsLength: allQuestions.length,
+  //     isRetakingQuiz,
+  //     showRetakeScreen,
+  //     answersCount,
+  //     savedProgressAnswersCount,
+  //     questionIds: allQuestions.map((q: Question) => q.id),
+  //     questionCodes: allQuestions.map((q: Question) => q.code),
+  //   });
+  // }, [allQuestions.length, allQuestionsRaw.length, isRetakingQuiz, showRetakeScreen, answersCount, savedProgressAnswersCount]);
 
   // ============================================
   // ГРУППА 7: Корректировка currentQuestionIndex
@@ -630,23 +630,23 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     
     if (allQuestions.length === 0 && Object.keys(answers).length > 0) {
       clientLogger.error('⚠️ Edge case: allQuestions.length === 0 but answers exist', {
-        answersCount: Object.keys(answers).length,
-        questionnaireId: questionnaire.id,
-        allQuestionsRawLength: questionnaire.groups?.flatMap(g => g.questions || []).length + (questionnaire.questions || []).length,
+	//         answersCount: Object.keys(answers).length,
+	//         questionnaireId: questionnaire.id,
+	//         allQuestionsRawLength: questionnaire.groups?.flatMap(g => g.questions || []).length + (questionnaire.questions || []).length,
         isRetakingQuiz,
         showRetakeScreen,
-      });
+//       });
     }
     
     if (allQuestions.length === 0) {
       clientLogger.warn('⚠️ allQuestions.length === 0 после фильтрации', {
-        questionnaireId: questionnaire.id,
-        allQuestionsRawLength: allQuestionsRaw.length,
-        answersCount: Object.keys(answers).length,
-        savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
+	//         questionnaireId: questionnaire.id,
+	//         allQuestionsRawLength: allQuestionsRaw.length,
+	//         answersCount: Object.keys(answers).length,
+	//         savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
         isRetakingQuiz,
         showRetakeScreen,
-      });
+//       });
       return;
     }
     
@@ -694,15 +694,15 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
                                !hasPassedInitialScreens;
     
     if (shouldResetToZero) {
-      // clientLogger.log('🔄 Сбрасываем currentQuestionIndex на 0 для нового пользователя', {
-        currentQuestionIndex,
-        allQuestionsLength: allQuestions.length,
-        hasNoSavedProgress,
-        answersCount: answersCountLocal,
-        isRetakingQuiz,
-        hasResumed,
-        savedQuestionIndexFromStorage,
-      });
+      // // clientLogger.log('🔄 Сбрасываем currentQuestionIndex на 0 для нового пользователя', {
+      //   currentQuestionIndex,
+      //   allQuestionsLength: allQuestions.length,
+      //   hasNoSavedProgress,
+      //   answersCount: answersCountLocal,
+      //   isRetakingQuiz,
+      //   hasResumed,
+      //   savedQuestionIndexFromStorage,
+      // });
       setCurrentQuestionIndex(0);
       return;
     }
@@ -710,11 +710,11 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     if (savedQuestionIndexFromStorage !== null && 
         savedQuestionIndexFromStorage !== currentQuestionIndex && 
         savedQuestionIndexFromStorage < allQuestions.length) {
-      // clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage', {
-        savedQuestionIndex: savedQuestionIndexFromStorage,
-        currentQuestionIndex,
-        allQuestionsLength: allQuestions.length,
-      });
+      // // clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage', {
+      //   savedQuestionIndex: savedQuestionIndexFromStorage,
+      //   currentQuestionIndex,
+      //   allQuestionsLength: allQuestions.length,
+      // });
       setCurrentQuestionIndex(savedQuestionIndexFromStorage);
       return;
     }
@@ -726,19 +726,19 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
       
       clientLogger.warn('⚠️ currentQuestionIndex выходит за пределы, корректируем', {
         currentQuestionIndex,
-        allQuestionsLength: allQuestions.length,
+	//         allQuestionsLength: allQuestions.length,
         correctedIndex,
-        answersCount: answersCountLocal,
+	//         answersCount: answersCountLocal,
         isQuizCompleted,
         isSubmitting,
         hasResumed,
         showResumeScreen,
         isRetakingQuiz,
         showRetakeScreen,
-        hasQuestionnaire: !!questionnaire,
+	//         hasQuestionnaire: !!questionnaire,
         hasNoSavedProgress,
-        allQuestionsRawLength: allQuestionsRaw.length,
-      });
+	//         allQuestionsRawLength: allQuestionsRaw.length,
+//       });
       
       if (correctedIndex !== currentQuestionIndex) {
         setTimeout(() => {
@@ -765,11 +765,11 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     loadQuestionnaireInProgressRef.current = true;
     loadQuestionnaireAttemptedRef.current = true;
 
-    // clientLogger.log('ℹ️ Retaking quiz, loading questionnaire in background for retake screen (useEffect)', {
-      loading,
-      inProgress: loadQuestionnaireInProgressRef.current,
-      attempted: loadQuestionnaireAttemptedRef.current,
-    });
+    // // clientLogger.log('ℹ️ Retaking quiz, loading questionnaire in background for retake screen (useEffect)', {
+    //   loading,
+    //   inProgress: loadQuestionnaireInProgressRef.current,
+    //   attempted: loadQuestionnaireAttemptedRef.current,
+    // });
 
     loadQuestionnaire().finally(() => {
       loadQuestionnaireInProgressRef.current = false;
@@ -847,10 +847,10 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
           ) || false;
           setHasRetakingPayment(hasRetakeTopic);
           setHasFullRetakePayment(hasRetakeFull);
-          // clientLogger.log('✅ Entitlements checked for retake screen', {
-            hasRetakeTopic,
-            hasRetakeFull,
-          });
+          // // clientLogger.log('✅ Entitlements checked for retake screen', {
+          //   hasRetakeTopic,
+          //   hasRetakeFull,
+          // });
         } catch (err) {
           clientLogger.warn('⚠️ Failed to check entitlements for retake screen', err);
           const hasRetaking = userPreferencesData?.paymentRetakingCompleted ?? false;
@@ -882,12 +882,12 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
         !error &&
         !pendingInfoScreen) {
       
-      // clientLogger.log('✅ Все вопросы отвечены, автоматически отправляем ответы через 5 секунд...', {
-        currentQuestionIndex,
-        allQuestionsLength: allQuestions.length,
-        answersCount: Object.keys(answers).length,
-        hasPendingInfoScreen: !!pendingInfoScreen,
-      });
+      // // clientLogger.log('✅ Все вопросы отвечены, автоматически отправляем ответы через 5 секунд...', {
+      //   currentQuestionIndex,
+      //   allQuestionsLength: allQuestions.length,
+      //   answersCount: Object.keys(answers).length,
+      //   hasPendingInfoScreen: !!pendingInfoScreen,
+      // });
       autoSubmitTriggeredRef.current = true;
       setAutoSubmitTriggered(true);
       
