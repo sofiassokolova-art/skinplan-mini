@@ -18,6 +18,9 @@ const nextConfig = {
   pageExtensions: ['tsx', 'ts'],
   // Security headers
   async headers() {
+    // В режиме разработки отключаем строгие CSP для удобства разработки
+    const isProduction = process.env.NODE_ENV === 'production';
+
     return [
       {
         source: '/:path*',
@@ -48,7 +51,8 @@ const nextConfig = {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=()'
           },
-          {
+          // CSP только в production режиме
+          ...(isProduction ? [{
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
@@ -71,7 +75,7 @@ const nextConfig = {
               // ИСПРАВЛЕНО: Разрешаем worker-src для поддержки Service Workers (если используются)
               "worker-src 'self' blob:",
             ].join('; ')
-          }
+          }] : [])
         ],
       },
     ];

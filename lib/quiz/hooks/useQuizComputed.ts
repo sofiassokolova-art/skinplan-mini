@@ -108,9 +108,42 @@ export function useQuizComputed(params: UseQuizComputedParams) {
   }, [effectiveAnswersKeysCount, isDev]);
 
   // ============================================
+  // ГРУППА 3: Стабильный идентификатор questionnaire для зависимостей
+  // ============================================
+
+  // КРИТИЧНО ИСПРАВЛЕНИЕ: Создаем стабильный ID для предотвращения бесконечных циклов
+  // Объединяем все источники questionnaire в один стабильный идентификатор
+  const stableQuestionnaireId = useMemo(() => {
+    const refId = questionnaireRef.current?.id;
+    const stateId = questionnaire?.id;
+    const stateMachineId = quizStateMachine.questionnaire?.id;
+
+    // Используем первый доступный ID как стабильный идентификатор
+    const stableId = refId || stateId || stateMachineId;
+
+    if (isDev && stableId) {
+      clientLogger.log('🔒 stableQuestionnaireId computed', {
+        stableId,
+        refId,
+        stateId,
+        stateMachineId,
+        source: refId ? 'ref' : stateId ? 'state' : stateMachineId ? 'stateMachine' : 'none'
+      });
+    }
+
+    return stableId || null;
+  }, [
+    // ИСПРАВЛЕНО: Используем только стабильные значения, которые не меняются после загрузки
+    questionnaireRef.current?.id,
+    questionnaire?.id,
+    quizStateMachine.questionnaire?.id,
+    isDev
+  ]);
+
+  // ============================================
   // ГРУППА 3: Вычисление allQuestionsRaw
   // ============================================
-  
+
   const allQuestionsRaw = useMemo(() => {
     try {
       // КРИТИЧНО: Используем questionnaireRef.current как ОСНОВНОЙ источник, а не fallback
@@ -230,13 +263,9 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       return allQuestionsRawPrevRef.current.length > 0 ? allQuestionsRawPrevRef.current : [];
     }
   }, [
-    // КРИТИЧНО ИСПРАВЛЕНО: Используем questionnaireRef.current?.id через стабильное значение
-    // Это необходимо, так как questionnaire?.id может быть undefined даже после синхронизации
-    // Используем questionnaireRef.current?.id как основной источник истины
-    questionnaireRef.current?.id ?? null,
-    questionnaire?.id ?? null, 
-    quizStateMachine.questionnaire?.id ?? null, 
-    // ИСПРАВЛЕНО: Убрали allQuestionsRawPrevRef из зависимостей - ref не должен быть в зависимостях (вызывает React error #300)
+    // КРИТИЧНО ИСПРАВЛЕНИЕ: Используем только стабильный ID вместо отдельных ID источников
+    // Это предотвращает бесконечные циклы, когда разные источники обновляются в разное время
+    stableQuestionnaireId,
     isDev
   ]);
 
@@ -411,12 +440,11 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     allQuestionsRaw.length, // ИСПРАВЛЕНО: Используем длину вместо массива для стабильности (предотвращает React error #300)
     answersKeysCount, // ИСПРАВЛЕНО: Используем стабильное значение вместо объекта
     savedProgressAnswersKeysCount, // ИСПРАВЛЕНО: Используем стабильное значение вместо объекта
-    isRetakingQuiz, 
-    showRetakeScreen, 
-    questionnaire?.id, 
+    isRetakingQuiz,
+    showRetakeScreen,
+    stableQuestionnaireId, // ИСПРАВЛЕНИЕ: Используем стабильный ID вместо отдельных questionnaire ID
     // ИСПРАВЛЕНО: Убрали questionnaireRef из зависимостей - ref не должен быть в зависимостях (вызывает React error #300)
-    // ИСПРАВЛЕНО: Убрали allQuestionsPrevRef из зависимостей - ref не должен быть в зависимостях (вызывает React error #300)
-    quizStateMachine.questionnaire?.id, 
+    // ИСПРАВЛЕНО: Убрали allQuestionsPrevRef из зависимостей - ref не должен быть в зависимостях (вызывает React error #300) 
     // ИСПРАВЛЕНО: Убрали effectiveAnswers из зависимостей - это вычисляемое значение, используем answersKeysCount
     isDev
   ]);

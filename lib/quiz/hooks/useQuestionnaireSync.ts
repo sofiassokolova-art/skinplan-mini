@@ -55,32 +55,29 @@ export function useQuestionnaireSync({
     const queryId = questionnaireFromQuery?.id;
     const refId = questionnaireRef.current?.id;
     const stateMachineId = quizStateMachine.questionnaire?.id;
-    
-    // КРИТИЧНО: Синхронизируем только если:
+
+    // КРИТИЧНО ИСПРАВЛЕНИЕ: Улучшенная логика синхронизации для предотвращения бесконечных циклов
+    // Синхронизируем только если:
     // 1. Есть questionnaireFromQuery с валидным ID
-    // 2. ID отличается от ref (чтобы не синхронизировать то, что уже в ref)
-    // 3. ID отличается от последнего синхронизированного (защита от повторных синхронизаций)
-    // 4. ID отличается от State Machine (чтобы не синхронизировать то, что уже синхронизировано)
-    // ВАЖНО: НЕ проверяем questionnaire?.id, так как он обновляется асинхронно и вызывает бесконечные циклы
+    // 2. ID отличается от последнего синхронизированного (основная защита от повторных синхронизаций)
+    // НЕ проверяем refId и stateMachineId, так как они обновляются ПОСЛЕ синхронизации и вызывают циклы
     const shouldSync = questionnaireFromQuery &&
         queryId &&
-        queryId !== refId &&
         queryId !== lastSyncedFromQueryIdRef.current;
 
-    // DEBUG: Логируем условие синхронизации
-    if (questionnaireFromQuery && queryId) {
+    // DEBUG: Логируем условие синхронизации только если есть изменения
+    if (questionnaireFromQuery && queryId && (shouldSync || isLoadingQuestionnaire)) {
       clientLogger.log('🔍 Sync condition check', {
         queryId,
         refId,
         lastSyncedId: lastSyncedFromQueryIdRef.current,
         stateMachineId,
-        queryId_ne_refId: queryId !== refId,
         queryId_ne_lastSynced: queryId !== lastSyncedFromQueryIdRef.current,
-        queryId_ne_stateMachine: queryId !== stateMachineId,
         shouldSync,
+        isLoading: isLoadingQuestionnaire,
       });
     }
-    
+
     if (shouldSync) {
       lastSyncedFromQueryIdRef.current = queryId;
       clientLogger.log('🔄 Syncing questionnaire from React Query', {
@@ -97,10 +94,9 @@ export function useQuestionnaireSync({
         setQuestionnaireInStateMachineRef.current(questionnaireFromQuery);
       }
     }
-    // ИСПРАВЛЕНО: Только ID в зависимостях, функции убраны (они стабильны)
-    // ИСПРАВЛЕНО: Убрали questionnaire?.id из зависимостей, так как он меняется после синхронизации
-    // и вызывает повторные срабатывания. Используем только queryId и stateMachineId.
-  }, [questionnaireFromQuery?.id]);
+    // КРИТИЧНО ИСПРАВЛЕНИЕ: Убрали все зависимости кроме queryId для предотвращения циклов
+    // questionnaireFromQuery?.id - единственная зависимость, которая должна вызывать синхронизацию
+  }, [questionnaireFromQuery?.id, isLoadingQuestionnaire]);
 
   // Обертка для setQuestionnaire с синхронизацией State Machine
   const setQuestionnaireWithStateMachine = useCallback((
