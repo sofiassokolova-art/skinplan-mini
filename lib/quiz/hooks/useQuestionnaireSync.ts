@@ -41,12 +41,19 @@ export function useQuestionnaireSync({
   const setQuestionnaireRef = useRef(setQuestionnaire);
 
 
-  // Обновляем refs при каждом рендере
+  // КРИТИЧНО ИСПРАВЛЕНО: Обновляем refs только при изменении значений
+  // useEffect без зависимостей выполняется при каждом рендере, что может вызывать проблемы
   useEffect(() => {
     questionnaireForCallbackRef.current = questionnaire;
+  }, [questionnaire]);
+  
+  useEffect(() => {
     setQuestionnaireRef.current = setQuestionnaire;
+  }, [setQuestionnaire]);
+  
+  useEffect(() => {
     setQuestionnaireInStateMachineRef.current = quizStateMachine.setQuestionnaire;
-  });
+  }, [quizStateMachine.setQuestionnaire]);
 
   // Синхронизация из React Query - ОДНОРАЗОВАЯ, без зависимостей
   const hasSyncedRef = useRef(false);

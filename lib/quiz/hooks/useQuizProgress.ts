@@ -22,10 +22,14 @@ export function useQuizProgress() {
   const saveProgressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedAnswerRef = useRef<{ questionId: number; answer: string | string[] } | null>(null);
 
-  // ИСПРАВЛЕНО: Используем getEffectiveAnswers для подсчета общего количества ответов
+  // КРИТИЧНО ИСПРАВЛЕНО: Используем стабильные значения для зависимостей
+  // Объекты answers и savedProgress?.answers пересоздаются каждый раз, что вызывает бесконечные циклы
+  const answersKeysCount = Object.keys(answers || {}).length;
+  const savedProgressAnswersKeysCount = Object.keys(savedProgress?.answers || {}).length;
+  
   const effectiveAnswers = useMemo(() => 
     getEffectiveAnswers(answers, savedProgress?.answers), 
-    [answers, savedProgress?.answers]
+    [answersKeysCount, savedProgressAnswersKeysCount]
   );
   
   const answersCount = useMemo(() => Object.keys(effectiveAnswers).length, [effectiveAnswers]);

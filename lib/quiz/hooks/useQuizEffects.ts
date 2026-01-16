@@ -496,6 +496,9 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     answersCountRef.current = Object.keys(answers).length;
   }, [answers]);
   
+  // КРИТИЧНО: Вычисляем стабильное значение ДО useEffect для использования в зависимостях
+  const progressAnswersKeysCount = quizProgressFromQuery?.progress?.answers ? Object.keys(quizProgressFromQuery.progress.answers).length : 0;
+  
   useEffect(() => {
     if (isLoadingProgress) {
       return;
@@ -532,8 +535,8 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     // и вызывает бесконечные циклы. Вместо этого используем стабильные значения:
     // - isLoadingProgress (boolean)
     // - количество ключей в answers (number)
-    // - setAnswers и setSavedProgress (стабильные функции из useState)
-  }, [isLoadingProgress, quizProgressFromQuery?.progress?.answers ? Object.keys(quizProgressFromQuery.progress.answers).length : 0, setAnswers, setSavedProgress]);
+    // Убрали setAnswers и setSavedProgress - функции из useState стабильны, но не должны быть в зависимостях
+  }, [isLoadingProgress, progressAnswersKeysCount]);
 
   // ============================================
   // ГРУППА 4: Проверка профиля и retake флагов
@@ -621,6 +624,10 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
   // ============================================
   // ГРУППА 7: Корректировка currentQuestionIndex
   // ============================================
+  
+  // КРИТИЧНО: Вычисляем стабильные значения ДО useEffect для использования в зависимостях
+  const answersKeysCountForIndexCorrection = Object.keys(answers || {}).length;
+  const savedProgressAnswersKeysCountForIndexCorrection = savedProgress ? Object.keys(savedProgress.answers || {}).length : 0;
   
   useEffect(() => {
     if (loading) return;
@@ -751,7 +758,10 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
         }, 0);
       }
     }
-  }, [loading, questionnaire, allQuestions.length, allQuestionsRaw.length, currentQuestionIndex, currentInfoScreenIndex, answers, savedProgress, isRetakingQuiz, showRetakeScreen, isSubmitting, showResumeScreen, hasResumed, setCurrentQuestionIndex]);
+    // КРИТИЧНО ИСПРАВЛЕНО: Заменяем объекты answers и savedProgress на стабильные значения
+    // Объекты пересоздаются каждый раз, что вызывает бесконечные циклы
+    // Также убрали setCurrentQuestionIndex из зависимостей - функция из useState стабильна
+  }, [loading, questionnaire?.id, allQuestions.length, allQuestionsRaw.length, currentQuestionIndex, currentInfoScreenIndex, answersKeysCountForIndexCorrection, savedProgressAnswersKeysCountForIndexCorrection, isRetakingQuiz, showRetakeScreen, isSubmitting, showResumeScreen, hasResumed]);
 
   // ============================================
   // ГРУППА 8: Загрузка анкеты при retake
@@ -776,10 +786,14 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     //   attempted: loadQuestionnaireAttemptedRef.current,
     // });
 
-    loadQuestionnaire().finally(() => {
-      loadQuestionnaireInProgressRef.current = false;
-    });
-  }, [isRetakingQuiz, showRetakeScreen, questionnaire, loading, loadQuestionnaire]);
+    // КРИТИЧНО ИСПРАВЛЕНО: Используем ref для loadQuestionnaire, чтобы избежать включения функции в зависимости
+    // Функция может пересоздаваться каждый раз, что вызывает бесконечные циклы
+    if (loadQuestionnaireRef.current) {
+      loadQuestionnaireRef.current().finally(() => {
+        loadQuestionnaireInProgressRef.current = false;
+      });
+    }
+  }, [isRetakingQuiz, showRetakeScreen, questionnaire?.id, loading]);
 
   // ============================================
   // ГРУППА 9: Загрузка предыдущих ответов при retake
@@ -831,7 +845,9 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
         }
       })();
     }
-  }, [isRetakingQuiz, questionnaire, setAnswers, setCurrentQuestionIndex]);
+    // КРИТИЧНО ИСПРАВЛЕНО: setAnswers и setCurrentQuestionIndex из useState стабильны, но используем только questionnaire?.id
+    // для предотвращения лишних пересчетов
+  }, [isRetakingQuiz, questionnaire?.id]);
 
   // РЕФАКТОРИНГ: Обновление URL при showResumeScreen вынесено в useQuizUrlSync
 
@@ -871,6 +887,9 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
   // ============================================
   // ГРУППА 12: Автоматическая отправка ответов
   // ============================================
+  
+  // КРИТИЧНО: Вычисляем стабильные значения ДО useEffect для использования в зависимостях
+  const answersKeysCountForAutoSubmit = Object.keys(answers || {}).length;
   
   useEffect(() => {
     if (!initCompletedRef.current) {
@@ -922,7 +941,10 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
         clearTimeout(timeoutId);
       };
     }
-  }, [currentQuestionIndex, allQuestions.length, Object.keys(answers).length, questionnaire, isSubmitting, showResumeScreen, autoSubmitTriggered, error, pendingInfoScreen, initCompletedRef, isMountedRef, submitAnswersRef, isSubmittingRef, setIsSubmitting, setError, setAutoSubmitTriggered]);
+    // КРИТИЧНО ИСПРАВЛЕНО: Убрали refs из зависимостей (initCompletedRef, isMountedRef, submitAnswersRef, isSubmittingRef)
+    // refs не должны быть в зависимостях, так как изменения ref не триггерят ререндер
+    // Также убрали setIsSubmitting, setError, setAutoSubmitTriggered - функции из useState стабильны
+  }, [currentQuestionIndex, allQuestions.length, answersKeysCountForAutoSubmit, questionnaire?.id, isSubmitting, showResumeScreen, autoSubmitTriggered, error, pendingInfoScreen?.id ?? null]);
 
   // ============================================
   // ГРУППА 13: Обновление submitAnswersRef
