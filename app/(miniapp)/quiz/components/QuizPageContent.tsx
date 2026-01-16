@@ -85,7 +85,7 @@ export function QuizPageContent({
 
   return (
     <div style={{ 
-      padding: '20px',
+      padding: isLimeFullWidthScreen ? '0' : '20px',
       minHeight: '100vh',
       background: backgroundColor,
       position: 'relative',
@@ -102,8 +102,9 @@ export function QuizPageContent({
       {/* ИСПРАВЛЕНО: Для skin_goals и skin_type убираем ограничение ширины, чтобы лаймовый контейнер был во всю ширину */}
       <div style={{
         maxWidth: isLimeFullWidthScreen ? '100%' : '600px',
-        margin: '0 auto',
+        margin: isLimeFullWidthScreen ? '0' : '0 auto',
         padding: isLimeFullWidthScreen ? '0' : '24px',
+        minHeight: isLimeFullWidthScreen ? '100vh' : 'auto',
       }}>
         {/* РЕФАКТОРИНГ: Используем компонент QuizQuestionState для отображения состояний */}
         <QuizQuestionState

@@ -393,7 +393,7 @@ export function QuizQuestion({
         return (
           <div style={{ 
             backgroundColor: '#D5FE61',
-            borderRadius: '24px', // ИСПРАВЛЕНО: Возвращена верстка из коммита 72b6ea7
+            borderRadius: isGoalsQuestion ? '0' : '24px', // ИСПРАВЛЕНО: Для skin_goals убираем скругление
             padding: '20px',
             marginTop: '0px',
             paddingTop: '20px',
@@ -401,6 +401,13 @@ export function QuizQuestion({
             width: (isGoalsQuestion || isSkinTypeQuestion) ? '100%' : 'auto',
             marginLeft: (isGoalsQuestion || isSkinTypeQuestion) ? '0' : 'auto',
             marginRight: (isGoalsQuestion || isSkinTypeQuestion) ? '0' : 'auto',
+            // ИСПРАВЛЕНО: Для skin_goals делаем контейнер на всю высоту экрана
+            minHeight: isGoalsQuestion ? '100vh' : 'auto',
+            height: isGoalsQuestion ? '100vh' : 'auto',
+            position: isGoalsQuestion ? 'relative' : 'static',
+            boxSizing: 'border-box',
+            display: isGoalsQuestion ? 'flex' : 'block',
+            flexDirection: isGoalsQuestion ? 'column' : 'column',
           }}>
             {/* Заголовок внутри лаймового контейнера */}
             {/* ИСПРАВЛЕНО: Для вопроса avoid_ingredients делаем слово "исключить" жирным */}
@@ -621,7 +628,7 @@ export function QuizQuestion({
                 onClick={showSubmitButton ? onSubmit : onNext}
                 disabled={isSubmitting}
                 style={{
-                  marginTop: '8px',
+                  marginTop: isGoalsQuestion ? 'auto' : '8px',
                   width: '100%',
                   padding: '18px',
                   borderRadius: '20px',

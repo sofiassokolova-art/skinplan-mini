@@ -108,14 +108,22 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     // ИСПРАВЛЕНО: Используем единую функцию для получения начальных инфо-экранов
     const initialInfoScreens = getInitialInfoScreens();
     
-    // КРИТИЧНО: Если вызывается handleNext и есть pendingInfoScreen, это означает, что пользователь закрывает инфо-экран
-    // В этом случае нужно очистить pendingInfoScreen ПЕРЕД дальнейшей обработкой, чтобы разблокировать переход к следующему вопросу
-    if (currentPendingInfoScreen) {
-      clientLogger.warn('🧹 ИНФО-СКРИН: Закрываем pendingInfoScreen при вызове handleNext', {
+    // ИСПРАВЛЕНО: Проверяем анкету только если мы НЕ на начальных инфо-экранах
+    // Для начальных инфо-экранов анкета не нужна - они должны показываться независимо от загрузки анкеты
+    const isOnInitialInfoScreens = currentInfoScreenIndex < initialInfoScreens.length;
+    
+    // ИСПРАВЛЕНО: Очищаем pendingInfoScreen только если мы НЕ на начальных инфо-экранах
+    // На начальных инфо-экранах pendingInfoScreen не должен быть установлен, поэтому очистка не нужна
+    // Если мы на вопросах и есть pendingInfoScreen, это означает, что пользователь закрывает инфо-экран между вопросами
+    // КРИТИЧНО: После очистки pendingInfoScreen нужно перейти к следующему вопросу, а не обрабатывать текущий
+    let shouldSkipToNextQuestion = false;
+    if (currentPendingInfoScreen && !isOnInitialInfoScreens) {
+      clientLogger.warn('🧹 ИНФО-СКРИН: Закрываем pendingInfoScreen при вызове handleNext (мы на вопросах)', {
         pendingInfoScreenId: currentPendingInfoScreen.id,
         pendingInfoScreenTitle: currentPendingInfoScreen.title,
         currentQuestionIndex,
         currentInfoScreenIndex,
+        isOnInitialInfoScreens,
       });
       
       // Очищаем pendingInfoScreen и ref перед дальнейшей обработкой
@@ -133,11 +141,12 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
           // Игнорируем ошибки
         }
       }
+      
+      // КРИТИЧНО: После закрытия инфо-экрана нужно перейти к следующему вопросу
+      // Пропускаем обработку текущего вопроса и сразу переходим к переходу к следующему
+      // Это предотвращает проблему с currentQuestion = null
+      shouldSkipToNextQuestion = true;
     }
-    
-    // ИСПРАВЛЕНО: Проверяем анкету только если мы НЕ на начальных инфо-экранах
-    // Для начальных инфо-экранов анкета не нужна - они должны показываться независимо от загрузки анкеты
-    const isOnInitialInfoScreens = currentInfoScreenIndex < initialInfoScreens.length;
     const hasQuestionnaire = questionnaire || questionnaireRef.current;
     
     // Если мы не на начальных инфо-экранах и анкета не загружена - блокируем
@@ -686,7 +695,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       });
     }
     
-    if (currentQuestion && !isRetakingQuiz && !currentPendingInfoScreen && hasAnsweredCurrentQuestion && !shouldBlockInfoScreen) {
+    if (!shouldSkipToNextQuestion && currentQuestion && !isRetakingQuiz && !currentPendingInfoScreen && hasAnsweredCurrentQuestion && !shouldBlockInfoScreen) {
       // ФИКС: Проверяем, что у вопроса есть код перед вызовом getInfoScreenAfterQuestion
       // Это предотвращает возврат info screen для вопросов без кода
       if (!currentQuestion.code) {
