@@ -469,15 +469,10 @@ export function QuizQuestion({
               </div>
             )}
 
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
             gap: '16px',
-            // ИСПРАВЛЕНО: Для skin_goals позволяем контенту занимать доступное пространство и прокручиваться
-            flex: isGoalsQuestion ? '1 1 0' : '0 0 auto',
-            minHeight: isGoalsQuestion ? '0' : 'auto',
-            overflowY: isGoalsQuestion ? 'auto' : 'visible',
-            overflowX: isGoalsQuestion ? 'hidden' : 'visible',
           }}>
             {(() => {
               // ИСПРАВЛЕНО: Определяем isMultiChoice один раз для всего блока
