@@ -2286,10 +2286,13 @@ export default function QuizPage() {
   // Упрощаем условие - показываем если showResumeScreen = true и есть savedProgress
   // Не проверяем quizView.type, так как это может блокировать показ при загрузке
   // КРИТИЧНО: Также проверяем isStartingOver из state, а не только из ref, для немедленного обновления
+  // ИСПРАВЛЕНО: Быстрое решение - делаем ResumeScreen максимально приоритетным и ранним
+  // Изменяем условие: savedAnswersCount > 0 вместо >= MIN_ANSWERS_FOR_PROGRESS_SCREEN
+  // И добавляем проверку showResumeScreenFromStateMachine для большей приоритетности
   const savedAnswersCount = savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0;
-  const shouldShowResume = showResumeScreen && 
+  const shouldShowResume = (showResumeScreen || showResumeScreenFromStateMachine) && 
                            savedProgress && 
-                           savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN &&
+                           savedAnswersCount > 0 &&
                            !isStartingOver && 
                            !isStartingOverRef.current && 
                            !hasResumedRef.current;
