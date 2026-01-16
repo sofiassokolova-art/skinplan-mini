@@ -55,6 +55,7 @@ export function QuizQuestion({
 
   // Кнопка "Назад" - рендерим через портал, чтобы она была вне всех контейнеров
   // ИСПРАВЛЕНО: Используем position: fixed с правильным контекстом для предотвращения прокрутки
+  // Для skin_goals добавляем дополнительную гарантию фиксации
   const backButton = showBackButton && typeof window !== 'undefined' ? createPortal(
     <button
       onClick={(e) => {
@@ -66,23 +67,25 @@ export function QuizQuestion({
         position: 'fixed',
         top: 'clamp(20px, 4vh, 40px)',
         left: 'clamp(19px, 5vw, 24px)',
-        zIndex: 99999,
+        zIndex: isGoalsQuestion ? 100001 : 100000, // Еще больший z-index для skin_goals
         width: '44px',
         height: '44px',
-        background: 'transparent',
-        border: 'none',
+        background: isGoalsQuestion ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.9)', // Более плотный фон для skin_goals
+        border: '1px solid rgba(0, 0, 0, 0.1)',
+        borderRadius: '50%',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         cursor: 'pointer',
         padding: 0,
         pointerEvents: 'auto',
-        transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
-        backfaceVisibility: 'hidden', // Оптимизация рендеринга
-        WebkitTransform: 'translateZ(0)', // Для Safari
-        isolation: 'isolate', // Создаем новый контекст стекирования
-        willChange: 'transform', // Оптимизация для браузера
-        contain: 'layout style paint', // Изолируем кнопку от остального контента
+        transform: 'translateZ(0)',
+        backfaceVisibility: 'hidden',
+        WebkitTransform: 'translateZ(0)',
+        isolation: 'isolate',
+        willChange: 'transform',
+        contain: 'layout style paint',
+        boxShadow: isGoalsQuestion ? '0 4px 12px rgba(0, 0, 0, 0.25)' : '0 2px 8px rgba(0, 0, 0, 0.15)', // Более сильная тень для skin_goals
       }}
     >
       <svg
@@ -114,7 +117,7 @@ export function QuizQuestion({
         {/* Прогресс-бар - черный фон с лаймовым прогрессом */}
         {/* ИСПРАВЛЕНО: Прогресс-бар должен быть одинаковой ширины на всех экранах (600px) */}
         {!hideProgressBar && (
-          <div style={{ 
+          <div style={{
             marginBottom: '24px',
             marginTop: '75px',
             width: '100%',
@@ -411,8 +414,8 @@ export function QuizQuestion({
             marginRight: (isGoalsQuestion || isSkinTypeQuestion) ? '0' : 'auto',
             // ИСПРАВЛЕНО: Для skin_goals делаем контейнер на всю высоту экрана, но позволяем расти если контент больше
             minHeight: isGoalsQuestion ? '100vh' : 'auto',
-            // ИСПРАВЛЕНО: Убираем фиксированную height, используем только minHeight, чтобы контейнер мог расти при большом контенте
-            position: isGoalsQuestion ? 'relative' : 'static',
+            // ИСПРАВЛЕНО: Убираем position: relative для skin_goals, чтобы не создавать новый контекст позиционирования
+            position: 'static',
             boxSizing: 'border-box',
             display: isGoalsQuestion ? 'flex' : 'block',
             flexDirection: isGoalsQuestion ? 'column' : 'column',
