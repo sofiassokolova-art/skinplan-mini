@@ -487,6 +487,26 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       
       // Переходим к следующему вопросу
       const newIndex = currentQuestionIndex + 1;
+      
+      // КРИТИЧНО: Проверяем, что следующий вопрос существует перед переходом
+      // Это предотвращает пустой экран и ошибку "Вопрос не найден"
+      const nextQuestion = allQuestions[newIndex];
+      if (!nextQuestion) {
+        clientLogger.error('❌ handleNext: следующий вопрос не найден после закрытия инфо-экрана', {
+          currentQuestionIndex,
+          newIndex,
+          allQuestionsLength: allQuestions.length,
+          currentQuestionCode: allQuestions[currentQuestionIndex]?.code || null,
+          allQuestionCodes: allQuestions.map((q: Question, idx: number) => ({
+            index: idx,
+            code: q?.code || null,
+            id: q?.id || null,
+          })),
+        });
+        // НЕ переходим к следующему вопросу, если его нет
+        return;
+      }
+      
       updateQuestionIndex(newIndex, currentQuestionIndexRef, setCurrentQuestionIndex);
       // ФИКС: Сохраняем newIndex в sessionStorage для восстановления при перемонтировании
       saveIndexToSessionStorage('quiz_currentQuestionIndex', newIndex, '💾 Сохранен currentQuestionIndex в sessionStorage');
@@ -516,8 +536,9 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         newIndex,
         allQuestionsLength: allQuestions.length,
         pendingInfoScreenCleared: true,
-        nextQuestionCode: allQuestions[newIndex]?.code || null,
-        hasAnsweredNextQuestion: allQuestions[newIndex] && answers[allQuestions[newIndex].id] !== undefined,
+        nextQuestionCode: nextQuestion?.code || null,
+        nextQuestionId: nextQuestion?.id || null,
+        hasAnsweredNextQuestion: nextQuestion && answers[nextQuestion.id] !== undefined,
       });
       // КРИТИЧНО: После закрытия инфо-экрана НЕ проверяем инфо-экран для следующего вопроса сразу
       // даже если пользователь уже ответил на него - это предотвращает застревание
@@ -574,19 +595,21 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         justClosedInfoScreen,
         shouldBlockInfoScreen,
         pendingInfoScreen: !!pendingInfoScreen,
+        currentPendingInfoScreen: !!currentPendingInfoScreen,
         isRetakingQuiz,
-        willCheckInfoScreen: currentQuestion && !isRetakingQuiz && !pendingInfoScreen && hasAnsweredCurrentQuestion && !shouldBlockInfoScreen,
+        willCheckInfoScreen: currentQuestion && !isRetakingQuiz && !currentPendingInfoScreen && hasAnsweredCurrentQuestion && !shouldBlockInfoScreen,
       });
     }
     
     // ФИКС: Логирование, если условие не выполняется
-    if (isDev && currentQuestion && hasAnsweredCurrentQuestion && (!currentQuestion || isRetakingQuiz || pendingInfoScreen || !hasAnsweredCurrentQuestion || shouldBlockInfoScreen)) {
+    if (isDev && currentQuestion && hasAnsweredCurrentQuestion && (!currentQuestion || isRetakingQuiz || currentPendingInfoScreen || !hasAnsweredCurrentQuestion || shouldBlockInfoScreen)) {
       clientLogger.warn('⚠️ Условие для проверки инфо-экрана не выполняется:', {
         questionIndex: currentQuestionIndex,
         questionCode: currentQuestion?.code,
         hasCurrentQuestion: !!currentQuestion,
         isRetakingQuiz,
         hasPendingInfoScreen: !!pendingInfoScreen,
+        hasCurrentPendingInfoScreen: !!currentPendingInfoScreen,
         hasAnswered: hasAnsweredCurrentQuestion,
         shouldBlock: shouldBlockInfoScreen,
       });
@@ -595,7 +618,8 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     // КРИТИЧНО: Проверяем инфо-экран для текущего вопроса ПЕРЕД переходом к следующему
     // Это исправляет проблему, когда инфо-экран не показывается при первом проходе
     // ИСПРАВЛЕНО: Если пользователь уже ответил на вопрос, проверяем инфо-экран независимо от флага justClosedInfoScreen
-    if (currentQuestion && !isRetakingQuiz && !pendingInfoScreen && hasAnsweredCurrentQuestion && !shouldBlockInfoScreen) {
+    // ИСПРАВЛЕНО: Используем currentPendingInfoScreen из ref для более точной проверки
+    if (currentQuestion && !isRetakingQuiz && !currentPendingInfoScreen && hasAnsweredCurrentQuestion && !shouldBlockInfoScreen) {
       // ФИКС: Проверяем, что у вопроса есть код перед вызовом getInfoScreenAfterQuestion
       // Это предотвращает возврат info screen для вопросов без кода
       if (!currentQuestion.code) {

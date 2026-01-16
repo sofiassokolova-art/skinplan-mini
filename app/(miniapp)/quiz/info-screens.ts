@@ -131,6 +131,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'skin_features_intro',
     title: 'Узнаем особенности вашей кожи',
     subtitle: 'Мы поймем какой у вас тип кожи и как о нем заботиться лучше всего',
+    image: '/featuresinfo',
     showAfterQuestionCode: 'gender',
     ctaText: 'Продолжить',
   },
@@ -153,8 +154,8 @@ export const INFO_SCREENS: InfoScreen[] = [
   {
     id: 'health_data',
     title: 'Нам важно учесть ваши данные о здоровье',
-    subtitle: 'чтобы подобрать безопасный уход\n\nВаши данные защищены — они нужны только для точных рекомендаций',
-    image: '/infohealth.png', // ИСПРАВЛЕНО: Добавлена картинка
+    subtitle: 'Ваши данные защищены — они нужны только для точных рекомендаций',
+    image: '/infohealth.jpg', // ИСПРАВЛЕНО: Исправлен путь к изображению (jpg вместо png)
     showAfterInfoScreenId: 'simple_care', // ИСПРАВЛЕНО: После экрана simple_care, а не вопроса
     ctaText: 'Продолжить',
   },

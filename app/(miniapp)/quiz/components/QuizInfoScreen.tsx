@@ -193,6 +193,7 @@ export function QuizInfoScreen({
   const isGoalsIntroScreen = screen.id === 'goals_intro';
   const isGeneralInfoIntroScreen = screen.id === 'general_info_intro';
   const isHealthDataScreen = screen.id === 'health_data';
+  const isSkinFeaturesIntroScreen = screen.id === 'skin_features_intro';
 
   // ИСПРАВЛЕНО: Предзагрузка изображения следующего экрана для ускорения загрузки
   // Если текущий экран - testimonials, предзагружаем изображение для general_info_intro
@@ -813,48 +814,57 @@ export function QuizInfoScreen({
   if (isGeneralInfoIntroScreen) {
     // Кнопка "Назад" через портал для гарантированной фиксации
     const generalBackButton = currentInfoScreenIndex > 0 && typeof window !== 'undefined' && handleBack ? createPortal(
-      <button
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          handleBack();
-        }}
+      <div
         style={{
           position: 'fixed',
           top: 'clamp(20px, 4vh, 40px)',
           left: 'clamp(19px, 5vw, 24px)',
           zIndex: 99999,
           pointerEvents: 'auto',
-          width: '44px',
-          height: '44px',
-          background: 'transparent',
-          border: 'none',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          padding: 0,
-          transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
-          backfaceVisibility: 'hidden', // Оптимизация рендеринга
-          WebkitTransform: 'translateZ(0)', // Для Safari
+          isolation: 'isolate', // Создаем новый контекст стекирования
+          willChange: 'transform', // Оптимизация для браузера
         }}
       >
-        <svg
-          width="12"
-          height="20"
-          viewBox="0 0 12 20"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleBack();
+          }}
+          style={{
+            position: 'relative',
+            width: '44px',
+            height: '44px',
+            background: 'transparent',
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            padding: 0,
+            margin: 0,
+            transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
+            backfaceVisibility: 'hidden', // Оптимизация рендеринга
+            WebkitTransform: 'translateZ(0)', // Для Safari
+          }}
         >
-          <path
-            d="M10 2L2 10L10 18"
-            stroke="#1A1A1A"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>,
+          <svg
+            width="12"
+            height="20"
+            viewBox="0 0 12 20"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M10 2L2 10L10 18"
+              stroke="#1A1A1A"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      </div>,
       document.body
     ) : null;
 
@@ -969,52 +979,230 @@ export function QuizInfoScreen({
     );
   }
 
-  // Экран "Нам важно учесть ваши данные о здоровье" (health_data) - такая же верстка как у general_info_intro
-  if (isHealthDataScreen) {
+  // Экран "Узнаем особенности вашей кожи" (skin_features_intro) - такая же верстка как у general_info_intro
+  if (isSkinFeaturesIntroScreen) {
     // Кнопка "Назад" через портал для гарантированной фиксации
-    const healthBackButton = currentInfoScreenIndex > 0 && typeof window !== 'undefined' && handleBack ? createPortal(
-      <button
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          handleBack();
-        }}
+    const skinFeaturesBackButton = currentInfoScreenIndex > 0 && typeof window !== 'undefined' && handleBack ? createPortal(
+      <div
         style={{
           position: 'fixed',
           top: 'clamp(20px, 4vh, 40px)',
           left: 'clamp(19px, 5vw, 24px)',
           zIndex: 99999,
           pointerEvents: 'auto',
-          width: '44px',
-          height: '44px',
-          background: 'transparent',
-          border: 'none',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          padding: 0,
-          transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
-          backfaceVisibility: 'hidden', // Оптимизация рендеринга
-          WebkitTransform: 'translateZ(0)', // Для Safari
+          isolation: 'isolate', // Создаем новый контекст стекирования
+          willChange: 'transform', // Оптимизация для браузера
         }}
       >
-        <svg
-          width="12"
-          height="20"
-          viewBox="0 0 12 20"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleBack();
+          }}
+          style={{
+            position: 'relative',
+            width: '44px',
+            height: '44px',
+            background: 'transparent',
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            padding: 0,
+            margin: 0,
+            transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
+            backfaceVisibility: 'hidden', // Оптимизация рендеринга
+            WebkitTransform: 'translateZ(0)', // Для Safari
+          }}
         >
-          <path
-            d="M10 2L2 10L10 18"
-            stroke="#1A1A1A"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>,
+          <svg
+            width="12"
+            height="20"
+            viewBox="0 0 12 20"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M10 2L2 10L10 18"
+              stroke="#1A1A1A"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      </div>,
+      document.body
+    ) : null;
+
+    return (
+      <>
+        {skinFeaturesBackButton}
+        <div style={{ 
+          padding: 0,
+          margin: 0,
+          minHeight: '100vh',
+          background: '#FFFFFF',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
+          width: '100%',
+        }}>
+
+        {/* Контент с анимацией */}
+        <div 
+          className="animate-fade-in"
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'flex-start',
+            paddingTop: '100px',
+            paddingBottom: '120px',
+            paddingLeft: '20px',
+            paddingRight: '20px',
+            width: '100%',
+            boxSizing: 'border-box',
+          }}
+        >
+          {/* Картинка с плавной загрузкой */}
+          {screen.image && (
+            <ImageWithLoading 
+              src={screen.image}
+              alt={screen.title}
+              maxWidth="240px"
+            />
+          )}
+
+          {/* Заголовок */}
+          <h1 style={{
+            fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 700,
+            fontSize: '32px',
+            lineHeight: '120%',
+            letterSpacing: '0px',
+            textAlign: 'left',
+            color: '#000000',
+            margin: '0 0 16px 0',
+            width: '100%',
+            maxWidth: '320px',
+            whiteSpace: 'pre-line',
+          }}>
+            {screen.title}
+          </h1>
+
+          {/* Подзаголовок */}
+          {screen.subtitle && (
+            <div style={{
+              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 400,
+              fontSize: '18px',
+              lineHeight: '140%',
+              letterSpacing: '0px',
+              textAlign: 'left',
+              color: '#000000',
+              width: '100%',
+              maxWidth: '320px',
+            }}>
+              {screen.subtitle}
+            </div>
+          )}
+        </div>
+        
+        {/* Фиксированная кнопка "Продолжить" внизу экрана */}
+        <div style={{
+          position: 'fixed',
+          bottom: '40px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '100%',
+          maxWidth: '320px',
+          padding: '0 20px',
+          boxSizing: 'border-box',
+          zIndex: 100,
+        }}>
+          <button
+            onClick={handleNext}
+            style={{
+              width: '100%',
+              height: '56px',
+              borderRadius: '20px',
+              background: '#D5FE61',
+              color: '#000000',
+              border: 'none',
+              fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 600,
+              fontSize: '16px',
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(213, 254, 97, 0.3)',
+            }}
+          >
+            {screen.ctaText || 'Продолжить'}
+          </button>
+        </div>
+      </div>
+      </>
+    );
+  }
+
+  // Экран "Нам важно учесть ваши данные о здоровье" (health_data) - такая же верстка как у general_info_intro
+  if (isHealthDataScreen) {
+    // Кнопка "Назад" через портал для гарантированной фиксации
+    const healthBackButton = currentInfoScreenIndex > 0 && typeof window !== 'undefined' && handleBack ? createPortal(
+      <div
+        style={{
+          position: 'fixed',
+          top: 'clamp(20px, 4vh, 40px)',
+          left: 'clamp(19px, 5vw, 24px)',
+          zIndex: 99999,
+          pointerEvents: 'auto',
+          isolation: 'isolate', // Создаем новый контекст стекирования
+          willChange: 'transform', // Оптимизация для браузера
+        }}
+      >
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleBack();
+          }}
+          style={{
+            position: 'relative',
+            width: '44px',
+            height: '44px',
+            background: 'transparent',
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            padding: 0,
+            margin: 0,
+            transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
+            backfaceVisibility: 'hidden', // Оптимизация рендеринга
+            WebkitTransform: 'translateZ(0)', // Для Safari
+          }}
+        >
+          <svg
+            width="12"
+            height="20"
+            viewBox="0 0 12 20"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M10 2L2 10L10 18"
+              stroke="#1A1A1A"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      </div>,
       document.body
     ) : null;
 

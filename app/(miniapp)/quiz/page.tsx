@@ -2635,7 +2635,19 @@ export default function QuizPage() {
   // Это предотвращает блокировку инфо-экранов из-за null currentQuestion
   // КРИТИЧНО: Также не проверяем, если пользователь начал заново (isStartingOver)
   // Это предотвращает двойной рендеринг вопроса после "Начать анкету заново"
-  if (!currentQuestion && !hasResumed && !showResumeScreen && !pendingInfoScreen && !isShowingInitialInfoScreen && !isPastInitialScreens && !isPastInitialScreensRef && !isStartingOver) {
+  // ИСПРАВЛЕНО: Также не проверяем, если индекс валиден и вопрос должен существовать
+  // Это предотвращает показ пустого экрана при временном несоответствии состояния
+  const isValidQuestionIndex = currentQuestionIndex >= 0 && currentQuestionIndex < allQuestions.length;
+  const shouldShowEmptyScreenError = !currentQuestion && 
+    !hasResumed && 
+    !showResumeScreen && 
+    !pendingInfoScreen && 
+    !isShowingInitialInfoScreen && 
+    !isPastInitialScreens && 
+    !isPastInitialScreensRef && 
+    !isStartingOver &&
+    !isValidQuestionIndex; // ИСПРАВЛЕНО: Показываем ошибку только если индекс невалиден
+  if (shouldShowEmptyScreenError) {
     // Если анкета загружена и есть вопросы, но currentQuestionIndex выходит за пределы
     if (questionnaire && allQuestions.length > 0) {
       // ИСПРАВЛЕНО: Если индекс выходит за пределы и нет ответов - показываем сообщение "Начать заново"
