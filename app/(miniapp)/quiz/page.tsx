@@ -1311,6 +1311,7 @@ export default function QuizPage() {
       setCurrentQuestionIndex,
       setCurrentInfoScreenIndex,
       setPendingInfoScreen, // ИСПРАВЛЕНО: Добавлено для очистки pendingInfoScreen при resume
+      pendingInfoScreenRef: quizState.pendingInfoScreenRef, // ИСПРАВЛЕНО: Добавлено для синхронной очистки ref
       resumeCompletedRef,
     });
   };

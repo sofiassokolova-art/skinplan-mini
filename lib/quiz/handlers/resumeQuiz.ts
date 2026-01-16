@@ -27,6 +27,7 @@ export interface ResumeQuizParams {
   setCurrentQuestionIndex: React.Dispatch<React.SetStateAction<number>>;
   setCurrentInfoScreenIndex: React.Dispatch<React.SetStateAction<number>>;
   setPendingInfoScreen?: React.Dispatch<React.SetStateAction<any | null>>; // ИСПРАВЛЕНО: Добавлено для очистки pendingInfoScreen
+  pendingInfoScreenRef?: React.MutableRefObject<any | null>; // ИСПРАВЛЕНО: Добавлено для синхронной очистки ref
   resumeCompletedRef: React.MutableRefObject<boolean>;
 }
 
@@ -83,6 +84,11 @@ export function resumeQuiz(params: ResumeQuizParams): void {
       allQuestionsLength: params.allQuestions?.length || 0,
     });
     params.setPendingInfoScreen(null);
+    // КРИТИЧНО: Синхронно очищаем ref, чтобы useQuizComputed сразу увидел изменения
+    if (params.pendingInfoScreenRef) {
+      params.pendingInfoScreenRef.current = null;
+      clientLogger.log('✅ resumeQuiz: Синхронно очищен pendingInfoScreenRef');
+    }
     clientLogger.log('✅ resumeQuiz: Очищен pendingInfoScreen для показа вопроса');
   }
   
@@ -192,12 +198,19 @@ export function resumeQuiz(params: ResumeQuizParams): void {
       nextQuestionCode: params.allQuestions?.[nextQuestionIndex]?.code || null,
     });
     params.setCurrentQuestionIndex(nextQuestionIndex);
-    // ФИКС: Сохраняем currentQuestionIndex в sessionStorage при восстановлении прогресса
+    // ИСПРАВЛЕНО: Сохраняем код вопроса вместо индекса для стабильного восстановления
     if (typeof window !== 'undefined') {
       try {
-        sessionStorage.setItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION, String(nextQuestionIndex));
+        const questionCode = params.allQuestions?.[nextQuestionIndex]?.code;
+        if (questionCode) {
+          // Используем скоупленный ключ с questionnaireId
+          const questionnaireId = params.questionnaire?.id?.toString();
+          const key = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE, questionnaireId);
+          sessionStorage.setItem(key, questionCode);
+          clientLogger.log('💾 Сохранен код вопроса в sessionStorage при resume', { questionCode, key });
+        }
       } catch (err) {
-        clientLogger.warn('⚠️ Не удалось сохранить currentQuestionIndex в sessionStorage', err);
+        clientLogger.warn('⚠️ Не удалось сохранить код вопроса в sessionStorage', err);
       }
     }
     params.setCurrentInfoScreenIndex(progressToRestore.infoScreenIndex);
@@ -220,12 +233,19 @@ export function resumeQuiz(params: ResumeQuizParams): void {
       nextQuestionCode: params.allQuestions?.[nextQuestionIndex]?.code || null,
     });
     params.setCurrentQuestionIndex(nextQuestionIndex);
-    // ФИКС: Сохраняем currentQuestionIndex в sessionStorage при восстановлении прогресса
+    // ИСПРАВЛЕНО: Сохраняем код вопроса вместо индекса для стабильного восстановления
     if (typeof window !== 'undefined') {
       try {
-        sessionStorage.setItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION, String(nextQuestionIndex));
+        const questionCode = params.allQuestions?.[nextQuestionIndex]?.code;
+        if (questionCode) {
+          // Используем скоупленный ключ с questionnaireId
+          const questionnaireId = params.questionnaire?.id?.toString();
+          const key = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE, questionnaireId);
+          sessionStorage.setItem(key, questionCode);
+          clientLogger.log('💾 Сохранен код вопроса в sessionStorage при resume', { questionCode, key });
+        }
       } catch (err) {
-        clientLogger.warn('⚠️ Не удалось сохранить currentQuestionIndex в sessionStorage', err);
+        clientLogger.warn('⚠️ Не удалось сохранить код вопроса в sessionStorage', err);
       }
     }
     params.setCurrentInfoScreenIndex(initialInfoScreens.length); // Пропускаем все начальные экраны
