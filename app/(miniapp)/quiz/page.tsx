@@ -42,7 +42,7 @@ import { shouldShowInitialLoader, getQuizBackgroundColor, isQuestionScreen as is
 import { handleFullRetake } from '@/lib/quiz/handlers/handleFullRetake';
 // ОТКЛЮЧЕНО: useQuizSync вызывает бесконечные циклы React Error #310
 // import { useQuizSync } from '@/lib/quiz/utils/quizSync';
-import { useQuestionnaire, useQuizProgress, useSaveQuizProgress } from '@/hooks/useQuiz';
+import { useQuestionnaire, useQuizProgress, useSaveQuizProgress, useClearQuizProgress } from '@/hooks/useQuiz';
 import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 import { WelcomeScreen, HowItWorksScreen, PersonalAnalysisScreen } from '@/components/quiz/screens';
 import { FixedContinueButton, BackButton, TinderButtons } from '@/components/quiz/buttons';
@@ -111,6 +111,9 @@ export default function QuizPage() {
   
   // ФИКС: Используем React Query для сохранения прогресса (автоматическая инвалидация кэша)
   const saveQuizProgressMutation = useSaveQuizProgress();
+  
+  // ФИКС: Используем React Query для очистки прогресса (автоматическая инвалидация кэша)
+  const clearQuizProgressMutation = useClearQuizProgress();
   
   // ФИКС: Используем React Query для загрузки прогресса (автоматическое кэширование)
   const { 
@@ -2391,19 +2394,11 @@ export default function QuizPage() {
       }
       
       // КРИТИЧНО: Очищаем прогресс на сервере (удаляем ответы из БД)
-      // Выполняем это ПЕРЕД clearProgress, чтобы гарантировать удаление на сервере
+      // ФИКС: Используем React Query мутацию для автоматической инвалидации кэша
+      // Это гарантирует, что quizProgressFromQuery обновится и станет null
       try {
-        const response = await fetch('/api/questionnaire/progress', {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        if (response.ok) {
-          clientLogger.log('✅ Ответы удалены на сервере при "Начать заново"');
-        } else {
-          clientLogger.warn('⚠️ Не удалось удалить ответы на сервере при "Начать заново"');
-        }
+        await clearQuizProgressMutation.mutateAsync(undefined);
+        clientLogger.log('✅ Ответы удалены на сервере при "Начать заново", кэш инвалидирован');
       } catch (err) {
         clientLogger.warn('⚠️ Ошибка при удалении ответов на сервере:', err);
       }
@@ -2411,6 +2406,10 @@ export default function QuizPage() {
       // Также вызываем clearProgress для очистки локального состояния
       // Это дополнительно очищает savedProgress и другие флаги
       await clearProgress();
+      
+      // ФИКС: Дополнительно очищаем savedProgress из state, чтобы гарантировать сброс
+      // Это предотвращает показ резюм-экрана после очистки
+      setSavedProgress(null);
 
       // ИСПРАВЛЕНО: После полного сброса выключаем isStartingOver
       // Это предотвращает конфликт логики - флаг больше не блокирует начальные инфо-экраны
