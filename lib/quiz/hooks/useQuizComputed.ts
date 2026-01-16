@@ -2,7 +2,7 @@
 // РЕФАКТОРИНГ: Хук для группировки всех вычисляемых значений из quiz/page.tsx
 // Вынесен для улучшения читаемости и поддержки
 
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { clientLogger } from '@/lib/client-logger';
 import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
 import { filterQuestions, getEffectiveAnswers } from '@/lib/quiz/filterQuestions';
@@ -62,6 +62,9 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     quizStateMachine,
     isDev,
   } = params;
+
+  // КРИТИЧНО: Ref для отслеживания последнего обработанного questionnaire в этом хуке
+  const lastProcessedQuestionnaireRef = useRef<Questionnaire | null>(null);
 
   // ============================================
   // ГРУППА 1: Вычисление effectiveAnswers
@@ -145,35 +148,26 @@ export function useQuizComputed(params: UseQuizComputedParams) {
   // ============================================
 
   const allQuestionsRaw = useMemo(() => {
+    // КРИТИЧНО: Проверяем, изменился ли questionnaire
+    const effectiveQuestionnaire = questionnaireRef.current || questionnaire || quizStateMachine.questionnaire;
+
+    if (!effectiveQuestionnaire) {
+      return allQuestionsRawPrevRef.current.length > 0 ? allQuestionsRawPrevRef.current : [];
+    }
+
+    // Проверяем, изменился ли questionnaire по сравнению с предыдущим
+    const questionnaireChanged = !lastProcessedQuestionnaireRef.current ||
+                               effectiveQuestionnaire.id !== lastProcessedQuestionnaireRef.current.id ||
+                               effectiveQuestionnaire !== lastProcessedQuestionnaireRef.current;
+
+    if (!questionnaireChanged && allQuestionsRawPrevRef.current.length > 0) {
+      return allQuestionsRawPrevRef.current;
+    }
+
+    lastProcessedQuestionnaireRef.current = effectiveQuestionnaire;
+
+    // Теперь выполняем вычисление только если questionnaire изменился
     try {
-      // КРИТИЧНО: Используем questionnaireRef.current как ОСНОВНОЙ источник, а не fallback
-      // Это гарантирует, что вопросы всегда извлекаются, даже если state временно null
-      // ИСПРАВЛЕНО: Приоритет ref над state, так как ref обновляется синхронно
-      // ИСПРАВЛЕНО: Также проверяем State Machine как дополнительный источник
-      const effectiveQuestionnaire = questionnaireRef.current || 
-                                      questionnaire || 
-                                      quizStateMachine.questionnaire;
-      
-      if (!effectiveQuestionnaire) {
-        // ИСПРАВЛЕНО: Если все источники null, используем предыдущее значение из ref
-        if (allQuestionsRawPrevRef.current.length > 0) {
-          clientLogger.log('⚠️ allQuestionsRaw: questionnaire is null (all sources), using previous value from ref', {
-            previousLength: allQuestionsRawPrevRef.current.length,
-            hasQuestionnaireRef: !!questionnaireRef.current,
-            hasQuestionnaireState: !!questionnaire,
-            hasQuestionnaireStateMachine: !!quizStateMachine.questionnaire,
-          });
-          return allQuestionsRawPrevRef.current;
-        }
-        if (isDev) {
-          clientLogger.log('⚠️ allQuestionsRaw: questionnaire is null (all sources), returning empty', {
-            hasQuestionnaireRef: !!questionnaireRef.current,
-            hasQuestionnaireState: !!questionnaire,
-            hasQuestionnaireStateMachine: !!quizStateMachine.questionnaire,
-          });
-        }
-        return allQuestionsRawPrevRef.current.length > 0 ? allQuestionsRawPrevRef.current : [];
-      }
       
       // ИСПРАВЛЕНО: Логируем источник questionnaire для диагностики
       const source = effectiveQuestionnaire === questionnaireRef.current ? 'ref' :
@@ -263,9 +257,8 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       return allQuestionsRawPrevRef.current.length > 0 ? allQuestionsRawPrevRef.current : [];
     }
   }, [
-    // КРИТИЧНО ИСПРАВЛЕНИЕ: Используем только стабильный ID вместо отдельных ID источников
-    // Это предотвращает бесконечные циклы, когда разные источники обновляются в разное время
-    stableQuestionnaireId,
+    // КРИТИЧНО ИСПРАВЛЕНИЕ: Убираем все зависимости - allQuestionsRaw должен вычисляться только один раз
+    // при первом получении questionnaire
     isDev
   ]);
 
@@ -442,9 +435,9 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     savedProgressAnswersKeysCount, // ИСПРАВЛЕНО: Используем стабильное значение вместо объекта
     isRetakingQuiz,
     showRetakeScreen,
-    stableQuestionnaireId, // ИСПРАВЛЕНИЕ: Используем стабильный ID вместо отдельных questionnaire ID
+    // КРИТИЧНО ИСПРАВЛЕНИЕ: Убираем questionnaire зависимости - allQuestions должен зависеть только от allQuestionsRaw
     // ИСПРАВЛЕНО: Убрали questionnaireRef из зависимостей - ref не должен быть в зависимостях (вызывает React error #300)
-    // ИСПРАВЛЕНО: Убрали allQuestionsPrevRef из зависимостей - ref не должен быть в зависимостях (вызывает React error #300) 
+    // ИСПРАВЛЕНО: Убрали allQuestionsPrevRef из зависимостей - ref не должен быть в зависимостях (вызывает React error #300)
     // ИСПРАВЛЕНО: Убрали effectiveAnswers из зависимостей - это вычисляемое значение, используем answersKeysCount
     isDev
   ]);
@@ -591,22 +584,23 @@ export function useQuizComputed(params: UseQuizComputedParams) {
   // ============================================
   
   const currentInitialInfoScreen = useMemo(() => {
-    const screen = isShowingInitialInfoScreen && 
-                   currentInfoScreenIndex >= 0 && 
+    // ИСПРАВЛЕНИЕ: currentInitialInfoScreen должен быть независимым от isShowingInitialInfoScreen
+    // Он просто возвращает экран по индексу, если индекс валиден
+    const screen = currentInfoScreenIndex >= 0 &&
                    currentInfoScreenIndex < initialInfoScreens.length
-                    ? initialInfoScreens[currentInfoScreenIndex] 
+                    ? initialInfoScreens[currentInfoScreenIndex]
                     : null;
     if (isDev) {
       clientLogger.log('📊 currentInitialInfoScreen: computed', {
         hasScreen: !!screen,
         screenId: screen?.id || null,
-        isShowingInitialInfoScreen,
         currentInfoScreenIndex,
         initialInfoScreensLength: initialInfoScreens.length,
+        isInRange: currentInfoScreenIndex >= 0 && currentInfoScreenIndex < initialInfoScreens.length,
       });
     }
     return screen;
-  }, [isShowingInitialInfoScreen, currentInfoScreenIndex, initialInfoScreens, isDev]);
+  }, [currentInfoScreenIndex, initialInfoScreens, isDev]);
 
   // ============================================
   // ГРУППА 9: Вычисление currentQuestion
