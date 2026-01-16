@@ -7,19 +7,19 @@ import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
 import type { Questionnaire } from '@/lib/quiz/types';
 
 /**
- * Сохраняет индекс в sessionStorage с обработкой ошибок
+ * Сохраняет индекс или код вопроса в sessionStorage с обработкой ошибок
  */
 export function saveIndexToSessionStorage(
-  key: 'quiz_currentQuestionIndex' | 'quiz_currentInfoScreenIndex',
-  index: number,
+  key: 'quiz_currentQuestionIndex' | 'quiz_currentQuestionCode' | 'quiz_currentInfoScreenIndex',
+  value: number | string,
   logMessage?: string
 ): void {
   if (typeof window === 'undefined') return;
-  
+
   try {
-    sessionStorage.setItem(key, String(index));
+    sessionStorage.setItem(key, String(value));
     if (logMessage) {
-      clientLogger.log(logMessage, { index });
+      clientLogger.log(logMessage, { value });
     }
   } catch (err) {
     clientLogger.warn(`⚠️ Не удалось сохранить ${key} в sessionStorage`, err);

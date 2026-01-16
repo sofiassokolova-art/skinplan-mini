@@ -354,8 +354,11 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       }
       
       updateQuestionIndex(nextQuestionIndex, currentQuestionIndexRef, setCurrentQuestionIndex);
-      // ФИКС: Сохраняем индекс в sessionStorage для восстановления при перемонтировании
-      saveIndexToSessionStorage('quiz_currentQuestionIndex', nextQuestionIndex, '💾 Сохранен currentQuestionIndex в sessionStorage при переходе к вопросам');
+      // ИСПРАВЛЕНО: Сохраняем код вопроса вместо индекса для стабильного восстановления
+      const questionCode = allQuestions[nextQuestionIndex]?.code;
+      if (questionCode) {
+        saveIndexToSessionStorage('quiz_currentQuestionCode', questionCode, '💾 Сохранен код вопроса в sessionStorage при переходе к вопросам');
+      }
       // ФИКС: Принудительно очищаем pendingInfoScreen при переходе к вопросам
       // Это предотвращает застревание на info screens
       setPendingInfoScreen(null);
@@ -555,11 +558,14 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         // НЕ переходим к следующему вопросу, если его нет
         return;
       }
-      
+
       updateQuestionIndex(newIndex, currentQuestionIndexRef, setCurrentQuestionIndex);
-      // ФИКС: Сохраняем newIndex в sessionStorage для восстановления при перемонтировании
-      saveIndexToSessionStorage('quiz_currentQuestionIndex', newIndex, '💾 Сохранен currentQuestionIndex в sessionStorage');
-      
+      // ИСПРАВЛЕНО: Сохраняем код вопроса вместо индекса для стабильного восстановления
+      const questionCode = allQuestions[newIndex]?.code;
+      if (questionCode) {
+        saveIndexToSessionStorage('quiz_currentQuestionCode', questionCode, '💾 Сохранен код вопроса в sessionStorage');
+      }
+
       // КРИТИЧНО: После закрытия инфо-экрана просто переходим к следующему вопросу
       // НЕ проверяем инфо-экран для следующего вопроса сразу - он будет проверен ПОСЛЕ того, как пользователь ответит
       // Это предотвращает застревание на инфо-экранах
@@ -984,12 +990,15 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
           // Игнорируем ошибки
         }
       }
-      
+
       updateQuestionIndex(newIndex, currentQuestionIndexRef, setCurrentQuestionIndex);
-      // ФИКС: Сохраняем newIndex в sessionStorage для восстановления при перемонтировании
-      saveIndexToSessionStorage('quiz_currentQuestionIndex', newIndex, '💾 Сохранен currentQuestionIndex в sessionStorage');
+      // ИСПРАВЛЕНО: Сохраняем код вопроса вместо индекса для стабильного восстановления
+      const questionCode = allQuestions[newIndex]?.code;
+      if (questionCode) {
+        saveIndexToSessionStorage('quiz_currentQuestionCode', questionCode, '💾 Сохранен код вопроса в sessionStorage');
+      }
       await saveProgressSafely(saveProgress, answers, newIndex, currentInfoScreenIndex);
-      
+
       // КРИТИЧНО: Логируем успешный переход к следующему вопросу
       clientLogger.warn('✅ handleNext: успешно перешли к следующему вопросу', {
         previousIndex: currentQuestionIndex,

@@ -24,8 +24,15 @@ export const QUIZ_CONFIG = {
   STORAGE_KEYS: {
     CURRENT_INFO_SCREEN: 'quiz_currentInfoScreenIndex',
     CURRENT_QUESTION: 'quiz_currentQuestionIndex',
+    CURRENT_QUESTION_CODE: 'quiz_currentQuestionCode',
     INIT_CALLED: 'quiz_initCalled',
     JUST_SUBMITTED: 'quiz_just_submitted',
+  },
+
+  // Функция для генерации скоупленных ключей с questionnaireId
+  getScopedKey: (baseKey: string, questionnaireId?: string | null): string => {
+    if (!questionnaireId) return baseKey;
+    return `${questionnaireId}:${baseKey}`;
   },
   
   // Логирование
