@@ -2488,27 +2488,29 @@ export default function QuizPage() {
   // РЕФАКТОРИНГ: Используем хук для логирования состояния рендеринга
   // КРИТИЧНО: Хук должен вызываться всегда, но внутри проверяет isDev
   // УБРАНО: Условный вызов хука вызывает React Error #300
-  useQuizRenderDebug({
-    isDev,
-    questionnaire,
-    questionnaireRef,
-    quizStateMachineQuestionnaire: quizStateMachine.questionnaire,
-    questionnaireFromQuery,
-    loading,
-    error,
-    currentQuestion,
-    currentQuestionIndex,
-    allQuestionsLength: allQuestions.length,
-    allQuestionsRawLength: allQuestionsRaw.length,
-    showResumeScreen,
-    showRetakeScreen,
-    isShowingInitialInfoScreen,
-    pendingInfoScreen,
-    isRetakingQuiz,
-    hasResumed,
-    initCompletedRef,
-    initInProgressRef: initInProgressRef,
-  });
+  // ВРЕМЕННО ОТКЛЮЧЕНО: useQuizRenderDebug может вызывать React Error #300
+  // TODO: Восстановить после исправления проблемы с порядком хуков
+  // useQuizRenderDebug({
+  //   isDev,
+  //   questionnaire,
+  //   questionnaireRef,
+  //   quizStateMachineQuestionnaire: quizStateMachine.questionnaire,
+  //   questionnaireFromQuery,
+  //   loading,
+  //   error,
+  //   currentQuestion,
+  //   currentQuestionIndex,
+  //   allQuestionsLength: allQuestions.length,
+  //   allQuestionsRawLength: allQuestionsRaw.length,
+  //   showResumeScreen,
+  //   showRetakeScreen,
+  //   isShowingInitialInfoScreen,
+  //   pendingInfoScreen,
+  //   isRetakingQuiz,
+  //   hasResumed,
+  //   initCompletedRef,
+  //   initInProgressRef: initInProgressRef,
+  // });
 
   // ИСПРАВЛЕНО: useEffect для исправления currentInfoScreenIndex уже перемещен выше (перед useQuizView)
   // Это гарантирует, что все хуки вызываются до любых ранних return

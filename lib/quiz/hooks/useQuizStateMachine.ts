@@ -26,6 +26,15 @@ export function useQuizStateMachine(options: UseQuizStateMachineOptions = {}) {
     return stateMachineRef.current?.getState() || initialState;
   });
   
+  // КРИТИЧНО ИСПРАВЛЕНО: Добавляем управление questionnaire через State Machine
+  // Используем функцию-инициализатор для стабильности
+  // КРИТИЧНО: Должен быть вызван сразу после первого useState для стабильности порядка хуков
+  const [questionnaire, setQuestionnaireState] = useState<any | null>(() => {
+    // КРИТИЧНО: Вычисляем значение только один раз при первом рендере
+    // Это предотвращает React Error #300 из-за нестабильных значений
+    return stateMachineRef.current?.getQuestionnaire() || null;
+  });
+  
   // КРИТИЧНО ИСПРАВЛЕНО: Инициализируем ref начальным состоянием из state machine
   // Используем ref для хранения предыдущего состояния в listener, чтобы избежать бесконечных циклов
   // КРИТИЧНО: useRef не принимает функцию, поэтому вычисляем значение заранее
@@ -115,14 +124,6 @@ export function useQuizStateMachine(options: UseQuizStateMachineOptions = {}) {
   const isAnyState = useCallback((targetStates: QuizState[]) => {
     return targetStates.includes(state);
   }, [state]);
-  
-  // КРИТИЧНО ИСПРАВЛЕНО: Добавляем управление questionnaire через State Machine
-  // Используем функцию-инициализатор для стабильности
-  const [questionnaire, setQuestionnaireState] = useState<any | null>(() => {
-    // КРИТИЧНО: Вычисляем значение только один раз при первом рендере
-    // Это предотвращает React Error #300 из-за нестабильных значений
-    return stateMachineRef.current?.getQuestionnaire() || null;
-  });
 
   // Подписываемся на изменения questionnaire
   useEffect(() => {
