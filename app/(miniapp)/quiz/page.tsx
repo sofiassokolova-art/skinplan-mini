@@ -2642,8 +2642,11 @@ export default function QuizPage() {
     !isLoadingProgress &&
     !loading;
   
+  // ФИКС: КРИТИЧНО - не показываем "Question not found" если должен показываться резюм-экран
+  // Это предотвращает мигание "Question not found" перед резюм-экраном
   const inQuestionsStage =
     viewMode === 'QUESTION' &&
+    !shouldShowResume && // ФИКС: Приоритет резюм-экрана над "Question not found"
     currentInfoScreenIndex >= initialInfoScreens.length &&
     !pendingInfoScreen &&
     stableForQuestions;
