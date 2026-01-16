@@ -27,6 +27,7 @@ export interface UseQuizComputedParams {
   hasResumed: boolean;
   isStartingOver: boolean;
   pendingInfoScreen: any | null;
+  isLoadingProgress: boolean;
   
   // Refs
   questionnaireRef: React.MutableRefObject<Questionnaire | null>;
@@ -58,6 +59,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     hasResumed,
     isStartingOver,
     pendingInfoScreen,
+    isLoadingProgress,
     questionnaireRef,
     currentInfoScreenIndexRef,
     allQuestionsRawPrevRef,
@@ -576,6 +578,27 @@ export function useQuizComputed(params: UseQuizComputedParams) {
   // ============================================
   
   const currentQuestion = useMemo(() => {
+    // КРИТИЧНО: Если прогресс еще загружается, НЕ вычисляем currentQuestion
+    // Это предотвращает показ первого вопроса до загрузки savedProgress из React Query
+    // и позволяет резюм-экрану показаться правильно
+    if (isLoadingProgress) {
+      return null;
+    }
+    
+    // КРИТИЧНО: Если показывается резюм-экран, НЕ вычисляем currentQuestion
+    // Это предотвращает показ первого вопроса вместо резюм-экрана при повторном заходе
+    if (showResumeScreen) {
+      return null;
+    }
+    
+    // КРИТИЧНО: Если есть сохраненный прогресс с >= 2 ответами, НЕ вычисляем currentQuestion
+    // Это предотвращает показ первого вопроса вместо резюм-экрана при повторном заходе
+    // (резюм-экран должен показаться, но может еще не быть установлен в showResumeScreen)
+    const savedAnswersCount = savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0;
+    if (savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN) {
+      return null;
+    }
+    
     // ВАЖНО: При перепрохождении (retake) мы пропускаем info screens,
     // поэтому pendingInfoScreen не должен блокировать отображение вопросов при retake
     // ВАЖНО: Если показывается экран продолжения (showResumeScreen), не блокируем вопросы
@@ -680,6 +703,8 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     pendingInfoScreen, 
     isRetakingQuiz, 
     showResumeScreen, 
+    isLoadingProgress, // КРИТИЧНО: Добавляем для проверки загрузки прогресса
+    savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0, // КРИТИЧНО: Добавляем для проверки hasSavedProgress
     currentQuestionIndex, 
     allQuestions.length, // ИСПРАВЛЕНО: Используем длину вместо массива для стабильности
     initialInfoScreens.length, 

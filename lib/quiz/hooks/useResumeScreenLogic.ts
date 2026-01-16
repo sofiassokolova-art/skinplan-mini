@@ -8,6 +8,7 @@ import type { SavedProgress } from '@/lib/quiz/types';
 
 interface UseResumeScreenLogicParams {
   loading: boolean;
+  isLoadingProgress: boolean;
   isStartingOver: boolean;
   hasResumed: boolean;
   currentQuestionIndex: number;
@@ -22,6 +23,7 @@ interface UseResumeScreenLogicParams {
  */
 export function useResumeScreenLogic({
   loading,
+  isLoadingProgress,
   isStartingOver,
   hasResumed,
   currentQuestionIndex,
@@ -36,12 +38,26 @@ export function useResumeScreenLogic({
       return;
     }
     
+    // КРИТИЧНО: Если прогресс еще загружается, не принимаем решение о резюм-экране
+    // Это предотвращает скрытие резюм-экрана из-за восстановления состояния из sessionStorage
+    // до того, как savedProgress загрузится из React Query
+    if (isLoadingProgress) {
+      return;
+    }
+    
     // КРИТИЧНО ИСПРАВЛЕНО: Определяем активную сессию правильно
     // Активная сессия = пользователь активно отвечает на вопросы в текущей сессии
-    // Это определяется по наличию активных ответов (answers) или текущему индексу вопроса > 0
-    // НЕ используем savedProgress для определения активной сессии, так как savedProgress
-    // обновляется во время активного прохождения анкеты (ответы сохраняются на сервер)
-    const isActivelyAnswering = currentQuestionIndex > 0 || Object.keys(answers).length > 0;
+    // НЕ считаем пользователя активно отвечающим, если:
+    // 1. Есть сохраненный прогресс с >= 2 ответами (это означает повторный заход)
+    // 2. currentQuestionIndex или answers восстановлены из sessionStorage, но savedProgress еще не загружен
+    const hasSavedProgress = savedProgress && savedProgress.answers && Object.keys(savedProgress.answers).length >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN;
+    
+    // КРИТИЧНО: Если есть сохраненный прогресс с >= 2 ответами, это повторный заход
+    // В этом случае НЕ считаем пользователя активно отвечающим, даже если currentQuestionIndex > 0 или answers не пустые
+    // Это исправляет проблему, когда резюм-экран не показывается из-за восстановления состояния из sessionStorage
+    const isActivelyAnswering = hasSavedProgress 
+      ? false // Если есть сохраненный прогресс, это повторный заход, не активная сессия
+      : (currentQuestionIndex > 0 || Object.keys(answers).length > 0);
     
     // КРИТИЧНО: Если пользователь активно отвечает, НЕ показываем резюм-экран
     // Это предотвращает показ резюм-экрана во время активного прохождения анкеты
@@ -51,6 +67,7 @@ export function useResumeScreenLogic({
           currentQuestionIndex,
           answersCount: Object.keys(answers).length,
           savedProgressAnswersCount: savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0,
+          hasSavedProgress,
         });
         setShowResumeScreen(false);
       }
@@ -81,6 +98,7 @@ export function useResumeScreenLogic({
           currentQuestionIndex,
           currentAnswersCount: Object.keys(answers).length,
           isActivelyAnswering: false, // Гарантировано проверкой выше
+          hasSavedProgress,
         });
         setShowResumeScreen(true);
       }
@@ -94,5 +112,5 @@ export function useResumeScreenLogic({
         setShowResumeScreen(false);
       }
     }
-  }, [loading, savedProgress, showResumeScreen, isStartingOver, hasResumed, currentQuestionIndex, answers, setShowResumeScreen]);
+  }, [loading, isLoadingProgress, savedProgress, showResumeScreen, isStartingOver, hasResumed, currentQuestionIndex, answers, setShowResumeScreen]);
 }

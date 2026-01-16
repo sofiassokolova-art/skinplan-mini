@@ -125,9 +125,9 @@ export function QuizPageContent({
           isDev={isDev}
         />
         {/* РЕФАКТОРИНГ: Используем компонент QuizQuestion для рендеринга вопроса */}
-        {/* КРИТИЧНО: Не показываем вопрос, если показываются начальные инфо-экраны
-            Это предотвращает двойной рендеринг после "Начать анкету заново" */}
-        {currentQuestion && currentQuestion.id && !isShowingInitialInfoScreen && (
+        {/* КРИТИЧНО: Не показываем вопрос, если показываются начальные инфо-экраны или резюм-экран
+            Это предотвращает двойной рендеринг после "Начать анкету заново" и показ вопроса вместо резюм-экрана */}
+        {currentQuestion && currentQuestion.id && !isShowingInitialInfoScreen && !showResumeScreen && (
           <QuizQuestion
             question={currentQuestion}
             currentQuestionIndex={currentQuestionIndex}

@@ -245,6 +245,7 @@ export default function QuizPage() {
   // РЕФАКТОРИНГ: Используем хук для логики резюм-экрана
   useResumeScreenLogic({
     loading,
+    isLoadingProgress,
     isStartingOver,
     hasResumed,
     currentQuestionIndex,
@@ -280,6 +281,7 @@ export default function QuizPage() {
     hasResumed,
     isStartingOver, // КРИТИЧНО: Передаем isStartingOver для блокировки начальных инфо-экранов
     pendingInfoScreen,
+    isLoadingProgress, // КРИТИЧНО: Передаем isLoadingProgress для блокировки вычисления currentQuestion при загрузке прогресса
     questionnaireRef,
     currentInfoScreenIndexRef,
     allQuestionsRawPrevRef,
@@ -695,8 +697,12 @@ export default function QuizPage() {
           
           // Восстанавливаем currentQuestionIndex из sessionStorage
           // ИСПРАВЛЕНО: Проверяем, что индекс не выходит за границы allQuestions
+          // КРИТИЧНО: НЕ восстанавливаем индекс, если прогресс еще загружается или есть сохраненный прогресс с >= 2 ответами
+          // Это предотвращает восстановление индекса до загрузки savedProgress из React Query,
+          // что может скрыть резюм-экран
+          const hasSavedProgress = savedProgress && savedProgress.answers && Object.keys(savedProgress.answers).length >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN;
           const savedQuestionIndex = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
-          if (savedQuestionIndex !== null) {
+          if (savedQuestionIndex !== null && !isLoadingProgress && !hasSavedProgress) {
             const questionIndex = parseInt(savedQuestionIndex, 10);
             if (!isNaN(questionIndex) && questionIndex >= 0) {
               // ИСПРАВЛЕНО: Используем ref для получения актуальной длины allQuestions
@@ -721,6 +727,8 @@ export default function QuizPage() {
                 clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage (синхронно)', { 
                   questionIndex: validIndex,
                   allQuestionsLength: currentAllQuestionsLength,
+                  isLoadingProgress,
+                  hasSavedProgress,
                 });
               } else {
                 // КРИТИЧНО: Если allQuestions еще не загружен, НЕ устанавливаем индекс в 0
@@ -733,6 +741,13 @@ export default function QuizPage() {
                 });
               }
             }
+          } else if (savedQuestionIndex !== null && (isLoadingProgress || hasSavedProgress)) {
+            clientLogger.log('⏸️ Пропускаем восстановление currentQuestionIndex из sessionStorage: прогресс загружается или есть сохраненный прогресс', {
+              savedIndex: savedQuestionIndex,
+              isLoadingProgress,
+              hasSavedProgress,
+              savedProgressAnswersCount: savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0,
+            });
           }
           
           // Восстанавливаем currentInfoScreenIndex из sessionStorage
@@ -893,7 +908,18 @@ export default function QuizPage() {
     // Используем answersCountRef вместо answers для проверки пустоты
     // КРИТИЧНО: НЕ восстанавливаем ответы, если пользователь начал заново (isStartingOver)
     // Это предотвращает восстановление ответов после "Начать анкету заново"
-    if (typeof window !== 'undefined' && answersCountRef.current === 0 && !isStartingOver && !isStartingOverRef.current) {
+    // КРИТИЧНО: НЕ восстанавливаем ответы из sessionStorage, если прогресс еще загружается
+    // Это предотвращает восстановление ответов до загрузки savedProgress из React Query,
+    // что может скрыть резюм-экран
+    // КРИТИЧНО: НЕ восстанавливаем ответы из sessionStorage, если есть сохраненный прогресс с >= 2 ответами
+    // Это означает повторный заход, и нужно дождаться загрузки savedProgress из React Query
+    const hasSavedProgress = savedProgress && savedProgress.answers && Object.keys(savedProgress.answers).length >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN;
+    if (typeof window !== 'undefined' && 
+        answersCountRef.current === 0 && 
+        !isStartingOver && 
+        !isStartingOverRef.current &&
+        !isLoadingProgress &&
+        !hasSavedProgress) {
       try {
         const savedAnswersStr = sessionStorage.getItem('quiz_answers_backup');
         if (savedAnswersStr) {
@@ -907,6 +933,8 @@ export default function QuizPage() {
               clientLogger.log('🔄 Восстанавливаем answers из sessionStorage (после перемонтирования)', {
                 answersCount: savedAnswersCount,
                 previousAnswersCount: answersCountRef.current,
+                isLoadingProgress,
+                hasSavedProgress,
               });
               setAnswers(savedAnswers);
               answersRef.current = savedAnswers;
@@ -917,6 +945,12 @@ export default function QuizPage() {
       } catch (err) {
         clientLogger.warn('⚠️ Ошибка при восстановлении answers из sessionStorage', err);
       }
+    } else if (typeof window !== 'undefined' && answersCountRef.current === 0 && (isLoadingProgress || hasSavedProgress)) {
+      clientLogger.log('⏸️ Пропускаем восстановление answers из sessionStorage: прогресс загружается или есть сохраненный прогресс', {
+        isLoadingProgress,
+        hasSavedProgress,
+        savedProgressAnswersCount: savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0,
+      });
     }
     
     // Затем пытаемся восстановить из React Query кэша (если есть)
@@ -968,7 +1002,7 @@ export default function QuizPage() {
         }
       }
     }
-  }, [isLoadingProgress, isStartingOver, quizProgressFromQuery?.progress?.answers ? JSON.stringify(quizProgressFromQuery.progress.answers) : null, setAnswers, setSavedProgress]); // ИСПРАВЛЕНО: Убран answers из зависимостей, используем answersCountRef вместо этого
+  }, [isLoadingProgress, isStartingOver, savedProgress, quizProgressFromQuery?.progress?.answers ? JSON.stringify(quizProgressFromQuery.progress.answers) : null, setAnswers, setSavedProgress]); // ИСПРАВЛЕНО: Убран answers из зависимостей, используем answersCountRef вместо этого, добавлен savedProgress для проверки hasSavedProgress
 
   // ИСПРАВЛЕНО: Проверка профиля и определение isRetakingQuiz/showRetakeScreen
   // Вынесено в отдельный useEffect после завершения init

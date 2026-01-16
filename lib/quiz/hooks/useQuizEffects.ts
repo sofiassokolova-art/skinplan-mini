@@ -643,8 +643,17 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
   // КРИТИЧНО: Восстанавливаем currentQuestionIndex из sessionStorage только когда вопросы загружены
   // Это исправляет проблему, когда после перезагрузки индекс восстанавливается до загрузки вопросов
   // и устанавливается в 0, хотя должен быть сохраненным значением
+  // КРИТИЧНО: НЕ восстанавливаем индекс, если прогресс еще загружается
+  // Это предотвращает восстановление индекса до загрузки savedProgress из React Query,
+  // что может скрыть резюм-экран
   useEffect(() => {
     if (allQuestions.length === 0 || loading || !initCompletedRef.current) {
+      return;
+    }
+    
+    // КРИТИЧНО: НЕ восстанавливаем индекс, если прогресс еще загружается
+    // Это предотвращает восстановление индекса до загрузки savedProgress из React Query
+    if (isLoadingProgress) {
       return;
     }
     
@@ -681,9 +690,18 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
         restoredIndex: validIndex,
         allQuestionsLength: allQuestions.length,
         currentIndex: currentQuestionIndex,
+        isLoadingProgress,
+        hasSavedProgress,
+      });
+    } else if (savedQuestionIndex !== null && (hasActiveAnswers || hasSavedProgress)) {
+      clientLogger.log('⏸️ Пропускаем восстановление currentQuestionIndex: есть активные ответы или сохраненный прогресс', {
+        savedIndex: questionIndex,
+        hasActiveAnswers,
+        hasSavedProgress,
+        savedProgressAnswersCount: savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0,
       });
     }
-  }, [allQuestions.length, loading, currentQuestionIndex, answers, savedProgress]);
+  }, [allQuestions.length, loading, isLoadingProgress, currentQuestionIndex, answers, savedProgress]);
 
   // useEffect(() => {
   //   // clientLogger.log('📊 allQuestions state updated', {
