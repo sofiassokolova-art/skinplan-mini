@@ -2933,28 +2933,7 @@ export default function QuizPage() {
     // (вопрос должен найтись сразу после загрузки анкеты)
   }
 
-  // РЕФАКТОРИНГ: Используем утилиту для проверки ошибок анкеты
-  const errorScreen = checkQuizErrors({
-    questionnaire,
-    questionnaireRef,
-    allQuestionsRaw,
-    allQuestions,
-    answers,
-    loading,
-    error,
-    isRetakingQuiz,
-    showRetakeScreen,
-    currentQuestion,
-    showResumeScreen,
-    isShowingInitialInfoScreen,
-    pendingInfoScreen,
-    hasResumed,
-  });
-  
-  if (errorScreen) {
-    return errorScreen;
-  }
-
+  // КРИТИЧНО: Все хуки должны вызываться ПЕРЕД любыми условными return
   // РЕФАКТОРИНГ: Используем хук для логирования состояния рендеринга
   useQuizRenderDebug({
     isDev,
@@ -2977,6 +2956,28 @@ export default function QuizPage() {
     initCompletedRef,
     initInProgressRef: initInProgressRef,
   });
+
+  // РЕФАКТОРИНГ: Используем утилиту для проверки ошибок анкеты
+  const errorScreen = checkQuizErrors({
+    questionnaire,
+    questionnaireRef,
+    allQuestionsRaw,
+    allQuestions,
+    answers,
+    loading,
+    error,
+    isRetakingQuiz,
+    showRetakeScreen,
+    currentQuestion,
+    showResumeScreen,
+    isShowingInitialInfoScreen,
+    pendingInfoScreen,
+    hasResumed,
+  });
+  
+  if (errorScreen) {
+    return errorScreen;
+  }
 
   // РЕФАКТОРИНГ: Используем утилиту для определения необходимости показа лоадера
   const shouldShowLoader = shouldShowInitialLoader({

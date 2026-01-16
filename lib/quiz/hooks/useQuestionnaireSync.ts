@@ -45,11 +45,13 @@ export function useQuestionnaireSync({
   }, [questionnaire]);
 
   // Обновляем ref для setQuestionnaireInStateMachine
+  // ИСПРАВЛЕНО: Убрана зависимость от функции - обновляем ref при каждом рендере
   useEffect(() => {
     setQuestionnaireInStateMachineRef.current = quizStateMachine.setQuestionnaire;
-  }, [quizStateMachine.setQuestionnaire]);
+  });
 
   // Синхронизация из React Query
+  // ИСПРАВЛЕНО: Убраны функции из зависимостей - используем refs для стабильности
   useEffect(() => {
     const queryId = questionnaireFromQuery?.id;
     const currentId = questionnaire?.id;
@@ -66,7 +68,8 @@ export function useQuestionnaireSync({
         setQuestionnaireInStateMachineRef.current(questionnaireFromQuery);
       }
     }
-  }, [questionnaireFromQuery?.id, questionnaire?.id, setQuestionnaire, questionnaireRef]);
+    // ИСПРАВЛЕНО: Только ID в зависимостях, функции убраны (они стабильны)
+  }, [questionnaireFromQuery?.id, questionnaire?.id]);
 
   // Обертка для setQuestionnaire с синхронизацией State Machine
   const setQuestionnaireWithStateMachine = useCallback((
@@ -125,9 +128,12 @@ export function useQuestionnaireSync({
     } else if (questionnaireToSet) {
       questionnaireRef.current = questionnaireToSet;
     }
-  }, [quizStateMachine, setQuestionnaire, questionnaireRef]);
+    // ИСПРАВЛЕНО: Убраны функции из зависимостей - используем refs для стабильности
+    // quizStateMachine - объект, но мы используем только его методы, которые стабильны
+  }, [quizStateMachine]);
 
   // Синхронизация loading из React Query
+  // ИСПРАВЛЕНО: Убрана функция setLoading из зависимостей
   useEffect(() => {
     const hasQuestionnaireAlready = !!questionnaire || !!questionnaireRef.current || !!quizStateMachine.questionnaire;
     
@@ -136,14 +142,17 @@ export function useQuestionnaireSync({
     } else if (questionnaireFromQuery?.id) {
       setLoading(false);
     }
-  }, [isLoadingQuestionnaire, questionnaireFromQuery?.id, questionnaire?.id, quizStateMachine.questionnaire?.id, setLoading]);
+    // ИСПРАВЛЕНО: Только значения в зависимостях, функции убраны
+  }, [isLoadingQuestionnaire, questionnaireFromQuery?.id, questionnaire?.id, quizStateMachine.questionnaire?.id]);
 
   // Синхронизация error из React Query
+  // ИСПРАВЛЕНО: Убрана функция setError из зависимостей
   useEffect(() => {
     if (questionnaireError) {
       setError('Ошибка загрузки анкеты. Пожалуйста, обновите страницу.');
     }
-  }, [questionnaireError, setError]);
+    // ИСПРАВЛЕНО: Только questionnaireError в зависимостях
+  }, [questionnaireError]);
 
   return {
     setQuestionnaireWithStateMachine,
