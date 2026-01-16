@@ -408,43 +408,37 @@ export function useQuizComputed(params: UseQuizComputedParams) {
   // ============================================
   
   const isShowingInitialInfoScreen = useMemo(() => {
-    // Логирование для диагностики (всегда, чтобы понять, почему возвращается true/false)
-    if (isDev) {
-      clientLogger.log('🔍 isShowingInitialInfoScreen: вычисление', {
-        currentInfoScreenIndex,
-        initialInfoScreensLength: initialInfoScreens.length,
-        showResumeScreen,
-        showRetakeScreen,
-        hasSavedProgress: !!savedProgress,
-        hasResumed,
-        isRetakingQuiz,
-        currentQuestionIndex,
-        answersCount: Object.keys(answers).length,
-      });
-    }
+    // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+    // if (isDev) {
+    //   clientLogger.log('🔍 isShowingInitialInfoScreen: вычисление', {...});
+    // }
     
     // КРИТИЧНО: Если показывается экран продолжения - не показываем начальные экраны
     // Это должно быть ПЕРВОЙ проверкой, чтобы резюм-экран имел приоритет
     if (showResumeScreen) {
-      if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (showResumeScreen)');
+      // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+      // if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (showResumeScreen)');
       return false;
     }
     
     // Если показывается экран выбора тем при перепрохождении - не показываем начальные экраны
     if (showRetakeScreen && isRetakingQuiz) {
-      if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (showRetakeScreen && isRetakingQuiz)');
+      // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+      // if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (showRetakeScreen && isRetakingQuiz)');
       return false;
     }
     // КРИТИЧНО: Проверяем savedProgress ПЕРЕД проверкой isOnInfoScreens
     // Если есть сохраненный прогресс с >= 2 ответами, НЕ показываем инфо-экраны (должен показаться резюм-экран)
     // Это предотвращает показ инфо-экранов при повторном заходе в приложение
     if (savedProgress && savedProgress.answers && Object.keys(savedProgress.answers).length >= 2) {
-      if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (savedProgress with >= 2 answers)');
+      // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+      // if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (savedProgress with >= 2 answers)');
       return false;
     }
     // Если пользователь восстановил прогресс - не показываем начальные экраны
     if (hasResumed) {
-      if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (hasResumed)');
+      // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+      // if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (hasResumed)');
       return false;
     }
     // ИСПРАВЛЕНО: Если пользователь вернулся к инфо-экранам через навигацию назад (оба индекса < length),
@@ -454,24 +448,28 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     // Если есть сохраненный прогресс с 1 ответом (только имя) И пользователь НЕ на инфо-экранах - не показываем
     // Это предотвращает показ инфо-экранов при первом заходе, если есть только имя
     if (!isOnInfoScreens && savedProgress && savedProgress.answers && Object.keys(savedProgress.answers).length === 1) {
-      if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (savedProgress with 1 answer, not on info screens)');
+      // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+      // if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (savedProgress with 1 answer, not on info screens)');
       return false;
     }
     // ВАЖНО: Если повторное прохождение БЕЗ экрана выбора тем - не показываем начальные экраны
     // Это означает, что пользователь уже выбрал "Пройти всю анкету заново" и оплатил
     if (isRetakingQuiz && !showRetakeScreen) {
-      if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (isRetakingQuiz && !showRetakeScreen)');
+      // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+      // if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (isRetakingQuiz && !showRetakeScreen)');
       return false;
     }
     // ИСПРАВЛЕНО: КРИТИЧЕСКАЯ ЗАЩИТА - проверяем ref, чтобы не показывать инфо-экраны, если пользователь уже перешел к вопросам
     // Это предотвращает показ инфо-экранов, если currentInfoScreenIndex временно сбросился, но ref все еще указывает на вопросы
     if (currentInfoScreenIndexRef.current >= initialInfoScreens.length) {
-      if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (ref index >= length)');
+      // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+      // if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (ref index >= length)');
       return false;
     }
     // Если currentInfoScreenIndex уже прошел все начальные экраны - не показываем их
     if (currentInfoScreenIndex >= initialInfoScreens.length) {
-      if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (index >= length)');
+      // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+      // if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (index >= length)');
       return false;
     }
     // ИСПРАВЛЕНО: НЕ блокируем показ инфо-экранов, если пользователь вернулся к ним через навигацию назад
@@ -479,7 +477,8 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     // Если currentInfoScreenIndex < initialInfoScreens.length, значит пользователь на инфо-экранах, показываем их
     const isActivelyOnQuestions = currentQuestionIndex > 0 && currentInfoScreenIndex >= initialInfoScreens.length;
     if (isActivelyOnQuestions) {
-      if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (user actively on questions)');
+      // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+      // if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (user actively on questions)');
       return false;
     }
     // Иначе показываем, если currentInfoScreenIndex < initialInfoScreens.length
@@ -487,21 +486,22 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     const shouldShow = currentInfoScreenIndex < initialInfoScreens.length && 
                        currentInfoScreenIndexRef.current < initialInfoScreens.length;
     
-    // ФИКС: Всегда логируем результат (warn уровень для диагностики в БД)
-    // Это поможет понять, почему isShowingInitialInfoScreen остается true
-    clientLogger.warn(`📺 isShowingInitialInfoScreen: ${shouldShow}`, {
-        currentInfoScreenIndex,
-        initialInfoScreensLength: initialInfoScreens.length,
-      isLastInfoScreen: currentInfoScreenIndex === initialInfoScreens.length - 1,
-        showResumeScreen,
-        showRetakeScreen,
-        hasSavedProgress: !!savedProgress,
-        hasResumed,
-        isRetakingQuiz,
-        currentQuestionIndex,
-        answersCount: Object.keys(answers).length,
-      allQuestionsLength: allQuestions.length,
-    });
+    // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+    // if (isDev) {
+    //   clientLogger.warn(`📺 isShowingInitialInfoScreen: ${shouldShow}`, {
+    //     currentInfoScreenIndex,
+    //     initialInfoScreensLength: initialInfoScreens.length,
+    //     isLastInfoScreen: currentInfoScreenIndex === initialInfoScreens.length - 1,
+    //     showResumeScreen,
+    //     showRetakeScreen,
+    //     hasSavedProgress: !!savedProgress,
+    //     hasResumed,
+    //     isRetakingQuiz,
+    //     currentQuestionIndex,
+    //     answersCount: Object.keys(answers).length,
+    //     allQuestionsLength: allQuestions.length,
+    //   });
+    // }
     
     return shouldShow;
   }, [
@@ -566,26 +566,28 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     const shouldBlockPendingInfoScreen = pendingInfoScreen && !isRetakingQuiz && isOnQuestions;
     const shouldBlock = (!isPastInitialScreensAny && isShowingInitialInfoScreen && currentInitialInfoScreen && isStillOnInitialScreens) || shouldBlockPendingInfoScreen;
     if (shouldBlock && !showResumeScreen) {
-      // ФИКС: Всегда логируем блокировку вопросов (warn уровень сохраняется в БД)
-      clientLogger.warn('⏸️ currentQuestion: null (blocked by info screen)', {
-          isShowingInitialInfoScreen,
-          hasCurrentInitialInfoScreen: !!currentInitialInfoScreen,
-        currentInitialInfoScreenId: currentInitialInfoScreen?.id || null,
-          pendingInfoScreen: !!pendingInfoScreen,
-        pendingInfoScreenId: pendingInfoScreen?.id || null,
-          isRetakingQuiz,
-        showResumeScreen,
-        currentInfoScreenIndex,
-        initialInfoScreensLength: initialInfoScreens.length,
-          currentQuestionIndex,
-        allQuestionsLength: allQuestions.length,
-        hasResumed,
-        savedProgressExists: !!savedProgress,
-        answersCount: Object.keys(answers).length,
-        isOnQuestions: currentInfoScreenIndex >= initialInfoScreens.length || currentInfoScreenIndexRef.current >= initialInfoScreens.length,
-        isStillOnInitialScreens,
-        isPastInitialScreensAny,
-      });
+      // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+      // if (isDev) {
+      //   clientLogger.warn('⏸️ currentQuestion: null (blocked by info screen)', {
+      //     isShowingInitialInfoScreen,
+      //     hasCurrentInitialInfoScreen: !!currentInitialInfoScreen,
+      //     currentInitialInfoScreenId: currentInitialInfoScreen?.id || null,
+      //     pendingInfoScreen: !!pendingInfoScreen,
+      //     pendingInfoScreenId: pendingInfoScreen?.id || null,
+      //     isRetakingQuiz,
+      //     showResumeScreen,
+      //     currentInfoScreenIndex,
+      //     initialInfoScreensLength: initialInfoScreens.length,
+      //     currentQuestionIndex,
+      //     allQuestionsLength: allQuestions.length,
+      //     hasResumed,
+      //     savedProgressExists: !!savedProgress,
+      //     answersCount: Object.keys(answers).length,
+      //     isOnQuestions: currentInfoScreenIndex >= initialInfoScreens.length || currentInfoScreenIndexRef.current >= initialInfoScreens.length,
+      //     isStillOnInitialScreens,
+      //     isPastInitialScreensAny,
+      //   });
+      // }
       return null;
     }
     

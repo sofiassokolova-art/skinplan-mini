@@ -428,7 +428,10 @@ export default function QuizPage() {
         // ИСПРАВЛЕНО: ВСЕГДА сбрасываем isSubmitting при монтировании для нового пользователя
         // Это предотвращает показ планового лоадера, если isSubmitting остался true из предыдущей сессии
         // ВАЖНО: Сбрасываем БЕЗ проверки, так как для нового пользователя isSubmitting должен быть false
-        clientLogger.log('🧹 Сбрасываем isSubmitting при входе на /quiz (защита от залипшего состояния)');
+        // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+        // if (isDev) {
+        //   clientLogger.log('🧹 Сбрасываем isSubmitting при входе на /quiz (защита от залипшего состояния)');
+        // }
         setIsSubmitting(false);
         isSubmittingRef.current = false;
         
@@ -662,7 +665,10 @@ export default function QuizPage() {
     if (typeof window !== 'undefined') {
       const alreadyInit = sessionStorage.getItem('quiz_init_done') === 'true';
       if (alreadyInit) {
-        clientLogger.log('⛔ useEffect: init() skipped: quiz_init_done in sessionStorage');
+        // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+        // if (isDev) {
+        //   clientLogger.log('⛔ useEffect: init() skipped: quiz_init_done in sessionStorage');
+        // }
         
         // ИСПРАВЛЕНО: Восстанавливаем состояние после ремоунта
         // РЕФАКТОРИНГ: init теперь в useQuizInit, используем его из хука
@@ -2223,14 +2229,17 @@ export default function QuizPage() {
     
     // ВАЖНО: Не выполняем, если resumeQuiz уже выполнен, чтобы не сбрасывать состояние после resumeQuiz
     if (isShowingInitialInfoScreen && !currentInitialInfoScreen && !isRetakingQuiz && !showResumeScreen && !loading && !resumeCompletedRef.current) {
-      clientLogger.warn('⚠️ isShowingInitialInfoScreen = true, но currentInitialInfoScreen = null - исправляем несоответствие и пропускаем начальные экраны', {
-        currentInfoScreenIndex,
-        initialInfoScreensLength: initialInfoScreens.length,
-        hasCurrentScreen: !!initialInfoScreens[currentInfoScreenIndex],
-        isShowingInitialInfoScreen,
-        hasResumed,
-        loading,
-      });
+      // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+      // if (isDev) {
+      //   clientLogger.warn('⚠️ isShowingInitialInfoScreen = true, но currentInitialInfoScreen = null - исправляем несоответствие и пропускаем начальные экраны', {
+      //     currentInfoScreenIndex,
+      //     initialInfoScreensLength: initialInfoScreens.length,
+      //     hasCurrentScreen: !!initialInfoScreens[currentInfoScreenIndex],
+      //     isShowingInitialInfoScreen,
+      //     hasResumed,
+      //     loading,
+      //   });
+      // }
       // Пропускаем начальные экраны и переходим к вопросам
       // Устанавливаем currentInfoScreenIndex в initialInfoScreens.length, чтобы пропустить все начальные экраны
       if (currentInfoScreenIndex < initialInfoScreens.length) {
@@ -2398,18 +2407,20 @@ export default function QuizPage() {
       !showResumeScreen && 
       !pendingInfoScreen &&
       !loading) {
-    // ИСПРАВЛЕНО: Логируем всегда (не только в dev), чтобы видеть в БД, почему инфо-экраны не показываются
-      clientLogger.log('📺 Рендерим начальный инфо-экран', {
-        currentInfoScreenIndex,
-        initialInfoScreensLength: initialInfoScreens.length,
-        currentInitialInfoScreenId: currentInitialInfoScreen?.id,
-        isShowingInitialInfoScreen,
-      hasEffectiveQuestionnaire: !!effectiveQuestionnaire,
-      hasQuestionnaireState: !!questionnaire,
-      hasQuestionnaireRef: !!questionnaireRef.current,
-      hasQuestionnaireStateMachine: !!quizStateMachine.questionnaire,
-      loading,
-      });
+    // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+    // if (isDev) {
+    //   clientLogger.log('📺 Рендерим начальный инфо-экран', {
+    //     currentInfoScreenIndex,
+    //     initialInfoScreensLength: initialInfoScreens.length,
+    //     currentInitialInfoScreenId: currentInitialInfoScreen?.id,
+    //     isShowingInitialInfoScreen,
+    //     hasEffectiveQuestionnaire: !!effectiveQuestionnaire,
+    //     hasQuestionnaireState: !!questionnaire,
+    //     hasQuestionnaireRef: !!questionnaireRef.current,
+    //     hasQuestionnaireStateMachine: !!quizStateMachine.questionnaire,
+    //     loading,
+    //   });
+    // }
     // РЕФАКТОРИНГ: Используем компонент QuizInfoScreen
     return (
       <QuizInfoScreen
@@ -2434,22 +2445,22 @@ export default function QuizPage() {
     );
   }
   
-  // ИСПРАВЛЕНО: Логируем, если инфо-экраны должны показываться, но не показываются
-  if (isShowingInitialInfoScreen && currentInfoScreenIndex < initialInfoScreens.length) {
-    clientLogger.warn('⚠️ Инфо-экраны должны показываться, но не показываются', {
-      currentInfoScreenIndex,
-      initialInfoScreensLength: initialInfoScreens.length,
-      currentInitialInfoScreen: !!currentInitialInfoScreen,
-      isRetakingQuiz,
-      showResumeScreen,
-      pendingInfoScreen: !!pendingInfoScreen,
-      hasEffectiveQuestionnaire: !!effectiveQuestionnaire,
-      hasQuestionnaireState: !!questionnaire,
-      hasQuestionnaireRef: !!questionnaireRef.current,
-      hasQuestionnaireStateMachine: !!quizStateMachine.questionnaire,
-      loading,
-    });
-  }
+  // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+  // if (isDev && isShowingInitialInfoScreen && currentInfoScreenIndex < initialInfoScreens.length) {
+  //   clientLogger.warn('⚠️ Инфо-экраны должны показываться, но не показываются', {
+  //     currentInfoScreenIndex,
+  //     initialInfoScreensLength: initialInfoScreens.length,
+  //     currentInitialInfoScreen: !!currentInitialInfoScreen,
+  //     isRetakingQuiz,
+  //     showResumeScreen,
+  //     pendingInfoScreen: !!pendingInfoScreen,
+  //     hasEffectiveQuestionnaire: !!effectiveQuestionnaire,
+  //     hasQuestionnaireState: !!questionnaire,
+  //     hasQuestionnaireRef: !!questionnaireRef.current,
+  //     hasQuestionnaireStateMachine: !!quizStateMachine.questionnaire,
+  //     loading,
+  //   });
+  // }
   
   // КРИТИЧНО: Если isShowingInitialInfoScreen = true, но currentInitialInfoScreen = null,
   // или currentInfoScreenIndex >= initialInfoScreens.length, значит начальные экраны не должны показываться

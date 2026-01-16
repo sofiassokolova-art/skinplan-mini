@@ -65,28 +65,28 @@ export function QuizQuestionState({
       loading
     );
 
-  // Логируем состояние для диагностики
-  if (!currentQuestion) {
-    clientLogger.warn('⚠️ Рендер: currentQuestion null, проверяем условия', {
-      hasCurrentQuestion: !!currentQuestion,
-      currentQuestionIndex,
-      currentInfoScreenIndex,
-      currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
-      isPastInitialScreens,
-      isPastInitialScreensRef,
-      shouldShowError,
-      shouldShowLoading,
-      initialInfoScreensLength,
-      allQuestionsLength,
-      hasQuestions,
-      hasQuestionnaireData,
-      hasQuestionnaireState: !!questionnaire,
-      hasQuestionnaireRef: !!questionnaireRef.current,
-      hasQuestionnaireStateMachine: !!quizStateMachineQuestionnaire,
-      effectiveQuestionnaire: !!(questionnaireRef.current || questionnaire || quizStateMachineQuestionnaire),
-      isShowingInitialInfoScreen,
-    });
-  }
+  // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
+  // if (isDev && !currentQuestion) {
+  //   clientLogger.warn('⚠️ Рендер: currentQuestion null, проверяем условия', {
+  //     hasCurrentQuestion: !!currentQuestion,
+  //     currentQuestionIndex,
+  //     currentInfoScreenIndex,
+  //     currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
+  //     isPastInitialScreens,
+  //     isPastInitialScreensRef,
+  //     shouldShowError,
+  //     shouldShowLoading,
+  //     initialInfoScreensLength,
+  //     allQuestionsLength,
+  //     hasQuestions,
+  //     hasQuestionnaireData,
+  //     hasQuestionnaireState: !!questionnaire,
+  //     hasQuestionnaireRef: !!questionnaireRef.current,
+  //     hasQuestionnaireStateMachine: !!quizStateMachineQuestionnaire,
+  //     effectiveQuestionnaire: !!(questionnaireRef.current || questionnaire || quizStateMachineQuestionnaire),
+  //     isShowingInitialInfoScreen,
+  //   });
+  // }
 
   if (shouldShowError) {
     return (
