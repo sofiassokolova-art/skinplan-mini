@@ -146,10 +146,18 @@ export function useQuizStateExtended(): UseQuizStateExtendedReturn {
   const navigation = useQuizNavigation();
   const ui = useQuizUI();
 
+  // КРИТИЧНО ИСПРАВЛЕНО: Все useState должны вызываться в стабильном порядке
+  // Группируем все useState вместе для предотвращения React Error #300
+  
   // Основные состояния
   const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // ИСПРАВЛЕНО: Добавлен useState для initCompleted сразу после основных состояний
+  // Это необходимо для корректной работы useQuizView, который зависит от initCompleted
+  // КРИТИЧНО: Должен быть вызван сразу после основных useState для стабильности порядка хуков
+  const [initCompleted, setInitCompleted] = useState(false);
   
   // Ответы
   const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
@@ -199,10 +207,6 @@ export function useQuizStateExtended(): UseQuizStateExtendedReturn {
   const loadingRefForTimeout = useRef(true);
   const loadingStartTimeRef = useRef<number | null>(null);
   const initCompletedRef = useRef(false);
-  
-  // ИСПРАВЛЕНО: Добавлен useState для initCompleted, чтобы триггерить ререндер при изменении
-  // Это необходимо для корректной работы useQuizView, который зависит от initCompleted
-  const [initCompleted, setInitCompleted] = useState(false);
   
   // Синхронизация initCompleted с ref
   useEffect(() => {

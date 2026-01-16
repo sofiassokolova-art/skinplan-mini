@@ -21,9 +21,32 @@ export interface UseQuizNavigationReturn {
  * Управляет индексами текущего вопроса и инфо-экрана
  */
 export function useQuizNavigation(): UseQuizNavigationReturn {
-  // Восстанавливаем индексы из sessionStorage при инициализации
-  // ИСПРАВЛЕНО: Для нового пользователя всегда начинаем с 0, чтобы показать все начальные инфо-экраны
-  const initialInfoScreenIndex = useMemo(() => {
+  // КРИТИЧНО ИСПРАВЛЕНО: Все useState должны вызываться в стабильном порядке
+  // Вычисляем начальные значения с помощью функции-инициализатора useState вместо useMemo
+  // Это гарантирует стабильный порядок хуков и предотвращает React Error #300
+  
+  // Навигация - используем функцию-инициализатор для стабильности
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(() => {
+    // Восстанавливаем индекс из sessionStorage при инициализации
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
+        if (saved !== null) {
+          const savedIndex = parseInt(saved, 10);
+          if (!isNaN(savedIndex) && savedIndex >= 0) {
+            return savedIndex;
+          }
+        }
+      } catch (err) {
+        // Игнорируем ошибки sessionStorage
+      }
+    }
+    return 0;
+  });
+  
+  const [currentInfoScreenIndex, setCurrentInfoScreenIndex] = useState(() => {
+    // Восстанавливаем индекс из sessionStorage при инициализации
+    // ИСПРАВЛЕНО: Для нового пользователя всегда начинаем с 0, чтобы показать все начальные инфо-экраны
     if (typeof window !== 'undefined') {
       try {
         // Проверяем, есть ли сохраненные ответы - если нет или только 1 (имя), это новый пользователь
@@ -72,30 +95,11 @@ export function useQuizNavigation(): UseQuizNavigationReturn {
       }
     }
     return 0;
-  }, []);
-
-  const initialQuestionIndex = useMemo(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
-        if (saved !== null) {
-          const savedIndex = parseInt(saved, 10);
-          if (!isNaN(savedIndex) && savedIndex >= 0) {
-            return savedIndex;
-          }
-        }
-      } catch (err) {
-        // Игнорируем ошибки sessionStorage
-      }
-    }
-    return 0;
-  }, []);
-
-  // Навигация
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(initialQuestionIndex);
-  const currentQuestionIndexRef = useRef(initialQuestionIndex);
-  const [currentInfoScreenIndex, setCurrentInfoScreenIndex] = useState(initialInfoScreenIndex);
-  const currentInfoScreenIndexRef = useRef(initialInfoScreenIndex);
+  });
+  
+  // Refs для синхронизации - используем начальные значения из state
+  const currentQuestionIndexRef = useRef(currentQuestionIndex);
+  const currentInfoScreenIndexRef = useRef(currentInfoScreenIndex);
 
   // Синхронизация refs с state
   useEffect(() => {
