@@ -59,6 +59,11 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
     isDev,
   } = params;
 
+  // КРИТИЧНО ИСПРАВЛЕНО: Вычисляем стабильные значения ДО useMemo для предотвращения React Error #300
+  // Вычисления в массиве зависимостей могут вызывать проблемы, если объекты пересоздаются каждый раз
+  const savedProgressAnswersCount = savedProgress ? Object.keys(savedProgress.answers || {}).length : 0;
+  const answersKeysCount = Object.keys(answers || {}).length;
+
   return useMemo(() => {
     // ИСПРАВЛЕНО: Используем questionnaireRef или questionnaireFromStateMachine как fallback
     // Это гарантирует, что инфо-экраны и вопросы показываются, даже если questionnaire в state временно null
@@ -195,11 +200,14 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
     questionnaireFromStateMachine?.id ?? null, // ФИКС: Используем только ID вместо всего объекта, null для стабильности
     loading,
     hasResumed,
-    // ИСПРАВЛЕНО: Используем только количество ответов вместо всего объекта
-    savedProgress ? Object.keys(savedProgress.answers || {}).length : 0,
-    Object.keys(answers || {}).length, // ИСПРАВЛЕНО: Используем только количество вместо всего объекта
+    // КРИТИЧНО ИСПРАВЛЕНО: Используем предварительно вычисленные стабильные значения
+    // вместо вычислений в массиве зависимостей, чтобы предотвратить React Error #300
+    savedProgressAnswersCount,
+    answersKeysCount,
     allQuestionsLength,
     isDev,
+    // КРИТИЧНО: Добавляем initCompleted в зависимости, так как он используется внутри useMemo
+    initCompleted,
   ]);
 }
 

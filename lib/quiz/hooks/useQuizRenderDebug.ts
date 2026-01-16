@@ -76,13 +76,15 @@ export function useQuizRenderDebug(params: UseQuizRenderDebugParams) {
   const lastCallTimeRef = useRef<number>(0);
   
   useEffect(() => {
+    // КРИТИЧНО ИСПРАВЛЕНО: Полностью отключаем логирование в продакшене для предотвращения React Error #300
     if (!isDev) return;
     
     // КРИТИЧНО: Используем ref для предотвращения бесконечных циклов
     // Если хук вызывается слишком часто, пропускаем выполнение
     const now = Date.now();
-    if (now - lastCallTimeRef.current < 100) {
-      return; // Пропускаем, если вызывается слишком часто (менее 100мс)
+    // УВЕЛИЧИВАЕМ интервал до 1000мс для уменьшения нагрузки
+    if (now - lastCallTimeRef.current < 1000) {
+      return; // Пропускаем, если вызывается слишком часто (менее 1000мс)
     }
     lastCallTimeRef.current = now;
 
@@ -173,17 +175,16 @@ export function useQuizRenderDebug(params: UseQuizRenderDebugParams) {
       });
     }
   }, [
-    // ИСПРАВЛЕНО: Минимальный набор зависимостей - только критичные примитивные значения
+    // КРИТИЧНО ИСПРАВЛЕНО: Минимальный набор зависимостей - только критичные примитивные значения
     // КРИТИЧНО: Не используем объекты в зависимостях, только примитивы
     // КРИТИЧНО: Используем стабильные значения для предотвращения React Error #300
+    // КРИТИЧНО: Убрали часто меняющиеся зависимости (questionnaire?.id, currentQuestion?.id, currentQuestionIndex)
+    // которые вызывают бесконечные циклы логирования
     isDev,
-    // Используем только ID, не весь объект, чтобы избежать пересоздания зависимостей
-    // КРИТИЧНО: Используем стабильное значение null вместо undefined
-    questionnaire?.id ?? null, // null вместо undefined для стабильности
+    // КРИТИЧНО: Оставляем только loading и error, которые меняются редко и критичны для отладки
     loading,
     error,
-    currentQuestion?.id ?? null, // null вместо undefined для стабильности
-    currentQuestionIndex,
+    // УБРАНО: questionnaire?.id, currentQuestion?.id, currentQuestionIndex - вызывают бесконечные циклы
     // Убраны зависимости, которые часто меняются и не критичны для логирования:
     // - questionnaireRef (ref не меняется)
     // - allQuestionsLength, allQuestionsRawLength (меняются часто, но не критично)

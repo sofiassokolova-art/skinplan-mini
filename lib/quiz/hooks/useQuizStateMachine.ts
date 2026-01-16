@@ -13,19 +13,23 @@ export interface UseQuizStateMachineOptions {
 export function useQuizStateMachine(options: UseQuizStateMachineOptions = {}) {
   const { initialState = 'LOADING', onStateChange, onTransitionError } = options;
   
-  // Создаем State Machine один раз при монтировании
+  // КРИТИЧНО ИСПРАВЛЕНО: Создаем State Machine один раз при монтировании
+  // Используем useRef с ленивой инициализацией через функцию, чтобы избежать проблем с порядком хуков
   const stateMachineRef = useRef<QuizStateMachine | null>(null);
   if (stateMachineRef.current === null) {
     stateMachineRef.current = new QuizStateMachine(initialState);
   }
   
-  // State для React (синхронизируется с State Machine)
-  const initialStateValue = stateMachineRef.current?.getState() || initialState;
-  const [state, setState] = useState<QuizState>(initialStateValue);
+  // КРИТИЧНО ИСПРАВЛЕНО: Используем функцию-инициализатор для useState, чтобы значение вычислялось только один раз
+  // Это предотвращает проблемы с порядком хуков и React Error #300
+  const [state, setState] = useState<QuizState>(() => {
+    return stateMachineRef.current?.getState() || initialState;
+  });
   
-  // ИСПРАВЛЕНО: Инициализируем ref начальным состоянием напрямую
+  // КРИТИЧНО ИСПРАВЛЕНО: Инициализируем ref начальным состоянием стабильным значением
   // Используем ref для хранения предыдущего состояния в listener, чтобы избежать бесконечных циклов
-  const previousStateRef = useRef<QuizState>(initialStateValue);
+  // КРИТИЧНО: useRef не принимает функцию, поэтому используем стабильное значение initialState
+  const previousStateRef = useRef<QuizState>(initialState);
   
   // Подписываемся на изменения состояния
   // ИСПРАВЛЕНО: Убрали state из зависимостей, чтобы избежать бесконечных циклов
@@ -111,10 +115,13 @@ export function useQuizStateMachine(options: UseQuizStateMachineOptions = {}) {
     return targetStates.includes(state);
   }, [state]);
   
-  // ИСПРАВЛЕНО: Добавляем управление questionnaire через State Machine
-  const [questionnaire, setQuestionnaireState] = useState<any | null>(() => 
-    stateMachineRef.current?.getQuestionnaire() || null
-  );
+  // КРИТИЧНО ИСПРАВЛЕНО: Добавляем управление questionnaire через State Machine
+  // Используем функцию-инициализатор для стабильности
+  const [questionnaire, setQuestionnaireState] = useState<any | null>(() => {
+    // КРИТИЧНО: Вычисляем значение только один раз при первом рендере
+    // Это предотвращает React Error #300 из-за нестабильных значений
+    return stateMachineRef.current?.getQuestionnaire() || null;
+  });
 
   // Подписываемся на изменения questionnaire
   useEffect(() => {
