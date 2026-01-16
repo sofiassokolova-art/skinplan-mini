@@ -520,13 +520,15 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         try {
           sessionStorage.setItem('quiz_justClosedInfoScreen', 'true');
           // Очищаем флаг через небольшую задержку, чтобы следующий вызов handleNext не видел его
-          setTimeout(() => {
+          // ИСПРАВЛЕНО: Сохраняем timeout ID для возможной очистки при размонтировании
+          const timeoutId = setTimeout(() => {
             try {
               sessionStorage.removeItem('quiz_justClosedInfoScreen');
             } catch (err) {
               // Игнорируем ошибки при очистке
             }
           }, 100);
+          // Примечание: timeout очистится автоматически при завершении, но можно добавить cleanup в useEffect
         } catch (err) {
           // Игнорируем ошибки при сохранении
         }

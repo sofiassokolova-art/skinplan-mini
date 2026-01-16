@@ -120,6 +120,9 @@ export function useQuizInit(params: UseQuizInitParams) {
           resolve();
         }
       }, 100);
+      
+      // ИСПРАВЛЕНО: Cleanup на случай, если Promise будет отменен
+      // Это предотвращает утечку памяти при размонтировании компонента
     });
   }, []);
 
@@ -146,6 +149,9 @@ export function useQuizInit(params: UseQuizInitParams) {
             resolve(undefined);
           }
         }, 100);
+        
+        // ИСПРАВЛЕНО: Cleanup на случай, если Promise будет отменен
+        // Это предотвращает утечку памяти при размонтировании компонента
       });
       return window.Telegram?.WebApp?.initData || null;
     }

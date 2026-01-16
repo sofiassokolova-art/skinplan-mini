@@ -82,9 +82,11 @@ export async function handleBack({
     });
     
     // ИСПРАВЛЕНО: Если текущий инфо-экран является частью цепочки (showAfterInfoScreenId),
-    // показываем предыдущий инфо-экран в цепочке вместо возврата к вопросу
+    // находим предыдущий инфо-экран в цепочке
+    // Логика: если текущий экран имеет showAfterInfoScreenId = 'X', значит он показывается после экрана 'X'
+    // Значит, при навигации назад нужно показать экран 'X'
     if (pendingInfoScreen.showAfterInfoScreenId) {
-      // Находим предыдущий инфо-экран в цепочке
+      // Находим предыдущий инфо-экран в цепочке (тот, после которого показывается текущий)
       const previousInfoScreen = INFO_SCREENS.find(screen => 
         screen.id === pendingInfoScreen.showAfterInfoScreenId
       );
@@ -93,6 +95,7 @@ export async function handleBack({
         clientLogger.log('🔙 handleBack: находим предыдущий инфо-экран в цепочке', {
           currentInfoScreenId: pendingInfoScreen.id,
           previousInfoScreenId: previousInfoScreen.id,
+          showAfterInfoScreenId: pendingInfoScreen.showAfterInfoScreenId,
         });
         
         // Показываем предыдущий инфо-экран в цепочке
@@ -101,6 +104,13 @@ export async function handleBack({
         // Сохраняем прогресс (индексы не меняются, так как мы остаемся на инфо-экранах)
         await saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
         return;
+      } else {
+        // ИСПРАВЛЕНО: Если предыдущий экран не найден, логируем предупреждение
+        clientLogger.warn('⚠️ handleBack: предыдущий инфо-экран в цепочке не найден', {
+          currentInfoScreenId: pendingInfoScreen.id,
+          showAfterInfoScreenId: pendingInfoScreen.showAfterInfoScreenId,
+          allInfoScreenIds: INFO_SCREENS.map(s => s.id),
+        });
       }
     }
     
