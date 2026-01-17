@@ -27,6 +27,7 @@ export const QUIZ_CONFIG = {
     CURRENT_QUESTION_CODE: 'quiz_currentQuestionCode',
     INIT_CALLED: 'quiz_initCalled',
     JUST_SUBMITTED: 'quiz_just_submitted',
+    QUIZ_COMPLETED: 'quiz_completed',
   },
 
   // Функция для генерации скоупленных ключей с questionnaireId

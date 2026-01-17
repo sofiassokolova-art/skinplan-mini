@@ -373,6 +373,11 @@ export default function QuizPage() {
   
   // ФИКС: Рендерим резюм строго по showResumeScreen, а shouldShowResume используем только для логики
   // Это устраняет два источника правды и непредсказуемость
+
+  // ФИКС: Проверяем флаг завершения анкеты - если завершена, никогда не показываем резюм
+  const completedKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.QUIZ_COMPLETED, scope);
+  const isQuizCompleted = typeof window !== 'undefined' && sessionStorage.getItem(completedKey) === 'true';
+
   const savedAnswersCount = savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0;
   const shouldShowResume = !!savedProgress &&
                            savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN &&
@@ -381,7 +386,8 @@ export default function QuizPage() {
                            !hasResumedRef.current &&
                            !isRetakingQuiz &&
                            !showRetakeScreen &&
-                           !isLoadingProgress;
+                           !isLoadingProgress &&
+                           !isQuizCompleted; // ФИКС: Не показывать резюм, если анкета завершена
 
   // ФИКС: Синхронизируем showResumeScreen с shouldShowResume однократно
   useEffect(() => {
@@ -2292,6 +2298,8 @@ export default function QuizPage() {
           sessionStorage.removeItem(scopedStorageKeys.CURRENT_QUESTION_CODE); // ФИКС: Очищаем CURRENT_QUESTION_CODE
         sessionStorage.removeItem(scopedStorageKeys.INIT_CALLED);
           sessionStorage.removeItem(scopedStorageKeys.JUST_SUBMITTED); // ФИКС: Очищаем JUST_SUBMITTED
+          // ФИКС: Очищаем флаг завершения анкеты при новом старте
+          sessionStorage.removeItem(scopedStorageKeys.QUIZ_COMPLETED);
           // ФИКС: Используем scoped ключ для answers_backup
           const answersBackupKey = QUIZ_CONFIG.getScopedKey('quiz_answers_backup', scope);
           sessionStorage.removeItem(answersBackupKey);

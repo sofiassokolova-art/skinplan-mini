@@ -255,11 +255,20 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
       if (justSubmitted) {
         redirectInProgressRef.current = true;
         // clientLogger.log('✅ Анкета только что отправлена, редиректим на /plan?state=generating (ранняя проверка)');
+
+        // ФИКС: Устанавливаем флаг завершения анкеты
+        const completedKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.QUIZ_COMPLETED, scope);
+        sessionStorage.setItem(completedKey, 'true');
+
         sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED);
         sessionStorage.removeItem('quiz_init_done');
         initCompletedRef.current = true;
         setInitCompleted(true);
         setLoading(false);
+
+        // ФИКС: Очищаем прогресс перед редиректом, чтобы предотвратить показ резюма
+        if (setSavedProgress) setSavedProgress(null);
+
         window.location.replace('/plan?state=generating');
         setTimeout(() => {
           redirectInProgressRef.current = false;

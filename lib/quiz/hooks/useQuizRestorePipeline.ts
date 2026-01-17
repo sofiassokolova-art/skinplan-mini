@@ -235,11 +235,16 @@ export function useQuizRestorePipeline(params: UseQuizRestorePipelineParams) {
     const progressCleared = typeof window !== 'undefined' ?
       sessionStorage.getItem(QUIZ_CONFIG.getScopedKey('quiz_progress_cleared', scope)) === 'true' : false;
 
+    // ФИКС: Не восстанавливать прогресс, если анкета завершена
+    const completedKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.QUIZ_COMPLETED, scope);
+    const isQuizCompleted = typeof window !== 'undefined' && sessionStorage.getItem(completedKey) === 'true';
+
     if (isStartingOver ||
         isStartingOverRef.current ||
         isLoadingProgress ||
         hasSavedProgress ||
-        progressCleared) {
+        progressCleared ||
+        isQuizCompleted) { // ФИКС: Не восстанавливать прогресс при завершении анкеты
       return;
     }
     
