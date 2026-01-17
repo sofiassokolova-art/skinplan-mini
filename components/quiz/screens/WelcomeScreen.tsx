@@ -29,8 +29,8 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
       width: '100%',
       maxWidth: '100vw',
     }}>
-      {/* Кнопка "Назад" - показывается только на экранах после первого */}
-      {currentInfoScreenIndex > 0 && onBack && screen.id !== 'welcome' && (
+      {/* Кнопка "Назад" - НИКОГДА не показывается на welcome экране */}
+      {currentInfoScreenIndex > 0 && onBack && screen.id !== 'welcome' && currentInfoScreenIndex !== 0 && (
         <BackButton onClick={onBack} />
       )}
 
