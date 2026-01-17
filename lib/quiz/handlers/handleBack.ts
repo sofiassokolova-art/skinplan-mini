@@ -81,26 +81,77 @@ export async function handleBack({
       showAfterInfoScreenId: pendingInfoScreen.showAfterInfoScreenId,
     });
     
+    // ИСПРАВЛЕНО: Специальная логика для экранов перед вопросами age/gender
+    // Если текущий экран - general_info_intro или testimonials, и мы возвращаемся от вопросов age/gender,
+    // нужно перейти непосредственно к предыдущему вопросу (skin_goals), а не к предыдущему инфо-экрану
+    if (pendingInfoScreen.id === 'general_info_intro' || pendingInfoScreen.id === 'testimonials') {
+      // Проверяем, есть ли вопросы в анкете
+      if (allQuestions.length > 0) {
+        // Находим вопрос skin_goals (предыдущий перед age/gender)
+        const skinGoalsQuestionIndex = allQuestions.findIndex(q => q.code === 'skin_goals');
+
+        if (skinGoalsQuestionIndex >= 0) {
+          clientLogger.log('🔙 handleBack: возвращаемся от general_info_intro/testimonials к вопросу skin_goals', {
+            currentPendingInfoScreenId: pendingInfoScreen.id,
+            skinGoalsQuestionIndex,
+            skinGoalsQuestionCode: allQuestions[skinGoalsQuestionIndex].code,
+          });
+
+          // Сбрасываем pendingInfoScreen
+          setPendingInfoScreen(null);
+
+          // Сбрасываем ответ на текущий вопрос (age/gender), если он был дан
+          const currentQuestion = allQuestions[currentQuestionIndex];
+          if (currentQuestion && answers[currentQuestion.id] !== undefined) {
+            clientLogger.log('🔙 handleBack: сбрасываем ответ на текущий вопрос', {
+              questionId: currentQuestion.id,
+              questionCode: currentQuestion.code,
+              oldAnswer: answers[currentQuestion.id],
+            });
+            setAnswers(prev => {
+              const newAnswers = { ...prev };
+              delete newAnswers[currentQuestion.id];
+              return newAnswers;
+            });
+          }
+
+          // Переходим к вопросу skin_goals
+          updateQuestionIndex(skinGoalsQuestionIndex, undefined, setCurrentQuestionIndex);
+
+          // Сохраняем прогресс
+          const updatedAnswers = { ...answers };
+          if (currentQuestion) {
+            delete updatedAnswers[currentQuestion.id];
+          }
+          await saveProgressSafely(saveProgress, updatedAnswers, skinGoalsQuestionIndex, currentInfoScreenIndex);
+
+          // Сохраняем в sessionStorage
+          saveIndexToSessionStorage('quiz_currentQuestionIndex', skinGoalsQuestionIndex);
+          return;
+        }
+      }
+    }
+
     // ИСПРАВЛЕНО: Если текущий инфо-экран является частью цепочки (showAfterInfoScreenId),
     // находим предыдущий инфо-экран в цепочке
     // Логика: если текущий экран имеет showAfterInfoScreenId = 'X', значит он показывается после экрана 'X'
     // Значит, при навигации назад нужно показать экран 'X'
     if (pendingInfoScreen.showAfterInfoScreenId) {
       // Находим предыдущий инфо-экран в цепочке (тот, после которого показывается текущий)
-      const previousInfoScreen = INFO_SCREENS.find(screen => 
+      const previousInfoScreen = INFO_SCREENS.find(screen =>
         screen.id === pendingInfoScreen.showAfterInfoScreenId
       );
-      
+
       if (previousInfoScreen) {
         clientLogger.log('🔙 handleBack: находим предыдущий инфо-экран в цепочке', {
           currentInfoScreenId: pendingInfoScreen.id,
           previousInfoScreenId: previousInfoScreen.id,
           showAfterInfoScreenId: pendingInfoScreen.showAfterInfoScreenId,
         });
-        
+
         // Показываем предыдущий инфо-экран в цепочке
         setPendingInfoScreen(previousInfoScreen);
-        
+
         // Сохраняем прогресс (индексы не меняются, так как мы остаемся на инфо-экранах)
         await saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
         return;
