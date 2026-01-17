@@ -171,7 +171,6 @@ export function useQuizRestorePipeline(params: UseQuizRestorePipelineParams) {
     }
   }, [
     scope,
-    answersCountRef.current,
     isStartingOver,
     isLoadingProgress,
     savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0,

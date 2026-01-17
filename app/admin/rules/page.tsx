@@ -535,7 +535,7 @@ export default function RulesAdmin() {
                 onChange={(e) => setJsonText(e.target.value)}
                 className="w-full h-96 p-4 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-mono text-sm focus:outline-none focus:border-gray-400"
                 spellCheck={false}
-                placeholder='{"conditions": {}, "steps": {}}'
+                placeholder={`{"conditions": {}, "steps": {}}`}
               />
             ) : (
               <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">

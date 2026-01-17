@@ -437,8 +437,9 @@ export function QuizQuestion({
           }
         }
 
-        <>
-          {skinTypeProgressBar}
+        return (
+          <>
+            {skinTypeProgressBar}
             <div style={{
               backgroundColor: '#D5FE61',
               borderRadius: isGoalsQuestion ? '0' : '24px', // ИСПРАВЛЕНО: Для skin_goals скругление только сверху
@@ -863,31 +864,36 @@ export function QuizQuestion({
               </button>
             );
           })}
-          
+
           {/* Кнопки навигации для multi_choice */}
-          {showSubmitButton && answers[question.id] && (Array.isArray(answers[question.id]) ? (answers[question.id] as string[]).length > 0 : true) ? (
-            <div style={{ marginTop: '24px' }}>
-              <button
-                onClick={onSubmit}
-                disabled={!answers[question.id] || (Array.isArray(answers[question.id]) && (answers[question.id] as string[]).length === 0) || isSubmitting}
-                style={{
-                  width: '100%',
-                  padding: '18px',
-                  borderRadius: '20px',
-                  backgroundColor: '#000000',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  cursor: (!answers[question.id] || (Array.isArray(answers[question.id]) && (answers[question.id] as string[]).length === 0) || isSubmitting) ? 'not-allowed' : 'pointer',
-                  fontSize: '16px',
-                  fontWeight: 600,
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-                  opacity: (!answers[question.id] || (Array.isArray(answers[question.id]) && (answers[question.id] as string[]).length === 0) || isSubmitting) ? 0.5 : 1,
-                  transition: 'all 0.2s',
-                  fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                }}
-              >
-                {isSubmitting ? 'Отправка...' : 'Получить план'}
-              </button>
+          {(() => {
+            const hasValidAnswers = answers[question.id] && (Array.isArray(answers[question.id]) ? (answers[question.id] as string[]).length > 0 : true);
+            const shouldShowSubmit = showSubmitButton && hasValidAnswers;
+
+            if (shouldShowSubmit) {
+              return (
+                <div style={{ marginTop: '24px' }}>
+                  <button
+                    onClick={onSubmit}
+                    disabled={!answers[question.id] || (Array.isArray(answers[question.id]) && (answers[question.id] as string[]).length === 0) || isSubmitting}
+                    style={{
+                      width: '100%',
+                      padding: '18px',
+                      borderRadius: '20px',
+                      backgroundColor: '#000000',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      cursor: (!answers[question.id] || (Array.isArray(answers[question.id]) && (answers[question.id] as string[]).length === 0) || isSubmitting) ? 'not-allowed' : 'pointer',
+                      fontSize: '16px',
+                      fontWeight: 600,
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+                      opacity: (!answers[question.id] || (Array.isArray(answers[question.id]) && (answers[question.id] as string[]).length === 0) || isSubmitting) ? 0.5 : 1,
+                      transition: 'all 0.2s',
+                      fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                    }}
+                  >
+                    {isSubmitting ? 'Отправка...' : 'Получить план'}
+                  </button>
               {!isRetakingQuiz && (
                 <p style={{
                   marginTop: '12px',
@@ -908,31 +914,34 @@ export function QuizQuestion({
                   </Link>
                 </p>
               )}
-            </div>
-          ) : (
-            answers[question.id] && (
-              <button
-                onClick={onNext}
-                disabled={!answers[question.id] || (Array.isArray(answers[question.id]) && (answers[question.id] as string[]).length === 0)}
-                style={{
-                  marginTop: '24px',
-                  width: '100%',
-                  padding: '16px',
-                  borderRadius: '20px',
-                  backgroundColor: '#D5FE61',
-                  color: '#000000',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '16px',
-                  fontWeight: 600,
-                  opacity: (!answers[question.id] || (Array.isArray(answers[question.id]) && (answers[question.id] as string[]).length === 0)) ? 0.5 : 1,
-                  fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                }}
-              >
-                Продолжить
-              </button>
-            )
-          )}
+                </div>
+              );
+            } else if (hasValidAnswers) {
+              return (
+                <button
+                  onClick={onNext}
+                  disabled={!answers[question.id] || (Array.isArray(answers[question.id]) && (answers[question.id] as string[]).length === 0)}
+                  style={{
+                    marginTop: '24px',
+                    width: '100%',
+                    padding: '16px',
+                    borderRadius: '20px',
+                    backgroundColor: '#D5FE61',
+                    color: '#000000',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    fontWeight: 600,
+                    opacity: (!answers[question.id] || (Array.isArray(answers[question.id]) && (answers[question.id] as string[]).length === 0)) ? 0.5 : 1,
+                    fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  }}
+                >
+                  Продолжить
+                </button>
+              );
+            }
+            return null;
+          })()}
         </div>
       )}
 
@@ -969,77 +978,87 @@ export function QuizQuestion({
               </button>
             );
           })}
-          
+
           {/* Кнопки навигации для multi_choice */}
-          {showSubmitButton && answers[question.id] && (Array.isArray(answers[question.id]) ? (answers[question.id] as string[]).length > 0 : true) ? (
-            <div style={{ marginTop: '24px' }}>
-              <button
-                onClick={onSubmit}
-                disabled={!answers[question.id] || (Array.isArray(answers[question.id]) && (answers[question.id] as string[]).length === 0) || isSubmitting}
-                style={{
-                  width: '100%',
-                  padding: '18px',
-                  borderRadius: '20px',
-                  backgroundColor: '#000000',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  cursor: (!answers[question.id] || (Array.isArray(answers[question.id]) && (answers[question.id] as string[]).length === 0) || isSubmitting) ? 'not-allowed' : 'pointer',
-                  fontSize: '16px',
-                  fontWeight: 600,
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-                  opacity: (!answers[question.id] || (Array.isArray(answers[question.id]) && (answers[question.id] as string[]).length === 0) || isSubmitting) ? 0.5 : 1,
-                  transition: 'all 0.2s',
-                  fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                }}
-              >
-                {isSubmitting ? 'Отправка...' : 'Получить план'}
-              </button>
-              {!isRetakingQuiz && (
-                <p style={{
-                  marginTop: '12px',
-                  fontSize: '11px',
-                  color: '#6B7280',
-                  textAlign: 'center',
-                  lineHeight: '1.4',
-                }}>
-                  Нажимая «Получить план», вы соглашаетесь с{' '}
-                  <Link
-                    href="/terms"
+          {(() => {
+            const hasValidAnswers = answers[question.id] && (Array.isArray(answers[question.id]) ? (answers[question.id] as string[]).length > 0 : true);
+            const shouldShowSubmit = showSubmitButton && hasValidAnswers;
+
+            if (shouldShowSubmit) {
+              return (
+                <div style={{ marginTop: '24px' }}>
+                  <button
+                    onClick={onSubmit}
+                    disabled={!answers[question.id] || (Array.isArray(answers[question.id]) && (answers[question.id] as string[]).length === 0) || isSubmitting}
                     style={{
-                      color: '#000000',
-                      textDecoration: 'underline',
+                      width: '100%',
+                      padding: '18px',
+                      borderRadius: '20px',
+                      backgroundColor: '#000000',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      cursor: (!answers[question.id] || (Array.isArray(answers[question.id]) && (answers[question.id] as string[]).length === 0) || isSubmitting) ? 'not-allowed' : 'pointer',
+                      fontSize: '16px',
+                      fontWeight: 600,
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+                      opacity: (!answers[question.id] || (Array.isArray(answers[question.id]) && (answers[question.id] as string[]).length === 0) || isSubmitting) ? 0.5 : 1,
+                      transition: 'all 0.2s',
+                      fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                     }}
                   >
-                    пользовательским соглашением
-                  </Link>
-                </p>
-              )}
-            </div>
-          ) : (
-            answers[question.id] && (
-              <button
-                onClick={onNext}
-                disabled={!answers[question.id] || (Array.isArray(answers[question.id]) && (answers[question.id] as string[]).length === 0)}
-                style={{
-                  marginTop: '24px',
-                  width: '100%',
-                  padding: '16px',
-                  borderRadius: '20px',
-                  backgroundColor: '#D5FE61',
-                  color: '#000000',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '16px',
-                  fontWeight: 600,
-                  opacity: (!answers[question.id] || (Array.isArray(answers[question.id]) && (answers[question.id] as string[]).length === 0)) ? 0.5 : 1,
-                  fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                }}
-              >
-                Продолжить
-              </button>
-            )
-          )}
+                    {isSubmitting ? 'Отправка...' : 'Получить план'}
+                  </button>
+                  {!isRetakingQuiz && (
+                    <p style={{
+                      marginTop: '12px',
+                      fontSize: '11px',
+                      color: '#6B7280',
+                      textAlign: 'center',
+                      lineHeight: '1.4',
+                    }}>
+                      Нажимая «Получить план», вы соглашаетесь с{' '}
+                      <Link
+                        href="/terms"
+                        style={{
+                          color: '#000000',
+                          textDecoration: 'underline',
+                        }}
+                      >
+                        пользовательским соглашением
+                      </Link>
+                    </p>
+                  )}
+                </div>
+              );
+            } else if (hasValidAnswers) {
+              return (
+                <button
+                  onClick={onNext}
+                  disabled={!answers[question.id] || (Array.isArray(answers[question.id]) && (answers[question.id] as string[]).length === 0)}
+                  style={{
+                    marginTop: '24px',
+                    width: '100%',
+                    padding: '16px',
+                    borderRadius: '20px',
+                    backgroundColor: '#D5FE61',
+                    color: '#000000',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    fontWeight: 600,
+                    opacity: (!answers[question.id] || (Array.isArray(answers[question.id]) && (answers[question.id] as string[]).length === 0)) ? 0.5 : 1,
+                    fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  }}
+                >
+                  Продолжить
+                </button>
+              );
+            }
+            return null;
+          })()}
         </div>
-      })()}
+        </>
+      );
+    })()}
     </>
   );
