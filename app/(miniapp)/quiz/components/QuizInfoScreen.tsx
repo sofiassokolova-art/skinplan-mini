@@ -1368,7 +1368,8 @@ export function QuizInfoScreen({
 
   // Кнопка "Назад" - рендерим через портал, чтобы она была вне прокручиваемого контейнера
   // ИСПРАВЛЕНО: Кнопка всегда зафиксирована наверху и не листается вместе с инфо-экранами
-  const shouldShowBackButton = (currentInfoScreenIndex > 0) || (pendingInfoScreenRef?.current && handleBack);
+  // ФИКС: На первом экране (index 0) кнопка "назад" никогда не показывается
+  const shouldShowBackButton = currentInfoScreenIndex > 0;
   const backButton = shouldShowBackButton && typeof window !== 'undefined' && handleBack ? createPortal(
     <button
       onClick={(e) => {
