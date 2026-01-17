@@ -41,6 +41,8 @@ function ImageWithLoading({
       marginBottom: '32px',
       position: 'relative',
       aspectRatio: '1 / 1',
+      background: 'transparent',
+      backgroundColor: 'transparent',
     }}>
       <Image
         src={src}
@@ -53,6 +55,7 @@ function ImageWithLoading({
           height: 'auto',
           objectFit: 'contain',
           display: 'block',
+          filter: 'none', // ФИКС: Убираем любые цветовые фильтры с изображения
         }}
         sizes={`(max-width: 768px) ${maxWidth}, ${maxWidth}`}
       />
