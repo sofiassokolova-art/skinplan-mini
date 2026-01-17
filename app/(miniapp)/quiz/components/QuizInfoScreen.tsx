@@ -577,9 +577,7 @@ export function QuizInfoScreen({
     // Кнопка "Назад" теперь глобальная в layout - убрана из компонента
 
     return (
-      <>
-        {goalsBackButton}
-        <div style={{ 
+      <div style={{ 
           padding: 0,
           margin: 0,
           minHeight: '100vh',
@@ -684,7 +682,6 @@ export function QuizInfoScreen({
           </button>
         </div>
       </div>
-      </>
     );
   }
 
