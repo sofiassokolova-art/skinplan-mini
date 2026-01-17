@@ -1085,7 +1085,7 @@ export function QuizInfoScreen({
     return (
       <>
         {healthBackButton}
-        <div style={{ 
+        <div style={{
           padding: 0,
           margin: 0,
           minHeight: '100vh',
@@ -1097,7 +1097,7 @@ export function QuizInfoScreen({
         }}>
 
         {/* Контент с анимацией */}
-        <div 
+        <div
           className="animate-fade-in"
           style={{
             flex: 1,
@@ -1105,7 +1105,7 @@ export function QuizInfoScreen({
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'flex-start',
-            paddingTop: '100px',
+            paddingTop: '60px', // Уменьшаем отступ сверху для большего места
             paddingBottom: '120px',
             paddingLeft: '20px',
             paddingRight: '20px',
@@ -1115,10 +1115,10 @@ export function QuizInfoScreen({
         >
           {/* Картинка с плавной загрузкой */}
           {screen.image && (
-            <ImageWithLoading 
+            <ImageWithLoading
               src={screen.image}
               alt={screen.title}
-              maxWidth="240px"
+              maxWidth="180px" // Уменьшаем размер картинки, чтобы не перекрывала текст
             />
           )}
 
