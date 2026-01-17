@@ -1276,6 +1276,7 @@ export default function QuizPage() {
   // Начать заново
   const startOver = async () => {
     await startOverFn({
+      scope,
       isStartingOverRef,
       setIsStartingOver,
       initCompletedRef,
@@ -1283,6 +1284,9 @@ export default function QuizPage() {
       initCalledRef,
       clearProgress,
       setAnswers,
+      answersRef,
+      answersCountRef,
+      lastRestoredAnswersIdRef,
       setCurrentQuestionIndex,
       setCurrentInfoScreenIndex,
       currentInfoScreenIndexRef,

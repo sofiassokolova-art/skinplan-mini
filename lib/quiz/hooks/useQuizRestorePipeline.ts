@@ -118,9 +118,14 @@ export function useQuizRestorePipeline(params: UseQuizRestorePipelineParams) {
     hasResumedRef,
     isDev,
   } = params;
-  
+
   // Флаг для отслеживания, что restore pipeline уже выполнен
   const restoreCompletedRef = useRef(false);
+
+  // Утилита для проверки, был ли прогресс очищен
+  const isProgressCleared = () =>
+    typeof window !== 'undefined' &&
+    sessionStorage.getItem(QUIZ_CONFIG.getScopedKey('quiz_progress_cleared', scope)) === 'true';
   
   // Шаг 1: Восстановление answers из sessionStorage (быстро и синхронно)
   // Выполняется в useLayoutEffect для синхронного выполнения ДО рендера
@@ -132,12 +137,13 @@ export function useQuizRestorePipeline(params: UseQuizRestorePipelineParams) {
     const hasSavedProgress = savedProgress && savedProgress.answers && 
       Object.keys(savedProgress.answers).length >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN;
     
-    if (typeof window === 'undefined' || 
-        answersCountRef.current > 0 || 
-        isStartingOver || 
+    if (typeof window === 'undefined' ||
+        answersCountRef.current > 0 ||
+        isStartingOver ||
         isStartingOverRef.current ||
         isLoadingProgress ||
-        hasSavedProgress) {
+        hasSavedProgress ||
+        isProgressCleared()) {
       return;
     }
     
@@ -177,7 +183,8 @@ export function useQuizRestorePipeline(params: UseQuizRestorePipelineParams) {
     // Пропускаем если:
     // - Прогресс загружается
     // - Пользователь начал заново
-    if (isLoadingProgress || isStartingOver || isStartingOverRef.current) {
+    // - Прогресс был очищен
+    if (isLoadingProgress || isStartingOver || isStartingOverRef.current || isProgressCleared()) {
       return;
     }
     
@@ -198,13 +205,11 @@ export function useQuizRestorePipeline(params: UseQuizRestorePipelineParams) {
             });
           }
           setAnswers((prevAnswers) => {
-            if (Object.keys(prevAnswers).length === 0) {
-              return progressAnswers;
-            }
-            return { ...prevAnswers, ...progressAnswers };
+            const merged = Object.keys(prevAnswers).length === 0 ? progressAnswers : { ...prevAnswers, ...progressAnswers };
+            answersRef.current = merged;
+            answersCountRef.current = Object.keys(merged).length;
+            return merged;
           });
-          answersRef.current = progressAnswers;
-          answersCountRef.current = progressAnswersCount;
           setSavedProgress({
             answers: progressAnswers,
             questionIndex: quizProgressFromQuery.progress?.questionIndex || 0,

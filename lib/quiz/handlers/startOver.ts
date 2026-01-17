@@ -6,6 +6,7 @@ import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 import type { Questionnaire } from '@/lib/quiz/types';
 
 export interface StartOverParams {
+  scope: string;
   isStartingOverRef: React.MutableRefObject<boolean>;
   setIsStartingOver: React.Dispatch<React.SetStateAction<boolean>>;
   initCompletedRef: React.MutableRefObject<boolean>;
@@ -13,6 +14,9 @@ export interface StartOverParams {
   initCalledRef: React.MutableRefObject<boolean>;
   clearProgress: () => Promise<void>;
   setAnswers: React.Dispatch<React.SetStateAction<Record<number, string | string[]>>>;
+  answersRef: React.MutableRefObject<Record<number, string | string[]>>;
+  answersCountRef: React.MutableRefObject<number>;
+  lastRestoredAnswersIdRef: React.MutableRefObject<string | null>;
   setCurrentQuestionIndex: React.Dispatch<React.SetStateAction<number>>;
   setCurrentInfoScreenIndex: React.Dispatch<React.SetStateAction<number>>;
   currentInfoScreenIndexRef: React.MutableRefObject<number>;
@@ -30,7 +34,10 @@ export interface StartOverParams {
 }
 
 export async function startOver(params: StartOverParams): Promise<void> {
+  const { scope } = params;
+
   clientLogger.log('🔄 startOver: Начинаем сброс анкеты', {
+    scope,
     currentPath: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
     initCompleted: params.initCompletedRef.current,
     isStartingOverRef: params.isStartingOverRef.current,
@@ -65,16 +72,27 @@ export async function startOver(params: StartOverParams): Promise<void> {
   
   // Сбрасываем все состояния полностью
   params.setAnswers({});
+  params.answersRef.current = {};
+  params.answersCountRef.current = 0;
+  params.lastRestoredAnswersIdRef.current = null;
   params.setCurrentQuestionIndex(0);
   params.setCurrentInfoScreenIndex(0);
   params.currentInfoScreenIndexRef.current = 0;
-  // ФИКС: Очищаем sessionStorage при очистке прогресса
+  // ФИКС: Очищаем sessionStorage при очистке прогресса (scoped ключи)
   if (typeof window !== 'undefined') {
     try {
-      sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
-      sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
+      // Очищаем скоупленные ключи
+      sessionStorage.removeItem(QUIZ_CONFIG.getScopedKey('quiz_answers_backup', scope));
+      sessionStorage.removeItem(QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN, scope));
+      sessionStorage.removeItem(QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE, scope));
+      sessionStorage.removeItem(QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.QUIZ_COMPLETED, scope));
+      sessionStorage.removeItem(QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED, scope));
+      sessionStorage.removeItem(QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.INIT_CALLED, scope));
+
+      // Устанавливаем железный флаг блокировки восстановления
+      sessionStorage.setItem(QUIZ_CONFIG.getScopedKey('quiz_progress_cleared', scope), 'true');
     } catch (err) {
-      clientLogger.warn('⚠️ Не удалось очистить quiz индексы из sessionStorage', err);
+      clientLogger.warn('⚠️ Не удалось очистить quiz данные из sessionStorage', err);
     }
   }
   params.setShowResumeScreen(false);
@@ -94,14 +112,14 @@ export async function startOver(params: StartOverParams): Promise<void> {
   params.setError(null);
   
   // Если анкета уже загружена, сразу завершаем инициализацию
-  // и сбрасываем флаги, чтобы не вызывать повторную инициализацию
+  // но НЕ сбрасываем isStartingOverRef - оставляем его true для защиты от восстановления прогресса
   if (params.questionnaire) {
     clientLogger.log('✅ Анкета уже загружена, завершаем инициализацию без повторной загрузки');
     params.initCompletedRef.current = true;
     params.setInitCompleted(true);
-    params.isStartingOverRef.current = false;
-    params.setIsStartingOver(false);
-    clientLogger.log('✅ startOver завершен, анкета уже была загружена');
+    // ФИКС: НЕ сбрасываем isStartingOverRef даже если questionnaire загружена
+    // Это защитит от восстановления прогресса из React Query кэша в Step 2
+    clientLogger.log('✅ startOver завершен, анкета уже была загружена, isStartingOverRef остается true');
     return;
   }
   
