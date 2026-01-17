@@ -206,6 +206,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'habits_matter',
     title: 'Каждая привычка отражается на коже',
     subtitle: 'Давайте посмотрим, что влияет именно на вашу и как ей помочь',
+    image: '/habitsinfo.jpeg',
     showAfterInfoScreenId: 'ai_showcase', // ИСПРАВЛЕНО: После экрана ai_showcase, а не вопроса
     ctaText: 'Продолжить',
   },

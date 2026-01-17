@@ -55,6 +55,7 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
               width: '100%',
               height: '100%',
               objectFit: 'cover',
+              display: 'block', // ФИКС: Предотвращает "пиксельную полоску" из-за baseline
             }}
           />
         </div>

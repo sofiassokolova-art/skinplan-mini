@@ -6,6 +6,7 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import Image from 'next/image';
 import type { Questionnaire } from '@/lib/quiz/types';
 import type { InfoScreen } from '../info-screens';
 import { getNextInfoScreenAfterScreen } from '../info-screens';
@@ -16,135 +17,47 @@ import { clientLogger } from '@/lib/client-logger';
 import { getInitialInfoScreens } from '../info-screens';
 import { QuizErrorDisplay } from './QuizErrorDisplay';
 
-// Компонент для плавной загрузки изображений с предзагрузкой
-function ImageWithLoading({ src, alt, maxWidth }: { src: string; alt: string; maxWidth: string }) {
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
-
-  // ИСПРАВЛЕНО: Предзагрузка изображения для ускорения загрузки
-  useEffect(() => {
-    if (!src || typeof window === 'undefined') return;
-    
-    // Добавляем preload link в head для ранней загрузки
-    const link = document.createElement('link');
-    link.rel = 'preload';
-    link.as = 'image';
-    link.href = src;
-    link.crossOrigin = 'anonymous';
-    document.head.appendChild(link);
-    
-    // Также создаем Image объект для предзагрузки в кэш браузера
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.src = src;
-    
-    return () => {
-      // Cleanup: удаляем link при размонтировании
-      if (document.head.contains(link)) {
-        document.head.removeChild(link);
-      }
-    };
-  }, [src]);
+// ФИКС: Оптимизированный компонент для загрузки изображений с next/image
+// Использует WebP/AVIF оптимизацию, lazy-loading, и правильные размеры
+function ImageWithLoading({ 
+  src, 
+  alt, 
+  maxWidth,
+  priority = false,
+}: { 
+  src: string; 
+  alt: string; 
+  maxWidth: string;
+  priority?: boolean;
+}) {
+  // Стандартные размеры для изображений в quiz (320px * 2 для retina = 640px)
+  const width = 640;
+  const height = 640;
 
   return (
     <div style={{
       width: '100%',
       maxWidth,
       marginBottom: '32px',
-      background: 'transparent',
-      backgroundColor: 'transparent',
-      borderRadius: '0',
       position: 'relative',
-      minHeight: isLoading ? '200px' : 'auto',
-      // ИСПРАВЛЕНО: Убираем все возможные фоны для прозрачности
-      boxShadow: 'none',
-      border: 'none',
-      outline: 'none',
+      aspectRatio: '1 / 1',
     }}>
-      {/* Placeholder во время загрузки */}
-      {isLoading && (
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'transparent',
-          backgroundColor: 'transparent',
-          borderRadius: '0',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          opacity: 1,
-          transition: 'opacity 0.3s ease-out',
-          zIndex: 1,
-          // ИСПРАВЛЕНО: Убираем все возможные фоны для прозрачности
-          boxShadow: 'none',
-          border: 'none',
-        }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            border: '3px solid #E5E7EB',
-            borderTopColor: '#D5FE61',
-            borderRadius: '50%',
-            animation: 'spin 0.8s linear infinite',
-          }} />
-          <style>{`
-            @keyframes spin {
-              to { transform: rotate(360deg); }
-            }
-          `}</style>
-        </div>
-      )}
-      
-      {/* Изображение с loading="eager" для важных изображений */}
-      <img
+      <Image
         src={src}
         alt={alt}
-        loading="eager"
-        fetchPriority="high"
-        crossOrigin="anonymous"
-        onLoad={() => {
-          setIsLoading(false);
-          setHasError(false);
-        }}
-        onError={() => {
-          setIsLoading(false);
-          setHasError(true);
-        }}
+        width={width}
+        height={height}
+        priority={priority} // Только для первых 1-2 экранов
+        placeholder="blur"
+        blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQwIiBoZWlnaHQ9IjY0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PC9zdmc+"
         style={{
           width: '100%',
           height: 'auto',
           objectFit: 'contain',
-          border: 'none',
-          outline: 'none',
           display: 'block',
-          background: 'transparent',
-          backgroundColor: 'transparent',
-          boxShadow: 'none',
-          borderRadius: '0',
-          opacity: isLoading ? 0 : 1,
-          transition: 'opacity 0.4s ease-out',
         }}
+        sizes={`(max-width: 768px) ${maxWidth}, ${maxWidth}`}
       />
-      
-      {/* Placeholder при ошибке загрузки */}
-      {hasError && (
-        <div style={{
-          width: '100%',
-          height: '200px',
-          background: '#F3F4F6',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#9CA3AF',
-          fontSize: '14px',
-          borderRadius: '0',
-        }}>
-          Изображение не загружено
-        </div>
-      )}
     </div>
   );
 }
@@ -202,33 +115,31 @@ export function QuizInfoScreen({
   const isGeneralInfoIntroScreen = screen.id === 'general_info_intro';
   const isHealthDataScreen = screen.id === 'health_data';
   const isSkinFeaturesIntroScreen = screen.id === 'skin_features_intro';
+  const isHabitsMatterScreen = screen.id === 'habits_matter';
 
-  // ИСПРАВЛЕНО: Предзагрузка изображения следующего экрана для ускорения загрузки
-  // Если текущий экран - testimonials, предзагружаем изображение для general_info_intro
+  // ФИКС: Prefetch следующих 1-2 изображений для ускорения загрузки
+  // Используем new Image().src для предзагрузки в кэш браузера
   useEffect(() => {
-    if (isTestimonialsScreen && typeof window !== 'undefined') {
-      // Предзагружаем изображение для экрана "Общая информация"
-      const nextImageSrc = '/info8.jpg';
-      const link = document.createElement('link');
-      link.rel = 'preload';
-      link.as = 'image';
-      link.href = nextImageSrc;
-      link.crossOrigin = 'anonymous';
-      document.head.appendChild(link);
-      
-      // Также создаем Image объект для предзагрузки в кэш браузера
+    if (typeof window === 'undefined') return;
+    
+    // Находим следующие 1-2 экрана после текущего
+    const nextScreen1 = getNextInfoScreenAfterScreen(screen.id);
+    const nextScreen2 = nextScreen1 ? getNextInfoScreenAfterScreen(nextScreen1.id) : null;
+    
+    // Prefetch изображения следующих экранов
+    const prefetchImage = (imageSrc: string | undefined) => {
+      if (!imageSrc) return;
       const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.src = nextImageSrc;
-      
-      return () => {
-        // Cleanup: удаляем link при размонтировании
-        if (document.head.contains(link)) {
-          document.head.removeChild(link);
-        }
-      };
+      img.src = imageSrc;
+    };
+    
+    if (nextScreen1?.image) {
+      prefetchImage(nextScreen1.image);
     }
-  }, [isTestimonialsScreen]);
+    if (nextScreen2?.image) {
+      prefetchImage(nextScreen2.image);
+    }
+  }, [screen.id]);
 
   // РЕФАКТОРИНГ: Используем компонент WelcomeScreen
   if (isWelcomeScreen) {
@@ -663,58 +574,7 @@ export function QuizInfoScreen({
 
   // Экран "Какую цель вы ставите перед собой?" (goals_intro)
   if (isGoalsIntroScreen) {
-    // Кнопка "Назад" через портал для гарантированной фиксации
-    // ИСПРАВЛЕНО: Проверяем, что handleBack существует и currentInfoScreenIndex > 0
-    // ВАЖНО: goals_intro - это 4-й экран (индекс 3), поэтому кнопка должна показываться
-    const shouldShowBackButton = currentInfoScreenIndex > 0 && typeof window !== 'undefined' && handleBack;
-    const goalsBackButton = shouldShowBackButton ? createPortal(
-      <button
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          handleBack();
-        }}
-        style={{
-          position: 'fixed',
-          top: 'clamp(20px, 4vh, 40px)',
-          left: 'clamp(19px, 5vw, 24px)',
-          zIndex: 99999,
-          pointerEvents: 'auto',
-          width: '44px',
-          height: '44px',
-          background: 'transparent',
-          border: 'none',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          padding: 0,
-          transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
-          backfaceVisibility: 'hidden', // Оптимизация рендеринга
-          WebkitTransform: 'translateZ(0)', // Для Safari
-          isolation: 'isolate', // Создаем новый контекст стекирования
-          willChange: 'transform', // Оптимизация для браузера
-          contain: 'layout style paint', // Изолируем кнопку от остального контента
-        }}
-      >
-        <svg
-          width="12"
-          height="20"
-          viewBox="0 0 12 20"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M10 2L2 10L10 18"
-            stroke="#1A1A1A"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>,
-      document.body
-    ) : null;
+    // Кнопка "Назад" теперь глобальная в layout - убрана из компонента
 
     return (
       <>
@@ -753,6 +613,7 @@ export function QuizInfoScreen({
               src={screen.image}
               alt={screen.title}
               maxWidth="320px"
+              priority={true} // ФИКС: Первые экраны загружаем с priority
             />
           )}
 
@@ -1339,6 +1200,175 @@ export function QuizInfoScreen({
     );
   }
 
+  // Экран "Каждая привычка отражается на коже" (habits_matter) - такая же верстка как у health_data
+  if (isHabitsMatterScreen) {
+    // Кнопка "Назад" через портал для гарантированной фиксации
+    const habitsBackButton = currentInfoScreenIndex > 0 && typeof window !== 'undefined' && handleBack ? createPortal(
+      <div
+        style={{
+          position: 'fixed',
+          top: 'clamp(20px, 4vh, 40px)',
+          left: 'clamp(19px, 5vw, 24px)',
+          zIndex: 99999,
+          pointerEvents: 'auto',
+          isolation: 'isolate', // Создаем новый контекст стекирования
+          willChange: 'transform', // Оптимизация для браузера
+        }}
+      >
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleBack();
+          }}
+          style={{
+            position: 'relative',
+            width: '44px',
+            height: '44px',
+            background: 'transparent',
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            padding: 0,
+            margin: 0,
+            transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
+            backfaceVisibility: 'hidden', // Оптимизация рендеринга
+            WebkitTransform: 'translateZ(0)', // Для Safari
+          }}
+        >
+          <svg
+            width="12"
+            height="20"
+            viewBox="0 0 12 20"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M10 2L2 10L10 18"
+              stroke="#1A1A1A"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      </div>,
+      document.body
+    ) : null;
+
+    return (
+      <>
+        {habitsBackButton}
+        <div style={{ 
+          padding: 0,
+          margin: 0,
+          minHeight: '100vh',
+          background: '#FFFFFF',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
+          width: '100%',
+        }}>
+
+        {/* Контент с анимацией */}
+        <div 
+          className="animate-fade-in"
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'flex-start',
+            paddingTop: '100px',
+            paddingBottom: '120px',
+            paddingLeft: '20px',
+            paddingRight: '20px',
+            width: '100%',
+            boxSizing: 'border-box',
+          }}
+        >
+          {/* Картинка с плавной загрузкой */}
+          {screen.image && (
+            <ImageWithLoading 
+              src={screen.image}
+              alt={screen.title}
+              maxWidth="240px"
+            />
+          )}
+
+          {/* Заголовок */}
+          <h1 style={{
+            fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 700,
+            fontSize: '32px',
+            lineHeight: '120%',
+            letterSpacing: '0px',
+            textAlign: 'left',
+            color: '#000000',
+            margin: '0 0 16px 0',
+            width: '100%',
+            maxWidth: '320px',
+            whiteSpace: 'pre-line',
+          }}>
+            {screen.title}
+          </h1>
+
+          {/* Подзаголовок */}
+          {screen.subtitle && (
+            <div style={{
+              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 400,
+              fontSize: '18px',
+              lineHeight: '140%',
+              letterSpacing: '0px',
+              textAlign: 'left',
+              color: '#000000',
+              width: '100%',
+              maxWidth: '320px',
+            }}>
+              {screen.subtitle}
+            </div>
+          )}
+        </div>
+        
+        {/* Фиксированная кнопка "Продолжить" внизу экрана */}
+        <div style={{
+          position: 'fixed',
+          bottom: '40px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '100%',
+          maxWidth: '320px',
+          padding: '0 20px',
+          boxSizing: 'border-box',
+          zIndex: 100,
+        }}>
+          <button
+            onClick={handleNext}
+            style={{
+              width: '100%',
+              height: '56px',
+              borderRadius: '20px',
+              background: '#D5FE61',
+              color: '#000000',
+              border: 'none',
+              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 600,
+              fontSize: '16px',
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(213, 254, 97, 0.3)',
+            }}
+          >
+            {screen.ctaText || 'Продолжить'}
+          </button>
+        </div>
+      </div>
+      </>
+    );
+  }
+
   // Кнопка "Назад" - рендерим через портал, чтобы она была вне прокручиваемого контейнера
   // ИСПРАВЛЕНО: Кнопка всегда зафиксирована наверху и не листается вместе с инфо-экранами
   const shouldShowBackButton = (currentInfoScreenIndex > 0) || (pendingInfoScreenRef?.current && handleBack);
@@ -1429,15 +1459,20 @@ export function QuizInfoScreen({
             borderRadius: '32px 32px 0 0',
             overflow: 'hidden',
             marginBottom: '24px',
+            position: 'relative',
           }}>
-            <img
+            <Image
               src={screen.image}
               alt={screen.title}
+              width={1200} // ФИКС: Фиксированные размеры для избежания layout shift
+              height={320}
               style={{
                 width: '100%',
                 height: '100%',
                 objectFit: 'cover',
+                display: 'block', // ФИКС: Предотвращает "пиксельную полоску" из-за baseline
               }}
+              sizes="(max-width: 768px) 100vw, 420px"
             />
           </div>
         )}
@@ -1452,14 +1487,18 @@ export function QuizInfoScreen({
             marginBottom: '24px',
             position: 'relative',
           }}>
-            <img
+            <Image
               src={screen.image}
               alt={screen.title}
+              width={1200} // ФИКС: Фиксированные размеры для избежания layout shift
+              height={400}
               style={{
                 width: '100%',
                 height: '100%',
                 objectFit: 'cover',
+                display: 'block', // ФИКС: Предотвращает "пиксельную полоску" из-за baseline
               }}
+              sizes="(max-width: 768px) 100vw, 420px"
             />
           </div>
         )}

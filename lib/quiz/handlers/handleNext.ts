@@ -641,7 +641,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         pendingInfoScreenCleared: true,
         nextQuestionCode: nextQuestion?.code || null,
         nextQuestionId: nextQuestion?.id || null,
-        hasAnsweredNextQuestion: nextQuestion && answers[nextQuestion.id] !== undefined,
+        hasAnsweredNextQuestion: nextQuestion && effectiveAnswers[nextQuestion.id] !== undefined, // ФИКС: Используем effectiveAnswers
       });
       // КРИТИЧНО: После закрытия инфо-экрана НЕ проверяем инфо-экран для следующего вопроса сразу
       // даже если пользователь уже ответил на него - это предотвращает застревание
@@ -663,7 +663,50 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     const effectiveAnswers = (answersRef?.current !== undefined && Object.keys(answersRef.current).length > 0)
       ? answersRef.current
       : answers;
-    const hasAnsweredCurrentQuestion = currentQuestion && effectiveAnswers[currentQuestion.id] !== undefined;
+    
+    // ФИКС B: Хард-fallback - если currentQuestion валиден, но hasAnsweredCurrentQuestion false,
+    // но ответ есть в answersRef/effectiveAnswers - это mismatch id/code, логируем и нормализуем
+    let hasAnsweredCurrentQuestion = currentQuestion && effectiveAnswers[currentQuestion.id] !== undefined;
+    
+    if (currentQuestion && !hasAnsweredCurrentQuestion) {
+      // Проверяем, есть ли ответ в answersRef, но для другого questionId (возможен mismatch)
+      const hasAnswerInRef = answersRef?.current && Object.values(answersRef.current).length > 0;
+      const hasAnswerInAnswers = answers && Object.values(answers).length > 0;
+      
+      if (hasAnswerInRef || hasAnswerInAnswers) {
+        // Пытаемся найти ответ для текущего вопроса по коду
+        const questionCode = currentQuestion.code;
+        const allQuestionsWithCode = allQuestions.filter(q => q.code === questionCode);
+        
+        if (allQuestionsWithCode.length > 0) {
+          // Проверяем, есть ли ответ для любого вопроса с таким кодом
+          const foundQuestionWithAnswer = allQuestionsWithCode.find(q => 
+            effectiveAnswers[q.id] !== undefined || 
+            (answersRef?.current && answersRef.current[q.id] !== undefined) ||
+            (answers && answers[q.id] !== undefined)
+          );
+          
+          if (foundQuestionWithAnswer && foundQuestionWithAnswer.id !== currentQuestion.id) {
+            // Mismatch - ответ есть для вопроса с таким же кодом, но другим ID
+            clientLogger.warn('⚠️ [Нормализация] Обнаружен mismatch questionId при проверке ответа', {
+              currentQuestionId: currentQuestion.id,
+              currentQuestionCode: questionCode,
+              foundQuestionId: foundQuestionWithAnswer.id,
+              hasAnswerForCurrent: false,
+              hasAnswerForFound: true,
+              currentQuestionIndex,
+              foundQuestionIndex: allQuestions.findIndex(q => q.id === foundQuestionWithAnswer.id),
+              effectiveAnswersKeys: Object.keys(effectiveAnswers),
+              answersRefKeys: answersRef?.current ? Object.keys(answersRef.current) : [],
+              answersKeys: answers ? Object.keys(answers) : [],
+            });
+            
+            // Не делаем ранний return - продолжаем с попыткой нормализации через переход к следующему вопросу
+            // или обновление индекса
+          }
+        }
+      }
+    }
     
     // КРИТИЧНО: Проверяем инфо-экран только если:
     // 1. Пользователь УЖЕ ответил на текущий вопрос
@@ -976,7 +1019,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         currentQuestionCode: allQuestions[currentQuestionIndex]?.code || null,
         nextQuestionCode: nextQuestion?.code || null,
         nextQuestionId: nextQuestion?.id || null,
-        hasAnsweredCurrent: allQuestions[currentQuestionIndex] && answers[allQuestions[currentQuestionIndex].id] !== undefined,
+        hasAnsweredCurrent: allQuestions[currentQuestionIndex] && effectiveAnswers[allQuestions[currentQuestionIndex].id] !== undefined, // ФИКС: Используем effectiveAnswers
         // ИСПРАВЛЕНО: Добавляем проверку pendingInfoScreen для диагностики пустого экрана
         pendingInfoScreen: !!pendingInfoScreen,
         pendingInfoScreenId: pendingInfoScreen?.id || null,

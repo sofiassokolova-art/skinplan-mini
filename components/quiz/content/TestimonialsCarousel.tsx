@@ -3,6 +3,7 @@
 // ОБНОВЛЕНО: Новый дизайн с лаймовыми звездами и картинками до/после
 
 import React from 'react';
+import Image from 'next/image';
 import type { Testimonial } from '@/app/(miniapp)/quiz/info-screens';
 
 export interface TestimonialsCarouselProps {
@@ -73,14 +74,18 @@ export function TestimonialsCarousel({ testimonials }: TestimonialsCarouselProps
                   position: 'relative',
                   overflow: 'hidden',
                 }}>
-                  <img 
+                  <Image
                     src={testimonial.beforeImage}
                     alt="До"
+                    width={300} // ФИКС: Фиксированные размеры для избежания layout shift
+                    height={120}
                     style={{
                       width: '100%',
                       height: '100%',
                       objectFit: 'cover',
+                      display: 'block', // ФИКС: Предотвращает "пиксельную полоску" из-за baseline
                     }}
+                    sizes="150px"
                   />
                   <div style={{
                     position: 'absolute',
@@ -92,6 +97,7 @@ export function TestimonialsCarousel({ testimonials }: TestimonialsCarouselProps
                     fontWeight: 600,
                     padding: '2px 8px',
                     borderRadius: '4px',
+                    zIndex: 1,
                   }}>
                     До
                   </div>
@@ -103,14 +109,18 @@ export function TestimonialsCarousel({ testimonials }: TestimonialsCarouselProps
                   position: 'relative',
                   overflow: 'hidden',
                 }}>
-                  <img 
+                  <Image
                     src={testimonial.afterImage}
                     alt="После"
+                    width={300} // ФИКС: Фиксированные размеры для избежания layout shift
+                    height={120}
                     style={{
                       width: '100%',
                       height: '100%',
                       objectFit: 'cover',
+                      display: 'block', // ФИКС: Предотвращает "пиксельную полоску" из-за baseline
                     }}
+                    sizes="150px"
                   />
                   <div style={{
                     position: 'absolute',
@@ -122,6 +132,7 @@ export function TestimonialsCarousel({ testimonials }: TestimonialsCarouselProps
                     fontWeight: 600,
                     padding: '2px 8px',
                     borderRadius: '4px',
+                    zIndex: 1,
                   }}>
                     После
                   </div>

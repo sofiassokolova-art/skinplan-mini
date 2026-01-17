@@ -5,6 +5,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { createPortal } from 'react-dom';
 import type { Question } from '@/lib/quiz/types';
 import { getInfoScreenAfterQuestion } from '../info-screens';
@@ -549,15 +550,20 @@ export function QuizQuestion({
                     height: '140px',
                     backgroundColor: '#f0f0f0',
                     overflow: 'hidden',
+                    position: 'relative',
                   }}>
-                    <img 
+                    <Image
                       src={imageUrl}
                       alt={option.label}
+                      width={600} // ФИКС: Фиксированные размеры для избежания layout shift
+                      height={140}
                       style={{
                         width: '100%',
                         height: '100%',
                         objectFit: 'cover',
+                        display: 'block', // ФИКС: Предотвращает "пиксельную полоску" из-за baseline
                       }}
+                      sizes="(max-width: 768px) 100vw, 420px"
                     />
                   </div>
                   {/* Текст и чекбокс */}

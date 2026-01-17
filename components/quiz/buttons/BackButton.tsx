@@ -17,10 +17,6 @@ export function BackButton({ onClick }: BackButtonProps) {
         onClick();
       }}
       style={{
-        position: 'fixed',
-        top: 'clamp(20px, 4vh, 40px)',
-        left: 'clamp(19px, 5vw, 24px)',
-        zIndex: 1000,
         width: '44px',
         height: '44px',
         background: 'transparent',

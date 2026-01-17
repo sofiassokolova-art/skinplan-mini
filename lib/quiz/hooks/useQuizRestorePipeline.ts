@@ -227,13 +227,19 @@ export function useQuizRestorePipeline(params: UseQuizRestorePipelineParams) {
     // - Пользователь начал заново
     // - Прогресс загружается
     // - Есть сохраненный прогресс с >= 2 ответами (ждем резюм-экрана)
-    const hasSavedProgress = savedProgress && savedProgress.answers && 
+    // - Прогресс был очищен (флаг quiz_progress_cleared)
+    const hasSavedProgress = savedProgress && savedProgress.answers &&
       Object.keys(savedProgress.answers).length >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN;
-    
-    if (isStartingOver || 
+
+    // ФИКС: Проверяем флаг блокировки восстановления
+    const progressCleared = typeof window !== 'undefined' ?
+      sessionStorage.getItem(QUIZ_CONFIG.getScopedKey('quiz_progress_cleared', scope)) === 'true' : false;
+
+    if (isStartingOver ||
         isStartingOverRef.current ||
         isLoadingProgress ||
-        hasSavedProgress) {
+        hasSavedProgress ||
+        progressCleared) {
       return;
     }
     

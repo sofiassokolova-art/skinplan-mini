@@ -12,6 +12,7 @@ import { QueryProvider } from '@/providers/QueryProvider';
 import { ServiceFeedbackPopup } from '@/components/ServiceFeedbackPopup';
 import { tg, useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
+import { BackButton } from '@/components/quiz/buttons';
 
 function LayoutContent({
   children,
@@ -265,6 +266,29 @@ function LayoutContent({
   return (
     <>
       <NetworkStatus />
+
+      {/* ФИКС: Кнопка "назад" фиксированная относительно viewport (выше PageTransition) */}
+      {/* Это предотвращает проблемы с transform в PageTransition, которые ломают position: fixed */}
+      {isOnQuizPage && (
+        <div style={{
+          position: 'fixed',
+          top: 'clamp(20px, 4vh, 40px)',
+          left: 'clamp(19px, 5vw, 24px)',
+          zIndex: 10000,
+          pointerEvents: 'none', // Фикс-слой не блокирует скролл
+        }}>
+          <div style={{ pointerEvents: 'auto' }}> {/* Только кнопка кликабельна */}
+            <BackButton onClick={() => {
+              if (window.history.length > 1) {
+                window.history.back();
+              } else {
+                router.push('/home');
+              }
+            }} />
+          </div>
+        </div>
+      )}
+
       {/* Логотип наверху всех экранов (кроме главной) - как на главной странице */}
       {showLogo && (
         <div style={{

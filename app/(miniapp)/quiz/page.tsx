@@ -135,12 +135,8 @@ export default function QuizPage() {
   // Это предотвращает "прыгание" ключей sessionStorage между разными scope
   const scopeRef = useRef<string | null>(null);
   const currentQuestionnaireId = questionnaireRef.current?.id || questionnaire?.id || quizStateMachine.questionnaire?.id;
-  
-  // Фиксируем scope один раз, если questionnaireId появился
-  if (currentQuestionnaireId && !scopeRef.current) {
-    scopeRef.current = currentQuestionnaireId;
-  }
-  
+
+
   // Используем зафиксированный scope или 'global' как fallback
   const scope = scopeRef.current ?? 'global';
   
@@ -176,6 +172,9 @@ export default function QuizPage() {
   const [answersVersion, setAnswersVersion] = useState(0);
   const [savedProgressVersion, setSavedProgressVersion] = useState(0);
   
+  // ФИКС: Защита от зацикливания - не восстанавливаем currentInfoScreenIndex после перехода к вопросам
+  const infoIndexRestoredRef = useRef(false);
+
   // РЕФАКТОРИНГ: Все состояния и refs теперь в useQuizStateExtended
   const {
     currentInfoScreenIndex,
@@ -210,13 +209,13 @@ export default function QuizPage() {
     stateMachineQuestionnaireRef,
     stateMachineQuestionnaireIdRef,
   } = quizState;
-  
+
   // ФИКС: Используем ref для отслеживания questionnaire из State Machine, чтобы избежать зависимости от объекта
   useEffect(() => {
     stateMachineQuestionnaireRef.current = quizStateMachine.questionnaire;
     stateMachineQuestionnaireIdRef.current = quizStateMachine.questionnaire?.id || null;
   }, [quizStateMachine.questionnaire?.id, stateMachineQuestionnaireRef]);
-  
+
   // РЕФАКТОРИНГ: Refs для useQuizComputed (объявляем ДО использования)
   // ИСПРАВЛЕНО: Используем ref для хранения предыдущего значения allQuestionsRaw
   // Это предотвращает потерю вопросов, когда questionnaire временно становится null в state
@@ -372,9 +371,8 @@ export default function QuizPage() {
     isDev,
   });
   
-  // ФИКС: Улучшенная логика shouldShowResume - вычисляем по факту прогресса
-  // Это убирает класс багов "резюм не отобразился из-за гонки/эффекта"
-  // Вычисляем РАНЬШЕ, чтобы использовать везде вместо showResumeScreen
+  // ФИКС: Рендерим резюм строго по showResumeScreen, а shouldShowResume используем только для логики
+  // Это устраняет два источника правды и непредсказуемость
   const savedAnswersCount = savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0;
   const shouldShowResume = !!savedProgress &&
                            savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN &&
@@ -384,6 +382,15 @@ export default function QuizPage() {
                            !isRetakingQuiz &&
                            !showRetakeScreen &&
                            !isLoadingProgress;
+
+  // ФИКС: Синхронизируем showResumeScreen с shouldShowResume однократно
+  useEffect(() => {
+    if (shouldShowResume && !showResumeScreen) {
+      setShowResumeScreen(true);
+    } else if (!shouldShowResume && showResumeScreen) {
+      setShowResumeScreen(false);
+    }
+  }, [shouldShowResume, showResumeScreen]);
   
   // ФИКС: Увеличиваем версию ответов при реальных изменениях (не при каждом рендере)
   // Используем легкий хеш на основе (id,value) пар вместо JSON.stringify
@@ -401,6 +408,7 @@ export default function QuizPage() {
   }, [answers]);
   
   // ФИКС: Увеличиваем версию savedProgress при реальных изменениях
+  // Используем хэш вместо количества ключей для точного отслеживания изменений
   const savedProgressVersionRef = useRef(0);
   const lastSavedProgressHashRef = useRef<string>('');
   useEffect(() => {
@@ -413,7 +421,7 @@ export default function QuizPage() {
         setSavedProgressVersion(savedProgressVersionRef.current);
       }
     }
-  }, [savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0]);
+  }, [savedProgress]); // ФИКС: Зависимость от savedProgress целиком для точности
   
   // ИСПРАВЛЕНО: Cleanup для saveProgressTimeoutRef при размонтировании компонента
   // Это предотвращает утечки памяти и выполнение сохранения после размонтирования
@@ -1142,6 +1150,11 @@ export default function QuizPage() {
 
   // РЕФАКТОРИНГ: Функция вынесена в lib/quiz/handlers/handleAnswer.ts
   const handleAnswer = async (questionId: number, value: string | string[]) => {
+    // ФИКС: Синхронно обновляем answersRef перед вызовом handleAnswerFn
+    // Это предотвращает залипание на вопросе после изменения ответа (возраст/пол)
+    answersRef.current = { ...answersRef.current, [questionId]: value };
+    answersCountRef.current = Object.keys(answersRef.current).length;
+
     return handleAnswerFn({
       questionId,
       value,
@@ -1157,6 +1170,11 @@ export default function QuizPage() {
       lastSavedAnswerRef,
       answersRef, // ИСПРАВЛЕНО: Передаем ref для синхронного обновления
       addDebugLog,
+      // ФИКС: Параметры для нормализации индекса после изменения фильтрующих вопросов
+      setCurrentQuestionIndex,
+      currentQuestionIndexRef,
+      scopedStorageKeys,
+      scope,
     });
   };
 
@@ -1231,6 +1249,13 @@ export default function QuizPage() {
   useEffect(() => {
     isRetakingQuizRef.current = isRetakingQuiz;
   }, [isRetakingQuiz]);
+
+  // ФИКС: Сбрасываем scope при start over для корректного восстановления
+  useEffect(() => {
+    if (isStartingOver) {
+      scopeRef.current = null; // Позволяем пересчитать scope заново
+    }
+  }, [isStartingOver]);
 
   const submitAnswers = useCallback(async () => {
     // Получаем актуальные значения ТОЛЬКО из refs
@@ -1704,7 +1729,7 @@ export default function QuizPage() {
   // Это предотвращает застревание на info screens
   // ВАЖНО: Не выполняем, если hasResumed = true, чтобы не сбрасывать состояние после resumeQuiz
   useEffect(() => {
-    if (currentInfoScreenIndex >= initialInfoScreens.length && !isRetakingQuiz && !showResumeScreen && !hasResumed && !resumeCompletedRef.current) {
+    if (currentInfoScreenIndex >= initialInfoScreens.length && !isRetakingQuiz && !showResumeScreen && !hasResumed && !resumeCompletedRef.current && !infoIndexRestoredRef.current) {
       // ИСПРАВЛЕНО: Очищаем pendingInfoScreen только если currentQuestionIndex = 0 (еще не начали отвечать на вопросы)
       // Это предотвращает очистку pendingInfoScreen, который показывается между вопросами
       // pendingInfoScreen между вопросами должен очищаться только в handleNext при переходе к следующему вопросу
@@ -1734,7 +1759,7 @@ export default function QuizPage() {
     // ФИКС: Если savedProgress не загрузился (null), но currentQuestionIndex > 0 - сбрасываем на 0
     // Это предотвращает застревание, когда прогресс не загрузился из-за KV ошибки
     // ВАЖНО: Не выполняем, если resumeQuiz уже выполнен, чтобы не сбрасывать состояние после resumeQuiz
-    if (!savedProgress && !hasResumed && !showResumeScreen && !isRetakingQuiz && !loading && questionnaire && !resumeCompletedRef.current) {
+    if (!savedProgress && !hasResumed && !showResumeScreen && !isRetakingQuiz && !loading && questionnaire && !resumeCompletedRef.current && !infoIndexRestoredRef.current) {
       if (currentQuestionIndex > 0 && currentQuestionIndex >= allQuestions.length && allQuestions.length > 0) {
         if (isDev) {
           clientLogger.warn('🔧 ФИКС: savedProgress = null, но currentQuestionIndex выходит за пределы - сбрасываем на 0', {
@@ -1755,7 +1780,7 @@ export default function QuizPage() {
     // Теперь начальные инфо-экраны всегда показываются для нового пользователя
     // Пользователь должен пройти все начальные инфо-экраны, нажимая "Продолжить"
     // Это обеспечивает правильный UX - пользователь видит все начальные экраны перед началом вопросов
-  }, [currentInfoScreenIndex, initialInfoScreens.length, pendingInfoScreen?.id, isRetakingQuiz, showResumeScreen, hasResumed, currentQuestionIndex, allQuestions.length, Object.keys(answers).length, isDev, savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0, loading, questionnaire?.id]); // ИСПРАВЛЕНО: Убрали функции из зависимостей
+  }, [currentInfoScreenIndex, initialInfoScreens.length, pendingInfoScreen?.id, isRetakingQuiz, showResumeScreen, hasResumed, currentQuestionIndex, allQuestions.length, Object.keys(answers).length, isDev, savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0, loading, questionnaire?.id, infoIndexRestoredRef.current]); // ИСПРАВЛЕНО: Убрали функции из зависимостей
 
   // РЕФАКТОРИНГ: isShowingInitialInfoScreen, currentInitialInfoScreen, currentQuestion теперь в useQuizComputed
   // УДАЛЕНО: Весь блок кода для isShowingInitialInfoScreen, currentInitialInfoScreen и currentQuestion
@@ -2160,7 +2185,8 @@ export default function QuizPage() {
         error: error || null,
       });
     }
-  }, [loading, questionnaire?.id, allQuestions.length, currentQuestionIndex, currentQuestion?.id, isShowingInitialInfoScreen, pendingInfoScreen?.id, showResumeScreen, hasResumed, isRetakingQuiz, showRetakeScreen, Object.keys(answers).length, savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0, currentInfoScreenIndex, error, allQuestionsRaw.length]); // Уже исправлено
+  }, [loading, questionnaire?.id, allQuestions.length, currentQuestionIndex, currentQuestion?.id, isShowingInitialInfoScreen, pendingInfoScreen?.id, showResumeScreen, hasResumed, isRetakingQuiz, showRetakeScreen, Object.keys(answers).length, savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0, currentInfoScreenIndex, error, allQuestionsRaw.length, infoIndexRestoredRef.current]); // Уже исправлено
+
 
   // ИСПРАВЛЕНО: КРИТИЧЕСКАЯ ЗАЩИТА - НЕ сбрасываем currentInfoScreenIndex, если пользователь уже перешел к вопросам
   // Это предотвращает редирект на первый экран после 4-го инфо-экрана
@@ -2170,11 +2196,34 @@ export default function QuizPage() {
     // Это предотвращает редирект на первый экран после 4-го инфо-экрана
     if (currentInfoScreenIndexRef.current >= initialInfoScreens.length) {
       // Пользователь уже на вопросах - НИКОГДА не сбрасываем обратно на начальные экраны
+      // ФИКС: Помечаем, что индекс больше не нужно восстанавливать
+      infoIndexRestoredRef.current = true;
       return;
+    }
+
+    // ФИКС: Восстанавливаем currentInfoScreenIndex только один раз при cold start
+    if (!infoIndexRestoredRef.current && !isLoadingProgress && !savedProgress && !loading) {
+      // Восстановление из sessionStorage только при первой загрузке
+      if (typeof window !== 'undefined') {
+        try {
+          const savedInfoScreenIndex = sessionStorage.getItem(scopedStorageKeys.CURRENT_INFO_SCREEN);
+          if (savedInfoScreenIndex !== null) {
+            const infoScreenIndex = parseInt(savedInfoScreenIndex, 10);
+            if (!isNaN(infoScreenIndex) && infoScreenIndex >= 0 && infoScreenIndex < initialInfoScreens.length) {
+              setCurrentInfoScreenIndex(infoScreenIndex);
+              currentInfoScreenIndexRef.current = infoScreenIndex;
+              infoIndexRestoredRef.current = true;
+              clientLogger.log('🔄 Восстановлен currentInfoScreenIndex из sessionStorage (однократно)', { infoScreenIndex });
+            }
+          }
+        } catch (err) {
+          clientLogger.warn('⚠️ Ошибка при восстановлении currentInfoScreenIndex:', err);
+        }
+      }
     }
     
     // ВАЖНО: Не выполняем, если resumeQuiz уже выполнен, чтобы не сбрасывать состояние после resumeQuiz
-    if (isShowingInitialInfoScreen && !currentInitialInfoScreen && !isRetakingQuiz && !showResumeScreen && !loading && !resumeCompletedRef.current) {
+    if (isShowingInitialInfoScreen && !currentInitialInfoScreen && !isRetakingQuiz && !showResumeScreen && !loading && !resumeCompletedRef.current && !infoIndexRestoredRef.current) {
       // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
       // if (isDev) {
       //   clientLogger.warn('⚠️ isShowingInitialInfoScreen = true, но currentInitialInfoScreen = null - исправляем несоответствие и пропускаем начальные экраны', {
@@ -2192,7 +2241,7 @@ export default function QuizPage() {
         setCurrentInfoScreenIndex(initialInfoScreens.length);
       }
     }
-  }, [isShowingInitialInfoScreen, currentInitialInfoScreen, currentInfoScreenIndex, initialInfoScreens.length, isRetakingQuiz, showResumeScreen, loading, hasResumed]);
+  }, [isShowingInitialInfoScreen, currentInitialInfoScreen, currentInfoScreenIndex, initialInfoScreens.length, isRetakingQuiz, showResumeScreen, loading, hasResumed, infoIndexRestoredRef.current]);
 
   // РЕФАКТОРИНГ: Используем хук useQuizView для определения текущего экрана
   // Это упрощает условия рендеринга и делает код более читаемым
@@ -2246,12 +2295,15 @@ export default function QuizPage() {
           // ФИКС: Используем scoped ключ для answers_backup
           const answersBackupKey = QUIZ_CONFIG.getScopedKey('quiz_answers_backup', scope);
           sessionStorage.removeItem(answersBackupKey);
+          // ФИКС: Ставим флаг блокировки восстановления прогресса
+          const progressClearedKey = QUIZ_CONFIG.getScopedKey('quiz_progress_cleared', scope);
+          sessionStorage.setItem(progressClearedKey, 'true');
           clientLogger.log('✅ sessionStorage полностью очищен (включая CURRENT_QUESTION_CODE и JUST_SUBMITTED)');
         } catch (err) {
           clientLogger.warn('⚠️ Ошибка при очистке sessionStorage:', err);
         }
       }
-      
+
       // 3. Стираем локальные стейты/рефы
       setAnswers({});
       answersRef.current = {};
@@ -2259,7 +2311,11 @@ export default function QuizPage() {
       setSavedProgress(null);
       setShowResumeScreen(false);
       setPendingInfoScreen(null);
-      
+
+      // ФИКС: Блокируем восстановление прогресса в refs
+      progressLoadedRef.current = false;
+      lastRestoredAnswersIdRef.current = null;
+
       // 4. Удаляем серверный прогресс (с инвалидацией кэша React Query)
       try {
         await clearQuizProgressMutation.mutateAsync(undefined);
@@ -2309,7 +2365,7 @@ export default function QuizPage() {
   // При повторном прохождении пропускаем все info screens
   // ИСПРАВЛЕНО: Не блокируем, если показывается resume screen
   // РЕФАКТОРИНГ: Используем компонент QuizInfoScreen
-  if (pendingInfoScreen && !isRetakingQuiz && !shouldShowResume) { // ФИКС: Используем shouldShowResume вместо showResumeScreen
+    if (pendingInfoScreen && !isRetakingQuiz && !showResumeScreen) { // ФИКС: Рендерим строго по showResumeScreen
     // ИСПРАВЛЕНО: Логирование для диагностики рендеринга инфо-экрана
     clientLogger.warn('📺 РЕНДЕРИНГ ИНФО-ЭКРАНА: pendingInfoScreen рендерится', {
       pendingInfoScreenId: pendingInfoScreen.id,

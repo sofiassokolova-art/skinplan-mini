@@ -2,6 +2,7 @@
 // Вынесена функция handleAnswer из quiz/page.tsx для улучшения читаемости и поддержки
 
 import { clientLogger } from '@/lib/client-logger';
+import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 import type { Question, Questionnaire } from '@/lib/quiz/types';
 
 export interface HandleAnswerParams {
@@ -28,6 +29,11 @@ export interface HandleAnswerParams {
   lastSavedAnswerRef: React.MutableRefObject<{ questionId: number; answer: string | string[] } | null>;
   answersRef?: React.MutableRefObject<Record<number, string | string[]>>; // ИСПРАВЛЕНО: Добавлен ref для синхронного обновления
   addDebugLog?: (message: string, context?: any) => void;
+  // ФИКС: Параметры для нормализации индекса после изменения фильтрующих вопросов
+  setCurrentQuestionIndex?: (index: number | ((prev: number) => number)) => void;
+  currentQuestionIndexRef?: React.MutableRefObject<number>;
+  scopedStorageKeys?: { CURRENT_QUESTION_CODE: string };
+  scope?: string;
 }
 
 export async function handleAnswer({
@@ -45,6 +51,10 @@ export async function handleAnswer({
   lastSavedAnswerRef,
   answersRef,
   addDebugLog,
+  setCurrentQuestionIndex,
+  currentQuestionIndexRef,
+  scopedStorageKeys,
+  scope,
 }: HandleAnswerParams): Promise<void> {
   if (addDebugLog) {
     addDebugLog('💾 handleAnswer called', { 
@@ -223,6 +233,49 @@ export async function handleAnswer({
       hasWebApp: typeof window !== 'undefined' && !!window.Telegram?.WebApp,
       hasInitData: typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData,
     });
+  }
+  
+  // ФИКС A: После изменения ответа на фильтрующие вопросы (age, gender, budget) - нормализация индекса
+  // Список фильтрующих вопросов, которые влияют на filterQuestions()
+  const filteringQuestionCodes = ['age', 'gender', 'budget'];
+  const currentQuestionCode = currentQuestion?.code;
+  
+  if (currentQuestionCode && filteringQuestionCodes.includes(currentQuestionCode) && 
+      setCurrentQuestionIndex && allQuestions.length > 0) {
+    // Находим новый индекс вопроса по коду (вопрос мог переместиться после пересчета allQuestions)
+    const newQuestionIndex = allQuestions.findIndex(q => q.code === currentQuestionCode);
+    
+    if (newQuestionIndex >= 0 && newQuestionIndex !== currentQuestionIndex) {
+      clientLogger.log('🔧 [Нормализация] Пересчитываем индекс после изменения фильтрующего вопроса', {
+        questionCode: currentQuestionCode,
+        oldIndex: currentQuestionIndex,
+        newIndex: newQuestionIndex,
+        allQuestionsLength: allQuestions.length,
+      });
+      
+      // Обновляем индекс
+      setCurrentQuestionIndex(newQuestionIndex);
+      if (currentQuestionIndexRef) {
+        currentQuestionIndexRef.current = newQuestionIndex;
+      }
+    }
+    
+    // ВАЖНО: Очищаем сохраненный CURRENT_QUESTION_CODE, чтобы не восстанавливать старый индекс
+    if (typeof window !== 'undefined') {
+      try {
+        const scopedQuestionCodeKey = scopedStorageKeys?.CURRENT_QUESTION_CODE || 
+          (scope && questionnaire?.id 
+            ? QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE, scope)
+            : QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE);
+        sessionStorage.removeItem(scopedQuestionCodeKey);
+        clientLogger.log('🧹 [Нормализация] Очищен CURRENT_QUESTION_CODE после изменения фильтрующего вопроса', {
+          questionCode: currentQuestionCode,
+          key: scopedQuestionCodeKey,
+        });
+      } catch (err) {
+        clientLogger.warn('⚠️ Не удалось очистить CURRENT_QUESTION_CODE', err);
+      }
+    }
   }
 }
 
