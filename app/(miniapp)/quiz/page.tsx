@@ -382,6 +382,10 @@ export default function QuizPage() {
   const completedKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.QUIZ_COMPLETED, scope);
   const isQuizCompleted = typeof window !== 'undefined' && sessionStorage.getItem(completedKey) === 'true';
 
+  // ФИКС: Проверяем флаг очистки прогресса - если прогресс очищен, никогда не показываем резюм
+  const progressClearedKey = QUIZ_CONFIG.getScopedKey('quiz_progress_cleared', scope);
+  const isProgressCleared = typeof window !== 'undefined' && sessionStorage.getItem(progressClearedKey) === 'true';
+
   const savedAnswersCount = savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0;
   const shouldShowResume = !!savedProgress &&
                            savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN &&
@@ -391,7 +395,8 @@ export default function QuizPage() {
                            !isRetakingQuiz &&
                            !showRetakeScreen &&
                            !isLoadingProgress &&
-                           !isQuizCompleted; // ФИКС: Не показывать резюм, если анкета завершена
+                           !isQuizCompleted && // ФИКС: Не показывать резюм, если анкета завершена
+                           !isProgressCleared; // ✅ КЛЮЧЕВОЕ: Не показывать резюм, если прогресс очищен
 
   // ФИКС: Синхронизируем showResumeScreen с shouldShowResume однократно
   useEffect(() => {
@@ -880,6 +885,12 @@ export default function QuizPage() {
           // Это критично, так как после ремоунта состояние теряется, но данные остаются на сервере
           // ВАЖНО: Сначала проверяем React Query кэш (синхронно), затем загружаем через API если нужно
           if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+            // ФИКС: Если прогресс очищен, не восстанавливаем его из кэша
+            if (isProgressCleared) {
+              clientLogger.log('🚫 Восстановление прогресса заблокировано - прогресс был очищен');
+              return;
+            }
+
             // ИСПРАВЛЕНО: Сначала проверяем React Query кэш (это синхронно, если кэш уже загружен)
             if (quizProgressFromQuery?.progress?.answers && Object.keys(quizProgressFromQuery.progress.answers).length > 0) {
               const progressAnswers = quizProgressFromQuery.progress.answers;
@@ -1083,6 +1094,16 @@ export default function QuizPage() {
 
   // РЕФАКТОРИНГ: Функция вынесена в lib/quiz/handlers/handleAnswer.ts
   const handleAnswer = async (questionId: number, value: string | string[]) => {
+    // ФИКС: При первом ответе снимаем флаг блокировки восстановления прогресса
+    // Это позволяет нормально работать с прогрессом после "Начать заново"
+    if (typeof window !== 'undefined') {
+      const progressClearedKey = QUIZ_CONFIG.getScopedKey('quiz_progress_cleared', scope);
+      if (sessionStorage.getItem(progressClearedKey) === 'true') {
+        sessionStorage.removeItem(progressClearedKey);
+        clientLogger.log('🔓 Снят флаг блокировки восстановления прогресса - пользователь начал новую анкету');
+      }
+    }
+
     // ФИКС: Синхронно обновляем answersRef перед вызовом handleAnswerFn
     // Это предотвращает залипание на вопросе после изменения ответа (возраст/пол)
     answersRef.current = { ...answersRef.current, [questionId]: value };
