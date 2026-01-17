@@ -1043,6 +1043,5 @@ export function QuizQuestion({
         </div>
       )}
     </>
-    </>
   );
 }
