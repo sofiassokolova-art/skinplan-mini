@@ -393,7 +393,6 @@ export function QuizInfoScreen({
       <PersonalAnalysisScreen
         screen={screen}
         currentInfoScreenIndex={currentInfoScreenIndex}
-        onBack={handleBack}
         onContinue={handleNext}
       />
     );

@@ -3,22 +3,19 @@
 // Вынесен из renderInfoScreen для улучшения читаемости
 
 import React from 'react';
-import { BackButton } from '../buttons/BackButton';
 import { FixedContinueButton } from '../buttons/FixedContinueButton';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 
 export interface PersonalAnalysisScreenProps {
   screen: InfoScreen;
   currentInfoScreenIndex: number;
-  onBack: () => void;
   onContinue: () => void;
 }
 
-function PersonalAnalysisScreenComponent({ 
-  screen, 
-  currentInfoScreenIndex, 
-  onBack, 
-  onContinue 
+function PersonalAnalysisScreenComponent({
+  screen,
+  currentInfoScreenIndex,
+  onContinue
 }: PersonalAnalysisScreenProps) {
   const features = [
     {
@@ -67,10 +64,7 @@ function PersonalAnalysisScreenComponent({
       position: 'relative',
       width: '100%',
     }}>
-      {/* Кнопка "Назад" */}
-      {currentInfoScreenIndex > 0 && (
-        <BackButton onClick={onBack} />
-      )}
+      {/* Кнопка "Назад" - убрана, так как рендерится общей логикой в QuizInfoScreen */}
 
       {/* Контент с анимацией */}
       <div 
