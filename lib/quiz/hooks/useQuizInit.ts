@@ -667,7 +667,7 @@ export function useQuizInit(params: UseQuizInitParams) {
         loading,
       });
     } catch (e: any) {
-      clientLogger.error('❌ init() FAILED - exception caught', { 
+      clientLogger.error('❌ init() FAILED - exception caught', {
         timestamp: new Date().toISOString(),
         error: e?.message,
         stack: e?.stack?.substring(0, 500),

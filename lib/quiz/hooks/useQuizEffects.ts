@@ -75,7 +75,6 @@ export interface UseQuizEffectsParams {
   progressLoadInProgressRef: React.MutableRefObject<boolean>;
   loadQuestionnaireInProgressRef: React.MutableRefObject<boolean>;
   loadQuestionnaireAttemptedRef: React.MutableRefObject<boolean>;
-  loadQuestionnaire: () => Promise<any>;
   redirectInProgressRef: React.MutableRefObject<boolean>;
   profileCheckInProgressRef: React.MutableRefObject<boolean>;
   resumeCompletedRef: React.MutableRefObject<boolean>;
@@ -163,7 +162,6 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     progressLoadInProgressRef,
     loadQuestionnaireInProgressRef,
     loadQuestionnaireAttemptedRef,
-    loadQuestionnaire,
     redirectInProgressRef,
     profileCheckInProgressRef,
     resumeCompletedRef,
