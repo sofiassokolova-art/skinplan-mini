@@ -2600,11 +2600,15 @@ export default function QuizPage() {
       questionHealInProgressRef.current = true;
 
       // Логируем проблему один раз для диагностики
+      const currentQuestionCode = currentQuestionIndex >= 0 && currentQuestionIndex < allQuestions.length
+        ? allQuestions[currentQuestionIndex]?.code || null
+        : null;
+
       clientLogger.warn('🔧 [HEAL] Обнаружена рассинхронизация вопроса, запускаем восстановление', {
         questionnaireId: questionnaire?.id,
         currentQuestionIndex,
         allQuestionsLength: allQuestions.length,
-        currentQuestionCode: currentQuestion?.code || null,
+        currentQuestionCode,
         savedQuestionCode: sessionStorage.getItem(scopedStorageKeys.CURRENT_QUESTION_CODE),
         answersCount: Object.keys(answers).length,
         savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
@@ -3016,7 +3020,6 @@ export default function QuizPage() {
     // Если анкета загружена и есть вопросы, но вопрос еще не найден - это временное состояние
     // Вместо лоадера просто показываем пустой экран или первый вопрос
     // (вопрос должен найтись сразу после загрузки анкеты)
-  }
 
   // РЕФАКТОРИНГ: Используем утилиту для проверки ошибок анкеты
   const errorScreen = checkQuizErrors({
