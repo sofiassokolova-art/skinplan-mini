@@ -382,6 +382,49 @@ export function QuizQuestion({
       {/* Lime Style (skin_goals, skin_type) - лаймовый контейнер с отступами */}
       {/* ИСПРАВЛЕНО: Для skin_type поддерживаем и single_choice, и multi_choice */}
       {question?.options && useLimeStyle && (() => {
+        // Прогресс-бар для skin_type - такой же как в обычных вопросах
+        const skinTypeProgressBar = isSkinTypeQuestion && !hideProgressBar && (
+          <div style={{
+            marginBottom: '24px',
+            marginTop: '75px',
+            width: '100%',
+            maxWidth: '600px',
+            marginLeft: 'max(20px, calc(50% - 300px))',
+            marginRight: 'max(20px, calc(50% - 300px))',
+            paddingLeft: '0',
+            paddingRight: '0',
+            boxSizing: 'border-box',
+            position: 'absolute',
+            top: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 10,
+          }}>
+            <div style={{
+              width: '100%',
+              height: '6px',
+              backgroundColor: '#000000',
+              borderRadius: '3px',
+              overflow: 'hidden',
+              position: 'relative',
+              padding: '1px',
+              boxSizing: 'border-box',
+            }}>
+              <div style={{
+                width: `${progressPercent}%`,
+                height: '100%',
+                backgroundColor: '#D5FE61',
+                borderRadius: '2px',
+                transition: 'width 0.3s ease',
+                transformOrigin: 'left',
+              }} />
+            </div>
+          </div>
+        );
+
+        return (
+          <>
+            {skinTypeProgressBar}
         // ИСПРАВЛЕНО: Разделяем текст вопроса на заголовок и подзаголовок для skin_type
         const questionText = question?.text || '';
         const textParts = questionText.split('\n');
@@ -398,31 +441,33 @@ export function QuizQuestion({
         }
         
         return (
-          <div style={{ 
-            backgroundColor: '#D5FE61',
-            borderRadius: isGoalsQuestion ? '0' : '24px', // ИСПРАВЛЕНО: Для skin_goals скругление только сверху
-            // ИСПРАВЛЕНО: Для skin_goals добавляем скругление только верхних углов
-            ...(isGoalsQuestion ? {
-              borderTopLeftRadius: '24px',
-              borderTopRightRadius: '24px',
-              borderBottomLeftRadius: '0',
-              borderBottomRightRadius: '0',
-            } : {}),
-            padding: '20px',
-            marginTop: '0px',
-            paddingTop: '20px',
-            // ИСПРАВЛЕНО: Для skin_goals и skin_type делаем контейнер во всю ширину (верстка из коммита 72b6ea7)
-            width: (isGoalsQuestion || isSkinTypeQuestion) ? '100%' : 'auto',
-            marginLeft: (isGoalsQuestion || isSkinTypeQuestion) ? '0' : 'auto',
-            marginRight: (isGoalsQuestion || isSkinTypeQuestion) ? '0' : 'auto',
-            // ИСПРАВЛЕНО: Для skin_goals делаем контейнер на всю высоту экрана, но позволяем расти если контент больше
-            minHeight: isGoalsQuestion ? '100vh' : 'auto',
-            // ИСПРАВЛЕНО: Убираем position: relative для skin_goals, чтобы не создавать новый контекст позиционирования
-            position: 'static',
-            boxSizing: 'border-box',
-            display: isGoalsQuestion ? 'flex' : 'block',
-            flexDirection: isGoalsQuestion ? 'column' : 'column',
-          }}>
+          <>
+            {skinTypeProgressBar}
+            <div style={{
+              backgroundColor: '#D5FE61',
+              borderRadius: isGoalsQuestion ? '0' : '24px', // ИСПРАВЛЕНО: Для skin_goals скругление только сверху
+              // ИСПРАВЛЕНО: Для skin_goals добавляем скругление только верхних углов
+              ...(isGoalsQuestion ? {
+                borderTopLeftRadius: '24px',
+                borderTopRightRadius: '24px',
+                borderBottomLeftRadius: '0',
+                borderBottomRightRadius: '0',
+              } : {}),
+              padding: '20px',
+              marginTop: '0px',
+              paddingTop: '20px',
+              // ИСПРАВЛЕНО: Для skin_goals и skin_type делаем контейнер во всю ширину (верстка из коммита 72b6ea7)
+              width: (isGoalsQuestion || isSkinTypeQuestion) ? '100%' : 'auto',
+              marginLeft: (isGoalsQuestion || isSkinTypeQuestion) ? '0' : 'auto',
+              marginRight: (isGoalsQuestion || isSkinTypeQuestion) ? '0' : 'auto',
+              // ИСПРАВЛЕНО: Для skin_goals делаем контейнер на всю высоту экрана, но позволяем расти если контент больше
+              minHeight: isGoalsQuestion ? '100vh' : 'auto',
+              // ИСПРАВЛЕНО: Убираем position: relative для skin_goals, чтобы не создавать новый контекст позиционирования
+              position: 'static',
+              boxSizing: 'border-box',
+              display: isGoalsQuestion ? 'flex' : 'block',
+              flexDirection: isGoalsQuestion ? 'column' : 'column',
+            }}>
             {/* Заголовок внутри лаймового контейнера */}
             {/* ИСПРАВЛЕНО: Для вопроса avoid_ingredients делаем слово "исключить" жирным */}
             {(() => {
@@ -1001,6 +1046,7 @@ export function QuizQuestion({
         </div>
       )}
       </div>
+    </>
     </>
   );
 }
