@@ -129,7 +129,7 @@ export function QuizInfoScreen({
     // Prefetch изображения следующих экранов
     const prefetchImage = (imageSrc: string | undefined) => {
       if (!imageSrc) return;
-      const img = new Image();
+      const img = document.createElement('img');
       img.src = imageSrc;
     };
     
