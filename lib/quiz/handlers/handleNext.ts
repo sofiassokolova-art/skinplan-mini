@@ -55,6 +55,16 @@ export interface HandleNextParams {
   isDev: boolean;
 }
 
+// Вспомогательная функция для подсчета общего количества вопросов в анкете
+const getTotalQuestionsCount = (questionnaire: Questionnaire | null): number => {
+  if (!questionnaire) return 0;
+
+  const questionsInGroups = questionnaire.groups?.flatMap(g => g.questions || []).length ?? 0;
+  const questionsInRoot = questionnaire.questions?.length ?? 0;
+
+  return questionsInGroups + questionsInRoot;
+};
+
 // Вспомогательная функция для обеспечения готовности вопросов
 // Использует questionnaireRef как источник истины, а не allQuestions
 const ensureQuestionsReady = async (
@@ -64,14 +74,14 @@ const ensureQuestionsReady = async (
   setLoading?: React.Dispatch<React.SetStateAction<boolean>>
 ): Promise<boolean> => {
   // 1) Если уже есть вопросы — ок
-  const qLen = questionnaireRef.current?.questions?.length ?? 0;
+  const qLen = getTotalQuestionsCount(questionnaireRef.current);
   if (qLen > 0) return true;
 
   // 2) Если загрузка уже идёт — просто ждём немного
   if (initInProgressRef.current) {
     let attempts = 0;
     while (attempts < 30) { // ~3s
-      const len = questionnaireRef.current?.questions?.length ?? 0;
+      const len = getTotalQuestionsCount(questionnaireRef.current);
       if (len > 0) return true;
       await new Promise(r => setTimeout(r, 100));
       attempts++;
@@ -92,6 +102,9 @@ const ensureQuestionsReady = async (
     }
   }
 };
+
+// Экспортируем функцию для использования в других местах
+export { getTotalQuestionsCount };
 
 export async function handleNext(params: HandleNextParams): Promise<void> {
   const {
