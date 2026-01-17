@@ -824,12 +824,24 @@ export default function PlanPage() {
     isMountedRef.current = true;
     pageLoadStartTimeRef.current = Date.now(); // ИСПРАВЛЕНО: Запоминаем время начала загрузки страницы
     
-    // РЕФАКТОРИНГ: Абсолютный таймаут из конфигурации
+    // УМНЫЙ абсолютный таймаут: учитывает реальный прогресс
     const absoluteTimeout = setTimeout(() => {
       if (isMountedRef.current && loadingRef.current && !planDataRef.current) {
-        clientLogger.warn('⚠️ Absolute timeout reached - showing fallback screen');
-        safeSetLoading(false);
-        safeSetError('Не удалось загрузить план за отведенное время. Пожалуйста, попробуйте обновить страницу или перейти в анкету.');
+        // Проверяем реальный прогресс загрузки
+        const timeElapsed = Date.now() - pageLoadStartTimeRef.current;
+        const hasRealProgress = planDataRef.current || generatingStateRef.current === 'generating';
+
+        // Если нет реального прогресса и прошло достаточно времени - показываем ошибку
+        if (!hasRealProgress && timeElapsed > PLAN_TIMEOUTS.PAGE_ABSOLUTE) {
+          clientLogger.warn('⚠️ Smart absolute timeout reached - showing fallback screen', {
+            timeElapsed,
+            hasProgress: !!planDataRef.current,
+            isGenerating: generatingStateRef.current === 'generating',
+            maxTime: PLAN_TIMEOUTS.PAGE_ABSOLUTE
+          });
+          safeSetLoading(false);
+          safeSetError('Не удалось загрузить план за отведенное время. Пожалуйста, попробуйте обновить страницу или перейти в анкету.');
+        }
       }
     }, PLAN_TIMEOUTS.PAGE_ABSOLUTE);
     
@@ -1013,6 +1025,78 @@ export default function PlanPage() {
     }
   };
 
+  // Кэш продуктов для производительности
+  const productsCacheRef = useRef<Map<string, { data: Map<number, any>; timestamp: number }>>(new Map());
+
+  // Функция для загрузки продуктов с кэшированием
+  const loadProductsBatch = async (productIds: number[]): Promise<Map<number, any>> => {
+    if (productIds.length === 0) {
+      return new Map();
+    }
+
+    const cacheKey = productIds.sort().join(',');
+    const cached = productsCacheRef.current.get(cacheKey);
+
+    // Используем кэш если он свежий (5 минут)
+    if (cached && Date.now() - cached.timestamp < 5 * 60 * 1000) {
+      clientLogger.log('✅ Using cached products batch');
+      return cached.data;
+    }
+
+    const productsMap = new Map<number, any>();
+
+    if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+      try {
+        clientLogger.log('📦 Loading products from batch endpoint, count:', productIds.length);
+
+        const productsResponse = await fetch('/api/products/batch', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Telegram-Init-Data': window.Telegram.WebApp.initData,
+          },
+          body: JSON.stringify({ productIds }),
+        });
+
+        if (productsResponse.ok) {
+          const productsData = await productsResponse.json();
+          clientLogger.log('✅ Products loaded from batch:', productsData.products?.length || 0);
+
+          if (productsData.products && Array.isArray(productsData.products)) {
+            productsData.products.forEach((p: any) => {
+              if (p && p.id) {
+                productsMap.set(p.id, {
+                  id: p.id,
+                  name: p.name || 'Неизвестный продукт',
+                  brand: { name: p.brand?.name || (typeof p.brand === 'string' ? p.brand : 'Unknown') },
+                  price: p.price || null,
+                  imageUrl: p.imageUrl || null,
+                  description: p.descriptionUser || p.description || null,
+                });
+              }
+            });
+          }
+        } else {
+          console.error('❌ Failed to load products from batch endpoint:', {
+            status: productsResponse.status,
+            statusText: productsResponse.statusText,
+          });
+        }
+      } catch (err: any) {
+        console.error('❌ Error loading products from batch endpoint:', err);
+      }
+    }
+
+    // Кэшируем результат
+    productsCacheRef.current.set(cacheKey, {
+      data: productsMap,
+      timestamp: Date.now()
+    });
+
+    clientLogger.log('📊 Products loaded and cached, map size:', productsMap.size);
+    return productsMap;
+  };
+
   // Функция для обработки данных плана (вынесена для переиспользования)
   const processPlanData = async (plan: GeneratedPlan) => {
     try {
@@ -1186,94 +1270,15 @@ export default function PlanPage() {
           });
         });
 
-        // Загружаем продукты из API - ОСНОВНАЯ ЛОГИКА
-        // Сначала пробуем загрузить из API, если не получилось - используем fallback
+        // Загружаем продукты из API с кэшированием
         let productsLoadedFromAPI = false;
-        
-        clientLogger.log('🔍 DEBUG: Starting product loading', {
-          allProductIdsSize: allProductIds.size,
-          allProductIds: Array.from(allProductIds).slice(0, 20),
-          hasWindow: typeof window !== 'undefined',
-          hasInitData: typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData,
-        });
-        
-        if (allProductIds.size > 0 && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
-          try {
-            const productIdsArray = Array.from(allProductIds);
-            clientLogger.log('📦 Loading products from batch endpoint, count:', productIdsArray.length, 'IDs:', productIdsArray.slice(0, 10));
-            
-            // Используем api.getProductAlternatives или создаем отдельный метод для batch
-            // Пока используем fetch напрямую, но с улучшенной обработкой ошибок
-            const productsResponse = await fetch('/api/products/batch', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-Telegram-Init-Data': window.Telegram.WebApp.initData,
-              },
-              body: JSON.stringify({ productIds: productIdsArray }),
-            });
-            
-            clientLogger.log('📡 Batch API response status:', productsResponse.status, productsResponse.ok);
 
-            if (productsResponse.ok) {
-              const productsData = await productsResponse.json();
-              clientLogger.log('✅ Products loaded from batch:', productsData.products?.length || 0);
-              
-              if (productsData.products && Array.isArray(productsData.products)) {
-                let addedCount = 0;
-                productsData.products.forEach((p: any) => {
-                  if (p && p.id) {
-                  productsMap.set(p.id, {
-                    id: p.id,
-                      name: p.name || 'Неизвестный продукт',
-                    brand: { name: p.brand?.name || (typeof p.brand === 'string' ? p.brand : 'Unknown') },
-                      price: p.price || null,
-                    imageUrl: p.imageUrl || null,
-                    // Используем descriptionUser для синхронизации с главной страницей
-                    description: p.descriptionUser || p.description || null,
-                  });
-                    addedCount++;
-              }
-                });
-                productsLoadedFromAPI = productsMap.size > 0;
-                clientLogger.log(`✅ Products added to map from API: ${addedCount}/${productsData.products.length}, total size: ${productsMap.size}`);
-                
-                if (productsMap.size === 0 && productsData.products.length > 0) {
-                  console.error('❌ CRITICAL: Products array is not empty but nothing was added to map!', {
-                    productsData: productsData.products.slice(0, 3),
-                  });
-                }
-              } else {
-                clientLogger.warn('⚠️ productsData.products is not an array:', {
-                  type: typeof productsData.products,
-                  isArray: Array.isArray(productsData.products),
-                  data: productsData,
-                });
-              }
-            } else {
-              const errorText = await productsResponse.text().catch(() => '');
-              console.error('❌ Failed to load products from batch endpoint:', {
-                status: productsResponse.status,
-                statusText: productsResponse.statusText,
-                error: errorText.substring(0, 200),
-                productIdsCount: productIdsArray.length,
-              });
-            }
-          } catch (err: any) {
-            console.error('❌ Error loading products from batch endpoint:', {
-              error: err,
-              message: err?.message,
-              stack: err?.stack,
-              productIdsCount: allProductIds.size,
-            });
-          }
-        } else {
-          clientLogger.warn('⚠️ Cannot load products from API:', {
-            hasProductIds: allProductIds.size > 0,
-            hasWindow: typeof window !== 'undefined',
-            hasInitData: typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData,
-            initDataLength: typeof window !== 'undefined' && window.Telegram?.WebApp?.initData?.length || 0,
+        if (allProductIds.size > 0) {
+          const loadedProductsMap = await loadProductsBatch(Array.from(allProductIds));
+          loadedProductsMap.forEach((product, id) => {
+            productsMap.set(id, product);
           });
+          productsLoadedFromAPI = productsMap.size > 0;
         }
 
         // Fallback: если продукты не загрузились из API, используем продукты из плана

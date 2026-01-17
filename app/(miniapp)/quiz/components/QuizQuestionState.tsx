@@ -49,11 +49,7 @@ export function QuizQuestionState({
   const effectiveQuestionnaire = questionnaireRef.current || questionnaire || quizStateMachineQuestionnaire;
   const hasQuestionnaireData = !!effectiveQuestionnaire;
   
-  const shouldShowError = !currentQuestion && 
-    !isPastInitialScreens && 
-    !isPastInitialScreensRef && 
-    hasQuestions && 
-    hasQuestionnaireData;
+  // УДАЛЕНО: shouldShowError больше не используется
   
   const shouldShowLoading = !currentQuestion && 
     !isShowingInitialInfoScreen &&
@@ -88,37 +84,8 @@ export function QuizQuestionState({
   //   });
   // }
 
-  if (shouldShowError) {
-    return (
-      <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-        {isDev && (
-          <div style={{ marginBottom: '20px', padding: '10px', background: '#fff3cd', borderRadius: '8px', fontSize: '12px', textAlign: 'left' }}>
-            <strong>🔍 Диагностика:</strong>
-            <pre style={{ marginTop: '8px', fontSize: '11px', overflow: 'auto' }}>
-              {JSON.stringify({
-                currentQuestion: currentQuestion ? 'exists' : 'null',
-                currentQuestionIndex,
-                allQuestionsLength,
-                isShowingInitialInfoScreen,
-                isPastInitialScreens,
-                pendingInfoScreen: pendingInfoScreen ? pendingInfoScreen.id : null,
-                showResumeScreen,
-                hasResumed,
-                currentInfoScreenIndex,
-                initialInfoScreensLength,
-              }, null, 2)}
-            </pre>
-          </div>
-        )}
-        <div style={{ color: '#0A5F59', fontSize: '18px', marginBottom: '12px' }}>
-          Вопрос не найден
-        </div>
-        <div style={{ color: '#6B7280', fontSize: '14px' }}>
-          Попробуйте обновить страницу
-        </div>
-      </div>
-    );
-  }
+  // УДАЛЕНО: Экран "Вопрос не найден" больше не показывается как UI
+  // Это внутренняя ошибка состояния, которая должна решаться автоматически
 
   if (shouldShowLoading) {
     // Используем только скелетную загрузку, без спиннера и текста

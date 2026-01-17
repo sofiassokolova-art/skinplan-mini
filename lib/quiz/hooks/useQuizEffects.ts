@@ -75,7 +75,7 @@ export interface UseQuizEffectsParams {
   progressLoadInProgressRef: React.MutableRefObject<boolean>;
   loadQuestionnaireInProgressRef: React.MutableRefObject<boolean>;
   loadQuestionnaireAttemptedRef: React.MutableRefObject<boolean>;
-  loadQuestionnaireRef: React.MutableRefObject<(() => Promise<any>) | null>;
+  loadQuestionnaire: () => Promise<any>;
   redirectInProgressRef: React.MutableRefObject<boolean>;
   profileCheckInProgressRef: React.MutableRefObject<boolean>;
   resumeCompletedRef: React.MutableRefObject<boolean>;
@@ -163,7 +163,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     progressLoadInProgressRef,
     loadQuestionnaireInProgressRef,
     loadQuestionnaireAttemptedRef,
-    loadQuestionnaireRef,
+    loadQuestionnaire,
     redirectInProgressRef,
     profileCheckInProgressRef,
     resumeCompletedRef,
@@ -526,7 +526,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     //   initCalled: initCalledRef.current,
     //   initInProgress: initInProgressRef.current,
     //   initCompleted: initCompletedRef.current,
-    //   hasLoadQuestionnaireRef: !!loadQuestionnaireRef.current,
+    //   hasLoadQuestionnaire: !!loadQuestionnaire,
     // });
     
     init();
@@ -612,7 +612,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
   // ============================================
   // ГРУППА 5: Загрузка анкеты при перепрохождении
   // ============================================
-  
+
   useEffect(() => {
     if (!(isRetakingQuiz || showRetakeScreen)) return;
     if (questionnaire || questionnaireRef.current) return;
@@ -621,7 +621,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     if (loadQuestionnaireAttemptedRef.current) return;
     if (initInProgressRef.current) return;
     if (!initCompletedRef.current) return;
-    if (!loadQuestionnaireRef.current) return;
+    if (!loadQuestionnaire) return;
 
     loadQuestionnaireInProgressRef.current = true;
     loadQuestionnaireAttemptedRef.current = true;
@@ -906,7 +906,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
   // ============================================
   // ГРУППА 8: Загрузка анкеты при retake
   // ============================================
-  
+
   useEffect(() => {
     if (!(isRetakingQuiz || showRetakeScreen)) return;
     if (questionnaire || questionnaireRef.current) return;
@@ -915,7 +915,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     if (loadQuestionnaireAttemptedRef.current) return;
     if (initInProgressRef.current) return;
     if (!initCompletedRef.current) return;
-    if (!loadQuestionnaireRef.current) return;
+    if (!loadQuestionnaire) return;
 
     loadQuestionnaireInProgressRef.current = true;
     loadQuestionnaireAttemptedRef.current = true;
@@ -926,10 +926,10 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     //   attempted: loadQuestionnaireAttemptedRef.current,
     // });
 
-    // КРИТИЧНО ИСПРАВЛЕНО: Используем ref для loadQuestionnaire, чтобы избежать включения функции в зависимости
-    // Функция может пересоздаваться каждый раз, что вызывает бесконечные циклы
-    if (loadQuestionnaireRef.current) {
-      loadQuestionnaireRef.current().finally(() => {
+    // КРИТИЧНО ИСПРАВЛЕНО: Вызываем loadQuestionnaire напрямую
+    // Функция стабильна благодаря useCallback
+    if (loadQuestionnaire) {
+      loadQuestionnaire().finally(() => {
         loadQuestionnaireInProgressRef.current = false;
       });
     }

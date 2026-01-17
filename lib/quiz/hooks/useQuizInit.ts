@@ -42,12 +42,12 @@ export interface UseQuizInitParams {
   hasResumedRef: React.MutableRefObject<boolean>;
   loadProgressInProgressRef: React.MutableRefObject<boolean>;
   progressLoadInProgressRef: React.MutableRefObject<boolean>;
-  loadQuestionnaireRef: React.MutableRefObject<(() => Promise<Questionnaire | null>) | null>;
   firstScreenResetRef: React.MutableRefObject<boolean>;
   initStartTimeRef: React.MutableRefObject<number | null>;
   initCompletedTimeRef: React.MutableRefObject<number | null>;
-  
+
   // Functions
+  loadQuestionnaire: () => Promise<Questionnaire | null>;
   loadSavedProgressFromServer: () => Promise<void>;
   
   // Other
@@ -84,10 +84,10 @@ export function useQuizInit(params: UseQuizInitParams) {
     hasResumedRef,
     loadProgressInProgressRef,
     progressLoadInProgressRef,
-    loadQuestionnaireRef,
     firstScreenResetRef,
     initStartTimeRef,
     initCompletedTimeRef,
+    loadQuestionnaire,
     loadSavedProgressFromServer,
     isDev,
   } = params;
@@ -397,42 +397,24 @@ export function useQuizInit(params: UseQuizInitParams) {
       // 2) загрузка анкеты (если нужна)
       // ИСПРАВЛЕНО: Используем ref вместо state для проверки, чтобы избежать race conditions
       // КРИТИЧНО: loadQuestionnaire объявлена как useCallback ниже, но ref устанавливается синхронно
-      // Поэтому проверяем ref напрямую, без ожидания
+      // Проверяем, есть ли уже загруженная анкета
       if (!questionnaireRef.current) {
-        // КРИТИЧНО: Проверяем, установлен ли ref. Если нет - ждем короткое время
-        // Это защита от race condition, когда init() вызывается до того, как useCallback создал функцию
-        if (!loadQuestionnaireRef.current) {
-          // Ждем максимум 1 секунду (10 попыток по 100ms)
-          let attempts = 0;
-          const maxAttempts = 10; // 10 * 100ms = 1 секунда максимум
-          while (!loadQuestionnaireRef.current && attempts < maxAttempts) {
-            clientLogger.log('⏳ Waiting for loadQuestionnaireRef.current to be set...', {
-              attempt: attempts + 1,
-              maxAttempts,
-            });
-            await new Promise(resolve => setTimeout(resolve, 100));
-            attempts++;
-          }
-        }
-        
-        if (loadQuestionnaireRef.current && !questionnaireRef.current) {
-          clientLogger.log('🟢 init() CALLING loadQuestionnaire()', {
-            timestamp: new Date().toISOString(),
-            hasLoadQuestionnaireRef: !!loadQuestionnaireRef.current,
-            hasQuestionnaireRef: !!questionnaireRef.current,
-            loading,
-          });
-          
-          const loadResult = await loadQuestionnaireRef.current();
-          
-          clientLogger.log('🟢 init() loadQuestionnaire() RETURNED', {
-            timestamp: new Date().toISOString(),
-            loadResult: loadResult ? 'questionnaire object' : 'null',
-            questionnaireId: loadResult?.id || null,
-            hasQuestionnaireRef: !!questionnaireRef.current,
-            questionnaireRefId: (questionnaireRef.current as Questionnaire | null)?.id || null,
-            loading,
-          });
+        clientLogger.log('🟢 init() CALLING loadQuestionnaire()', {
+          timestamp: new Date().toISOString(),
+          hasQuestionnaireRef: !!questionnaireRef.current,
+          loading,
+        });
+
+        const loadResult = await loadQuestionnaire();
+
+        clientLogger.log('🟢 init() loadQuestionnaire() RETURNED', {
+          timestamp: new Date().toISOString(),
+          loadResult: loadResult ? 'questionnaire object' : 'null',
+          questionnaireId: loadResult?.id || null,
+          hasQuestionnaireRef: !!questionnaireRef.current,
+          questionnaireRefId: (questionnaireRef.current as Questionnaire | null)?.id || null,
+          loading,
+        });
           
           // ИСПРАВЛЕНО: Если loadResult null, это означает ошибку загрузки
           // В этом случае не ждем установки ref, так как он уже установлен в null в loadQuestionnaire
@@ -533,8 +515,8 @@ export function useQuizInit(params: UseQuizInitParams) {
           // ФИКС: Устанавливаем loading=false после успешной загрузки анкеты
           // Это гарантирует, что лоадер скроется сразу после загрузки, а не ждет useEffect
           setLoading(false);
-        } else if (!loadQuestionnaireRef.current) {
-          clientLogger.error('❌ loadQuestionnaireRef.current not set after waiting, cannot load questionnaire');
+        } else {
+          clientLogger.error('❌ loadQuestionnaire failed, cannot load questionnaire');
           // КРИТИЧНО: Устанавливаем loading=false перед выбросом ошибки, чтобы не зависнуть на лоадере
           setLoading(false);
           setError('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
@@ -746,7 +728,7 @@ export function useQuizInit(params: UseQuizInitParams) {
     hasResumedRef,
     loadProgressInProgressRef,
     progressLoadInProgressRef,
-    loadQuestionnaireRef,
+    loadQuestionnaire,
     firstScreenResetRef,
     initStartTimeRef,
     initCompletedTimeRef,
