@@ -117,6 +117,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     setCurrentInfoScreenIndex,
     setCurrentQuestionIndex,
     setPendingInfoScreen,
+    setError,
     saveProgress,
     loadQuestionnaire,
     initInProgressRef,
