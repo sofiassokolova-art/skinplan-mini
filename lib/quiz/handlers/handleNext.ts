@@ -13,9 +13,8 @@ import {
   canNavigate 
 } from './shared-utils';
 
-// Используем any для типов, так как в page.tsx используются локальные интерфейсы
-type Questionnaire = any;
-type Question = any;
+// Импортируем правильные типы из централизованного файла
+import type { Questionnaire, Question } from '@/lib/quiz/types';
 
 export interface HandleNextParams {
   // Refs
@@ -59,7 +58,7 @@ export interface HandleNextParams {
 const getTotalQuestionsCount = (questionnaire: Questionnaire | null): number => {
   if (!questionnaire) return 0;
 
-  const questionsInGroups = questionnaire.groups?.flatMap(g => g.questions || []).length ?? 0;
+  const questionsInGroups = questionnaire.groups?.flatMap((g: { questions?: Question[] }) => g.questions || []).length ?? 0;
   const questionsInRoot = questionnaire.questions?.length ?? 0;
 
   return questionsInGroups + questionsInRoot;
