@@ -277,5 +277,49 @@ export async function handleAnswer({
       }
     }
   }
+
+  // ФИКС P1: Нормализация после любого изменения ответа - если currentQuestion.code исчез из allQuestions
+  // Это может происходить после изменения фильтрующих ответов или других условий фильтрации
+  if (currentQuestionCode && setCurrentQuestionIndex && allQuestions.length > 0) {
+    // Проверяем, существует ли текущий вопрос в новом списке allQuestions
+    const currentQuestionStillExists = allQuestions.some(q => q.code === currentQuestionCode);
+
+    if (!currentQuestionStillExists) {
+      // Текущий вопрос исчез из списка - переходим к ближайшему действительному вопросу
+      // Находим вопрос с ближайшим индексом, который еще существует
+      const closestValidIndex = Math.min(currentQuestionIndex, allQuestions.length - 1);
+
+      clientLogger.log('🔧 [Нормализация] currentQuestion.code исчез из allQuestions, переходим к ближайшему', {
+        disappearedQuestionCode: currentQuestionCode,
+        oldIndex: currentQuestionIndex,
+        newIndex: closestValidIndex,
+        allQuestionsLength: allQuestions.length,
+        allQuestionCodes: allQuestions.map(q => q.code).slice(0, 5),
+      });
+
+      // Устанавливаем новый индекс
+      setCurrentQuestionIndex(closestValidIndex);
+      if (currentQuestionIndexRef) {
+        currentQuestionIndexRef.current = closestValidIndex;
+      }
+
+      // Очищаем сохраненный CURRENT_QUESTION_CODE, так как вопрос больше не существует
+      if (typeof window !== 'undefined') {
+        try {
+          const scopedQuestionCodeKey = scopedStorageKeys?.CURRENT_QUESTION_CODE ||
+            (scope && questionnaire?.id
+              ? QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE, scope)
+              : QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE);
+          sessionStorage.removeItem(scopedQuestionCodeKey);
+          clientLogger.log('🧹 [Нормализация] Очищен CURRENT_QUESTION_CODE - вопрос исчез', {
+            questionCode: currentQuestionCode,
+            key: scopedQuestionCodeKey,
+          });
+        } catch (err) {
+          clientLogger.warn('⚠️ Не удалось очистить CURRENT_QUESTION_CODE', err);
+        }
+      }
+    }
+  }
 }
 

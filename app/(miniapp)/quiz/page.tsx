@@ -417,25 +417,26 @@ export default function QuizPage() {
   }, [progressClearedKey]);
 
   const savedAnswersCount = savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0;
-  const shouldShowResume = !!savedProgress &&
-                           savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN &&
-                           !isStartingOver &&
-                           !isStartingOverRef.current &&
-                           !hasResumedRef.current &&
-                           !isRetakingQuiz &&
-                           !showRetakeScreen &&
-                           !isLoadingProgress &&
-                           !isQuizCompleted && // ФИКС: Не показывать резюм, если анкета завершена
-                           !isProgressCleared; // ✅ КЛЮЧЕВОЕ: Не показывать резюм, если прогресс очищен
-
-  // ФИКС: Синхронизируем showResumeScreen с shouldShowResume однократно
+  // ФИКС P0: Убираем двойную логику резюме, оставляем только showResumeScreen
+  // Вычисляем необходимость показа резюме прямо в useEffect
   useEffect(() => {
-    if (shouldShowResume && !showResumeScreen) {
+    const shouldShowResumeNow = !!savedProgress &&
+                               savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN &&
+                               !isStartingOver &&
+                               !isStartingOverRef.current &&
+                               !hasResumedRef.current &&
+                               !isRetakingQuiz &&
+                               !showRetakeScreen &&
+                               !isLoadingProgress &&
+                               !isQuizCompleted &&
+                               !isProgressCleared;
+
+    if (shouldShowResumeNow && !showResumeScreen) {
       setShowResumeScreen(true);
-    } else if (!shouldShowResume && showResumeScreen) {
+    } else if (!shouldShowResumeNow && showResumeScreen) {
       setShowResumeScreen(false);
     }
-  }, [shouldShowResume, showResumeScreen]);
+  }, [savedProgress, savedAnswersCount, isStartingOver, isStartingOverRef.current, hasResumedRef.current, isRetakingQuiz, showRetakeScreen, isLoadingProgress, isQuizCompleted, isProgressCleared, showResumeScreen]);
   
   // ФИКС: Увеличиваем версию ответов при реальных изменениях (не при каждом рендере)
   // Используем легкий хеш на основе (id,value) пар вместо JSON.stringify
@@ -788,184 +789,34 @@ export default function QuizPage() {
     // ИСПРАВЛЕНО: Используем sessionStorage для предотвращения повторного вызова init() после ремоунта
     // Это критично, так как ErrorBoundary может размонтировать и заново смонтировать компонент
     if (typeof window !== 'undefined') {
-      // ФИКС: quiz_init_done НЕ должен быть scoped, иначе ломается логика при смене scope
-      // Проверяем также старый scoped ключ для миграции
-      const initDoneKeyForCheck = QUIZ_CONFIG.getScopedKey('quiz_init_done', scope);
-      const alreadyInit = sessionStorage.getItem('quiz_init_done') === 'true' || 
-                         sessionStorage.getItem(initDoneKeyForCheck) === 'true';
-      if (alreadyInit) {
-        // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
-        // if (isDev) {
-        //   clientLogger.log('⛔ useEffect: init() skipped: quiz_init_done in sessionStorage');
-        // }
-        
-        // ИСПРАВЛЕНО: Восстанавливаем состояние после ремоунта
-        // РЕФАКТОРИНГ: init теперь в useQuizInit, используем его из хука
-        // Это критично, так как после ремоунта из-за ErrorBoundary состояние теряется
-        try {
-          // ИСПРАВЛЕНО: Восстанавливаем questionnaire из ref/State Machine после ремоунта
-          // Это предотвращает потерю allQuestions, когда questionnaire временно становится null
-          if (!questionnaire && (questionnaireRef.current || quizStateMachine.questionnaire)) {
-            const restoredQuestionnaire = questionnaireRef.current || quizStateMachine.questionnaire;
-            if (restoredQuestionnaire) {
-              clientLogger.log('🔄 Восстанавливаем questionnaire из ref/State Machine после ремоунта', {
-                questionnaireId: restoredQuestionnaire.id,
-                fromRef: !!questionnaireRef.current,
-                fromStateMachine: !!quizStateMachine.questionnaire,
-              });
-              setQuestionnaire(restoredQuestionnaire);
-              // Также обновляем State Machine, если questionnaire был только в ref
-              if (!quizStateMachine.questionnaire && questionnaireRef.current) {
-                setQuestionnaireInStateMachine(questionnaireRef.current);
-              }
-            }
-          }
-          
-          // Восстанавливаем currentQuestionIndex из sessionStorage
-          // ИСПРАВЛЕНО: Проверяем, что индекс не выходит за границы allQuestions
-          // КРИТИЧНО: НЕ восстанавливаем индекс, если прогресс еще загружается или есть сохраненный прогресс с >= 2 ответами
-          // Это предотвращает восстановление индекса до загрузки savedProgress из React Query,
-          // что может скрыть резюм-экран
-          const hasSavedProgress = savedProgress && savedProgress.answers && Object.keys(savedProgress.answers).length >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN;
-          // ИСПРАВЛЕНО: Восстанавливаем по коду вопроса вместо индекса для стабильности
-          // ФИКС: Используем scoped ключ вместо не-scoped
-          const savedQuestionCode = sessionStorage.getItem(scopedStorageKeys.CURRENT_QUESTION_CODE);
-          if (savedQuestionCode && !isLoadingProgress && !hasSavedProgress) {
-            // Ищем вопрос по коду
-            const currentAllQuestions = allQuestionsPrevRef.current.length > 0 ? allQuestionsPrevRef.current : allQuestions;
-            const questionIndex = currentAllQuestions.findIndex(q => q.code === savedQuestionCode);
+      // ФИКС P0: quiz_init_done теперь scoped по questionnaireId для предотвращения конфликтов
+      // Миграция: проверяем старый глобальный ключ и переносим в scoped
+      const scopedInitDoneKey = QUIZ_CONFIG.getScopedKey('quiz_init_done:v2', scope);
+      let alreadyInit = sessionStorage.getItem(scopedInitDoneKey) === 'true';
 
-            if (questionIndex >= 0) {
+      // Миграция: если есть старый глобальный ключ, переносим его в scoped и удаляем
+      if (!alreadyInit && sessionStorage.getItem('quiz_init_done') === 'true') {
+        sessionStorage.setItem(scopedInitDoneKey, 'true');
+        sessionStorage.removeItem('quiz_init_done');
+        alreadyInit = true;
+        clientLogger.log('🔄 quiz_init_done мигрирован из глобального в scoped', { scope });
+      }
 
-              // ИСПРАВЛЕНО: Устанавливаем индекс сразу, если allQuestions уже загружен
-              // Иначе используем setTimeout для проверки после пересчета
-              if (currentAllQuestions.length > 0) {
-                setCurrentQuestionIndex(questionIndex);
-                clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage (синхронно)', {
-                  questionIndex: questionIndex,
-                  allQuestionsLength: currentAllQuestions.length,
-                  isLoadingProgress,
-                  hasSavedProgress,
-                });
-              } else {
-                // КРИТИЧНО: Если allQuestions еще не загружен, НЕ устанавливаем индекс в 0
-                // Вместо этого ждем, пока вопросы загрузятся, и восстанавливаем индекс в useEffect в useQuizEffects
-                // Это исправляет проблему, когда после перезагрузки индекс сбрасывается на 0
-                // до того, как вопросы загружены
-                clientLogger.log('⏸️ Пропускаем восстановление currentQuestionIndex: вопросы еще не загружены', {
-                  savedIndex: questionIndex,
-                  allQuestionsLength: currentAllQuestions.length,
-                });
-              }
-            }
-          }
-          
-          // Восстанавливаем currentInfoScreenIndex из sessionStorage
-          // КРИТИЧНО: НЕ восстанавливаем, если пользователь активно проходит анкету
-          // Это предотвращает сброс индекса во время активного прохождения
-          const savedInfoScreenIndex = sessionStorage.getItem(scopedStorageKeys.CURRENT_INFO_SCREEN);
-          if (savedInfoScreenIndex !== null) {
-            const infoScreenIndex = parseInt(savedInfoScreenIndex, 10);
-            if (!isNaN(infoScreenIndex) && infoScreenIndex >= 0) {
-              // КРИТИЧНО: НЕ восстанавливаем, если текущий индекс больше сохраненного
-              // Это означает, что пользователь уже продвинулся дальше
-              // Также не восстанавливаем, если пользователь активно проходит анкету
-              const initialInfoScreens = getInitialInfoScreens();
-              const isActivelyOnInfoScreens = currentInfoScreenIndex > 0 && currentInfoScreenIndex < initialInfoScreens.length;
-              const isOnQuestions = currentInfoScreenIndex >= initialInfoScreens.length;
-              
-              // Восстанавливаем только если:
-              // 1. Текущий индекс равен 0 (начало) ИЛИ
-              // 2. Сохраненный индекс больше текущего (пользователь вернулся назад) ИЛИ
-              // 3. Пользователь не активно проходит анкету
-              const shouldRestore = currentInfoScreenIndex === 0 || 
-                                   infoScreenIndex > currentInfoScreenIndex || 
-                                   (!isActivelyOnInfoScreens && !isOnQuestions);
-              
-              if (shouldRestore) {
-                clientLogger.log('🔄 Восстанавливаем currentInfoScreenIndex из sessionStorage', { 
-                  savedIndex: infoScreenIndex,
-                  currentIndex: currentInfoScreenIndex,
-                  isActivelyOnInfoScreens,
-                  isOnQuestions,
-                });
-                setCurrentInfoScreenIndex(infoScreenIndex);
-                currentInfoScreenIndexRef.current = infoScreenIndex;
-              } else {
-                clientLogger.log('⏸️ Пропускаем восстановление currentInfoScreenIndex - пользователь активно проходит анкету', {
-                  savedIndex: infoScreenIndex,
-                  currentIndex: currentInfoScreenIndex,
-                  isActivelyOnInfoScreens,
-                  isOnQuestions,
-                });
-              }
-            }
-          }
-          
-          // ФИКС C: Восстановление answers из React Query кэша (часть restore pipeline)
-          // TODO: Вынести весь restore pipeline в отдельный хук с четким порядком:
-          // 1. Определить scope
-          // 2. Загрузить questionnaire
-          // 3. Загрузить progress
-          // 4. Вычислить allQuestions
-          // 5. Выставить индексы
-          // 6. Только потом разрешать авто-сабмит
-          // Это предотвратит гонки между восстановлением answers, коррекцией индексов и авто-сабмитом
-          // ИСПРАВЛЕНО: Загружаем ответы из API после ремоунта
-          // Это критично, так как после ремоунта состояние теряется, но данные остаются на сервере
-          // ВАЖНО: Сначала проверяем React Query кэш (синхронно), затем загружаем через API если нужно
-          if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
-            // ФИКС: Если прогресс очищен, не восстанавливаем его из кэша
-            if (isProgressCleared) {
-              clientLogger.log('🚫 Восстановление прогресса заблокировано - прогресс был очищен');
-              return;
-            }
-
-            // ИСПРАВЛЕНО: Сначала проверяем React Query кэш (это синхронно, если кэш уже загружен)
-            if (quizProgressFromQuery?.progress?.answers && Object.keys(quizProgressFromQuery.progress.answers).length > 0) {
-              const progressAnswers = quizProgressFromQuery.progress.answers;
-              clientLogger.log('🔄 Восстанавливаем ответы из React Query кэша после ремоунта', {
-                answersCount: Object.keys(progressAnswers).length,
-              });
-              setAnswers(progressAnswers);
-              setSavedProgress({
-                answers: progressAnswers,
-                questionIndex: quizProgressFromQuery.progress.questionIndex || 0,
-                infoScreenIndex: quizProgressFromQuery.progress.infoScreenIndex || 0,
-              });
-            } else if (!isLoadingProgress) {
-              // Если React Query не загружает и данных нет, используем прямой API вызов
-              // ИСПРАВЛЕНО: Загружаем асинхронно, но это нормально - allQuestions использует savedProgress?.answers
-              (async () => {
-                try {
-                  const response = await api.getQuizProgress() as {
-                    progress?: {
-                      answers: Record<number, string | string[]>;
-                      questionIndex: number;
-                      infoScreenIndex: number;
-                    } | null;
-                  };
-                  if (response?.progress?.answers && Object.keys(response.progress.answers).length > 0) {
-                    clientLogger.log('🔄 Восстанавливаем ответы из API после ремоунта (fallback)', {
-                      answersCount: Object.keys(response.progress.answers).length,
-                    });
-                    setAnswers(response.progress.answers);
-                    setSavedProgress({
-                      answers: response.progress.answers,
-                      questionIndex: response.progress.questionIndex || 0,
-                      infoScreenIndex: response.progress.infoScreenIndex || 0,
-                    });
-                  }
-                } catch (err) {
-                  clientLogger.warn('⚠️ Ошибка при загрузке прогресса из API после ремоунта:', err);
-                }
-              })();
-            }
-          }
-        } catch (restoreError) {
-          clientLogger.warn('⚠️ Ошибка при восстановлении состояния из sessionStorage:', restoreError);
+      // Также проверяем старый scoped ключ без версии для обратной совместимости
+      if (!alreadyInit) {
+        const oldScopedKey = QUIZ_CONFIG.getScopedKey('quiz_init_done', scope);
+        if (sessionStorage.getItem(oldScopedKey) === 'true') {
+          sessionStorage.setItem(scopedInitDoneKey, 'true');
+          sessionStorage.removeItem(oldScopedKey);
+          alreadyInit = true;
+          clientLogger.log('🔄 quiz_init_done мигрирован на версию v2', { scope });
         }
-        
+      }
+      if (alreadyInit) {
+        // ФИКС P0: Убираем всю дублированную логику восстановления
+        // Теперь восстановление происходит только через useQuizRestorePipeline
+        // Это предотвращает конфликты между несколькими системами восстановления
+        clientLogger.log('⏭️ Пропускаем init() - уже инициализировано, восстановление через useQuizRestorePipeline');
         return;
       }
       // УБРАНО: quiz_init_done теперь устанавливается внутри init() после успешной загрузки анкеты
@@ -1145,7 +996,7 @@ export default function QuizPage() {
       currentQuestion,
       answers,
       allQuestions,
-      questionnaire,
+      questionnaire: effectiveQuestionnaire,
       setAnswers,
       saveProgress,
       currentQuestionIndex,
@@ -1171,7 +1022,7 @@ export default function QuizPage() {
       questionnaireRef,
       initCompletedRef,
       answersRef, // ИСПРАВЛЕНО: Передаем ref для проверки актуального ответа
-      questionnaire,
+      questionnaire: effectiveQuestionnaire,
         loading,
         currentInfoScreenIndex,
         currentQuestionIndex,
@@ -1279,7 +1130,7 @@ export default function QuizPage() {
   const resumeQuiz = () => {
     resumeQuizFn({
       savedProgress,
-      questionnaire,
+      questionnaire: effectiveQuestionnaire,
       allQuestions, // ИСПРАВЛЕНО: Передаем allQuestions для определения следующего вопроса
       redirectInProgressRef,
       initCompletedRef,
@@ -1389,6 +1240,13 @@ export default function QuizPage() {
         throw new Error('Questionnaire not loaded');
       }
 
+      // ФИКС P0: Зафиксировать scope один раз при первом появлении questionnaireId
+      // Это предотвращает конфликты ключей sessionStorage между разными анкетами
+      if (!scopeRef.current && q.id) {
+        scopeRef.current = q.id.toString();
+        clientLogger.log('🔒 Scope зафиксирован', { questionnaireId: q.id, scope: scopeRef.current });
+      }
+
       // 2) Загрузить прогресс (для показа resume screen если нужно)
       await loadSavedProgressFromServer();
 
@@ -1396,9 +1254,10 @@ export default function QuizPage() {
       initCompletedRef.current = true;
       setInitCompleted(true);
 
-      // 4) Сохранить флаг в sessionStorage ТОЛЬКО после успешной загрузки
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('quiz_init_done', 'true');
+      // 4) Сохранить флаг в sessionStorage ТОЛЬКО после успешной загрузки (scoped по questionnaireId)
+      if (typeof window !== 'undefined' && scopeRef.current) {
+        const scopedInitDoneKey = QUIZ_CONFIG.getScopedKey('quiz_init_done:v2', scopeRef.current);
+        sessionStorage.setItem(scopedInitDoneKey, 'true');
       }
 
       clientLogger.log('✅ init() completed successfully', {
@@ -1578,7 +1437,7 @@ export default function QuizPage() {
     // КРИТИЧНО: НЕ сбрасываем индекс на 0, если пользователь уже прошел начальные инфо-экраны
     // Это предотвращает сброс индекса после перехода к следующему вопросу
     // ФИКС: НЕ корректируем индексы если hasResumed/isStartingOver/resumeCompleted
-    if (isOutOfBounds && !isSubmitting && !shouldShowResume && !hasResumedRef.current && !isStartingOverRef.current && !resumeCompletedRef.current) { // ФИКС: Используем shouldShowResume вместо showResumeScreen
+    if (isOutOfBounds && !isSubmitting && !showResumeScreen && !hasResumedRef.current && !isStartingOverRef.current && !resumeCompletedRef.current) { // ФИКС: Используем shouldShowResume вместо showResumeScreen
       // Если анкета завершена — держим индекс на allQuestions.length для автоотправки.
       // Иначе корректируем на последний валидный вопрос или на 0 для нового пользователя.
       const hasNoSavedProgress = !savedProgress || !savedProgress.answers || Object.keys(savedProgress.answers).length === 0;
@@ -1641,7 +1500,7 @@ export default function QuizPage() {
       (currentQuestionIndex === allQuestions.length && !isQuizCompleted);
     
     // ФИКС: НЕ корректируем индексы если hasResumed/isStartingOver/resumeCompleted
-    if (isOutOfBounds && !isSubmitting && !shouldShowResume && !hasResumedRef.current && !isStartingOverRef.current && !resumeCompletedRef.current) { // ФИКС: Используем shouldShowResume вместо showResumeScreen
+    if (isOutOfBounds && !isSubmitting && !showResumeScreen && !hasResumedRef.current && !isStartingOverRef.current && !resumeCompletedRef.current) { // ФИКС: Используем shouldShowResume вместо showResumeScreen
       const correctedIndex = isQuizCompleted
         ? allQuestions.length
         : (allQuestions.length > 0 ? Math.max(0, allQuestions.length - 1) : 0);
@@ -1868,7 +1727,7 @@ export default function QuizPage() {
   useEffect(() => {
     // ИСПРАВЛЕНО: Не запускаем автоотправку до завершения init()
     // Это предотвращает показ планового лоадера для нового пользователя
-    if (!initCompletedRef.current) {
+    if (!initCompleted) {
       return;
     }
     
@@ -1904,7 +1763,7 @@ export default function QuizPage() {
       const timeoutId = setTimeout(() => {
         // ИСПРАВЛЕНО: Проверяем, что компонент еще смонтирован, questionnaire существует, и нет активной отправки
         // ИСПРАВЛЕНО: Также проверяем, что init() завершен, чтобы не показывать плановый лоадер для нового пользователя
-        if (isMountedRef.current && submitAnswersRef.current && questionnaire && !isSubmittingRef.current && initCompletedRef.current) {
+        if (isMountedRef.current && submitAnswersRef.current && questionnaire && !isSubmittingRef.current && initCompleted) {
           // ИСПРАВЛЕНО: Устанавливаем флаг перед вызовом, чтобы предотвратить двойную отправку
           isSubmittingRef.current = true;
           // ИСПРАВЛЕНО: Устанавливаем isSubmitting = true только когда submitAnswers действительно будет вызвана
@@ -1936,7 +1795,7 @@ export default function QuizPage() {
         clearTimeout(timeoutId);
       };
     }
-  }, [currentQuestionIndex, allQuestions.length, answersCount, questionnaire?.id, isSubmitting, showResumeScreen, autoSubmitTriggered, error, pendingInfoScreen?.id, initCompletedRef]);
+  }, [currentQuestionIndex, allQuestions.length, answersCount, questionnaire?.id, isSubmitting, showResumeScreen, autoSubmitTriggered, error, pendingInfoScreen?.id, initCompleted]);
 
   // ВАЖНО: ранние return'ы должны быть ПОСЛЕ всех хуков
   // Проверяем состояние загрузки, ошибку и наличие анкеты после вызова всех хуков
@@ -1990,8 +1849,11 @@ export default function QuizPage() {
   // ФИКС: Выполняем редирект в отдельном useEffect
   useEffect(() => {
     if (shouldRedirectToPlan && typeof window !== 'undefined') {
-      // ФИКС: quiz_init_done НЕ должен быть scoped, иначе ломается логика при смене scope
-      sessionStorage.removeItem('quiz_init_done');
+      // ФИКС P0: Удаляем scoped quiz_init_done при start over
+      if (scopeRef.current) {
+        const scopedInitDoneKey = QUIZ_CONFIG.getScopedKey('quiz_init_done:v2', scopeRef.current);
+        sessionStorage.removeItem(scopedInitDoneKey);
+      }
       window.location.replace('/plan?state=generating');
     }
   }, [shouldRedirectToPlan]);
@@ -2302,8 +2164,8 @@ export default function QuizPage() {
   });
   
   // РЕФАКТОРИНГ: Экран продолжения анкеты
-  // ФИКС: shouldShowResume уже вычислен выше (около строки 320), используем его
-  if (shouldShowResume) {
+  // ФИКС P0: Убираем двойную логику резюме, используем showResumeScreen
+  if (showResumeScreen) {
     // Обработчик "Начать анкету заново"
     const handleStartFromBeginning = async () => {
       clientLogger.log('🔄 Пользователь нажал "Начать анкету заново"');
@@ -2404,7 +2266,7 @@ export default function QuizPage() {
     
     return (
       <QuizResumeScreen
-        savedProgress={savedProgress}
+        savedProgress={savedProgress!}
         questionnaire={questionnaire}
         answers={answers}
         isRetakingQuiz={isRetakingQuiz}
@@ -2487,7 +2349,7 @@ export default function QuizPage() {
       currentInitialInfoScreen && 
       currentInfoScreenIndex < initialInfoScreens.length &&
       !isRetakingQuiz && 
-      !shouldShowResume && // ФИКС: Используем shouldShowResume вместо showResumeScreen
+      !showResumeScreen && // ФИКС: Используем shouldShowResume вместо showResumeScreen
       !pendingInfoScreen &&
       !isLoadingProgress && // ИСПРАВЛЕНО: Не показываем начальные экраны во время загрузки прогресса
       !hasEnoughSavedAnswers) { // ИСПРАВЛЕНО: isStartingOver не блокирует начальные экраны - они должны показываться после "Начать заново"
@@ -2624,7 +2486,7 @@ export default function QuizPage() {
   // Это предотвращает мигание "Question not found" перед резюм-экраном
   const inQuestionsStage =
     viewMode === 'QUESTION' &&
-    !shouldShowResume && // ФИКС: Приоритет резюм-экрана над "Question not found"
+    !showResumeScreen && // ФИКС: Приоритет резюм-экрана над "Question not found"
     currentInfoScreenIndex >= initialInfoScreens.length &&
     !pendingInfoScreen &&
     stableForQuestions;

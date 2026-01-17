@@ -381,7 +381,7 @@ export function QuizQuestion({
 
       {/* Lime Style (skin_goals, skin_type) - лаймовый контейнер с отступами */}
       {/* ИСПРАВЛЕНО: Для skin_type поддерживаем и single_choice, и multi_choice */}
-      {question?.options && useLimeStyle && (() => {
+      {question?.options && useLimeStyle && (
         // Прогресс-бар для skin_type - такой же как в обычных вопросах
         const skinTypeProgressBar = isSkinTypeQuestion && !hideProgressBar && (
           <div style={{
@@ -411,7 +411,7 @@ export function QuizQuestion({
               boxSizing: 'border-box',
             }}>
               <div style={{
-                width: `${progressPercent}%`,
+                width: `${allQuestionsLength > 0 ? ((currentQuestionIndex + 1) / allQuestionsLength) * 100 : 0}%`,
                 height: '100%',
                 backgroundColor: '#D5FE61',
                 borderRadius: '2px',
@@ -706,7 +706,6 @@ export function QuizQuestion({
                 {showSubmitButton ? (isSubmitting ? 'Отправка...' : 'Получить план') : 'Продолжить'}
               </button>
             )}
-          </div>
           </div>
         );
       })()}
@@ -1058,7 +1057,7 @@ export function QuizQuestion({
           })()}
         </div>
         </>
-      );
-    })()}
-    </>
+      )}
+    </div>
+  </>
   );
