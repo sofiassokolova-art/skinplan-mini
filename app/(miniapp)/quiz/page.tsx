@@ -927,11 +927,8 @@ export default function QuizPage() {
         
         return;
       }
-      // ФИКС: quiz_init_done НЕ должен быть scoped, иначе ломается логика при смене scope
-      sessionStorage.setItem('quiz_init_done', 'true');
-      // Очищаем старый scoped ключ для миграции
-      const oldScopedKey = QUIZ_CONFIG.getScopedKey('quiz_init_done', scope);
-      sessionStorage.removeItem(oldScopedKey);
+      // УБРАНО: quiz_init_done теперь устанавливается внутри init() после успешной загрузки анкеты
+      // Это предотвращает установку флага до реальной загрузки данных
     }
     
     clientLogger.log('🚀 useEffect: calling init()', {
@@ -1222,7 +1219,7 @@ export default function QuizPage() {
       redirectInProgressRef,
       submitAnswersRef,
       isRetakingQuiz: currentIsRetakingQuiz,
-      getInitData: () => getInitData(currentInitData),
+      getInitData: () => Promise.resolve(currentInitData),
     });
   }, []); // Пустые зависимости - все через refs для стабильности
 
@@ -1320,11 +1317,45 @@ export default function QuizPage() {
   //   clientLogger.log('📊 allQuestions state', {...});
   // }, [allQuestions.length, allQuestionsRaw.length, isRetakingQuiz, showRetakeScreen, answersCount, savedProgressAnswersCount]);
 
-  // ВРЕМЕННО: Заглушки для функций инициализации
-  // TODO: Восстановить useQuizInit после исправления зависимостей
-  const waitForTelegram = useCallback(async () => {}, []);
-  const getInitData = useCallback(async (currentInitData: any): Promise<string | null> => null, []);
-  const init = useCallback(async () => {}, []);
+  // РЕФАКТОРИНГ: Реальная инициализация вместо заглушек
+  const init = useCallback(async () => {
+    if (initInProgressRef.current) return;
+    initInProgressRef.current = true;
+
+    try {
+      setLoading(true);
+
+      // 1) Загрузить анкету
+      const q = await loadQuestionnaire();
+      if (!q) {
+        throw new Error('Questionnaire not loaded');
+      }
+
+      // 2) Загрузить прогресс (для показа resume screen если нужно)
+      await loadSavedProgressFromServer();
+
+      // 3) Пометить инициализацию как завершенную
+      initCompletedRef.current = true;
+      setInitCompleted(true);
+
+      // 4) Сохранить флаг в sessionStorage ТОЛЬКО после успешной загрузки
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('quiz_init_done', 'true');
+      }
+
+      clientLogger.log('✅ init() completed successfully', {
+        questionnaireId: q.id,
+        questionsCount: q.questions?.length || 0,
+      });
+
+    } catch (e: any) {
+      setError(e?.message || 'Init failed');
+      clientLogger.error('❌ init() failed', e);
+    } finally {
+      setLoading(false);
+      initInProgressRef.current = false;
+    }
+  }, [loadQuestionnaire, loadSavedProgressFromServer, setLoading, setError, setInitCompleted]);
   
   // РЕФАКТОРИНГ: Используем хук useQuizEffects для группировки всех useEffect
   // Вынесены основные группы эффектов, остальные остаются в компоненте для постепенного рефакторинга
