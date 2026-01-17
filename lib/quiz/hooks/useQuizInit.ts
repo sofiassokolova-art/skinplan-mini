@@ -523,8 +523,37 @@ export function useQuizInit(params: UseQuizInitParams) {
           throw new Error('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
         }
       }
+    catch (e: any) {
+      clientLogger.error('❌ init() FAILED - exception caught', {
+        timestamp: new Date().toISOString(),
+        error: e?.message,
+        stack: e?.stack?.substring(0, 500),
+        hasQuestionnaire: !!questionnaireRef.current,
+        questionnaireId: questionnaireRef.current?.id,
+        loading,
+      });
+      setError('Ошибка загрузки. Пожалуйста, обновите страницу.');
+      setLoading(false);
+    } finally {
+      const totalElapsed = Date.now() - (initStartTimeRef.current || Date.now());
+      initCompletedRef.current = true;
+      setInitCompleted(true);
+      initInProgressRef.current = false;
+      initStartTimeRef.current = null;
 
-      // 3) прогресс/резюм
+      if (!initCompletedTimeRef.current) {
+        initCompletedTimeRef.current = Date.now();
+      }
+
+      clientLogger.log('⏱️ init() completed (finally)', {
+        timestamp: initCompletedTimeRef.current,
+        totalElapsed,
+        hasQuestionnaire: !!questionnaireRef.current,
+        questionnaireId: questionnaireRef.current?.id,
+      });
+    }
+
+    // 3) прогресс/резюм
       // ВОССТАНОВЛЕНО: Загружаем прогресс для всех пользователей (включая новых)
       // Для новых пользователей прогресс загружается из KV кеша
       // ИСПРАВЛЕНО: Используем только refs для проверки, чтобы не зависеть от state в зависимостях useCallback
@@ -666,42 +695,6 @@ export function useQuizInit(params: UseQuizInitParams) {
         questionnaireId: questionnaireRef.current?.id,
         loading,
       });
-    } catch (e: any) {
-      clientLogger.error('❌ init() FAILED - exception caught', {
-        timestamp: new Date().toISOString(),
-        error: e?.message,
-        stack: e?.stack?.substring(0, 500),
-        hasQuestionnaire: !!questionnaireRef.current,
-        questionnaireId: questionnaireRef.current?.id,
-        loading,
-      });
-      setError('Ошибка загрузки. Пожалуйста, обновите страницу.');
-      // КРИТИЧНО: Устанавливаем loading=false при ошибке, чтобы не зависнуть на лоадере
-      setLoading(false);
-    } finally {
-      const totalElapsed = Date.now() - (initStartTimeRef.current || Date.now());
-      initCompletedRef.current = true;
-      setInitCompleted(true);
-      initInProgressRef.current = false;
-      initStartTimeRef.current = null;
-      // ИСПРАВЛЕНО: Устанавливаем время завершения init() для показа второго лоадера
-      if (!initCompletedTimeRef.current) {
-        initCompletedTimeRef.current = Date.now();
-        clientLogger.log('⏱️ init() completed, starting fallback loader timer', {
-          timestamp: initCompletedTimeRef.current,
-        });
-      }
-      const loadingBeforeFinally = loading;
-      setLoading(false);
-      clientLogger.log('🏁 init() FINALLY - setting initCompletedRef=true and loading=false', { 
-        timestamp: new Date().toISOString(),
-        totalElapsed,
-        hasQuestionnaire: !!questionnaireRef.current,
-        questionnaireId: questionnaireRef.current?.id,
-        loadingBeforeFinally,
-        loadingAfterSet: false,
-      });
-    }
   }, [
     waitForTelegram,
     isDev,
