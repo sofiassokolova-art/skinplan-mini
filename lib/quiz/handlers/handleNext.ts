@@ -48,8 +48,49 @@ export interface HandleNextParams {
   
   // Functions
   saveProgress: (answers: Record<number, string | string[]>, questionIndex: number, infoScreenIndex: number) => Promise<void>;
+  loadQuestionnaire: () => Promise<Questionnaire | null>;
+  initInProgressRef: React.MutableRefObject<boolean>;
+  setLoading: React.Dispatch<React.SetStateAction<boolean>>;
   isDev: boolean;
 }
+
+// Вспомогательная функция для обеспечения готовности вопросов
+// Использует questionnaireRef как источник истины, а не allQuestions
+const ensureQuestionsReady = async (
+  questionnaireRef: React.MutableRefObject<Questionnaire | null>,
+  initInProgressRef: React.MutableRefObject<boolean>,
+  loadQuestionnaire: () => Promise<Questionnaire | null>,
+  setLoading?: React.Dispatch<React.SetStateAction<boolean>>
+): Promise<boolean> => {
+  // 1) Если уже есть вопросы — ок
+  const qLen = questionnaireRef.current?.questions?.length ?? 0;
+  if (qLen > 0) return true;
+
+  // 2) Если загрузка уже идёт — просто ждём немного
+  if (initInProgressRef.current) {
+    let attempts = 0;
+    while (attempts < 30) { // ~3s
+      const len = questionnaireRef.current?.questions?.length ?? 0;
+      if (len > 0) return true;
+      await new Promise(r => setTimeout(r, 100));
+      attempts++;
+    }
+    return false;
+  }
+
+  // 3) Иначе — принудительно грузим
+  if (setLoading) {
+    setLoading(true);
+  }
+  try {
+    const loaded = await loadQuestionnaire();
+    return (loaded?.questions?.length ?? 0) > 0;
+  } finally {
+    if (setLoading) {
+      setLoading(false);
+    }
+  }
+};
 
 export async function handleNext(params: HandleNextParams): Promise<void> {
   const {
@@ -261,51 +302,34 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     }
 
     if (currentInfoScreenIndex === initialInfoScreens.length - 1) {
-      // КРИТИЧНО: Проверяем, что есть вопросы перед переходом к ним
-      // Если анкета не загружена и вопросов нет, не переходим к вопросам
-      if (allQuestions.length === 0 && !hasQuestionnaire) {
-        clientLogger.warn('⚠️ Переход к вопросам заблокирован: анкета не загружена и вопросов нет', {
+      // КРИТИЧНО: Используем ensureQuestionsReady вместо проверки allQuestions
+      // Это гарантирует, что вопросы будут готовы перед переходом к ним
+      const ok = await ensureQuestionsReady(
+        questionnaireRef,
+        initInProgressRef,
+        loadQuestionnaire,
+        setLoading
+      );
+
+      if (!ok) {
+        clientLogger.warn('❌ Не удалось загрузить вопросы для перехода к вопросам', {
           hasQuestionnaire: !!questionnaire,
           hasQuestionnaireRef: !!questionnaireRef.current,
-          allQuestionsLength: allQuestions.length,
           loading,
           initCompleted: initCompletedRef.current,
         });
-        // Блокируем переход, если нет ни анкеты, ни вопросов
+        // Показываем ошибку пользователю
+        setError('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
         return;
       }
-      
-      // ИСПРАВЛЕНО: Проверяем анкету только при переходе к вопросам
-      // Если анкета не загружена, но есть вопросы (из кэша), разрешаем переход
-      // Но логируем предупреждение для диагностики
-      if (!hasQuestionnaire && allQuestions.length === 0) {
-        clientLogger.warn('⚠️ Переход к вопросам без анкеты и без вопросов - блокируем', {
-          hasQuestionnaire: !!questionnaire,
-          hasQuestionnaireRef: !!questionnaireRef.current,
-          allQuestionsLength: allQuestions.length,
-          loading,
-          initCompleted: initCompletedRef.current,
-        });
-        return;
-      }
-      
-      if (!hasQuestionnaire && allQuestions.length > 0) {
-        clientLogger.warn('⚠️ Переход к вопросам без анкеты, но есть вопросы из кэша - разрешаем', {
-          hasQuestionnaire: !!questionnaire,
-          hasQuestionnaireRef: !!questionnaireRef.current,
-          allQuestionsLength: allQuestions.length,
-          loading,
-          initCompleted: initCompletedRef.current,
-        });
-      }
-      
+
       const newInfoIndex = initialInfoScreens.length;
       // ФИКС: Логируем переход к вопросам после последнего инфо-экрана
       clientLogger.warn('🔄 handleNext: переход к вопросам после последнего инфо-экрана', {
         currentInfoScreenIndex,
         newInfoIndex,
         initialInfoScreensLength: initialInfoScreens.length,
-        allQuestionsLength: allQuestions.length,
+        questionsLength: questionnaireRef.current?.questions?.length ?? 0,
       });
       // КРИТИЧНО: Обновляем ref СИНХРОННО перед установкой state, чтобы другие функции видели новое значение
       updateInfoScreenIndex(newInfoIndex, currentInfoScreenIndexRef, setCurrentInfoScreenIndex);
@@ -313,63 +337,55 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       // ФИКС: Сохраняем newInfoIndex в sessionStorage для восстановления при перемонтировании
       const scopedInfoScreenKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN, qid);
       saveIndexToSessionStorage(scopedInfoScreenKey, newInfoIndex, '💾 Сохранен currentInfoScreenIndex в sessionStorage при переходе к вопросам');
-      
-      // ИСПРАВЛЕНО: Не сбрасываем currentQuestionIndex на 0, если у пользователя уже есть ответы
-      // Это предотвращает возврат к первому вопросу для пользователей, которые уже отвечали
-      // КРИТИЧНО: Проверяем, что allQuestions не пустой перед установкой индекса
-      // ФИКС: Не сохраняем прогресс, если allQuestions пустой - это может привести к "вопрос не найден"
-      if (allQuestions.length === 0) {
-        clientLogger.warn('⚠️ handleNext: allQuestions пустой, не устанавливаем currentQuestionIndex и не сохраняем прогресс', {
-          allQuestionsLength: allQuestions.length,
-          hasQuestionnaire: !!questionnaire || !!questionnaireRef.current,
-          loading,
+
+      // Получаем вопросы из questionnaireRef - это теперь источник истины
+      const questions = questionnaireRef.current?.questions ?? [];
+      if (questions.length === 0) {
+        clientLogger.warn('⚠️ handleNext: вопросы не найдены в questionnaireRef, не устанавливаем currentQuestionIndex', {
+          hasQuestionnaire: !!questionnaireRef.current,
+          questionsLength: questions.length,
         });
-        // Не устанавливаем индекс и не сохраняем прогресс, если вопросов нет - анкета еще загружается
+        // Не устанавливаем индекс, если вопросов нет
         return;
       }
       
-      // ИСПРАВЛЕНО: БАГ #1 - isAlreadyOnQuestions всегда false в этом блоке
-      // Мы находимся в блоке currentInfoScreenIndex === initialInfoScreens.length - 1,
-      // поэтому currentInfoScreenIndex >= initialInfoScreens.length всегда false
-      // ФИКС: Восстанавливаем questionCode из sessionStorage для пользователей с прогрессом
-      // Если это первый заход после интро → ставим 0
-      // Если пользователь вернулся на интро (back) → восстанавливаем сохранённый questionCode/индекс
-      // ФИКС: Используем qid вместо questionnaireId (который может быть undefined)
+      // ИСПРАВЛЕНО: Теперь используем questions из questionnaireRef как источник истины
+      // Восстанавливаем questionCode из sessionStorage для пользователей с прогрессом
       const scopedQuestionCodeKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE, qid);
       const savedQuestionCode = typeof window !== 'undefined' ? sessionStorage.getItem(scopedQuestionCodeKey) : null;
       const answeredQuestionIds = Object.keys(answers).map(id => Number(id));
       let nextQuestionIndex = 0;
-      
+
       // Проверяем, есть ли сохраненный вопрос или ответы (пользователь возвращается)
       const hasSavedProgress = savedQuestionCode || answeredQuestionIds.length > 0 || currentQuestionIndex > 0;
-      
+
       if (hasSavedProgress && savedQuestionCode) {
         // Восстанавливаем индекс по сохраненному коду вопроса
-        const savedIndex = allQuestions.findIndex((q: Question) => q.code === savedQuestionCode);
-        if (savedIndex >= 0 && savedIndex < allQuestions.length) {
+        const savedIndex = questions.findIndex((q: Question) => q.code === savedQuestionCode);
+        if (savedIndex >= 0 && savedIndex < questions.length) {
           nextQuestionIndex = savedIndex;
           clientLogger.log('🔄 Переход к вопросам: восстановлен индекс по сохраненному коду', {
             savedQuestionCode,
             savedIndex,
             nextQuestionIndex,
             currentQuestionIndex,
-            allQuestionsLength: allQuestions.length,
+            questionsLength: questions.length,
           });
         } else {
           // Если вопрос не найден, начинаем с 0
           nextQuestionIndex = 0;
           clientLogger.warn('⚠️ Переход к вопросам: сохраненный вопрос не найден, начинаем с 0', {
             savedQuestionCode,
-            allQuestionsLength: allQuestions.length,
+            questionsLength: questions.length,
           });
         }
       } else if (hasSavedProgress && currentQuestionIndex > 0) {
         // Используем сохраненный индекс, если код не найден
-        nextQuestionIndex = Math.min(currentQuestionIndex, allQuestions.length - 1);
+        nextQuestionIndex = Math.min(currentQuestionIndex, questions.length - 1);
         clientLogger.log('🔄 Переход к вопросам: восстановлен индекс из currentQuestionIndex', {
           currentQuestionIndex,
           nextQuestionIndex,
-          allQuestionsLength: allQuestions.length,
+          questionsLength: questions.length,
         });
       } else {
         // Первый заход после интро - начинаем с первого вопроса
@@ -377,31 +393,27 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         clientLogger.log('🔄 Переход к вопросам: первый заход, начинаем с первого вопроса', {
           currentQuestionIndex,
           nextQuestionIndex,
-          allQuestionsLength: allQuestions.length,
+          questionsLength: questions.length,
         });
       }
-      
+
       // КРИТИЧНО: Финальная проверка перед установкой индекса
-      if (nextQuestionIndex < 0 || nextQuestionIndex >= allQuestions.length) {
+      if (nextQuestionIndex < 0 || nextQuestionIndex >= questions.length) {
         clientLogger.warn('⚠️ handleNext: некорректный nextQuestionIndex, исправляем', {
           nextQuestionIndex,
-          allQuestionsLength: allQuestions.length,
+          questionsLength: questions.length,
         });
-        nextQuestionIndex = Math.max(0, Math.min(allQuestions.length - 1, 0));
+        nextQuestionIndex = Math.max(0, Math.min(questions.length - 1, 0));
       }
-      
+
       updateQuestionIndex(nextQuestionIndex, currentQuestionIndexRef, setCurrentQuestionIndex);
-      // ИСПРАВЛЕНО: БАГ #3 - используем QUIZ_CONFIG.STORAGE_KEYS со скоупированием
-      // Сохраняем код вопроса вместо индекса для стабильного восстановления
-      // ФИКС: Не сохраняем, если allQuestions пустой
-      const questionCode = allQuestions[nextQuestionIndex]?.code;
-      if (questionCode && allQuestions.length > 0) {
+      // ИСПРАВЛЕНО: Сохраняем код вопроса вместо индекса для стабильного восстановления
+      const questionCode = questions[nextQuestionIndex]?.code;
+      if (questionCode && questions.length > 0) {
         const scopedQuestionCodeKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE, qid);
         saveIndexToSessionStorage(scopedQuestionCodeKey, questionCode, '💾 Сохранен код вопроса в sessionStorage при переходе к вопросам');
       }
-      // ИСПРАВЛЕНО: БАГ #5 - обеспечиваем консистентность ref/state для pendingInfoScreen
-      // ФИКС: Принудительно очищаем pendingInfoScreen при переходе к вопросам
-      // Это предотвращает застревание на info screens
+      // ИСПРАВЛЕНО: Принудительно очищаем pendingInfoScreen при переходе к вопросам
       if (pendingInfoScreenRef) {
         pendingInfoScreenRef.current = null;
       }
@@ -409,7 +421,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       // ФИКС: Детальное логирование установки вопросов для диагностики
       clientLogger.log('✅ Завершены все начальные инфо-экраны, переходим к вопросам', {
         newInfoIndex,
-        allQuestionsLength: allQuestions.length,
+        questionsLength: questions.length,
         currentQuestionIndex: nextQuestionIndex,
         previousQuestionIndex: currentQuestionIndex,
         answeredQuestionsCount: answeredQuestionIds.length,
@@ -421,19 +433,28 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       return;
     }
 
-    // ИСПРАВЛЕНО: Не блокируем обработку вопросов, если анкета еще не загружена
-    // Анкета может загружаться в фоне, а вопросы уже могут быть доступны через questionnaireRef или allQuestions
-    // Проверяем только если мы действительно на вопросах (не на инфо-экранах) И нет вопросов в allQuestions
+    // ИСПРАВЛЕНО: Проверяем готовность вопросов с помощью questionnaireRef
+    // Если мы на вопросах и вопросов нет в questionnaireRef, ждем их загрузки
     const isOnQuestions = currentInfoScreenIndex >= initialInfoScreens.length;
-    if (isOnQuestions && !questionnaire && !questionnaireRef.current && allQuestions.length === 0) {
-      clientLogger.warn('⏸️ handleNext: анкета не загружена и нет вопросов - ждем...', {
-        hasQuestionnaire: !!questionnaire,
-        hasQuestionnaireRef: !!questionnaireRef.current,
-        currentInfoScreenIndex,
-        initialInfoScreensLength: initialInfoScreens.length,
-        allQuestionsLength: allQuestions.length,
-      });
-      return;
+    if (isOnQuestions && (!questionnaireRef.current || (questionnaireRef.current.questions?.length ?? 0) === 0)) {
+      // Используем ensureQuestionsReady для ожидания загрузки вопросов
+      const ok = await ensureQuestionsReady(
+        questionnaireRef,
+        initInProgressRef,
+        loadQuestionnaire,
+        setLoading
+      );
+
+      if (!ok) {
+        clientLogger.warn('⏸️ handleNext: вопросы не загружены и не удалось их загрузить - ждем...', {
+          hasQuestionnaire: !!questionnaire,
+          hasQuestionnaireRef: !!questionnaireRef.current,
+          questionsLength: questionnaireRef.current?.questions?.length ?? 0,
+          currentInfoScreenIndex,
+          initialInfoScreensLength: initialInfoScreens.length,
+        });
+        return;
+      }
     }
     
     // ДИАГНОСТИКА: Логируем состояние при обработке вопросов

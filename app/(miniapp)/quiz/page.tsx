@@ -1139,6 +1139,9 @@ export default function QuizPage() {
       setCurrentQuestionIndex,
       setPendingInfoScreen,
       saveProgress,
+      loadQuestionnaire,
+      initInProgressRef,
+      setLoading,
       isDev,
     });
   };
