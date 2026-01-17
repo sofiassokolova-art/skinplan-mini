@@ -176,6 +176,9 @@ export default function QuizPage() {
   // ФИКС: Защита от зацикливания - не восстанавливаем currentInfoScreenIndex после перехода к вопросам
   const infoIndexRestoredRef = useRef(false);
 
+  // ФИКС: Ref для отслеживания процесса самовосстановления вопроса
+  const questionHealInProgressRef = useRef(false);
+
   // РЕФАКТОРИНГ: Все состояния и refs теперь в useQuizStateExtended
   const {
     currentInfoScreenIndex,
@@ -2588,86 +2591,143 @@ export default function QuizPage() {
   
   const isIndexValid = currentQuestionIndex >= 0 && currentQuestionIndex < allQuestions.length;
   
+  // ФИКС: Заменяем экран "Вопрос не найден" на автоматическое восстановление
   const shouldShowQuestionNotFound = inQuestionsStage && isIndexValid && !currentQuestion;
-  
-  if (shouldShowQuestionNotFound) {
-    // ИСПРАВЛЕНО: Если allQuestions пустой, показываем лоадер или сообщение
-    // Проверяем независимо от состояния loading, чтобы предотвратить ошибки рендеринга
-    // ИСПРАВЛЕНО: Не показываем ошибку если идет загрузка или если allQuestionsRaw еще не пересчитан
-    if (allQuestions.length === 0 && !loading && questionnaireRef.current) {
-      // Это может произойти во время фильтрации или если все вопросы были отфильтрованы
-      // Показываем лоадер, так как это временное состояние
-      // ИСПРАВЛЕНО: Проверяем, есть ли вопросы в questionnaire перед показом ошибки
-      const hasQuestionsInQuestionnaire = (questionnaire?.groups?.some((g: any) => g?.questions?.length > 0) || 
-                                           (questionnaire?.questions && questionnaire.questions.length > 0));
-      if (allQuestionsRaw.length === 0 && hasQuestionsInQuestionnaire) {
-        // allQuestionsRaw еще не пересчитан, но вопросы есть - это временное состояние
-        return null;
-      }
-      if (allQuestionsRaw.length === 0) {
-        // Если даже allQuestionsRaw пустой, значит анкета не содержит вопросов
-        return (
-          <div style={{ 
-            padding: '20px', 
-            textAlign: 'center',
-            minHeight: '100vh',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
-          }}>
-            <div style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.9)',
-              borderRadius: '24px',
-              padding: '32px',
-              maxWidth: '500px',
-              width: '100%',
-              textAlign: 'center',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-            }}>
-              <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
-                Анкета не содержит вопросов
-              </h2>
-              <p style={{ color: '#475467', marginBottom: '24px', lineHeight: '1.6' }}>
-                Пожалуйста, обратитесь в поддержку.
-              </p>
-              <button
-                onClick={() => {
-                  if (typeof window !== 'undefined') {
-                    window.location.reload();
-                  }
-                }}
-                style={{
-                  width: '100%',
-                  padding: '16px 24px',
-                  borderRadius: '12px',
-                  backgroundColor: '#0A5F59',
-                  color: 'white',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
-                }}
-              >
-                Обновить страницу
-              </button>
-            </div>
-          </div>
-        );
-      }
-      // УПРОЩЕНО: Убран лоадер для случая, когда все вопросы отфильтрованы
-      // Это не нужно для нового пользователя - анкета должна отображаться сразу
-      // Если все вопросы отфильтрованы - это ошибка, показываем ошибку (обрабатывается ниже)
+
+  // ФИКС: Логика автоматического восстановления вместо показа ошибки
+  useEffect(() => {
+    if (shouldShowQuestionNotFound && !questionHealInProgressRef.current) {
+      questionHealInProgressRef.current = true;
+
+      // Логируем проблему один раз для диагностики
+      clientLogger.warn('🔧 [HEAL] Обнаружена рассинхронизация вопроса, запускаем восстановление', {
+        questionnaireId: questionnaire?.id,
+        currentQuestionIndex,
+        allQuestionsLength: allQuestions.length,
+        currentQuestionCode: currentQuestion?.code || null,
+        savedQuestionCode: sessionStorage.getItem(scopedStorageKeys.CURRENT_QUESTION_CODE),
+        answersCount: Object.keys(answers).length,
+        savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
+        viewMode,
+        pendingInfoScreen: !!pendingInfoScreen,
+        shouldShowResume,
+        inQuestionsStage,
+        isIndexValid,
+        stableForQuestions: inQuestionsStage && isIndexValid,
+      });
+
+      // Heal pipeline: пытаемся восстановить индекс вопроса
+      const healQuestionIndex = () => {
+        if (allQuestions.length === 0) {
+          clientLogger.warn('🔧 [HEAL] allQuestions пустой, пропускаем восстановление');
+          questionHealInProgressRef.current = false;
+          return;
+        }
+
+        // Способ 1: Восстановление по сохраненному коду вопроса
+        const savedQuestionCode = sessionStorage.getItem(scopedStorageKeys.CURRENT_QUESTION_CODE);
+        if (savedQuestionCode) {
+          const questionIndexByCode = allQuestions.findIndex(q => q.code === savedQuestionCode);
+          if (questionIndexByCode >= 0 && questionIndexByCode !== currentQuestionIndex) {
+            clientLogger.log('🔧 [HEAL] Восстановлен индекс по сохраненному коду', {
+              savedQuestionCode,
+              oldIndex: currentQuestionIndex,
+              newIndex: questionIndexByCode,
+            });
+            setCurrentQuestionIndex(questionIndexByCode);
+            questionHealInProgressRef.current = false;
+            return;
+          }
+        }
+
+        // Способ 2: Clamp индекса в допустимые границы
+        const clampedIndex = Math.min(currentQuestionIndex, allQuestions.length - 1);
+        if (clampedIndex !== currentQuestionIndex && clampedIndex >= 0) {
+          clientLogger.log('🔧 [HEAL] Индекс clamped к допустимым границам', {
+            oldIndex: currentQuestionIndex,
+            newIndex: clampedIndex,
+            allQuestionsLength: allQuestions.length,
+          });
+          setCurrentQuestionIndex(clampedIndex);
+          questionHealInProgressRef.current = false;
+          return;
+        }
+
+        // Способ 3: Если ничего не помогло, устанавливаем на первый вопрос
+        if (currentQuestionIndex !== 0) {
+          clientLogger.warn('🔧 [HEAL] Устанавливаем индекс на первый вопрос', {
+            oldIndex: currentQuestionIndex,
+            newIndex: 0,
+          });
+          setCurrentQuestionIndex(0);
+        }
+
+        questionHealInProgressRef.current = false;
+      };
+
+      // Запускаем восстановление через небольшой таймаут для стабильности
+      setTimeout(healQuestionIndex, 100);
     }
-    
-    // ИСПРАВЛЕНО: Показываем ошибку только если анкета не загружена И ошибка связана с загрузкой анкеты
-    // Это предотвращает показ временных ошибок, которые уже исправлены
-    if (!questionnaire && !loading && error && (error.includes('загрузить анкету') || error.includes('Invalid questionnaire') || error.includes('Questionnaire has no questions'))) {
+  }, [shouldShowQuestionNotFound, currentQuestionIndex, allQuestions.length, scopedStorageKeys.CURRENT_QUESTION_CODE]);
+
+  // ФИКС: Показываем маленький спиннер во время восстановления (максимум 400мс)
+  if (shouldShowQuestionNotFound && questionHealInProgressRef.current) {
+    return (
+      <div style={{
+        padding: '20px',
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+      }}>
+        <div style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          borderRadius: '24px',
+          padding: '32px',
+          maxWidth: '400px',
+          width: '100%',
+          textAlign: 'center',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+        }}>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            border: '3px solid #0A5F59',
+            borderTop: '3px solid transparent',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 20px',
+          }} />
+          <p style={{
+            color: '#475467',
+            fontSize: '16px',
+            lineHeight: '1.5',
+            margin: 0
+          }}>
+            Восстанавливаем вопрос...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ФИКС: Сохраняем логику обработки пустых вопросов для крайних случаев
+  if (shouldShowQuestionNotFound && allQuestions.length === 0 && !loading && questionnaireRef.current) {
+    // Это может произойти во время фильтрации или если все вопросы были отфильтрованы
+    // Показываем лоадер, так как это временное состояние
+    const hasQuestionsInQuestionnaire = (questionnaire?.groups?.some((g: any) => g?.questions?.length > 0) ||
+                                         (questionnaire?.questions && questionnaire.questions.length > 0));
+    if (allQuestionsRaw.length === 0 && hasQuestionsInQuestionnaire) {
+      // allQuestionsRaw еще не пересчитан, но вопросы есть - это временное состояние
+      return null;
+    }
+    if (allQuestionsRaw.length === 0) {
+      // Если даже allQuestionsRaw пустой, значит анкета не содержит вопросов
       return (
-        <div style={{ 
-          padding: '20px', 
+        <div style={{
+          padding: '20px',
           textAlign: 'center',
           minHeight: '100vh',
           display: 'flex',
@@ -2686,10 +2746,10 @@ export default function QuizPage() {
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
           }}>
             <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
-              Ошибка загрузки анкеты
+              Анкета не содержит вопросов
             </h2>
             <p style={{ color: '#475467', marginBottom: '24px', lineHeight: '1.6' }}>
-              {typeof error === 'string' ? error : ((error as any)?.message || 'Произошла ошибка загрузки анкеты')}
+              Пожалуйста, обратитесь в поддержку.
             </p>
             <button
               onClick={() => {
@@ -2716,6 +2776,7 @@ export default function QuizPage() {
         </div>
       );
     }
+  }
 
 
     // ИСПРАВЛЕНО: Убрали плановый лоадер "Создаем ваш план ухода..." из /quiz
