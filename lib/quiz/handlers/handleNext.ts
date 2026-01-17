@@ -665,11 +665,17 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     // Это предотвращает застревание на инфо-экранах, когда пользователь уже ответил на следующий вопрос
     const currentQuestion = allQuestions[currentQuestionIndex];
     const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
-    
+
+    // ИСПРАВЛЕНО: Используем ref для проверки актуального ответа, так как для single_choice handleNext вызывается через setTimeout
+    // и answers из замыкания может быть устаревшим
+    const effectiveAnswers = (answersRef?.current !== undefined && Object.keys(answersRef.current).length > 0)
+      ? answersRef.current
+      : answers;
+
     // ФИКС B: Хард-fallback - если currentQuestion валиден, но hasAnsweredCurrentQuestion false,
     // но ответ есть в answersRef/effectiveAnswers - это mismatch id/code, логируем и нормализуем
     let hasAnsweredCurrentQuestion = currentQuestion && effectiveAnswers[currentQuestion.id] !== undefined;
-    
+
     if (currentQuestion && !hasAnsweredCurrentQuestion) {
       // Проверяем, есть ли ответ в answersRef, но для другого questionId (возможен mismatch)
       const hasAnswerInRef = answersRef?.current && Object.values(answersRef.current).length > 0;
