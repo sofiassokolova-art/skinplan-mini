@@ -743,7 +743,7 @@ export function QuizInfoScreen({
     return (
       <>
         {generalBackButton}
-        <div style={{ 
+        <div style={{
           padding: 0,
           margin: 0,
           minHeight: '100vh',
@@ -755,7 +755,7 @@ export function QuizInfoScreen({
         }}>
 
         {/* Контент с анимацией */}
-        <div 
+        <div
           className="animate-fade-in"
           style={{
             flex: 1,
@@ -763,7 +763,7 @@ export function QuizInfoScreen({
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'flex-start',
-            paddingTop: '100px',
+            paddingTop: '140px', // ФИКС: Увеличен отступ сверху, чтобы картинка не перекрывала текст
             paddingBottom: '120px',
           paddingLeft: '20px',
           paddingRight: '20px',
