@@ -597,77 +597,17 @@ export default function QuizPage() {
   const [isHandlingNext, setIsHandlingNext] = useState(false);
   
   useEffect(() => {
-    // ИСПРАВЛЕНО: Проверяем, не была ли анкета только что отправлена
-    // КРИТИЧНО: Проверяем флаг quiz_just_submitted САМЫМ ПЕРВЫМ, до любых других проверок
-    // Это предотвращает редирект на первый экран после отправки ответов
-    // ВАЖНО: Добавлен guard против множественных редиректов
-    if (redirectInProgressRef.current) {
-      return; // Уже выполняется редирект
-    }
-    
-    if (typeof window !== 'undefined') {
-      const justSubmitted = sessionStorage.getItem(scopedStorageKeys.JUST_SUBMITTED) === 'true';
-      if (justSubmitted) {
-        redirectInProgressRef.current = true; // Помечаем, что редирект начат
-        clientLogger.log('✅ Анкета только что отправлена, редиректим на /plan?state=generating (ранняя проверка)');
-        // Очищаем флаг
-        sessionStorage.removeItem(scopedStorageKeys.JUST_SUBMITTED);
-        // ИСПРАВЛЕНО: Удаляем флаг quiz_init_done перед редиректом, чтобы init() мог запуститься при возврате на /quiz
-        // ФИКС: Используем scoped ключ для init_done
-      const initDoneKey = QUIZ_CONFIG.getScopedKey('quiz_init_done', scope);
-      sessionStorage.removeItem(initDoneKey);
-        // Устанавливаем initCompleted, чтобы предотвратить повторную инициализацию
-        setInitCompleted(true);
-        setLoading(false);
-        // Редиректим на /plan?state=generating СРАЗУ, без задержек
-        window.location.replace('/plan?state=generating');
-        // ФИКС: Сбрасываем redirectInProgressRef через небольшую задержку после редиректа
-        // Это предотвращает застревание флага, если компонент перерендерится
-        setTimeout(() => {
-          redirectInProgressRef.current = false;
-        }, 1000);
-        return;
-      }
-      
-      // ИСПРАВЛЕНО: Также проверяем, не находится ли пользователь на инфо-экране после последнего вопроса
-      // Если да, не выполняем проверку профиля, которая может вызвать редирект
-      const urlParams = new URLSearchParams(window.location.search);
-      const isResuming = urlParams.get('resume') === 'true';
-      if (isResuming || pendingInfoScreen) {
-        clientLogger.log('ℹ️ Пользователь на инфо-экране или resume экране, пропускаем раннюю проверку профиля');
-        // Продолжаем нормальную инициализацию без раннего редиректа
-      }
-    }
-    
-    // ИСПРАВЛЕНО: Проверяем флаг quiz_just_submitted ПЕРЕД проверкой профиля
-    // Это критично, чтобы предотвратить редирект на первый экран после отправки ответов
-    const justSubmitted = typeof window !== 'undefined' ? sessionStorage.getItem(scopedStorageKeys.JUST_SUBMITTED) === 'true' : false;
-    if (justSubmitted) {
-      clientLogger.log('✅ Флаг quiz_just_submitted установлен - пропускаем проверку профиля и редиректим на /plan?state=generating');
-      // Очищаем флаг
-      if (typeof window !== 'undefined') {
-        sessionStorage.removeItem(scopedStorageKeys.JUST_SUBMITTED);
-      }
-      // Устанавливаем initCompleted, чтобы предотвратить повторную инициализацию
-      setInitCompleted(true);
-      setLoading(false);
-      // ИСПРАВЛЕНО: Удаляем флаг quiz_init_done перед редиректом
-      if (typeof window !== 'undefined') {
-        // ФИКС: Используем scoped ключ для init_done
-      const initDoneKey = QUIZ_CONFIG.getScopedKey('quiz_init_done', scope);
-      sessionStorage.removeItem(initDoneKey);
-        window.location.replace('/plan?state=generating');
-      }
-      return;
-    }
+    // ФИКС: Проверка JUST_SUBMITTED вынесена в отдельный useEffect ниже (строки 1943-1992)
+    // Это предотвращает двойной редирект и гонки состояний
+    // Здесь остаются только проверки профиля и другие проверки
     
     // ИСПРАВЛЕНО: Проверяем, есть ли уже профиль (анкета завершена)
     // Если профиль есть и анкета завершена, не показываем начало анкеты, а редиректим на /plan
     // ВАЖНО: Проверяем синхронно, чтобы предотвратить показ первого экрана
-    // ВАЖНО: НЕ проверяем профиль, если флаг quiz_just_submitted установлен (уже обработано выше)
+    // ФИКС: Проверка JUST_SUBMITTED вынесена в отдельный useEffect ниже
     // ИСПРАВЛЕНО: Для нового пользователя (нет hasPlanProgress) не проверяем флаги перепрохождения
     // Это оптимизирует загрузку и предотвращает избыточные запросы к /api/user/preferences
-    if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && !initCompletedRef.current && !justSubmitted) {
+    if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && !initCompletedRef.current) {
       // ИСПРАВЛЕНО: Проверяем флаги перепрохождения ПЕРЕД проверкой профиля
       const checkRetakeFlags = async () => {
         try {
@@ -795,9 +735,11 @@ export default function QuizPage() {
     // ИСПРАВЛЕНО: Используем sessionStorage для предотвращения повторного вызова init() после ремоунта
     // Это критично, так как ErrorBoundary может размонтировать и заново смонтировать компонент
     if (typeof window !== 'undefined') {
-      // ФИКС: Используем scoped ключ для init_done (используем зафиксированный scope)
+      // ФИКС: quiz_init_done НЕ должен быть scoped, иначе ломается логика при смене scope
+      // Проверяем также старый scoped ключ для миграции
       const initDoneKeyForCheck = QUIZ_CONFIG.getScopedKey('quiz_init_done', scope);
-      const alreadyInit = sessionStorage.getItem(initDoneKeyForCheck) === 'true';
+      const alreadyInit = sessionStorage.getItem('quiz_init_done') === 'true' || 
+                         sessionStorage.getItem(initDoneKeyForCheck) === 'true';
       if (alreadyInit) {
         // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
         // if (isDev) {
@@ -967,9 +909,11 @@ export default function QuizPage() {
         
         return;
       }
-      // ФИКС: Используем scoped ключ для init_done
-      const initDoneKey = QUIZ_CONFIG.getScopedKey('quiz_init_done', scope);
-      sessionStorage.setItem(initDoneKey, 'true');
+      // ФИКС: quiz_init_done НЕ должен быть scoped, иначе ломается логика при смене scope
+      sessionStorage.setItem('quiz_init_done', 'true');
+      // Очищаем старый scoped ключ для миграции
+      const oldScopedKey = QUIZ_CONFIG.getScopedKey('quiz_init_done', scope);
+      sessionStorage.removeItem(oldScopedKey);
     }
     
     clientLogger.log('🚀 useEffect: calling init()', {
@@ -1574,7 +1518,8 @@ export default function QuizPage() {
     // ИСПРАВЛЕНО: Корректируем индекс СРАЗУ, если он невалидный
     // КРИТИЧНО: НЕ сбрасываем индекс на 0, если пользователь уже прошел начальные инфо-экраны
     // Это предотвращает сброс индекса после перехода к следующему вопросу
-    if (isOutOfBounds && !isSubmitting && !shouldShowResume) { // ФИКС: Используем shouldShowResume вместо showResumeScreen
+    // ФИКС: НЕ корректируем индексы если hasResumed/isStartingOver/resumeCompleted
+    if (isOutOfBounds && !isSubmitting && !shouldShowResume && !hasResumedRef.current && !isStartingOverRef.current && !resumeCompletedRef.current) { // ФИКС: Используем shouldShowResume вместо showResumeScreen
       // Если анкета завершена — держим индекс на allQuestions.length для автоотправки.
       // Иначе корректируем на последний валидный вопрос или на 0 для нового пользователя.
       const hasNoSavedProgress = !savedProgress || !savedProgress.answers || Object.keys(savedProgress.answers).length === 0;
@@ -1636,7 +1581,8 @@ export default function QuizPage() {
       currentQuestionIndex > allQuestions.length ||
       (currentQuestionIndex === allQuestions.length && !isQuizCompleted);
     
-    if (isOutOfBounds && !isSubmitting && !shouldShowResume) { // ФИКС: Используем shouldShowResume вместо showResumeScreen
+    // ФИКС: НЕ корректируем индексы если hasResumed/isStartingOver/resumeCompleted
+    if (isOutOfBounds && !isSubmitting && !shouldShowResume && !hasResumedRef.current && !isStartingOverRef.current && !resumeCompletedRef.current) { // ФИКС: Используем shouldShowResume вместо showResumeScreen
       const correctedIndex = isQuizCompleted
         ? allQuestions.length
         : (allQuestions.length > 0 ? Math.max(0, allQuestions.length - 1) : 0);
@@ -1658,8 +1604,9 @@ export default function QuizPage() {
     
     // ИСПРАВЛЕНО: Проверяем, что текущий вопрос существует в allQuestions
     // Если вопрос был отфильтрован, корректируем индекс
+    // ФИКС: НЕ корректируем индексы если hasResumed/isStartingOver/resumeCompleted
     const currentQuestionInAllQuestions = allQuestions[currentQuestionIndex];
-    if (!currentQuestionInAllQuestions && allQuestions.length > 0) {
+    if (!currentQuestionInAllQuestions && allQuestions.length > 0 && !hasResumedRef.current && !isStartingOverRef.current && !resumeCompletedRef.current) {
       clientLogger.warn('⚠️ Текущий вопрос не найден в allQuestions, корректируем индекс', {
         currentQuestionIndex,
         allQuestionsLength: allQuestions.length,
@@ -1984,11 +1931,10 @@ export default function QuizPage() {
   // ФИКС: Выполняем редирект в отдельном useEffect
   useEffect(() => {
     if (shouldRedirectToPlan && typeof window !== 'undefined') {
-      // ФИКС: Используем scoped ключ для init_done
-      const initDoneKey = QUIZ_CONFIG.getScopedKey('quiz_init_done', scope);
-      sessionStorage.removeItem(initDoneKey);
-        window.location.replace('/plan?state=generating');
-      }
+      // ФИКС: quiz_init_done НЕ должен быть scoped, иначе ломается логика при смене scope
+      sessionStorage.removeItem('quiz_init_done');
+      window.location.replace('/plan?state=generating');
+    }
   }, [shouldRedirectToPlan]);
   
   // Показываем лоадер во время редиректа
