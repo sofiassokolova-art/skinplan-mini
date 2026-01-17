@@ -422,15 +422,12 @@ export function QuizQuestion({
           </div>
         );
 
-        return (
-          <>
-            {skinTypeProgressBar}
         // ИСПРАВЛЕНО: Разделяем текст вопроса на заголовок и подзаголовок для skin_type
         const questionText = question?.text || '';
         const textParts = questionText.split('\n');
         let title = textParts[0] || '';
         let subtitle = textParts.slice(1).join('\n') || '';
-        
+
         // Если нет подзаголовка через перенос строки, проверяем текст в скобках
         if (!subtitle) {
           const bracketMatch = title.match(/^(.+?)\s*\((.+?)\)\s*$/);
@@ -439,7 +436,7 @@ export function QuizQuestion({
             subtitle = `(${bracketMatch[2].trim()})`;
           }
         }
-        
+
         return (
           <>
             {skinTypeProgressBar}
