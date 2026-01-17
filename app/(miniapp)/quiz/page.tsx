@@ -147,6 +147,7 @@ export default function QuizPage() {
     CURRENT_QUESTION_CODE: QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE, scope),
     INIT_CALLED: QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.INIT_CALLED, scope),
     JUST_SUBMITTED: QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED, scope),
+    QUIZ_COMPLETED: QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.QUIZ_COMPLETED, scope),
   }), [scope]);
 
   // ФИКС B: Выбираем один source of truth для questionnaire (React Query + ref как кэш)
@@ -2299,7 +2300,9 @@ export default function QuizPage() {
         sessionStorage.removeItem(scopedStorageKeys.INIT_CALLED);
           sessionStorage.removeItem(scopedStorageKeys.JUST_SUBMITTED); // ФИКС: Очищаем JUST_SUBMITTED
           // ФИКС: Очищаем флаг завершения анкеты при новом старте
-          sessionStorage.removeItem(scopedStorageKeys.QUIZ_COMPLETED);
+          // scopedStorageKeys.QUIZ_COMPLETED не существует — удаляем флаг вручную по скоупу
+          const quizCompletedKey = QUIZ_CONFIG.getScopedKey('quiz_completed', scope);
+          sessionStorage.removeItem(quizCompletedKey);
           // ФИКС: Используем scoped ключ для answers_backup
           const answersBackupKey = QUIZ_CONFIG.getScopedKey('quiz_answers_backup', scope);
           sessionStorage.removeItem(answersBackupKey);
