@@ -634,6 +634,13 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
           }
         });
       }
+
+      // ИСПРАВЛЕНО: Используем ref для проверки актуального ответа, так как для single_choice handleNext вызывается через setTimeout
+      // и answers из замыкания может быть устаревшим
+      const effectiveAnswers = (answersRef?.current !== undefined && Object.keys(answersRef.current).length > 0)
+        ? answersRef.current
+        : answers;
+
       await saveProgressSafely(saveProgress, answers, newIndex, currentInfoScreenIndex);
       clientLogger.log('✅ Закрыт инфо-экран, переходим к следующему вопросу', {
         newIndex,
@@ -648,7 +655,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       // Инфо-экран будет проверен при следующем вызове handleNext после ответа пользователя
       return;
     }
-    
+
     // ИСПРАВЛЕНО: Проверяем инфо-экран для текущего вопроса ТОЛЬКО если:
     // 1. pendingInfoScreen НЕ установлен (не обрабатывается выше)
     // 2. Пользователь УЖЕ ответил на текущий вопрос (currentQuestionIndex в answers)
@@ -658,11 +665,6 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     // Это предотвращает застревание на инфо-экранах, когда пользователь уже ответил на следующий вопрос
     const currentQuestion = allQuestions[currentQuestionIndex];
     const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
-    // ИСПРАВЛЕНО: Используем ref для проверки актуального ответа, так как для single_choice handleNext вызывается через setTimeout
-    // и answers из замыкания может быть устаревшим
-    const effectiveAnswers = (answersRef?.current !== undefined && Object.keys(answersRef.current).length > 0)
-      ? answersRef.current
-      : answers;
     
     // ФИКС B: Хард-fallback - если currentQuestion валиден, но hasAnsweredCurrentQuestion false,
     // но ответ есть в answersRef/effectiveAnswers - это mismatch id/code, логируем и нормализуем
@@ -680,8 +682,8 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         
         if (allQuestionsWithCode.length > 0) {
           // Проверяем, есть ли ответ для любого вопроса с таким кодом
-          const foundQuestionWithAnswer = allQuestionsWithCode.find(q => 
-            effectiveAnswers[q.id] !== undefined || 
+          const foundQuestionWithAnswer = allQuestionsWithCode.find(q =>
+            effectiveAnswers[q.id] !== undefined ||
             (answersRef?.current && answersRef.current[q.id] !== undefined) ||
             (answers && answers[q.id] !== undefined)
           );
