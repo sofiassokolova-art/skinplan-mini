@@ -391,7 +391,30 @@ export default function QuizPage() {
 
   // ФИКС: Проверяем флаг очистки прогресса - если прогресс очищен, никогда не показываем резюм
   const progressClearedKey = QUIZ_CONFIG.getScopedKey('quiz_progress_cleared', scope);
-  const isProgressCleared = typeof window !== 'undefined' && sessionStorage.getItem(progressClearedKey) === 'true';
+  const [isProgressCleared, setIsProgressCleared] = useState(() =>
+    typeof window !== 'undefined' && sessionStorage.getItem(progressClearedKey) === 'true'
+  );
+
+  // ФИКС: Обновляем isProgressCleared когда sessionStorage изменяется
+  useEffect(() => {
+    const checkProgressCleared = () => {
+      const cleared = typeof window !== 'undefined' && sessionStorage.getItem(progressClearedKey) === 'true';
+      setIsProgressCleared(cleared);
+    };
+
+    // Проверяем сразу
+    checkProgressCleared();
+
+    // Слушаем изменения в sessionStorage (для случаев когда другие вкладки меняют его)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === progressClearedKey) {
+        checkProgressCleared();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [progressClearedKey]);
 
   const savedAnswersCount = savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0;
   const shouldShowResume = !!savedProgress &&
@@ -1307,8 +1330,87 @@ export default function QuizPage() {
       firstScreenResetRef,
       setLoading,
       setError,
+      setIsProgressCleared,
       questionnaire,
     });
+  };
+
+  // ФИКС: Обработчик "Начать анкету заново" для ResumeScreen
+  const handleStartFromBeginning = async () => {
+    clientLogger.log('🔄 Пользователь нажал "Начать анкету заново"');
+
+    // ФИКС: Правильный порядок очистки для безопасного "старта заново"
+    // 1. Сначала ставим защитные флаги, чтобы блокировать восстановление прогресса
+    isStartingOverRef.current = true;
+    setIsStartingOver(true);
+    autoSubmitTriggeredRef.current = false;
+    setAutoSubmitTriggered(false);
+    resumeCompletedRef.current = false;
+    hasResumedRef.current = false;
+    setHasResumed(false);
+
+    // 2. Полностью стираем sessionStorage ключи (все критичные ключи)
+    if (typeof window !== 'undefined') {
+      try {
+      sessionStorage.removeItem(scopedStorageKeys.CURRENT_INFO_SCREEN);
+      sessionStorage.removeItem(scopedStorageKeys.CURRENT_QUESTION);
+        sessionStorage.removeItem(scopedStorageKeys.CURRENT_QUESTION_CODE); // ФИКС: Очищаем CURRENT_QUESTION_CODE
+      sessionStorage.removeItem(scopedStorageKeys.INIT_CALLED);
+        sessionStorage.removeItem(scopedStorageKeys.JUST_SUBMITTED); // ФИКС: Очищаем JUST_SUBMITTED
+        // ФИКС: Очищаем флаг завершения анкеты при новом старте
+        // scopedStorageKeys.QUIZ_COMPLETED не существует — удаляем флаг вручную по скоупу
+        const quizCompletedKey = QUIZ_CONFIG.getScopedKey('quiz_completed', scope);
+        sessionStorage.removeItem(quizCompletedKey);
+        // ФИКС: Используем scoped ключ для answers_backup
+        const answersBackupKey = QUIZ_CONFIG.getScopedKey('quiz_answers_backup', scope);
+        sessionStorage.removeItem(answersBackupKey);
+        // ФИКС: Ставим флаг блокировки восстановления прогресса
+        const progressClearedKey = QUIZ_CONFIG.getScopedKey('quiz_progress_cleared', scope);
+        sessionStorage.setItem(progressClearedKey, 'true');
+        setIsProgressCleared(true); // ФИКС: Обновляем локальное состояние
+        clientLogger.log('✅ sessionStorage полностью очищен (включая CURRENT_QUESTION_CODE и JUST_SUBMITTED)');
+      } catch (err) {
+        clientLogger.warn('⚠️ Ошибка при очистке sessionStorage:', err);
+      }
+    }
+
+    // 3. Стираем локальные стейты/рефы
+    setAnswers({});
+    answersRef.current = {};
+    answersCountRef.current = 0;
+    setSavedProgress(null);
+    setShowResumeScreen(false);
+    setPendingInfoScreen(null);
+
+    // ФИКС: Блокируем восстановление прогресса в refs
+    progressLoadedRef.current = false;
+    lastRestoredAnswersIdRef.current = null;
+
+    // 4. Удаляем серверный прогресс (с инвалидацией кэша React Query)
+    try {
+      await clearQuizProgressMutation.mutateAsync(undefined);
+      clientLogger.log('✅ Ответы удалены на сервере при "Начать заново", кэш инвалидирован');
+    } catch (err) {
+      clientLogger.warn('⚠️ Ошибка при удалении ответов на сервере:', err);
+    }
+
+    // 5. Также вызываем clearProgress для дополнительной очистки локального состояния
+    await clearProgress();
+
+    // 6. Сбрасываем индексы на старт
+    setCurrentInfoScreenIndex(0);
+    currentInfoScreenIndexRef.current = 0;
+    setCurrentQuestionIndex(0);
+
+    // 7. ФИКС: Снимаем isStartingOver после того, как стартовый экран уже показался
+    // Используем setTimeout для следующего тика, чтобы гарантировать рендер стартового экрана
+    setTimeout(() => {
+    setIsStartingOver(false);
+    isStartingOverRef.current = false;
+      clientLogger.log('✅ isStartingOver снят после показа стартового экрана');
+    }, 0);
+
+    clientLogger.log('✅ Состояние полностью сброшено, переход на первый инфо экран');
   };
 
   // ИСПРАВЛЕНО: Убран дублирующий лоадер при isSubmitting
@@ -2311,6 +2413,7 @@ export default function QuizPage() {
           // ФИКС: Ставим флаг блокировки восстановления прогресса
           const progressClearedKey = QUIZ_CONFIG.getScopedKey('quiz_progress_cleared', scope);
           sessionStorage.setItem(progressClearedKey, 'true');
+          setIsProgressCleared(true); // ФИКС: Обновляем локальное состояние
           clientLogger.log('✅ sessionStorage полностью очищен (включая CURRENT_QUESTION_CODE и JUST_SUBMITTED)');
         } catch (err) {
           clientLogger.warn('⚠️ Ошибка при очистке sessionStorage:', err);

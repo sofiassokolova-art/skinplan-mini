@@ -30,6 +30,7 @@ export interface StartOverParams {
   firstScreenResetRef: React.MutableRefObject<boolean>;
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
+  setIsProgressCleared: React.Dispatch<React.SetStateAction<boolean>>;
   questionnaire: Questionnaire | null;
 }
 
@@ -91,6 +92,7 @@ export async function startOver(params: StartOverParams): Promise<void> {
 
       // Устанавливаем железный флаг блокировки восстановления
       sessionStorage.setItem(QUIZ_CONFIG.getScopedKey('quiz_progress_cleared', scope), 'true');
+      params.setIsProgressCleared(true); // ФИКС: Обновляем локальное состояние
     } catch (err) {
       clientLogger.warn('⚠️ Не удалось очистить quiz данные из sessionStorage', err);
     }
