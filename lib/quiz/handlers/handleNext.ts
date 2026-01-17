@@ -55,13 +55,9 @@ export interface HandleNextParams {
 }
 
 // Вспомогательная функция для подсчета общего количества вопросов в анкете
+// Теперь вопросы всегда нормализованы в questionnaire.questions
 const getTotalQuestionsCount = (questionnaire: Questionnaire | null): number => {
-  if (!questionnaire) return 0;
-
-  const questionsInGroups = questionnaire.groups?.flatMap((g: { questions?: Question[] }) => g.questions || []).length ?? 0;
-  const questionsInRoot = questionnaire.questions?.length ?? 0;
-
-  return questionsInGroups + questionsInRoot;
+  return questionnaire?.questions?.length ?? 0;
 };
 
 // Вспомогательная функция для обеспечения готовности вопросов
@@ -94,7 +90,8 @@ const ensureQuestionsReady = async (
   }
   try {
     const loaded = await loadQuestionnaire();
-    return (loaded?.questions?.length ?? 0) > 0;
+    // Проверяем общее количество вопросов после загрузки (включая groups)
+    return getTotalQuestionsCount(loaded) > 0;
   } finally {
     if (setLoading) {
       setLoading(false);
@@ -341,30 +338,35 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       }
 
       const newInfoIndex = initialInfoScreens.length;
+      // Получаем плоский массив вопросов (теперь всегда нормализован в questionnaire.questions)
+      const questions = questionnaireRef.current?.questions ?? [];
+      const totalQuestionsCount = questions.length;
+
       // ФИКС: Логируем переход к вопросам после последнего инфо-экрана
       clientLogger.warn('🔄 handleNext: переход к вопросам после последнего инфо-экрана', {
         currentInfoScreenIndex,
         newInfoIndex,
         initialInfoScreensLength: initialInfoScreens.length,
-        questionsLength: questionnaireRef.current?.questions?.length ?? 0,
+        questionsLength: questions.length,
+        totalQuestionsCount,
       });
+
+      if (questions.length === 0) {
+        clientLogger.warn('⚠️ handleNext: вопросы не найдены в questionnaireRef, не устанавливаем currentQuestionIndex', {
+          hasQuestionnaire: !!questionnaireRef.current,
+          questionsLength: questions.length,
+          totalQuestionsCount,
+        });
+        // Не устанавливаем индекс, если вопросов нет
+        return;
+      }
+
       // КРИТИЧНО: Обновляем ref СИНХРОННО перед установкой state, чтобы другие функции видели новое значение
       updateInfoScreenIndex(newInfoIndex, currentInfoScreenIndexRef, setCurrentInfoScreenIndex);
       // ИСПРАВЛЕНО: БАГ #3 - используем QUIZ_CONFIG.STORAGE_KEYS со скоупированием
       // ФИКС: Сохраняем newInfoIndex в sessionStorage для восстановления при перемонтировании
       const scopedInfoScreenKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN, qid);
       saveIndexToSessionStorage(scopedInfoScreenKey, newInfoIndex, '💾 Сохранен currentInfoScreenIndex в sessionStorage при переходе к вопросам');
-
-      // Получаем вопросы из questionnaireRef - это теперь источник истины
-      const questions = questionnaireRef.current?.questions ?? [];
-      if (questions.length === 0) {
-        clientLogger.warn('⚠️ handleNext: вопросы не найдены в questionnaireRef, не устанавливаем currentQuestionIndex', {
-          hasQuestionnaire: !!questionnaireRef.current,
-          questionsLength: questions.length,
-        });
-        // Не устанавливаем индекс, если вопросов нет
-        return;
-      }
       
       // ИСПРАВЛЕНО: Теперь используем questions из questionnaireRef как источник истины
       // Восстанавливаем questionCode из sessionStorage для пользователей с прогрессом

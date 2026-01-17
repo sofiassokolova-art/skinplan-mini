@@ -584,11 +584,25 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
     
     // КРИТИЧНО: Создаем новый объект, чтобы React обновил state (reference equality)
     // ИСПРАВЛЕНО: Используем spread operator для создания нового объекта
+
+    // НОРМАЛИЗАЦИЯ: Всегда создаем плоский массив вопросов в questionnaire.questions
+    // Это предотвращает рассинхрон между разными источниками вопросов
+    const questionsFromGroups = groups.flatMap((g: any) => g.questions || []);
+    const questionsFromRoot = questions;
+    const normalizedQuestions = [...questionsFromGroups, ...questionsFromRoot];
+
     const questionnaireToSet = {
       ...questionnaireData,
-      groups: [...(questionnaireData.groups || [])],
-      questions: [...(questionnaireData.questions || [])],
+      groups: [...groups],
+      questions: normalizedQuestions, // Всегда плоский массив всех вопросов
     };
+
+    clientLogger.log('🔄 Questionnaire normalized', {
+      originalQuestionsInRoot: questions.length,
+      questionsFromGroups: questionsFromGroups.length,
+      normalizedQuestionsCount: normalizedQuestions.length,
+      totalQuestions,
+    });
     
     // ИСПРАВЛЕНО: Обновляем ref ПЕРЕД установкой state, чтобы guards работали корректно
     clientLogger.log('🟢 SETTING questionnaireRef.current', {
