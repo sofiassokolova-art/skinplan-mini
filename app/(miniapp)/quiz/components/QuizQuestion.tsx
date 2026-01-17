@@ -1040,6 +1040,6 @@ export function QuizQuestion({
             )
           )}
         </div>
-        </>
-      );
+    </>
+  );
     })()}
