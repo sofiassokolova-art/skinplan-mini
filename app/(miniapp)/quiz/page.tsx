@@ -1463,6 +1463,7 @@ export default function QuizPage() {
     hasResumed,
     isStartingOver,
     answersCount,
+    scope,
   });
 
   // ИСПРАВЛЕНО: Обработка edge case - когда allQuestions.length === 0

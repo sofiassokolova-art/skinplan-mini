@@ -56,6 +56,7 @@ export interface UseQuizEffectsParams {
   setAutoSubmitTriggered: React.Dispatch<React.SetStateAction<boolean>>;
   autoSubmitTriggeredRef: React.MutableRefObject<boolean>;
   submitAnswers: () => Promise<void>;
+  scope: string;
   
   // Refs
   questionnaireRef: React.MutableRefObject<Questionnaire | null>;
@@ -188,6 +189,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     hasResumed,
     isStartingOver,
     answersCount,
+    scope,
   } = params;
 
   // ============================================
