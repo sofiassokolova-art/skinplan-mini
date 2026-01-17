@@ -269,7 +269,13 @@ function LayoutContent({
 
       {/* ФИКС: Кнопка "назад" фиксированная относительно viewport (выше PageTransition) */}
       {/* Это предотвращает проблемы с transform в PageTransition, которые ломают position: fixed */}
-      {isOnQuizPage && (
+      {isOnQuizPage && (() => {
+        // ФИКС: Скрываем кнопку "назад" на welcome screen (currentInfoScreenIndex === 0)
+        const currentInfoScreenIndex = typeof window !== 'undefined' ?
+          parseInt(sessionStorage.getItem('currentInfoScreenIndex') || '0', 10) : 0;
+        const shouldShowBackButton = currentInfoScreenIndex > 0;
+        return shouldShowBackButton;
+      })() && (
         <div style={{
           position: 'fixed',
           top: 'clamp(20px, 4vh, 40px)',

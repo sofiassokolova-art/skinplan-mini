@@ -214,6 +214,13 @@ export default function QuizPage() {
     stateMachineQuestionnaireIdRef,
   } = quizState;
 
+  // ФИКС: Синхронизируем currentInfoScreenIndex в sessionStorage для layout.tsx
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('currentInfoScreenIndex', currentInfoScreenIndex.toString());
+    }
+  }, [currentInfoScreenIndex]);
+
   // ФИКС: Используем ref для отслеживания questionnaire из State Machine, чтобы избежать зависимости от объекта
   useEffect(() => {
     stateMachineQuestionnaireRef.current = quizStateMachine.questionnaire;
