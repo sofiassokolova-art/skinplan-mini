@@ -1135,6 +1135,7 @@ export default function QuizPage() {
       setCurrentInfoScreenIndex,
       setCurrentQuestionIndex,
       setPendingInfoScreen,
+      setError,
       saveProgress,
       loadQuestionnaire,
       initInProgressRef,

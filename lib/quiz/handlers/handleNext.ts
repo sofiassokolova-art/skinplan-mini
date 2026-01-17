@@ -45,6 +45,7 @@ export interface HandleNextParams {
   setCurrentInfoScreenIndex: React.Dispatch<React.SetStateAction<number>>;
   setCurrentQuestionIndex: React.Dispatch<React.SetStateAction<number>>;
   setPendingInfoScreen: React.Dispatch<React.SetStateAction<InfoScreen | null>>;
+  setError: React.Dispatch<React.SetStateAction<string | null>>;
   
   // Functions
   saveProgress: (answers: Record<number, string | string[]>, questionIndex: number, infoScreenIndex: number) => Promise<void>;
