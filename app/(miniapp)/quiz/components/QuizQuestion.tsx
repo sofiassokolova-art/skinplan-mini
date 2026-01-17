@@ -437,8 +437,9 @@ export function QuizQuestion({
           }
         }
 
-        <>
-          {skinTypeProgressBar}
+        return (
+          <>
+            {skinTypeProgressBar}
             <div style={{
               backgroundColor: '#D5FE61',
               borderRadius: isGoalsQuestion ? '0' : '24px', // ИСПРАВЛЕНО: Для skin_goals скругление только сверху
@@ -1040,7 +1041,5 @@ export function QuizQuestion({
             )
           )}
         </div>
-      })()}
-    </>
-  );
+      )}
 }
