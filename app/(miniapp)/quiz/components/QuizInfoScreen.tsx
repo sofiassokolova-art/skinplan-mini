@@ -142,30 +142,90 @@ export function QuizInfoScreen({
     }
   }, [screen.id]);
 
+  // ФИКС: Кнопка "Назад" - создаём один раз для всех экранов
+  const shouldShowBackButton = currentInfoScreenIndex > 0 && screen.id !== 'welcome';
+  const backButton =
+    shouldShowBackButton &&
+    typeof window !== 'undefined' &&
+    handleBack
+      ? createPortal(
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleBack();
+            }}
+            style={{
+              position: 'fixed',
+              top: 'clamp(20px, 4vh, 40px)',
+              left: 'clamp(19px, 5vw, 24px)',
+              zIndex: 99999,
+              width: '44px',
+              height: '44px',
+              background: 'transparent',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              padding: 0,
+              pointerEvents: 'auto',
+              transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
+              backfaceVisibility: 'hidden', // Оптимизация рендеринга
+              WebkitTransform: 'translateZ(0)', // Для Safari
+              isolation: 'isolate', // Создаем новый контекст стекирования
+              willChange: 'transform', // Оптимизация для браузера
+              contain: 'layout style paint', // Изолируем кнопку от остального контента
+            }}
+          >
+            <svg
+              width="12"
+              height="20"
+              viewBox="0 0 12 20"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M10 2L2 10L10 18"
+                stroke="#1A1A1A"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>,
+          document.body
+        )
+      : null;
+
   // РЕФАКТОРИНГ: Используем компонент WelcomeScreen
   if (isWelcomeScreen) {
     return (
-      <WelcomeScreen
-        screen={screen}
-        onContinue={() => {
-          if (!handleNextInProgressRef.current && !isHandlingNext) {
-            handleNext();
-          }
-        }}
-        isHandlingNext={isHandlingNext}
-        currentInfoScreenIndex={currentInfoScreenIndex}
-        onBack={handleBack}
-      />
+      <>
+        {backButton}
+        <WelcomeScreen
+          screen={screen}
+          onContinue={() => {
+            if (!handleNextInProgressRef.current && !isHandlingNext) {
+              handleNext();
+            }
+          }}
+          isHandlingNext={isHandlingNext}
+          currentInfoScreenIndex={currentInfoScreenIndex}
+          onBack={handleBack}
+        />
+      </>
     );
   }
 
   // Специальный рендеринг для экрана "Как это работает?"
   if (isHowItWorksScreen) {
     const steps = screen.subtitle?.split('\n').filter(line => line.trim()) || [];
-    
-    
+
+
     return (
       <>
+        {backButton}
         <div style={{ 
           padding: 0,
           margin: 0,
@@ -346,6 +406,7 @@ export function QuizInfoScreen({
 
     return (
       <>
+        {backButton}
         <PersonalAnalysisScreen
           screen={screen}
           currentInfoScreenIndex={currentInfoScreenIndex}
@@ -361,6 +422,7 @@ export function QuizInfoScreen({
 
     return (
       <>
+        {backButton}
         <div style={{ 
           padding: 0,
           margin: 0,
@@ -479,6 +541,7 @@ export function QuizInfoScreen({
 
     return (
       <>
+        {backButton}
         <div style={{
           padding: 0,
           margin: 0,
@@ -603,6 +666,7 @@ export function QuizInfoScreen({
 
     return (
       <>
+        {backButton}
         <div style={{
           padding: 0,
           margin: 0,
@@ -726,6 +790,7 @@ export function QuizInfoScreen({
 
     return (
       <>
+        {backButton}
         <div style={{
           padding: 0,
           margin: 0,
@@ -843,6 +908,7 @@ export function QuizInfoScreen({
 
     return (
       <>
+        {backButton}
         <div style={{
           padding: 0,
           margin: 0,
@@ -968,6 +1034,7 @@ export function QuizInfoScreen({
 
     return (
       <>
+        {backButton}
         <div style={{
           padding: 0,
           margin: 0,
@@ -1085,63 +1152,10 @@ export function QuizInfoScreen({
     );
   }
 
-  // Кнопка "Назад" - рендерим через портал, чтобы она была вне прокручиваемого контейнера
-  // ИСПРАВЛЕНО: Кнопка всегда зафиксирована наверху и не листается вместе с инфо-экранами
-  // ФИКС: На первом экране (index 0) и welcome экране кнопка "назад" никогда не показывается
-  const shouldShowBackButton = currentInfoScreenIndex > 0 && screen.id !== 'welcome';
-  const backButton = shouldShowBackButton && typeof window !== 'undefined' && handleBack ? createPortal(
-    <button
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        handleBack();
-      }}
-      style={{
-        position: 'fixed',
-        top: 'clamp(20px, 4vh, 40px)',
-        left: 'clamp(19px, 5vw, 24px)',
-        zIndex: 99999,
-        width: '44px',
-        height: '44px',
-        background: 'transparent',
-        border: 'none',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        cursor: 'pointer',
-        padding: 0,
-        pointerEvents: 'auto',
-        transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
-        backfaceVisibility: 'hidden', // Оптимизация рендеринга
-        WebkitTransform: 'translateZ(0)', // Для Safari
-        isolation: 'isolate', // Создаем новый контекст стекирования
-        willChange: 'transform', // Оптимизация для браузера
-        contain: 'layout style paint', // Изолируем кнопку от остального контента
-      }}
-    >
-      <svg
-        width="12"
-        height="20"
-        viewBox="0 0 12 20"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path
-          d="M10 2L2 10L10 18"
-          stroke="#1A1A1A"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </button>,
-    document.body
-  ) : null;
 
   // Дефолтный рендеринг для остальных инфо-экранов
   return (
     <>
-      {/* Кнопка "Назад" - рендерится через портал в body для гарантированной фиксации */}
       {backButton}
       <div style={{
         padding: '20px',

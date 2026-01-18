@@ -99,10 +99,9 @@ export async function handleBack(params: HandleBackParams): Promise<void> {
   }
   handleBackInProgressRef.current = true;
 
-  const initialInfoScreens = getInitialInfoScreens();
-  const isOnQuestionsValue = isOnQuestions(currentInfoScreenIndex, currentInfoScreenIndexRef);
-
   try {
+    const initialInfoScreens = getInitialInfoScreens();
+    const isOnQuestionsValue = isOnQuestions(currentInfoScreenIndex, currentInfoScreenIndexRef);
     // если на вопросах (кроме случая “первый вопрос -> назад в инфо”), анкета должна быть
     const isOnFirstQuestion = currentQuestionIndex === 0 && allQuestions.length > 0;
     if (isOnQuestionsValue && !isOnFirstQuestion && !hasQuestionnaire(questionnaire, questionnaireRef)) {
