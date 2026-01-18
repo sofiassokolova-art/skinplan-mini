@@ -978,34 +978,9 @@ export default function QuizPage() {
   ]);
 
   /**
-   * ✅ Redirect to plan after submit
+   * ✅ Redirect to plan after submit - moved inside submitAnswers handler
+   * Now happens after successful response, not just when isSubmitting=true
    */
-  const [shouldRedirectToPlan, setShouldRedirectToPlan] = useState(false);
-
-  useEffect(() => {
-    if (isSubmitting && !initCompletedRef.current) {
-      setIsSubmitting(false);
-      isSubmittingRef.current = false;
-      return;
-    }
-
-    if (isSubmitting && initCompletedRef.current && questionnaire) {
-      try {
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem(scopedStorageKeys.JUST_SUBMITTED, 'true');
-        }
-      } catch {
-        // ignore
-      }
-      setShouldRedirectToPlan(true);
-    }
-  }, [isSubmitting, questionnaire, scopedStorageKeys.JUST_SUBMITTED, setIsSubmitting, initCompletedRef, isSubmittingRef]);
-
-  useEffect(() => {
-    if (!shouldRedirectToPlan) return;
-    if (typeof window === 'undefined') return;
-    window.location.replace('/plan?state=generating');
-  }, [shouldRedirectToPlan]);
 
   /**
    * ✅ useQuizEffects (kept)

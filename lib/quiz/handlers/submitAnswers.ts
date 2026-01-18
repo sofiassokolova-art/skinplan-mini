@@ -32,14 +32,16 @@ export interface SubmitAnswersParams {
 export async function submitAnswers(params: SubmitAnswersParams): Promise<void> {
   clientLogger.log('🚀 submitAnswers вызвана');
   
-  // КРИТИЧНО: Устанавливаем флаг quiz_just_submitted СРАЗУ, синхронно, ДО любых асинхронных операций
+  // КРИТИЧНО: Устанавливаем флаги quiz_just_submitted СРАЗУ, синхронно, ДО любых асинхронных операций
   // Это защита от редиректа на первый экран, если что-то пойдет не так
+  // НУЖНО СТАВИТЬ ОБА КЛЮЧА: и обычный для RootPage, и scoped для quiz-логики
   if (typeof window !== 'undefined') {
     try {
       sessionStorage.setItem('quiz_just_submitted', 'true');
-      clientLogger.log('✅ Флаг quiz_just_submitted установлен СРАЗУ при вызове submitAnswers');
+      sessionStorage.setItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED, 'true');
+      clientLogger.log('✅ Флаги quiz_just_submitted установлены СРАЗУ при вызове submitAnswers');
     } catch (storageError) {
-      clientLogger.warn('⚠️ Не удалось установить флаг quiz_just_submitted:', storageError);
+      clientLogger.warn('⚠️ Не удалось установить флаги quiz_just_submitted:', storageError);
     }
   }
   
