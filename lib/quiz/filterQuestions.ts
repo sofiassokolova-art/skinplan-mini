@@ -2,18 +2,9 @@
 // Единая утилита для фильтрации вопросов анкеты
 // Используется в основном потоке, resume и retake экранах
 
-export interface Question {
-  id: number;
-  code: string;
-  text: string;
-  type: string;
-  isRequired: boolean;
-  options?: Array<{
-    id: number;
-    value: string;
-    label: string;
-  }>;
-}
+import type { Question } from './types';
+
+export type { Question };
 
 export interface FilterQuestionsOptions {
   questions: Question[];

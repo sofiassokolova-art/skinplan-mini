@@ -9,7 +9,6 @@ import { useQuizStateExtended } from '@/lib/quiz/hooks/useQuizStateExtended';
 import { useQuestionnaire, useQuizProgress, useSaveQuizProgress } from '@/hooks/useQuiz';
 import { useTelegram } from '@/lib/telegram-client';
 import { clientLogger } from '@/lib/client-logger';
-import * as userPreferences from '@/lib/user-preferences';
 
 interface QuizContextType {
   // State machine

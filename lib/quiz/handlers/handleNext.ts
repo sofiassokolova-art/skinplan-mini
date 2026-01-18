@@ -4,17 +4,22 @@
 import type React from 'react';
 import { clientLogger } from '@/lib/client-logger';
 import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
-import { INFO_SCREENS, getInitialInfoScreens, getInfoScreenAfterQuestion, getNextInfoScreenAfterScreen, type InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
-import { 
-  saveIndexToSessionStorage, 
-  saveProgressSafely, 
-  updateInfoScreenIndex, 
-  updateQuestionIndex,
-  canNavigate 
-} from './shared-utils';
-
-// Импортируем правильные типы из централизованного файла
+import { INFO_SCREENS, getInitialInfoScreens, getNextInfoScreenAfterScreen, getInfoScreenAfterQuestion } from '@/app/(miniapp)/quiz/info-screens';
+import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 import type { Questionnaire, Question } from '@/lib/quiz/types';
+
+// Импортируем модули навигации
+import { validateAndGetPendingInfoScreen } from './navigation/validation';
+import { handleQuestionNavigation } from './navigation/question-navigation';
+import { handleInfoScreenNavigation } from './navigation/info-screen-navigation';
+import { handleRetakeNavigation } from './navigation/retake-navigation';
+import {
+  saveIndexToSessionStorage,
+  saveProgressSafely,
+  updateInfoScreenIndex,
+  updateQuestionIndex,
+  canNavigate
+} from './shared-utils';
 
 export interface HandleNextParams {
   // Refs
@@ -133,35 +138,24 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     setLoading,
     isDev,
   } = params;
-  
-  // ФИКС: Используем ref для получения актуального значения pendingInfoScreen
-  // Это предотвращает проблему с устаревшим значением из замыкания
-  // ИСПРАВЛЕНО: Сначала проверяем ref, потом state, чтобы получить самое актуальное значение
-  const currentPendingInfoScreen = (pendingInfoScreenRef?.current !== undefined && pendingInfoScreenRef?.current !== null) 
-    ? pendingInfoScreenRef.current 
-    : pendingInfoScreen;
 
-  // ФИКС: Защита от множественных кликов
-  if (handleNextInProgressRef.current) {
-    clientLogger.warn('⏸️ handleNext: уже выполняется, пропускаем повторный вызов');
-    return;
+  // Валидация и получение актуального pendingInfoScreen
+  const currentPendingInfoScreen = validateAndGetPendingInfoScreen({
+    handleNextInProgressRef,
+    questionnaire,
+    loading,
+    currentInfoScreenIndex,
+    currentQuestionIndex,
+    allQuestions,
+    pendingInfoScreen,
+    pendingInfoScreenRef,
+    isDev,
+  });
+
+  if (currentPendingInfoScreen === null && handleNextInProgressRef.current) {
+    return; // Валидация не прошла
   }
-  
-  // ФИКС: Логирование состояния pendingInfoScreen при входе в handleNext
-  if (isDev || true) { // Всегда логируем для диагностики
-    clientLogger.warn('🔍 handleNext: вход в функцию', {
-      pendingInfoScreen: pendingInfoScreen ? pendingInfoScreen.id : null,
-      pendingInfoScreenFromRef: currentPendingInfoScreen ? currentPendingInfoScreen.id : null,
-      hasPendingInfoScreen: !!pendingInfoScreen,
-      hasPendingInfoScreenFromRef: !!currentPendingInfoScreen,
-      pendingInfoScreenRefExists: !!pendingInfoScreenRef,
-      pendingInfoScreenRefCurrent: pendingInfoScreenRef?.current ? pendingInfoScreenRef.current.id : null,
-      currentQuestionIndex,
-      currentInfoScreenIndex,
-      isRetakingQuiz,
-    });
-  }
-  
+
   handleNextInProgressRef.current = true;
   setIsHandlingNext(true);
   

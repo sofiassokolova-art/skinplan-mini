@@ -3,10 +3,11 @@
 
 import { useEffect } from 'react';
 import { clientLogger } from '@/lib/client-logger';
+import type { Questionnaire } from '../types';
 
 interface UseRetakeAnswersLoaderParams {
   isRetakingQuiz: boolean;
-  questionnaire: any;
+  questionnaire: Questionnaire;
   setAnswers: (answers: Record<number, string | string[]>) => void;
   setCurrentQuestionIndex: (index: number) => void;
 }

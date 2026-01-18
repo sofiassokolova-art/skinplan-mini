@@ -38,19 +38,15 @@ export function validateAnswer(question: Question, answer: string | string[]): V
   // Валидация в зависимости от типа вопроса
   switch (question.type) {
     case 'single_choice':
-    case 'single':
       return validateSingleChoice(question, answer);
-    
+
     case 'multi_choice':
-    case 'multi':
       return validateMultiChoice(question, answer);
-    
+
     case 'scale':
-    case 'slider':
       return validateScale(question, answer);
     
     case 'free_text':
-    case 'input':
       return validateFreeText(question, answer);
     
     default:

@@ -4,11 +4,14 @@
 'use client';
 
 import type React from 'react';
+import { Suspense, lazy } from 'react';
 import { QuizDebugPanel } from './QuizDebugPanel';
 import { QuizQuestionState } from './QuizQuestionState';
-import { QuizQuestion } from './QuizQuestion';
 import { QuizFinalizingLoader } from './QuizFinalizingLoader';
 import type { Question } from '@/lib/quiz/types';
+
+// Lazy loading для тяжелого компонента QuizQuestion
+const QuizQuestion = lazy(() => import('./QuizQuestion').then(mod => ({ default: mod.QuizQuestion })));
 
 interface QuizPageContentProps {
   backgroundColor: string;
@@ -16,6 +19,7 @@ interface QuizPageContentProps {
   showDebugPanel: boolean;
   debugLogs: Array<{ time: string; message: string; data?: any }>;
   setShowDebugPanel: (show: boolean) => void;
+  children?: React.ReactNode;
   currentQuestion: Question | null;
   currentQuestionIndex: number;
   currentInfoScreenIndex: number;
@@ -53,6 +57,7 @@ export function QuizPageContent(props: QuizPageContentProps) {
     showDebugPanel,
     debugLogs,
     setShowDebugPanel,
+    children,
     currentQuestion,
     currentQuestionIndex,
     currentInfoScreenIndex,
@@ -142,23 +147,27 @@ export function QuizPageContent(props: QuizPageContentProps) {
         />
 
         {shouldShowQuestion && (
-          <QuizQuestion
-            question={currentQuestion as Question}
-            currentQuestionIndex={currentQuestionIndex}
-            allQuestionsLength={allQuestionsLength}
-            answers={answers}
-            isRetakingQuiz={isRetakingQuiz}
-            isSubmitting={isSubmitting}
-            onAnswer={onAnswer}
-            onNext={onNext}
-            onSubmit={onSubmit}
-            onBack={onBack}
-            showBackButton={
-              currentQuestionIndex > 0 || isPastInitialScreens
-            }
-          />
+          <Suspense fallback={<div>Loading question...</div>}>
+            <QuizQuestion
+              question={currentQuestion as Question}
+              currentQuestionIndex={currentQuestionIndex}
+              allQuestionsLength={allQuestionsLength}
+              answers={answers}
+              isRetakingQuiz={isRetakingQuiz}
+              isSubmitting={isSubmitting}
+              onAnswer={onAnswer}
+              onNext={onNext}
+              onSubmit={onSubmit}
+              onBack={onBack}
+              showBackButton={
+                currentQuestionIndex > 0 || isPastInitialScreens
+              }
+            />
+          </Suspense>
         )}
       </div>
+
+      {children}
 
       <QuizFinalizingLoader
         finalizing={finalizing}

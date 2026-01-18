@@ -4,13 +4,13 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import type { Questionnaire } from '@/lib/quiz/types';
 import type { InfoScreen } from '../info-screens';
 import { getNextInfoScreenAfterScreen } from '../info-screens';
-import { WelcomeScreen, HowItWorksScreen, PersonalAnalysisScreen } from '@/components/quiz/screens';
+import { WelcomeScreen, PersonalAnalysisScreen } from '@/components/quiz/screens';
 import { FixedContinueButton, TinderButtons } from '@/components/quiz/buttons';
 import { TestimonialsCarousel, ProductsGrid } from '@/components/quiz/content';
 import { clientLogger } from '@/lib/client-logger';
@@ -82,10 +82,10 @@ function InfoScreenLayout({
   children,
   customContent,
   onContinue,
-  onBack,
+  onBack: _onBack,
   isHandlingNext = false,
-  showBackButton = true,
-  isInitialInfoScreen = false,
+  showBackButton: _showBackButton = true,
+  isInitialInfoScreen: _isInitialInfoScreen = false,
 }: InfoScreenLayoutProps) {
   const isGeneralInfo = screen.id.includes('general_info') || screen.id.includes('goals_intro');
   const isPersonalAnalysis = screen.id === 'personal_analysis';
@@ -93,80 +93,9 @@ function InfoScreenLayout({
 
   // Кнопка "Назад"
   // ФИКС: Для начальных инфо экранов показываем кнопку всегда, кроме welcome
-  const shouldShowBack = showBackButton && screen.id !== 'welcome' && onBack &&
-    (isInitialInfoScreen || currentInfoScreenIndex > 0);
+  // shouldShowBack is defined later in the component
 
-  const backButton = shouldShowBack
-    ? createPortal(
-        <button
-          type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              // Prevent any scroll effects
-              const html = document.documentElement;
-              const body = document.body;
-              const scrollTop = window.pageYOffset || html.scrollTop || body.scrollTop || 0;
-              const scrollLeft = window.pageXOffset || html.scrollLeft || body.scrollLeft || 0;
-
-              onBack();
-
-              // Restore scroll position in case something changed it
-              setTimeout(() => {
-                window.scrollTo(scrollLeft, scrollTop);
-              }, 0);
-            }}
-          onTouchStart={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-          onTouchEnd={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onBack();
-          }}
-          style={{
-            position: 'fixed',
-            top: 'clamp(20px, 4vh, 40px)',
-            left: 'clamp(19px, 5vw, 24px)',
-            zIndex: 99999,
-            width: '44px',
-            height: '44px',
-            background: 'transparent',
-            border: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            padding: 0,
-            pointerEvents: 'auto',
-            transform: 'translateZ(0)',
-            backfaceVisibility: 'hidden',
-            WebkitTransform: 'translateZ(0)',
-            isolation: 'isolate',
-            willChange: 'transform',
-            contain: 'layout style paint',
-          }}
-        >
-          <svg
-            width="12"
-            height="20"
-            viewBox="0 0 12 20"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M10 2L2 10L10 18"
-              stroke="#1A1A1A"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>,
-        document.body
-      )
-    : null;
+  // backButton is defined later in the component
 
   return (
     <div style={{
@@ -340,7 +269,7 @@ export function QuizInfoScreen({
   isDev,
   handleNextInProgressRef,
   isSubmittingRef,
-  setCurrentInfoScreenIndex,
+  setCurrentInfoScreenIndex: _setCurrentInfoScreenIndex,
   setIsSubmitting,
   setError,
   setLoading,

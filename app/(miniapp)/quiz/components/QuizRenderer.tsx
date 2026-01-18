@@ -3,11 +3,17 @@
 
 'use client';
 
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { useQuizContext } from './QuizProvider';
-import { QuizInfoScreen } from './QuizInfoScreen';
-import { QuizResumeScreen } from './QuizResumeScreen';
-import { QuizRetakeScreen } from './QuizRetakeScreen';
+import { ScreenErrorBoundary, QuestionErrorBoundary, QuizErrorBoundary } from '@/components/QuizErrorBoundary';
+
+// Lazy loading для тяжелых компонентов
+const QuizInfoScreen = lazy(() => import('./QuizInfoScreen').then(mod => ({ default: mod.QuizInfoScreen })));
+const QuizQuestion = lazy(() => import('./QuizQuestion').then(mod => ({ default: mod.QuizQuestion })));
+const QuizResumeScreen = lazy(() => import('./QuizResumeScreen').then(mod => ({ default: mod.QuizResumeScreen })));
+const QuizRetakeScreen = lazy(() => import('./QuizRetakeScreen').then(mod => ({ default: mod.QuizRetakeScreen })));
+
+// Не ленивые импорты для часто используемых компонентов
 import { QuizInitialLoader } from './QuizInitialLoader';
 import { checkQuizErrors } from './QuizErrorChecker';
 import { QuizPageContent } from './QuizPageContent';
@@ -159,27 +165,31 @@ export function QuizRenderer({
     const isPendingInitialScreen = false;
 
     return (
-      <QuizInfoScreen
-        screen={pendingInfoScreen!}
-        currentInfoScreenIndex={currentInfoScreenIndex}
-        questionnaire={questionnaireFromQuery || questionnaireRef.current || questionnaire}
-        questionnaireRef={questionnaireRef}
-        error={error}
-        isSubmitting={isSubmitting}
-        isHandlingNext={false} // Will be passed from parent
-        isDev={isDev}
-        handleNextInProgressRef={{ current: false }} // Will be passed from parent
-        isSubmittingRef={isSubmittingRef}
-        setCurrentInfoScreenIndex={setCurrentInfoScreenIndex}
-        setIsSubmitting={setIsSubmitting}
-        setError={setError}
-        setLoading={setLoading}
-        handleNext={handleNext}
-        submitAnswers={submitAnswers}
-        pendingInfoScreenRef={quizState.pendingInfoScreenRef}
-        handleBack={handleBack}
-        isInitialInfoScreen={isPendingInitialScreen}
-      />
+      <ScreenErrorBoundary componentName="InfoScreen">
+        <Suspense fallback={<div>Loading info screen...</div>}>
+          <QuizInfoScreen
+            screen={pendingInfoScreen!}
+            currentInfoScreenIndex={currentInfoScreenIndex}
+            questionnaire={questionnaireFromQuery || questionnaireRef.current || questionnaire}
+            questionnaireRef={questionnaireRef}
+            error={error}
+            isSubmitting={isSubmitting}
+            isHandlingNext={false} // Will be passed from parent
+            isDev={isDev}
+            handleNextInProgressRef={{ current: false }} // Will be passed from parent
+            isSubmittingRef={isSubmittingRef}
+            setCurrentInfoScreenIndex={setCurrentInfoScreenIndex}
+            setIsSubmitting={setIsSubmitting}
+            setError={setError}
+            setLoading={setLoading}
+            handleNext={handleNext}
+            submitAnswers={submitAnswers}
+            pendingInfoScreenRef={quizState.pendingInfoScreenRef}
+            handleBack={handleBack}
+            isInitialInfoScreen={isPendingInitialScreen}
+          />
+        </Suspense>
+      </ScreenErrorBoundary>
     );
   }
 
@@ -193,14 +203,17 @@ export function QuizRenderer({
   const backgroundColor = getQuizBackgroundColor(isQuestionScreen);
 
   return (
-    <QuizPageContent
-      backgroundColor={backgroundColor}
-      isDev={isDev}
-      showDebugPanel={showDebugPanel}
-      debugLogs={debugLogs}
-    >
-      {/* Question content will be rendered here */}
-      <div>Question content goes here</div>
-    </QuizPageContent>
+    <QuestionErrorBoundary componentName="QuestionScreen">
+      <div
+        style={{
+          minHeight: '100vh',
+          backgroundColor,
+          paddingTop: '60px',
+          paddingBottom: '20px',
+        }}
+      >
+        <div>Question content goes here</div>
+      </div>
+    </QuestionErrorBoundary>
   );
 }

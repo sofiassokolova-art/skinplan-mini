@@ -4,6 +4,7 @@
 
 import { useMemo } from 'react';
 import { INFO_SCREENS, getInitialInfoScreens, type InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
+import type { Questionnaire } from '../types';
 
 export interface UseQuizViewParams {
   // State
@@ -15,9 +16,9 @@ export interface UseQuizViewParams {
   currentInfoScreenIndexRef: React.MutableRefObject<number>;
   currentQuestionIndex: number;
   currentQuestion: any | null;
-  questionnaire: any | null;
-  questionnaireRef?: React.MutableRefObject<any | null>; // ИСПРАВЛЕНО: Добавлен questionnaireRef как fallback
-  questionnaireFromStateMachine?: any | null; // ИСПРАВЛЕНО: Добавлен questionnaireFromStateMachine как fallback
+  questionnaire: Questionnaire | null;
+  questionnaireRef?: React.MutableRefObject<Questionnaire | null>; // ИСПРАВЛЕНО: Добавлен questionnaireRef как fallback
+  questionnaireFromStateMachine?: Questionnaire | null; // ИСПРАВЛЕНО: Добавлен questionnaireFromStateMachine как fallback
   loading: boolean;
   hasResumed: boolean;
   initCompleted?: boolean; // ФИКС: Добавлен флаг завершения инициализации

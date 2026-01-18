@@ -2,11 +2,12 @@
 // ИСПРАВЛЕНО: Хук для управления автоматической отправкой ответов
 // Вынесен из quiz/page.tsx для разделения логики
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { clientLogger } from '@/lib/client-logger';
+import type { Questionnaire } from '../types';
 
 interface UseQuizAutoSubmitOptions {
-  questionnaire: any;
+  questionnaire: Questionnaire;
   allQuestions: any[];
   currentQuestionIndex: number;
   answersCount: number;
@@ -39,10 +40,10 @@ export function useQuizAutoSubmit(options: UseQuizAutoSubmitOptions) {
     autoSubmitTriggeredRef.current = autoSubmitTriggered;
   }, [autoSubmitTriggered]);
 
-  // ИСПРАВЛЕНО: Event-driven auto-submit вместо setTimeout
-  useEffect(() => {
-    const allAnswered = questionnaire && 
-        allQuestions.length > 0 && 
+  // Оптимизация: Вычисляем условия автосабмита через useMemo
+  const allAnswered = useMemo(() => {
+    return questionnaire &&
+        allQuestions.length > 0 &&
         currentQuestionIndex >= allQuestions.length &&
         answersCount >= allQuestions.length &&
         !isSubmitting &&
@@ -50,6 +51,20 @@ export function useQuizAutoSubmit(options: UseQuizAutoSubmitOptions) {
         !error &&
         !pendingInfoScreen &&
         !autoSubmitTriggeredRef.current;
+  }, [
+    questionnaire,
+    allQuestions.length,
+    currentQuestionIndex,
+    answersCount,
+    isSubmitting,
+    showResumeScreen,
+    error,
+    pendingInfoScreen,
+    autoSubmitTriggeredRef.current,
+  ]);
+
+  // ИСПРАВЛЕНО: Event-driven auto-submit вместо setTimeout
+  useEffect(() => {
     
     if (allAnswered && submitAnswersRef.current) {
       clientLogger.log('✅ Все вопросы отвечены, автоматически отправляем ответы (event-driven)', {

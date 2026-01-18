@@ -3,6 +3,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { QuizStateMachine, type QuizState, type QuizEvent } from '../quiz-state-machine';
+import type { Questionnaire } from '../types';
 
 export interface UseQuizStateMachineOptions {
   initialState?: QuizState;
@@ -29,7 +30,7 @@ export function useQuizStateMachine(options: UseQuizStateMachineOptions = {}) {
   // КРИТИЧНО ИСПРАВЛЕНО: Добавляем управление questionnaire через State Machine
   // Используем функцию-инициализатор для стабильности
   // КРИТИЧНО: Должен быть вызван сразу после первого useState для стабильности порядка хуков
-  const [questionnaire, setQuestionnaireState] = useState<any | null>(() => {
+  const [questionnaire, setQuestionnaireState] = useState<Questionnaire | null>(() => {
     // КРИТИЧНО: Вычисляем значение только один раз при первом рендере
     // Это предотвращает React Error #300 из-за нестабильных значений
     return stateMachineRef.current?.getQuestionnaire() || null;

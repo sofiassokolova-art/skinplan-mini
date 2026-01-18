@@ -4,9 +4,7 @@
 import { api } from '@/lib/api';
 import { clientLogger } from '@/lib/client-logger';
 
-// Используем any для Questionnaire, так как в page.tsx используется локальный интерфейс с type: string
-// вместо строгого QuestionType из types.ts
-type Questionnaire = any;
+import type { Questionnaire } from './types';
 
 export interface LoadQuestionnaireParams {
   // Refs
@@ -175,7 +173,7 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
           const minimalQuestionnaire = {
             id: errorData?.questionnaireId || 0,
             name: 'Questionnaire',
-            version: '1.0',
+            version: 1,
             groups: [],
             questions: [],
           };
@@ -338,7 +336,7 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
       const minimalQuestionnaire = {
         id: 0,
         name: 'Questionnaire',
-        version: '1.0',
+        version: 1,
         groups: [],
         questions: [],
       };
@@ -380,7 +378,7 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
         const minimalQuestionnaire = {
           id: 0,
           name: 'Questionnaire',
-          version: '1.0',
+          version: 1,
           groups: [],
           questions: [],
         };
@@ -419,7 +417,7 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
       const minimalQuestionnaire = {
         id: 0,
         name: 'Questionnaire',
-        version: '1.0',
+        version: 1,
         groups: [],
         questions: [],
       };
