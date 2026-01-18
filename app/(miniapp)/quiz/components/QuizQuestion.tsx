@@ -7,7 +7,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { createPortal } from 'react-dom';
-import { useState, useCallback, useRef, useEffect, memo } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo, memo } from 'react';
 import type { Question } from '@/lib/quiz/types';
 import { getInfoScreenAfterQuestion } from '../info-screens';
 
@@ -309,15 +309,17 @@ export function QuizQuestion({
     const [localValue, setLocalValue] = useState((answers[question.id] as string) || '');
     const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+    const lastSyncedValueRef = useRef<string>('');
 
     // Sync local value with answers when answers change (e.g., from saved progress)
-    // IMPORTANT: Don't include localValue in deps to prevent infinite loops
+    // Use ref to prevent unnecessary re-renders
     useEffect(() => {
       const savedValue = (answers[question.id] as string) || '';
-      if (savedValue !== localValue) {
+      if (savedValue !== lastSyncedValueRef.current) {
+        lastSyncedValueRef.current = savedValue;
         setLocalValue(savedValue);
       }
-    }, [answers[question.id]]); // Removed localValue from deps
+    }, [answers[question.id]]);
 
     // Debounced sync to answers state (300ms)
     const syncToAnswers = useCallback((value: string) => {
@@ -332,6 +334,7 @@ export function QuizQuestion({
     const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
       const newValue = e.target.value;
       setLocalValue(newValue);
+      lastSyncedValueRef.current = newValue; // Update ref immediately
       syncToAnswers(newValue);
     }, [syncToAnswers]);
 
@@ -348,27 +351,29 @@ export function QuizQuestion({
       }
     }, [onAnswer, question.id, localValue, answers]);
 
+    const inputStyle = useMemo(() => ({
+      padding: '16px',
+      borderRadius: '16px',
+      border: '1px solid #000000',
+      backgroundColor: '#FFFFFF',
+      fontSize: '16px',
+      color: '#000000',
+      fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+      outline: 'none',
+      transition: 'all 0.2s',
+    }), []);
+
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <input
+          key={question.id} // ФИКС: Добавляем key для предотвращения проблем с переиспользованием DOM элементов
           ref={inputRef}
           type="text"
           value={localValue}
           onChange={handleChange}
           onBlur={handleBlur}
           placeholder="Введите ваше имя"
-          autoFocus
-          style={{
-            padding: '16px',
-            borderRadius: '16px',
-            border: '1px solid #000000',
-            backgroundColor: '#FFFFFF',
-            fontSize: '16px',
-            color: '#000000',
-            fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-            outline: 'none',
-            transition: 'all 0.2s',
-          }}
+          style={inputStyle}
         />
 
         {String(localValue).trim().length > 0 && (
