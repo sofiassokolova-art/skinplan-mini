@@ -395,7 +395,7 @@ export function QuizQuestion({
 
     const isMultiChoice = question?.type === 'multi_choice';
 
-    const getImageUrl = (index: number) => {
+    const getImageUrl = useCallback((index: number) => {
       let imageUrl = '/tone6.jpeg';
 
       if (isGoalsQuestion) {
@@ -420,7 +420,7 @@ export function QuizQuestion({
       }
 
       return imageUrl;
-    };
+    }, [isGoalsQuestion, isSkinTypeQuestion]);
 
     // Memoized option card to prevent unnecessary re-renders of images
     const OptionCard = memo(({
@@ -429,6 +429,7 @@ export function QuizQuestion({
       isSelected,
       isMultiChoice,
       isSkinTypeQuestion,
+      getImageUrl,
       onOptionClick
     }: {
       option: any;
@@ -436,6 +437,7 @@ export function QuizQuestion({
       isSelected: boolean;
       isMultiChoice: boolean;
       isSkinTypeQuestion: boolean;
+      getImageUrl: (index: number) => string;
       onOptionClick: () => void;
     }) => {
       const imageUrl = getImageUrl(index);
@@ -642,6 +644,7 @@ export function QuizQuestion({
                 isSelected={isSelected}
                 isMultiChoice={isMultiChoice}
                 isSkinTypeQuestion={isSkinTypeQuestion}
+                getImageUrl={getImageUrl}
                 onOptionClick={async () => {
                   if (isMultiChoice) {
                     const newAnswers = isSelected
