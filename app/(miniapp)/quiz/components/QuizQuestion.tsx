@@ -1027,7 +1027,7 @@ export function QuizQuestion({
         )}
 
         {/* Лаймовый прогресс-бар (для лайм-экранов) */}
-        {useLimeStyle && <ProgressBar useLimeOffsets />}
+        {useLimeStyle && <ProgressBar useLimeOffsets={isGoalsQuestion ? false : true} />}
 
         {/* Рендеры */}
         <LimeStyle />
