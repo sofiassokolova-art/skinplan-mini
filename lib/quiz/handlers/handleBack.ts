@@ -1,445 +1,227 @@
 // lib/quiz/handlers/handleBack.ts
-// Вынесена функция handleBack из quiz/page.tsx для улучшения читаемости и поддержки
 
 import { clientLogger } from '@/lib/client-logger';
-import { getInitialInfoScreens, getInfoScreenAfterQuestion, getNextInfoScreenAfterScreen, INFO_SCREENS } from '@/app/(miniapp)/quiz/info-screens';
+import {
+  getInitialInfoScreens,
+  getInfoScreenAfterQuestion,
+  getNextInfoScreenAfterScreen,
+  INFO_SCREENS,
+} from '@/app/(miniapp)/quiz/info-screens';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 import type { Questionnaire, Question } from '@/lib/quiz/types';
-import { 
-  saveIndexToSessionStorage, 
-  saveProgressSafely, 
-  updateInfoScreenIndex, 
+import {
+  saveProgressSafely,
+  updateInfoScreenIndex,
   updateQuestionIndex,
   isOnQuestions,
-  hasQuestionnaire 
+  hasQuestionnaire,
 } from './shared-utils';
 
 export interface HandleBackParams {
+  // state
   currentInfoScreenIndex: number;
   currentQuestionIndex: number;
   questionnaire: Questionnaire | null;
   questionnaireRef: React.MutableRefObject<Questionnaire | null>;
   pendingInfoScreen: InfoScreen | null;
+  allQuestions: Question[];
+  answers: Record<number, string | string[]>;
+
+  // refs
   currentInfoScreenIndexRef: React.MutableRefObject<number>;
-  allQuestions: Question[]; // ИСПРАВЛЕНО: Добавлен allQuestions для поиска вопроса по коду
+  handleBackInProgressRef: React.MutableRefObject<boolean>;
+
+  // setters
   setCurrentInfoScreenIndex: React.Dispatch<React.SetStateAction<number>>;
   setCurrentQuestionIndex: React.Dispatch<React.SetStateAction<number>>;
   setPendingInfoScreen: React.Dispatch<React.SetStateAction<InfoScreen | null>>;
-  saveProgress: (answers: Record<number, string | string[]>, questionIndex: number, infoScreenIndex: number) => Promise<void>;
-  answers: Record<number, string | string[]>;
   setAnswers: React.Dispatch<React.SetStateAction<Record<number, string | string[]>>>;
+
+  // persistence
+  saveProgress: (
+    answers: Record<number, string | string[]>,
+    questionIndex: number,
+    infoScreenIndex: number
+  ) => Promise<void>;
+
+  // ✅ scoped keys from page.tsx (must match)
+  scopedStorageKeys: {
+    CURRENT_INFO_SCREEN: string;
+    CURRENT_QUESTION: string;
+  };
 }
 
-export async function handleBack({
-  currentInfoScreenIndex,
-  currentQuestionIndex,
-  questionnaire,
-  questionnaireRef,
-  pendingInfoScreen,
-  currentInfoScreenIndexRef,
-  allQuestions,
-  setCurrentInfoScreenIndex,
-  setCurrentQuestionIndex,
-  setPendingInfoScreen,
-  saveProgress,
-  answers,
-  setAnswers,
-}: HandleBackParams): Promise<void> {
-  // ИСПРАВЛЕНО: Получаем начальные инфо-экраны для логики навигации
-  const initialInfoScreens = getInitialInfoScreens();
+function setSessionIndex(key: string, value: number) {
+  try {
+    if (typeof window === 'undefined') return;
+    sessionStorage.setItem(key, String(value));
+  } catch {
+    // ignore
+  }
+}
 
-  clientLogger.log('🔙 handleBack вызван', {
+function dropAnswer(
+  answers: Record<number, string | string[]>,
+  q?: Question | null
+) {
+  if (!q) return answers;
+  if (answers[q.id] === undefined) return answers;
+  const next = { ...answers };
+  delete next[q.id];
+  return next;
+}
+
+export async function handleBack(params: HandleBackParams): Promise<void> {
+  const {
     currentInfoScreenIndex,
     currentQuestionIndex,
-    hasPendingInfoScreen: !!pendingInfoScreen,
-    hasQuestionnaire: !!questionnaire || !!questionnaireRef.current,
-    pendingInfoScreenId: pendingInfoScreen?.id,
-    pendingInfoScreenShowAfter: pendingInfoScreen?.showAfterQuestionCode,
-    initialInfoScreensCount: initialInfoScreens.length,
-    initialInfoScreenIds: initialInfoScreens.map(s => s.id),
-  });
-  
-  // ИСПРАВЛЕНО: Используем утилиту для проверки, находимся ли мы на вопросах
-  const isOnQuestionsValue = isOnQuestions(currentInfoScreenIndex, currentInfoScreenIndexRef);
-  
-  // КРИТИЧНО: Если мы на первом вопросе (currentQuestionIndex === 0), 
-  // разрешаем возврат к начальным инфо-экранам даже без анкеты
-  // Это позволяет пользователю вернуться к начальным экранам с первого вопроса
-  const isOnFirstQuestion = currentQuestionIndex === 0 && allQuestions.length > 0;
-  
-  // ИСПРАВЛЕНО: Для начальных инфо-экранов анкета не нужна
-  // Проверяем анкету только если мы на вопросах (но не на первом вопросе, где можно вернуться к инфо-экранам)
-  if (isOnQuestionsValue && !isOnFirstQuestion && !hasQuestionnaire(questionnaire, questionnaireRef)) {
-    clientLogger.warn('⏸️ handleBack: анкета не загружена, но мы на вопросах - блокируем');
+    questionnaire,
+    questionnaireRef,
+    pendingInfoScreen,
+    currentInfoScreenIndexRef,
+    allQuestions,
+    answers,
+
+    handleBackInProgressRef,
+
+    setCurrentInfoScreenIndex,
+    setCurrentQuestionIndex,
+    setPendingInfoScreen,
+    setAnswers,
+
+    saveProgress,
+    scopedStorageKeys,
+  } = params;
+
+  if (handleBackInProgressRef.current) {
+    clientLogger.warn('⏸️ handleBack: ignored (in progress)');
     return;
   }
+  handleBackInProgressRef.current = true;
 
-  // Если показывается инфо-экран между вопросами, проверяем, есть ли предыдущий инфо-экран в цепочке
-  if (pendingInfoScreen) {
-    clientLogger.log('🔙 handleBack: обрабатываем pendingInfoScreen', {
-      currentQuestionIndex,
-      pendingInfoScreenId: pendingInfoScreen.id,
-      showAfterQuestionCode: pendingInfoScreen.showAfterQuestionCode,
-      showAfterInfoScreenId: pendingInfoScreen.showAfterInfoScreenId,
-    });
-    
-    // ИСПРАВЛЕНО: Специальная логика для экранов перед вопросами age/gender
-    // Если текущий экран - general_info_intro или testimonials, и мы возвращаемся от вопросов age/gender,
-    // нужно перейти непосредственно к предыдущему вопросу (skin_goals), а не к предыдущему инфо-экрану
-    if (pendingInfoScreen.id === 'general_info_intro' || pendingInfoScreen.id === 'testimonials') {
-      // Проверяем, есть ли вопросы в анкете
-      if (allQuestions.length > 0) {
-        // Находим вопрос skin_goals (предыдущий перед age/gender)
-        const skinGoalsQuestionIndex = allQuestions.findIndex(q => q.code === 'skin_goals');
+  const initialInfoScreens = getInitialInfoScreens();
+  const isOnQuestionsValue = isOnQuestions(currentInfoScreenIndex, currentInfoScreenIndexRef);
 
-        if (skinGoalsQuestionIndex >= 0) {
-          clientLogger.log('🔙 handleBack: возвращаемся от general_info_intro/testimonials к вопросу skin_goals', {
-            currentPendingInfoScreenId: pendingInfoScreen.id,
-            skinGoalsQuestionIndex,
-            skinGoalsQuestionCode: allQuestions[skinGoalsQuestionIndex].code,
-          });
+  try {
+    // если на вопросах (кроме случая “первый вопрос -> назад в инфо”), анкета должна быть
+    const isOnFirstQuestion = currentQuestionIndex === 0 && allQuestions.length > 0;
+    if (isOnQuestionsValue && !isOnFirstQuestion && !hasQuestionnaire(questionnaire, questionnaireRef)) {
+      clientLogger.warn('⏸️ handleBack: questionnaire not ready on questions');
+      return;
+    }
 
-          // Сбрасываем pendingInfoScreen
-          setPendingInfoScreen(null);
-
-          // Сбрасываем ответ на текущий вопрос (age/gender), если он был дан
-          const currentQuestion = allQuestions[currentQuestionIndex];
-          if (currentQuestion && answers[currentQuestion.id] !== undefined) {
-            clientLogger.log('🔙 handleBack: сбрасываем ответ на текущий вопрос', {
-              questionId: currentQuestion.id,
-              questionCode: currentQuestion.code,
-              oldAnswer: answers[currentQuestion.id],
-            });
-            setAnswers(prev => {
-              const newAnswers = { ...prev };
-              delete newAnswers[currentQuestion.id];
-              return newAnswers;
-            });
-          }
-
-          // Переходим к вопросу skin_goals
-          updateQuestionIndex(skinGoalsQuestionIndex, undefined, setCurrentQuestionIndex);
-
-          // Сохраняем прогресс
-          const updatedAnswers = { ...answers };
-          if (currentQuestion) {
-            delete updatedAnswers[currentQuestion.id];
-          }
-          await saveProgressSafely(saveProgress, updatedAnswers, skinGoalsQuestionIndex, currentInfoScreenIndex);
-
-          // Сохраняем в sessionStorage
-          saveIndexToSessionStorage('quiz_currentQuestionIndex', skinGoalsQuestionIndex);
+    // ===============================
+    // 1) BACK внутри pendingInfoScreen
+    // ===============================
+    if (pendingInfoScreen) {
+      // 1.1 если есть цепочка showAfterInfoScreenId — идём на предыдущий экран цепочки
+      if (pendingInfoScreen.showAfterInfoScreenId) {
+        const prev = INFO_SCREENS.find(s => s.id === pendingInfoScreen.showAfterInfoScreenId);
+        if (prev) {
+          setPendingInfoScreen(prev);
+          // индексы не меняем, только сохраняем
+          void saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
           return;
         }
       }
-    }
 
-    // ИСПРАВЛЕНО: Если текущий инфо-экран является частью цепочки (showAfterInfoScreenId),
-    // находим предыдущий инфо-экран в цепочке
-    // Логика: если текущий экран имеет showAfterInfoScreenId = 'X', значит он показывается после экрана 'X'
-    // Значит, при навигации назад нужно показать экран 'X'
-    if (pendingInfoScreen.showAfterInfoScreenId) {
-      // Находим предыдущий инфо-экран в цепочке (тот, после которого показывается текущий)
-      const previousInfoScreen = INFO_SCREENS.find(screen =>
-        screen.id === pendingInfoScreen.showAfterInfoScreenId
-      );
+      // 1.2 иначе закрываем pending и возвращаемся к вопросу “после которого он был”
+      setPendingInfoScreen(null);
 
-      if (previousInfoScreen) {
-        clientLogger.log('🔙 handleBack: находим предыдущий инфо-экран в цепочке', {
-          currentInfoScreenId: pendingInfoScreen.id,
-          previousInfoScreenId: previousInfoScreen.id,
-          showAfterInfoScreenId: pendingInfoScreen.showAfterInfoScreenId,
-        });
-
-        // Показываем предыдущий инфо-экран в цепочке
-        setPendingInfoScreen(previousInfoScreen);
-
-        // Сохраняем прогресс (индексы не меняются, так как мы остаемся на инфо-экранах)
-        await saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
-        return;
-      } else {
-        // ИСПРАВЛЕНО: Если предыдущий экран не найден, логируем предупреждение
-        clientLogger.warn('⚠️ handleBack: предыдущий инфо-экран в цепочке не найден', {
-          currentInfoScreenId: pendingInfoScreen.id,
-          showAfterInfoScreenId: pendingInfoScreen.showAfterInfoScreenId,
-          allInfoScreenIds: INFO_SCREENS.map(s => s.id),
-        });
+      let targetQuestionIndex = -1;
+      if (pendingInfoScreen.showAfterQuestionCode && allQuestions.length > 0) {
+        targetQuestionIndex = allQuestions.findIndex(q => q.code === pendingInfoScreen.showAfterQuestionCode);
       }
-    }
-    
-    // Если нет предыдущего инфо-экрана в цепочке, возвращаемся к вопросу
-    clientLogger.warn('🧹 ИНФО-СКРИН: Закрываем pendingInfoScreen (возврат к вопросу)', {
-      currentPendingInfoScreenId: pendingInfoScreen.id,
-      currentPendingInfoScreenTitle: pendingInfoScreen.title,
-      currentQuestionIndex,
-    });
-    setPendingInfoScreen(null);
-    
-    // ИСПРАВЛЕНО: Находим вопрос, после которого был показан pendingInfoScreen
-    // Используем showAfterQuestionCode для точного определения вопроса
-    let targetQuestionIndex = -1;
-    
-    if (pendingInfoScreen.showAfterQuestionCode && allQuestions.length > 0) {
-      // Ищем вопрос с указанным кодом
-      targetQuestionIndex = allQuestions.findIndex(q => q.code === pendingInfoScreen.showAfterQuestionCode);
-      clientLogger.log('🔙 handleBack: ищем вопрос по showAfterQuestionCode', {
-        showAfterQuestionCode: pendingInfoScreen.showAfterQuestionCode,
-        foundIndex: targetQuestionIndex,
-        allQuestionsLength: allQuestions.length,
-      });
-    }
-    
-    // Если не нашли по коду или код не указан, используем текущий индекс - 1
-    if (targetQuestionIndex === -1) {
-      if (currentQuestionIndex > 0) {
-        targetQuestionIndex = currentQuestionIndex - 1;
-        clientLogger.log('🔙 handleBack: используем currentQuestionIndex - 1', {
-          currentQuestionIndex,
-          targetQuestionIndex,
-        });
-      } else {
-        clientLogger.warn('🔙 handleBack: не можем определить предыдущий вопрос', {
-          currentQuestionIndex,
-          showAfterQuestionCode: pendingInfoScreen.showAfterQuestionCode,
-        });
-        return;
+      if (targetQuestionIndex === -1) {
+        if (currentQuestionIndex > 0) targetQuestionIndex = currentQuestionIndex - 1;
+        else return;
       }
-    }
-    
-    if (targetQuestionIndex >= 0 && targetQuestionIndex < allQuestions.length) {
-      // ИСПРАВЛЕНО: Сбрасываем ответ на текущий вопрос при переходе назад
-      const currentQuestion = allQuestions[currentQuestionIndex];
-      if (currentQuestion && answers[currentQuestion.id] !== undefined) {
-        clientLogger.log('🔙 handleBack: сбрасываем ответ на текущий вопрос', {
-          questionId: currentQuestion.id,
-          questionCode: currentQuestion.code,
-          oldAnswer: answers[currentQuestion.id],
-        });
-        setAnswers(prev => {
-          const newAnswers = { ...prev };
-          delete newAnswers[currentQuestion.id];
-          return newAnswers;
-        });
-      }
-      
-      clientLogger.log('🔙 handleBack: возвращаемся к вопросу после закрытия pendingInfoScreen', {
-        oldIndex: currentQuestionIndex,
-        newIndex: targetQuestionIndex,
-        questionCode: allQuestions[targetQuestionIndex]?.code,
-      });
+
+      const currentQ = allQuestions[currentQuestionIndex] ?? null;
+      const nextAnswers = dropAnswer(answers, currentQ);
+
+      // сначала обновляем UI
+      setAnswers(nextAnswers);
       updateQuestionIndex(targetQuestionIndex, undefined, setCurrentQuestionIndex);
-      
-      // Сохраняем прогресс (с обновленными answers без ответа на текущий вопрос)
-      const updatedAnswers = { ...answers };
-      if (currentQuestion) {
-        delete updatedAnswers[currentQuestion.id];
-      }
-      await saveProgressSafely(saveProgress, updatedAnswers, targetQuestionIndex, currentInfoScreenIndex);
-      
-      // Сохраняем в sessionStorage
-      saveIndexToSessionStorage('quiz_currentQuestionIndex', targetQuestionIndex);
-    }
-    return;
-  }
 
-  // ИСПРАВЛЕНО: Если мы на первом вопросе (currentQuestionIndex === 0), 
-  // возвращаемся к последнему начальному инфо-экрану
-  // Это позволяет пользователю вернуться к инфо-экранам с первого вопроса
-  if (currentQuestionIndex === 0 && allQuestions.length > 0) {
-    const newInfoScreenIndex = initialInfoScreens.length - 1;
-    clientLogger.log('🔙 handleBack: возвращаемся к последнему инфо-экрану с первого вопроса', {
-      oldInfoScreenIndex: currentInfoScreenIndex,
-      oldInfoScreenIndexRef: currentInfoScreenIndexRef.current,
-      newInfoScreenIndex,
-      currentQuestionIndex,
-      isOnQuestionsValue,
-      initialInfoScreensLength: initialInfoScreens.length,
-    });
-    // КРИТИЧНО: Обновляем и state, и ref синхронно
-    updateInfoScreenIndex(newInfoScreenIndex, currentInfoScreenIndexRef, setCurrentInfoScreenIndex);
-    
-    // Очищаем pendingInfoScreen, если он был установлен
-    setPendingInfoScreen(null);
-    
-    // Сохраняем прогресс
-    await saveProgressSafely(saveProgress, answers, currentQuestionIndex, newInfoScreenIndex);
-    
-    // Сохраняем в sessionStorage
-    saveIndexToSessionStorage('quiz_currentInfoScreenIndex', newInfoScreenIndex);
-    return;
-  }
-
-  // Если мы на вопросах, переходим к предыдущему вопросу
-  if (isOnQuestionsValue && currentQuestionIndex > 0) {
-    const currentQuestion = allQuestions[currentQuestionIndex];
-    const newQuestionIndex = currentQuestionIndex - 1;
-    const previousQuestion = allQuestions[newQuestionIndex];
-    
-    // ИСПРАВЛЕНО: Сбрасываем ответ на текущий вопрос при переходе назад
-    if (currentQuestion && answers[currentQuestion.id] !== undefined) {
-      clientLogger.log('🔙 handleBack: сбрасываем ответ на текущий вопрос', {
-        questionId: currentQuestion.id,
-        questionCode: currentQuestion.code,
-        oldAnswer: answers[currentQuestion.id],
-      });
-      setAnswers(prev => {
-        const newAnswers = { ...prev };
-        delete newAnswers[currentQuestion.id];
-        return newAnswers;
-      });
+      // потом сохраняем
+      setSessionIndex(scopedStorageKeys.CURRENT_QUESTION, targetQuestionIndex);
+      void saveProgressSafely(saveProgress, nextAnswers, targetQuestionIndex, currentInfoScreenIndex);
+      return;
     }
-    
-    // ИСПРАВЛЕНО: Если текущий вопрос - это age или gender, нужно найти инфо-экран general_info_intro,
-    // который показывается перед этими вопросами (после testimonials)
-    // Это должно работать ПЕРЕД проверкой инфо-экрана после предыдущего вопроса
-    if (currentQuestion && (currentQuestion.code === 'age' || currentQuestion.code === 'gender')) {
-      // Находим инфо-экран general_info_intro, который показывается перед age/gender
-      const generalInfoScreen = INFO_SCREENS.find(screen => screen.id === 'general_info_intro');
-      
-      if (generalInfoScreen) {
-        clientLogger.log('🔙 handleBack: находим general_info_intro перед вопросом age/gender', {
-          currentQuestionCode: currentQuestion.code,
-          currentQuestionIndex,
-          previousQuestionCode: previousQuestion?.code,
-          previousQuestionIndex: newQuestionIndex,
-          generalInfoScreenId: generalInfoScreen.id,
-        });
-        
-        // Устанавливаем pendingInfoScreen для показа general_info_intro
-        setPendingInfoScreen(generalInfoScreen);
-        
-        // Обновляем индекс вопроса на предыдущий (skin_goals)
-        updateQuestionIndex(newQuestionIndex, undefined, setCurrentQuestionIndex);
-        
-        // Сохраняем прогресс (с обновленными answers без ответа на текущий вопрос)
-        const updatedAnswers = { ...answers };
-        if (currentQuestion) {
-          delete updatedAnswers[currentQuestion.id];
+
+    // =========================================
+    // 2) На первом вопросе: назад в инфо-экраны
+    // =========================================
+    if (currentQuestionIndex === 0 && allQuestions.length > 0) {
+      const newInfoScreenIndex = Math.max(0, initialInfoScreens.length - 1);
+      updateInfoScreenIndex(newInfoScreenIndex, currentInfoScreenIndexRef, setCurrentInfoScreenIndex);
+      setPendingInfoScreen(null);
+
+      setSessionIndex(scopedStorageKeys.CURRENT_INFO_SCREEN, newInfoScreenIndex);
+      void saveProgressSafely(saveProgress, answers, currentQuestionIndex, newInfoScreenIndex);
+      return;
+    }
+
+    // ======================
+    // 3) Назад по вопросам
+    // ======================
+    if (isOnQuestionsValue && currentQuestionIndex > 0) {
+      const currentQ = allQuestions[currentQuestionIndex] ?? null;
+      const prevIndex = currentQuestionIndex - 1;
+      const prevQ = allQuestions[prevIndex];
+
+      const nextAnswers = dropAnswer(answers, currentQ);
+      setAnswers(nextAnswers);
+
+      // 3.1 если перед текущим вопросом есть цепочка инфо-экранов после prevQ — показываем последний в цепочке
+      if (prevQ) {
+        const first = getInfoScreenAfterQuestion(prevQ.code);
+        if (first) {
+          let last = first;
+          let next = getNextInfoScreenAfterScreen(last.id);
+          while (next) {
+            last = next;
+            next = getNextInfoScreenAfterScreen(last.id);
+          }
+
+          setPendingInfoScreen(last);
+          updateQuestionIndex(prevIndex, undefined, setCurrentQuestionIndex);
+
+          setSessionIndex(scopedStorageKeys.CURRENT_QUESTION, prevIndex);
+          void saveProgressSafely(saveProgress, nextAnswers, prevIndex, currentInfoScreenIndex);
+          return;
         }
-        await saveProgressSafely(saveProgress, updatedAnswers, newQuestionIndex, currentInfoScreenIndex);
-        
-        // Сохраняем в sessionStorage
-        saveIndexToSessionStorage('quiz_currentQuestionIndex', newQuestionIndex);
-        return;
       }
+
+      // 3.2 обычный шаг назад по вопросам
+      updateQuestionIndex(prevIndex, undefined, setCurrentQuestionIndex);
+      setSessionIndex(scopedStorageKeys.CURRENT_QUESTION, prevIndex);
+      void saveProgressSafely(saveProgress, nextAnswers, prevIndex, currentInfoScreenIndex);
+      return;
     }
-    
-    // ИСПРАВЛЕНО: Проверяем, есть ли инфо-экраны после предыдущего вопроса
-    // Если есть, показываем их вместо прямого перехода к вопросу
-    if (previousQuestion) {
-      const infoScreenAfterPrevious = getInfoScreenAfterQuestion(previousQuestion.code);
-      
-      if (infoScreenAfterPrevious) {
-        clientLogger.log('🔙 handleBack: находим инфо-экран после предыдущего вопроса, показываем его', {
-          previousQuestionCode: previousQuestion.code,
-          previousQuestionIndex: newQuestionIndex,
-          currentQuestionCode: currentQuestion?.code,
-          currentQuestionIndex,
-          infoScreenId: infoScreenAfterPrevious.id,
-        });
-        
-        // ИСПРАВЛЕНО: Находим последний инфо-экран в цепочке после предыдущего вопроса
-        // Цепочка: infoScreenAfterPrevious -> nextInfoScreen -> nextNextInfoScreen -> ...
-        // Последний экран в цепочке - это тот, который показывается перед текущим вопросом
-        let lastInfoScreenInChain = infoScreenAfterPrevious;
-        let nextScreen = getNextInfoScreenAfterScreen(lastInfoScreenInChain.id);
-        
-        // Проходим по всей цепочке, чтобы найти последний экран
-        // Останавливаемся, если следующий экран не найден (конец цепочки)
-        while (nextScreen) {
-          lastInfoScreenInChain = nextScreen;
-          nextScreen = getNextInfoScreenAfterScreen(lastInfoScreenInChain.id);
-        }
-        
-        clientLogger.log('🔙 handleBack: показываем последний инфо-экран в цепочке', {
-          firstInfoScreenId: infoScreenAfterPrevious.id,
-          lastInfoScreenId: lastInfoScreenInChain.id,
-          currentQuestionCode: currentQuestion?.code,
-        });
-        
-        // Устанавливаем pendingInfoScreen для показа последнего инфо-экрана в цепочке
-        setPendingInfoScreen(lastInfoScreenInChain);
-        
-        // Обновляем индекс вопроса на предыдущий
-        updateQuestionIndex(newQuestionIndex, undefined, setCurrentQuestionIndex);
-        
-        // Сохраняем прогресс (с обновленными answers без ответа на текущий вопрос)
-        const updatedAnswers = { ...answers };
-        if (currentQuestion) {
-          delete updatedAnswers[currentQuestion.id];
-        }
-        await saveProgressSafely(saveProgress, updatedAnswers, newQuestionIndex, currentInfoScreenIndex);
-        
-        // Сохраняем в sessionStorage
-        saveIndexToSessionStorage('quiz_currentQuestionIndex', newQuestionIndex);
-        return;
-      }
+
+    // ============================
+    // 4) Назад по initial info
+    // ============================
+    const effectiveInfoIdx =
+      currentInfoScreenIndexRef.current >= 0 ? currentInfoScreenIndexRef.current : currentInfoScreenIndex;
+
+    const onInitial =
+      effectiveInfoIdx >= 0 && effectiveInfoIdx < initialInfoScreens.length;
+
+    if (onInitial && effectiveInfoIdx > 0) {
+      const newInfoScreenIndex = effectiveInfoIdx - 1;
+      updateInfoScreenIndex(newInfoScreenIndex, currentInfoScreenIndexRef, setCurrentInfoScreenIndex);
+
+      setSessionIndex(scopedStorageKeys.CURRENT_INFO_SCREEN, newInfoScreenIndex);
+      void saveProgressSafely(saveProgress, answers, currentQuestionIndex, newInfoScreenIndex);
+      return;
     }
-    
-    clientLogger.log('🔙 handleBack: переходим к предыдущему вопросу', {
-      oldIndex: currentQuestionIndex,
-      newIndex: newQuestionIndex,
-    });
-    updateQuestionIndex(newQuestionIndex, undefined, setCurrentQuestionIndex);
-    
-    // Сохраняем прогресс (с обновленными answers без ответа на текущий вопрос)
-    const updatedAnswers = { ...answers };
-    if (currentQuestion) {
-      delete updatedAnswers[currentQuestion.id];
-    }
-    await saveProgressSafely(saveProgress, updatedAnswers, newQuestionIndex, currentInfoScreenIndex);
-    
-    // Сохраняем в sessionStorage
-    saveIndexToSessionStorage('quiz_currentQuestionIndex', newQuestionIndex);
-    return;
+
+    // иначе — начало, ничего не делаем
+    clientLogger.log('🔙 handleBack: at start, no-op');
+  } finally {
+    handleBackInProgressRef.current = false;
   }
-
-  // Если мы на начальных инфо-экранах, переходим к предыдущему
-  // ИСПРАВЛЕНО: Проверяем и state, и ref для надежности
-  const isOnInfoScreens = (currentInfoScreenIndex >= 0 && currentInfoScreenIndex < initialInfoScreens.length) ||
-                          (currentInfoScreenIndexRef.current >= 0 && currentInfoScreenIndexRef.current < initialInfoScreens.length);
-
-  // ИСПРАВЛЕНО: Используем ref для проверки, так как state может быть устаревшим
-  const effectiveInfoScreenIndex = currentInfoScreenIndexRef.current >= 0 ? currentInfoScreenIndexRef.current : currentInfoScreenIndex;
-
-  clientLogger.log('🔙 handleBack: проверка начальных экранов', {
-    isOnInfoScreens,
-    currentInfoScreenIndex,
-    currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
-    effectiveInfoScreenIndex,
-    initialInfoScreensLength: initialInfoScreens.length,
-    canGoBack: isOnInfoScreens && effectiveInfoScreenIndex > 0,
-  });
-
-  if (isOnInfoScreens && effectiveInfoScreenIndex > 0) {
-    const newInfoScreenIndex = effectiveInfoScreenIndex - 1;
-    const currentScreen = initialInfoScreens[effectiveInfoScreenIndex];
-    const targetScreen = initialInfoScreens[newInfoScreenIndex];
-
-    clientLogger.log('🔙 handleBack: переходим к предыдущему инфо-экрану', {
-      currentScreenId: currentScreen?.id,
-      currentScreenTitle: currentScreen?.title,
-      targetScreenId: targetScreen?.id,
-      targetScreenTitle: targetScreen?.title,
-      oldIndex: effectiveInfoScreenIndex,
-      newIndex: newInfoScreenIndex,
-    });
-
-    // КРИТИЧНО: Обновляем и state, и ref синхронно
-    updateInfoScreenIndex(newInfoScreenIndex, currentInfoScreenIndexRef, setCurrentInfoScreenIndex);
-
-    // Сохраняем прогресс
-    await saveProgressSafely(saveProgress, answers, currentQuestionIndex, newInfoScreenIndex);
-
-    // Сохраняем в sessionStorage
-    saveIndexToSessionStorage('quiz_currentInfoScreenIndex', newInfoScreenIndex);
-    return;
-  }
-
-  // Если мы на самом начале (индекс 0), не делаем ничего
-  clientLogger.log('🔙 handleBack: мы на самом начале, ничего не делаем', {
-    currentInfoScreenIndex,
-    currentQuestionIndex,
-  });
 }
-

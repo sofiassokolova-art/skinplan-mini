@@ -647,6 +647,8 @@ export default function QuizPage() {
   const resumeCompletedRef = useRef(false);
   // ФИКС: Ref для предотвращения множественных кликов по кнопке "Продолжить"
   const handleNextInProgressRef = useRef(false);
+  // ФИКС: Ref для предотвращения множественных вызовов handleBack
+  const handleBackInProgressRef = useRef(false);
   // ФИКС: State для визуального обновления кнопки "Продолжить"
   const [isHandlingNext, setIsHandlingNext] = useState(false);
   
@@ -1056,11 +1058,15 @@ export default function QuizPage() {
       pendingInfoScreen,
       currentInfoScreenIndexRef,
       allQuestions, // ИСПРАВЛЕНО: Передаем allQuestions для поиска вопроса по коду
+      answers,
+      handleBackInProgressRef,
       setCurrentInfoScreenIndex,
       setCurrentQuestionIndex,
       setPendingInfoScreen,
       saveProgress,
       answers,
+      saveProgress,
+      scopedStorageKeys,
       setAnswers, // ИСПРАВЛЕНО: Передаем setAnswers для сброса ответа при переходе назад
     });
   };

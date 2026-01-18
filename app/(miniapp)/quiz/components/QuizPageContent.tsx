@@ -3,6 +3,7 @@
 
 'use client';
 
+import type React from 'react';
 import { QuizDebugPanel } from './QuizDebugPanel';
 import { QuizQuestionState } from './QuizQuestionState';
 import { QuizQuestion } from './QuizQuestion';
@@ -45,68 +46,82 @@ interface QuizPageContentProps {
 /**
  * Компонент для рендеринга основного контента страницы анкеты
  */
-export function QuizPageContent({
-  backgroundColor,
-  isDev,
-  showDebugPanel,
-  debugLogs,
-  setShowDebugPanel,
-  currentQuestion,
-  currentQuestionIndex,
-  currentInfoScreenIndex,
-  currentInfoScreenIndexRef,
-  isPastInitialScreens,
-  allQuestionsLength,
-  initialInfoScreensLength,
-  isShowingInitialInfoScreen,
-  loading,
-  questionnaire,
-  questionnaireRef,
-  quizStateMachineQuestionnaire,
-  pendingInfoScreen,
-  showResumeScreen,
-  hasResumed,
-  answers,
-  isRetakingQuiz,
-  isSubmitting,
-  onAnswer,
-  onNext,
-  onSubmit,
-  onBack,
-  finalizing,
-  finalizingStep,
-  finalizeError,
-}: QuizPageContentProps) {
-  // ИСПРАВЛЕНО: Определяем экраны с лаймовым контейнером во всю ширину
-  const isGoalsScreen = currentQuestion?.code === 'skin_goals' && currentQuestion?.type === 'multi_choice';
-  // ИСПРАВЛЕНО: skin_type может быть single_choice или multi_choice
+export function QuizPageContent(props: QuizPageContentProps) {
+  const {
+    backgroundColor,
+    isDev,
+    showDebugPanel,
+    debugLogs,
+    setShowDebugPanel,
+    currentQuestion,
+    currentQuestionIndex,
+    currentInfoScreenIndex,
+    currentInfoScreenIndexRef,
+    isPastInitialScreens,
+    allQuestionsLength,
+    initialInfoScreensLength,
+    isShowingInitialInfoScreen,
+    loading,
+    questionnaire,
+    questionnaireRef,
+    quizStateMachineQuestionnaire,
+    pendingInfoScreen,
+    showResumeScreen,
+    hasResumed,
+    answers,
+    isRetakingQuiz,
+    isSubmitting,
+    onAnswer,
+    onNext,
+    onSubmit,
+    onBack,
+    finalizing,
+    finalizingStep,
+    finalizeError,
+  } = props;
+
+  // Экраны с лаймовым контейнером во всю ширину
+  const isGoalsScreen =
+    currentQuestion?.code === 'skin_goals' && currentQuestion?.type === 'multi_choice';
+
+  // skin_type может быть single_choice или multi_choice
   const isSkinTypeScreen = currentQuestion?.code === 'skin_type';
-  const isLimeFullWidthScreen = isGoalsScreen || isSkinTypeScreen; // ИСПРАВЛЕНО: Возвращена верстка из коммита 72b6ea7
+
+  // Верстка "во всю ширину"
+  const isLimeFullWidthScreen = isGoalsScreen || isSkinTypeScreen;
+
+  const shouldShowDevTools =
+    process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_DEBUG === 'true';
+
+  const shouldShowQuestion =
+    Boolean(currentQuestion?.id) && !isShowingInitialInfoScreen && !showResumeScreen;
 
   return (
-    <div style={{ 
-      padding: isLimeFullWidthScreen ? '0' : '20px',
-      minHeight: '100vh',
-      background: backgroundColor,
-      position: 'relative',
-    }}>
-      {/* РЕФАКТОРИНГ: Используем компонент QuizDebugPanel */}
-      {(process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_DEBUG === 'true') && (
+    <div
+      style={{
+        padding: isLimeFullWidthScreen ? '0' : '20px',
+        minHeight: '100vh',
+        background: backgroundColor,
+        position: 'relative',
+      }}
+    >
+      {shouldShowDevTools && (
         <QuizDebugPanel
           showDebugPanel={showDebugPanel}
           debugLogs={debugLogs}
           onToggle={() => setShowDebugPanel(!showDebugPanel)}
         />
       )}
-      {/* Контейнер вопроса - все вопросы без blur, белый фон */}
-      {/* ИСПРАВЛЕНО: Для skin_goals и skin_type убираем ограничение ширины, чтобы лаймовый контейнер был во всю ширину */}
-      <div style={{
-        maxWidth: isLimeFullWidthScreen ? '100%' : '600px',
-        margin: isLimeFullWidthScreen ? '0' : '0 auto',
-        padding: isLimeFullWidthScreen ? '0' : '24px',
-        minHeight: isLimeFullWidthScreen ? '100vh' : 'auto',
-      }}>
-        {/* РЕФАКТОРИНГ: Используем компонент QuizQuestionState для отображения состояний */}
+
+      {/* Контейнер вопроса */}
+      <div
+        style={{
+          maxWidth: isLimeFullWidthScreen ? '100%' : '600px',
+          margin: isLimeFullWidthScreen ? '0' : '0 auto',
+          padding: isLimeFullWidthScreen ? '0' : '24px',
+          minHeight: isLimeFullWidthScreen ? '100vh' : 'auto',
+        }}
+      >
         <QuizQuestionState
           currentQuestion={currentQuestion}
           currentQuestionIndex={currentQuestionIndex}
@@ -125,12 +140,10 @@ export function QuizPageContent({
           hasResumed={hasResumed}
           isDev={isDev}
         />
-        {/* РЕФАКТОРИНГ: Используем компонент QuizQuestion для рендеринга вопроса */}
-        {/* КРИТИЧНО: Не показываем вопрос, если показываются начальные инфо-экраны или резюм-экран
-            Это предотвращает двойной рендеринг после "Начать анкету заново" и показ вопроса вместо резюм-экрана */}
-        {currentQuestion && currentQuestion.id && !isShowingInitialInfoScreen && !showResumeScreen && (
+
+        {shouldShowQuestion && (
           <QuizQuestion
-            question={currentQuestion}
+            question={currentQuestion as Question}
             currentQuestionIndex={currentQuestionIndex}
             allQuestionsLength={allQuestionsLength}
             answers={answers}
@@ -140,12 +153,13 @@ export function QuizPageContent({
             onNext={onNext}
             onSubmit={onSubmit}
             onBack={onBack}
-            showBackButton={currentQuestionIndex > 0 || (currentQuestionIndex === 0 && isPastInitialScreens)}
+            showBackButton={
+              currentQuestionIndex > 0 || isPastInitialScreens
+            }
           />
         )}
       </div>
-      
-      {/* РЕФАКТОРИНГ: Используем компонент QuizFinalizingLoader */}
+
       <QuizFinalizingLoader
         finalizing={finalizing}
         finalizingStep={finalizingStep}
