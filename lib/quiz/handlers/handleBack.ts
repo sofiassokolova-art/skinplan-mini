@@ -45,6 +45,9 @@ export async function handleBack({
   answers,
   setAnswers,
 }: HandleBackParams): Promise<void> {
+  // ИСПРАВЛЕНО: Получаем начальные инфо-экраны для логики навигации
+  const initialInfoScreens = getInitialInfoScreens();
+
   clientLogger.log('🔙 handleBack вызван', {
     currentInfoScreenIndex,
     currentQuestionIndex,
@@ -52,10 +55,9 @@ export async function handleBack({
     hasQuestionnaire: !!questionnaire || !!questionnaireRef.current,
     pendingInfoScreenId: pendingInfoScreen?.id,
     pendingInfoScreenShowAfter: pendingInfoScreen?.showAfterQuestionCode,
+    initialInfoScreensCount: initialInfoScreens.length,
+    initialInfoScreenIds: initialInfoScreens.map(s => s.id),
   });
-
-  // ИСПРАВЛЕНО: Используем единую функцию для получения начальных инфо-экранов
-  const initialInfoScreens = getInitialInfoScreens();
   
   // ИСПРАВЛЕНО: Используем утилиту для проверки, находимся ли мы на вопросах
   const isOnQuestionsValue = isOnQuestions(currentInfoScreenIndex, currentInfoScreenIndexRef);
@@ -396,25 +398,39 @@ export async function handleBack({
   // ИСПРАВЛЕНО: Проверяем и state, и ref для надежности
   const isOnInfoScreens = (currentInfoScreenIndex >= 0 && currentInfoScreenIndex < initialInfoScreens.length) ||
                           (currentInfoScreenIndexRef.current >= 0 && currentInfoScreenIndexRef.current < initialInfoScreens.length);
-  
+
   // ИСПРАВЛЕНО: Используем ref для проверки, так как state может быть устаревшим
   const effectiveInfoScreenIndex = currentInfoScreenIndexRef.current >= 0 ? currentInfoScreenIndexRef.current : currentInfoScreenIndex;
-  
+
+  clientLogger.log('🔙 handleBack: проверка начальных экранов', {
+    isOnInfoScreens,
+    currentInfoScreenIndex,
+    currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
+    effectiveInfoScreenIndex,
+    initialInfoScreensLength: initialInfoScreens.length,
+    canGoBack: isOnInfoScreens && effectiveInfoScreenIndex > 0,
+  });
+
   if (isOnInfoScreens && effectiveInfoScreenIndex > 0) {
     const newInfoScreenIndex = effectiveInfoScreenIndex - 1;
+    const currentScreen = initialInfoScreens[effectiveInfoScreenIndex];
+    const targetScreen = initialInfoScreens[newInfoScreenIndex];
+
     clientLogger.log('🔙 handleBack: переходим к предыдущему инфо-экрану', {
-      oldIndex: currentInfoScreenIndex,
-      oldIndexRef: currentInfoScreenIndexRef.current,
-      effectiveIndex: effectiveInfoScreenIndex,
+      currentScreenId: currentScreen?.id,
+      currentScreenTitle: currentScreen?.title,
+      targetScreenId: targetScreen?.id,
+      targetScreenTitle: targetScreen?.title,
+      oldIndex: effectiveInfoScreenIndex,
       newIndex: newInfoScreenIndex,
-      initialInfoScreensLength: initialInfoScreens.length,
     });
+
     // КРИТИЧНО: Обновляем и state, и ref синхронно
     updateInfoScreenIndex(newInfoScreenIndex, currentInfoScreenIndexRef, setCurrentInfoScreenIndex);
-    
+
     // Сохраняем прогресс
     await saveProgressSafely(saveProgress, answers, currentQuestionIndex, newInfoScreenIndex);
-    
+
     // Сохраняем в sessionStorage
     saveIndexToSessionStorage('quiz_currentInfoScreenIndex', newInfoScreenIndex);
     return;
