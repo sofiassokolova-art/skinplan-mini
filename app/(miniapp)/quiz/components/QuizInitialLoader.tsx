@@ -1,9 +1,7 @@
 // app/(miniapp)/quiz/components/QuizInitialLoader.tsx
-// Компонент для отображения скелетной загрузки анкеты (без спиннера)
+// Компонент для отображения простой надписи загрузки анкеты
 
 'use client';
-
-import { QuestionSkeleton } from '@/components/ui/SkeletonLoader';
 
 interface QuizInitialLoaderProps {
   // Параметры оставлены для обратной совместимости, но не используются
@@ -11,13 +9,12 @@ interface QuizInitialLoaderProps {
   subMessage?: string;
 }
 
-export function QuizInitialLoader({ 
+export function QuizInitialLoader({
   message: _message,
   subMessage: _subMessage
 }: QuizInitialLoaderProps) {
-  // Используем только скелетную загрузку, без спиннера и текста
   return (
-    <div style={{ 
+    <div style={{
       minHeight: '100vh',
       display: 'flex',
       flexDirection: 'column',
@@ -26,7 +23,14 @@ export function QuizInitialLoader({
       backgroundColor: '#FFFFFF',
       padding: '40px 20px',
     }}>
-      <QuestionSkeleton />
+      <div style={{
+        fontSize: '18px',
+        fontWeight: '500',
+        color: '#666',
+        textAlign: 'center'
+      }}>
+        Загрузка...
+      </div>
     </div>
   );
 }
