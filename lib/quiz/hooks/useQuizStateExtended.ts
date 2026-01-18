@@ -134,6 +134,16 @@ export interface UseQuizStateExtendedReturn {
   loadingStateRef: React.MutableRefObject<boolean>;
   stateMachineQuestionnaireRef: React.MutableRefObject<Questionnaire | null>;
   stateMachineQuestionnaireIdRef: React.MutableRefObject<string | number | null>;
+
+  // Refs для загрузки и прогресса
+  loadProgressInProgressRef: React.MutableRefObject<boolean>;
+  progressLoadInProgressRef: React.MutableRefObject<boolean>;
+  loadQuestionnaireInProgressRef: React.MutableRefObject<boolean>;
+  loadQuestionnaireAttemptedRef: React.MutableRefObject<boolean>;
+  redirectInProgressRef: React.MutableRefObject<boolean>;
+  profileCheckInProgressRef: React.MutableRefObject<boolean>;
+  initCompletedTimeRef: React.MutableRefObject<number | null>;
+  firstScreenResetRef: React.MutableRefObject<boolean>;
 }
 
 /**
@@ -225,6 +235,16 @@ export function useQuizStateExtended(): UseQuizStateExtendedReturn {
   const loadingStateRef = useRef<boolean>(false);
   const stateMachineQuestionnaireRef = useRef<Questionnaire | null>(null);
   const stateMachineQuestionnaireIdRef = useRef<string | number | null>(null);
+
+  // Refs для загрузки и прогресса
+  const loadProgressInProgressRef = useRef(false);
+  const progressLoadInProgressRef = useRef(false);
+  const loadQuestionnaireInProgressRef = useRef(false);
+  const loadQuestionnaireAttemptedRef = useRef(false);
+  const redirectInProgressRef = useRef<boolean>(false);
+  const profileCheckInProgressRef = useRef(false);
+  const initCompletedTimeRef = useRef<number | null>(null);
+  const firstScreenResetRef = useRef(false);
   
   // Синхронизация refs с state (для состояний, которые не вынесены в специализированные хуки)
   useEffect(() => {
@@ -376,6 +396,16 @@ export function useQuizStateExtended(): UseQuizStateExtendedReturn {
     loadingStateRef,
     stateMachineQuestionnaireRef,
     stateMachineQuestionnaireIdRef,
+
+    // Refs для загрузки и прогресса
+    loadProgressInProgressRef,
+    progressLoadInProgressRef,
+    loadQuestionnaireInProgressRef,
+    loadQuestionnaireAttemptedRef,
+    redirectInProgressRef,
+    profileCheckInProgressRef,
+    initCompletedTimeRef,
+    firstScreenResetRef,
   };
 }
 
