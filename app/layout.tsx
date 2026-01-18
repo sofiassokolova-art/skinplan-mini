@@ -10,6 +10,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { WebVitalsTracker } from './(miniapp)/components/WebVitals';
 import { Toaster } from '@/components/Toaster';
 import { GlobalErrorHandler } from '@/components/GlobalErrorHandler';
+import { ServiceWorker } from '@/components/ServiceWorker';
 import { QueryProvider } from '@/providers/QueryProvider';
 
 // Загружаем шрифты локально из public/fonts
@@ -160,6 +161,7 @@ export default function RootLayout({
           <QueryProvider>
             <GlobalErrorHandler />
             <WebVitalsTracker />
+            <ServiceWorker />
             {children}
             <Toaster />
             <Analytics />

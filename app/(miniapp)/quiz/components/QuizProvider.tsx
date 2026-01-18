@@ -3,7 +3,7 @@
 
 'use client';
 
-import React, { createContext, useContext, useCallback } from 'react';
+import React, { createContext, useContext, useCallback, memo } from 'react';
 import { useQuizStateMachine } from '@/lib/quiz/hooks/useQuizStateMachine';
 import { useQuizStateExtended } from '@/lib/quiz/hooks/useQuizStateExtended';
 import { useQuestionnaire, useQuizProgress, useSaveQuizProgress } from '@/hooks/useQuiz';
@@ -31,7 +31,7 @@ interface QuizContextType {
 
 const QuizContext = createContext<QuizContextType | null>(null);
 
-export function QuizProvider({ children }: { children: React.ReactNode }) {
+export const QuizProvider = memo(function QuizProvider({ children }: { children: React.ReactNode }) {
   const isDev = process.env.NODE_ENV === 'development';
 
   // Telegram init
@@ -77,7 +77,7 @@ export function QuizProvider({ children }: { children: React.ReactNode }) {
       {children}
     </QuizContext.Provider>
   );
-}
+});
 
 export function useQuizContext() {
   const context = useContext(QuizContext);

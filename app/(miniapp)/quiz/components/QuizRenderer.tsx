@@ -3,9 +3,10 @@
 
 'use client';
 
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, memo, useEffect, useMemo, useCallback } from 'react';
 import { useQuizContext } from './QuizProvider';
 import { ScreenErrorBoundary, QuestionErrorBoundary, QuizErrorBoundary } from '@/components/QuizErrorBoundary';
+import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
 
 // Lazy loading для тяжелых компонентов
 const QuizInfoScreen = lazy(() => import('./QuizInfoScreen').then(mod => ({ default: mod.QuizInfoScreen })));
@@ -28,6 +29,13 @@ import {
 
 import type { Question } from '@/lib/quiz/types';
 
+// Import handlers
+import { handleAnswer } from '@/lib/quiz/handlers/handleAnswer';
+import { handleNext as handleNextFn } from '@/lib/quiz/handlers/handleNext';
+import { submitAnswers as submitAnswersFn } from '@/lib/quiz/handlers/submitAnswers';
+import { handleBack as handleBackFn } from '@/lib/quiz/handlers/handleBack';
+import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
+
 type Screen = 'LOADER' | 'ERROR' | 'RETAKE' | 'RESUME' | 'INFO' | 'INITIAL_INFO' | 'QUESTION';
 
 interface QuizRendererProps {
@@ -37,7 +45,22 @@ interface QuizRendererProps {
   showDebugPanel: boolean;
 }
 
-export function QuizRenderer({
+// Preload критических ресурсов при загрузке компонента
+const preloadCriticalResources = () => {
+  // Preload основных компонентов квиза
+  if (typeof window !== 'undefined') {
+    // Preload основных шрифтов
+    const fontLink = document.createElement('link');
+    fontLink.rel = 'preload';
+    fontLink.href = '/fonts/inter-var.woff2';
+    fontLink.as = 'font';
+    fontLink.type = 'font/woff2';
+    fontLink.crossOrigin = 'anonymous';
+    document.head.appendChild(fontLink);
+  }
+};
+
+export const QuizRenderer = memo(function QuizRenderer({
   screen,
   currentQuestion,
   debugLogs,
@@ -50,60 +73,102 @@ export function QuizRenderer({
     isDev
   } = useQuizContext();
 
+  // Деструктуризация из quizState
   const {
     questionnaire,
     questionnaireRef,
-    loading,
-    setLoading,
-    error,
-    setError,
+    pendingInfoScreen,
     currentInfoScreenIndex,
-    setCurrentInfoScreenIndex,
-    currentQuestionIndex,
-    setCurrentQuestionIndex,
     answers,
-    setAnswers,
     showResumeScreen,
-    setShowResumeScreen,
     isSubmitting,
     setIsSubmitting,
     isSubmittingRef,
     finalizing,
-    setFinalizing,
     finalizingStep,
-    setFinalizingStep,
     finalizeError,
-    setFinalizeError,
-    pendingInfoScreen,
-    setPendingInfoScreen,
     savedProgress,
-    setSavedProgress,
     isRetakingQuiz,
-    setIsRetakingQuiz,
     showRetakeScreen,
-    setShowRetakeScreen,
-    hasFullRetakePayment,
-    setHasFullRetakePayment,
     hasResumed,
-    setHasResumed,
-    hasResumedRef,
-    isStartingOver,
-    setIsStartingOver,
-    isStartingOverRef,
+    error,
+    setError,
+    setCurrentInfoScreenIndex,
+    setCurrentQuestionIndex,
+    setLoading,
+    setFinalizing,
+    setFinalizingStep,
+    setFinalizeError,
+    setPendingInfoScreen,
+    setSavedProgress,
+    setIsRetakingQuiz,
+    setShowRetakeScreen,
+    setHasFullRetakePayment,
+    setAnswers,
+    setShowResumeScreen,
+    hasFullRetakePayment,
     initCompleted,
     setInitCompleted,
-    initCompletedRef,
-    userPreferencesData,
-    setUserPreferencesData
+    currentQuestionIndex,
   } = quizState;
 
-  // TODO: Implement handlers
-  const handleNext = () => Promise.resolve();
-  const submitAnswers = () => Promise.resolve();
-  const handleBack = () => {};
+  // Мониторинг производительности
+  usePerformanceMonitor('QuizRenderer', isDev);
 
-  const { data: questionnaireFromQuery } = questionnaireQuery;
-  const { data: quizProgressFromQuery } = progressQuery;
+  // Preload критических ресурсов при монтировании
+  useEffect(() => {
+    preloadCriticalResources();
+  }, []);
+
+  // Мемоизация вычислений для оптимизации рендеринга
+  const memoizedValues = useMemo(() => {
+    const isQuestionScreen = isQuestionScreenUtil(currentQuestion, pendingInfoScreen, false, showRetakeScreen);
+    const backgroundColor = getQuizBackgroundColor(isQuestionScreen);
+    const effectiveQuestionnaire = questionnaireQuery.data;
+    const allQuestions = effectiveQuestionnaire ? extractQuestionsFromQuestionnaire(effectiveQuestionnaire) : [];
+    const allQuestionsLength = allQuestions.length;
+
+    return {
+      isQuestionScreen,
+      backgroundColor,
+      questionnaireFromQuery: questionnaireQuery.data,
+      quizProgressFromQuery: progressQuery.data,
+      allQuestions,
+      allQuestionsLength,
+    };
+  }, [
+    currentQuestion,
+    pendingInfoScreen,
+    showRetakeScreen,
+    questionnaireQuery.data,
+    progressQuery.data,
+  ]);
+
+  const { isQuestionScreen, backgroundColor, questionnaireFromQuery, quizProgressFromQuery, allQuestions, allQuestionsLength } = memoizedValues;
+
+
+  // Create handlers
+  const onAnswer = useCallback(async (questionId: number, value: string | string[]) => {
+    // TODO: implement onAnswer
+    console.log('onAnswer called', { questionId, value });
+  }, []);
+
+  const onNext = useCallback(async () => {
+    // TODO: implement onNext
+    console.log('onNext called');
+  }, []);
+
+  const onSubmit = useCallback(async () => {
+    // TODO: implement onSubmit
+    console.log('onSubmit called');
+  }, []);
+
+  const onBack = useCallback(() => {
+    // TODO: implement onBack
+    console.log('onBack called');
+  }, []);
+
+  // Используем memoized значения
 
   // TODO: Implement error checking
   // const quizErrors = checkQuizErrors({
@@ -182,10 +247,10 @@ export function QuizRenderer({
             setIsSubmitting={setIsSubmitting}
             setError={setError}
             setLoading={setLoading}
-            handleNext={handleNext}
-            submitAnswers={submitAnswers}
+            handleNext={onNext}
+            submitAnswers={onSubmit}
             pendingInfoScreenRef={quizState.pendingInfoScreenRef}
-            handleBack={handleBack}
+            handleBack={onBack}
             isInitialInfoScreen={isPendingInitialScreen}
           />
         </Suspense>
@@ -198,9 +263,7 @@ export function QuizRenderer({
     return <div>Initial info screen not implemented</div>;
   }
 
-  // Question screen
-  const isQuestionScreen = isQuestionScreenUtil(currentQuestion, pendingInfoScreen, false, showRetakeScreen);
-  const backgroundColor = getQuizBackgroundColor(isQuestionScreen);
+  // Question screen - используем memoized значения
 
   return (
     <QuestionErrorBoundary componentName="QuestionScreen">
@@ -212,8 +275,22 @@ export function QuizRenderer({
           paddingBottom: '20px',
         }}
       >
-        <div>Question content goes here</div>
+        <Suspense fallback={<div>Loading question...</div>}>
+          <QuizQuestion
+            question={currentQuestion!}
+            currentQuestionIndex={currentQuestionIndex}
+            allQuestionsLength={allQuestionsLength}
+            answers={answers}
+            isRetakingQuiz={isRetakingQuiz}
+            isSubmitting={isSubmitting}
+            onAnswer={onAnswer}
+            onNext={onNext}
+            onSubmit={onSubmit}
+            onBack={onBack}
+            showBackButton={currentQuestionIndex > 0}
+          />
+        </Suspense>
       </div>
     </QuestionErrorBoundary>
   );
-}
+});
