@@ -100,6 +100,17 @@ export async function handleBack(params: HandleBackParams): Promise<void> {
     scopedStorageKeys,
   } = params;
 
+  console.log('⬅️ [handleBack] called', {
+    currentQuestionIndex,
+    currentInfoScreenIndex,
+    allQuestionsLength: allQuestions.length,
+    answersCount: Object.keys(answers).length,
+    isShowingInitialInfoScreen,
+    initialInfoScreensLength,
+    pendingInfoScreen: !!pendingInfoScreen,
+    canGoBack: currentQuestionIndex > 0 || currentInfoScreenIndex > 0
+  });
+
   if (handleBackInProgressRef.current) {
     clientLogger.warn('⏸️ handleBack: ignored (in progress)');
     return;

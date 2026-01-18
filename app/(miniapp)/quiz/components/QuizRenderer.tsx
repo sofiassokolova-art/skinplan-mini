@@ -66,6 +66,14 @@ export const QuizRenderer = memo(function QuizRenderer({
   debugLogs,
   showDebugPanel
 }: QuizRendererProps) {
+  console.log('🎨 [QuizRenderer] rendering', {
+    screen,
+    currentQuestionId: currentQuestion?.id,
+    currentQuestionCode: currentQuestion?.code,
+    currentQuestionText: currentQuestion?.text?.substring(0, 50),
+    showDebugPanel
+  });
+
   const {
     quizState,
     questionnaireQuery,
@@ -149,24 +157,42 @@ export const QuizRenderer = memo(function QuizRenderer({
 
   // Create handlers
   const onAnswer = useCallback(async (questionId: number, value: string | string[]) => {
+    console.log('📝 [QuizRenderer] onAnswer called', {
+      questionId,
+      value,
+      valueType: Array.isArray(value) ? 'array' : 'string',
+      currentQuestionId: currentQuestion?.id
+    });
     // TODO: implement onAnswer
-    console.log('onAnswer called', { questionId, value });
-  }, []);
+  }, [currentQuestion]);
 
   const onNext = useCallback(async () => {
+    console.log('➡️ [QuizRenderer] onNext called', {
+      currentQuestionIndex,
+      allQuestionsLength,
+      currentQuestionId: currentQuestion?.id
+    });
     // TODO: implement onNext
-    console.log('onNext called');
-  }, []);
+  }, [currentQuestionIndex, allQuestionsLength, currentQuestion]);
 
   const onSubmit = useCallback(async () => {
+    console.log('✅ [QuizRenderer] onSubmit called', {
+      answersCount: Object.keys(answers).length,
+      isSubmitting,
+      currentQuestionIndex,
+      allQuestionsLength
+    });
     // TODO: implement onSubmit
-    console.log('onSubmit called');
-  }, []);
+  }, [answers, isSubmitting, currentQuestionIndex, allQuestionsLength]);
 
   const onBack = useCallback(() => {
+    console.log('⬅️ [QuizRenderer] onBack called', {
+      currentQuestionIndex,
+      canGoBack: currentQuestionIndex > 0,
+      currentQuestionId: currentQuestion?.id
+    });
     // TODO: implement onBack
-    console.log('onBack called');
-  }, []);
+  }, [currentQuestionIndex, currentQuestion]);
 
   // Используем memoized значения
 
@@ -203,6 +229,12 @@ export const QuizRenderer = memo(function QuizRenderer({
   //   return <QuizInitialLoader />;
   // }
 
+  // Loader screen - показывается когда данные еще загружаются
+  if (screen === 'LOADER') {
+    console.log('⏳ [QuizRenderer] rendering LOADER screen');
+    return <QuizInitialLoader />;
+  }
+
   // Finalizing loader
   if (finalizing) {
     return (
@@ -226,6 +258,13 @@ export const QuizRenderer = memo(function QuizRenderer({
 
   // Info screens
   if (screen === 'INFO') {
+    console.log('📄 [QuizRenderer] rendering INFO screen', {
+      pendingInfoScreen,
+      currentInfoScreenIndex,
+      questionnaireFromQuery: !!questionnaireFromQuery,
+      isSubmitting
+    });
+
     // TODO: Проверить, является ли pendingInfoScreen начальным экраном
     const isPendingInitialScreen = false;
 
@@ -264,6 +303,16 @@ export const QuizRenderer = memo(function QuizRenderer({
   }
 
   // Question screen - используем memoized значения
+  console.log('❓ [QuizRenderer] rendering QUESTION screen', {
+    currentQuestion: !!currentQuestion,
+    currentQuestionId: currentQuestion?.id,
+    currentQuestionIndex,
+    allQuestionsLength,
+    answersCount: Object.keys(answers).length,
+    isRetakingQuiz,
+    isSubmitting,
+    backgroundColor
+  });
 
   return (
     <QuestionErrorBoundary componentName="QuestionScreen">

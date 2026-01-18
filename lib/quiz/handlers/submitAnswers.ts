@@ -96,6 +96,15 @@ async function ensureProfileId(result: any): Promise<string | null> {
 }
 
 export async function submitAnswers(params: SubmitAnswersParams): Promise<void> {
+  console.log('✅ [submitAnswers] called', {
+    hasQuestionnaire: !!params.questionnaire,
+    questionnaireId: params.questionnaire?.id,
+    answersCount: Object.keys(params.answers).length,
+    isSubmitting: params.isSubmitting,
+    isDev: params.isDev,
+    hasInitData: !!params.initData
+  });
+
   clientLogger.log('🚀 submitAnswers called', {
     hasQuestionnaire: !!params.questionnaire,
     questionnaireId: params.questionnaire?.id,

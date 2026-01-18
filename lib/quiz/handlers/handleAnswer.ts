@@ -56,9 +56,22 @@ export async function handleAnswer({
   scopedStorageKeys,
   scope,
 }: HandleAnswerParams): Promise<void> {
+  console.log('💾 [handleAnswer] called', {
+    questionId,
+    questionIdType: typeof questionId,
+    value,
+    valueType: Array.isArray(value) ? 'array' : 'string',
+    currentQuestionId: currentQuestion?.id,
+    currentQuestionCode: currentQuestion?.code,
+    questionnaireId: questionnaire?.id,
+    allQuestionsLength: allQuestions.length,
+    currentQuestionIndex,
+    answersCount: Object.keys(answers).length
+  });
+
   if (addDebugLog) {
-    addDebugLog('💾 handleAnswer called', { 
-      questionId, 
+    addDebugLog('💾 handleAnswer called', {
+      questionId,
       questionIdType: typeof questionId,
       value,
       currentQuestion: currentQuestion?.id,

@@ -322,41 +322,80 @@ export function useQuizComputed(params: UseQuizComputedParams) {
   
   // ФИКС: Единый computed "режим экрана" вместо множественных проверок и возврата null
   const viewMode = useMemo<ViewMode>(() => {
+    console.log('🔍 [useQuizComputed] viewMode: computing', {
+      isLoadingProgress,
+      savedProgressAnswersCount,
+      isStartingOver,
+      hasResumed,
+      isRetakingQuiz,
+      showRetakeScreen,
+      currentInfoScreenIndex,
+      initialInfoScreensLength: initialInfoScreens.length,
+      pendingInfoScreen,
+      allQuestionsLength: allQuestions.length,
+      allQuestionsHash
+    });
+
     // Приоритет 1: Загрузка прогресса
     if (isLoadingProgress) {
+      console.log('📺 [useQuizComputed] viewMode: LOADING_PROGRESS (highest priority)');
       return 'LOADING_PROGRESS';
     }
-    
+
     // Приоритет 2: Резюм-экран
     const savedCount = Object.keys(savedProgress?.answers ?? {}).length;
     if (!isStartingOver && savedCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN && !hasResumed) {
+      console.log('📺 [useQuizComputed] viewMode: RESUME (saved progress available)', {
+        savedCount,
+        minRequired: QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN,
+        hasResumed,
+        isStartingOver
+      });
       return 'RESUME';
     }
-    
+
     // Приоритет 3: Экран выбора тем при перепрохождении
     if (isRetakingQuiz && showRetakeScreen) {
+      console.log('📺 [useQuizComputed] viewMode: RETAKE_SELECT (retake screen)');
       return 'RETAKE_SELECT';
     }
-    
+
     // Приоритет 4: Начальные инфо-экраны
     const initialLen = initialInfoScreens.length;
     const onInitial = currentInfoScreenIndex < initialLen && currentInfoScreenIndexRef.current < initialLen;
     if (onInitial) {
+      console.log('📺 [useQuizComputed] viewMode: INITIAL_INFO (showing initial screens)', {
+        currentInfoScreenIndex,
+        currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
+        initialLen
+      });
       return 'INITIAL_INFO';
     }
-    
+
     // Приоритет 5: Pending инфо-экран между вопросами
     const effectivePending = pendingInfoScreenRef?.current ?? pendingInfoScreen;
     if (effectivePending && !isRetakingQuiz) {
+      console.log('📺 [useQuizComputed] viewMode: PENDING_INFO (pending info screen)', {
+        effectivePending,
+        pendingInfoScreenRef: pendingInfoScreenRef?.current,
+        pendingInfoScreen,
+        isRetakingQuiz
+      });
       return 'PENDING_INFO';
     }
-    
+
     // Приоритет 6: Вопросы
     if (allQuestions.length > 0) {
+      console.log('📺 [useQuizComputed] viewMode: QUESTION (questions available)', {
+        allQuestionsLength: allQuestions.length,
+        firstQuestionId: allQuestions[0]?.id,
+        firstQuestionCode: allQuestions[0]?.code
+      });
       return 'QUESTION';
     }
-    
+
     // Приоритет 7: Ошибка (нет вопросов)
+    console.log('❌ [useQuizComputed] viewMode: ERROR (no questions, no screens, no progress)');
     return 'ERROR';
   }, [
     isLoadingProgress,
@@ -369,6 +408,9 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     initialInfoScreens.length,
     pendingInfoScreen,
     allQuestionsHash, // ФИКС: Используем хеш вместо length
+    allQuestions.length, // Добавлено для логирования
+    currentInfoScreenIndexRef, // Добавлено для логирования
+    pendingInfoScreenRef, // Добавлено для логирования
   ]);
   
   // ФИКС: isShowingInitialInfoScreen теперь просто проверяет viewMode
@@ -409,35 +451,75 @@ export function useQuizComputed(params: UseQuizComputedParams) {
   // ФИКС: currentQuestion вычисляется ТОЛЬКО если viewMode === 'QUESTION'
   // Это убирает ситуацию "currentQuestion null → page думает, что вопрос не найден"
   const currentQuestion = useMemo(() => {
+    console.log('🔍 [useQuizComputed] currentQuestion: computing', {
+      viewMode,
+      currentQuestionIndex,
+      allQuestionsLength: allQuestions.length,
+      allQuestionsPrevRefLength: allQuestionsPrevRef.current.length,
+      questionnaireExists: !!(questionnaire || questionnaireRef.current),
+      isDev
+    });
+
     // КРИТИЧНО: Вычисляем вопрос только если viewMode === 'QUESTION'
     if (viewMode !== 'QUESTION') {
+      console.log('⚠️ [useQuizComputed] currentQuestion: viewMode is not QUESTION, returning null', { viewMode });
       return null;
     }
-    
+
     // ФИКС: Защита от некорректного индекса или undefined
     // Используем allQuestionsPrevRef как fallback, если allQuestions пустой после перемонтирования
-    const questionsToUse = allQuestions.length > 0 
-      ? allQuestions 
+    const questionsToUse = allQuestions.length > 0
+      ? allQuestions
       : (allQuestionsPrevRef.current.length > 0 ? allQuestionsPrevRef.current : []);
-    
+
     const isValidIndex = currentQuestionIndex >= 0 && currentQuestionIndex < questionsToUse.length;
-    
+
+    console.log('🔍 [useQuizComputed] currentQuestion: validation', {
+      currentQuestionIndex,
+      questionsToUseLength: questionsToUse.length,
+      isValidIndex,
+      questionsToUseIds: questionsToUse.slice(0, 5).map(q => q?.id)
+    });
+
     if (!isValidIndex) {
+      console.log('❌ [useQuizComputed] currentQuestion: invalid index, returning null', {
+        currentQuestionIndex,
+        questionsToUseLength: questionsToUse.length
+      });
       return null;
     }
-    
+
     const question = questionsToUse[currentQuestionIndex];
-    
+
+    console.log('🔍 [useQuizComputed] currentQuestion: got question', {
+      questionId: question?.id,
+      questionCode: question?.code,
+      questionText: question?.text?.substring(0, 50)
+    });
+
     // ФИКС: Проверка на undefined и валидность вопроса
     if (!question || !question.id) {
+      console.log('❌ [useQuizComputed] currentQuestion: question is invalid, returning null', {
+        question,
+        hasQuestion: !!question,
+        hasId: question ? !!question.id : false
+      });
       return null;
     }
-    
+
+    console.log('✅ [useQuizComputed] currentQuestion: returning valid question', {
+      questionId: question.id,
+      questionCode: question.code
+    });
+
     return question;
   }, [
     viewMode, // ФИКС: Зависеть от viewMode вместо множественных проверок
     currentQuestionIndex,
     allQuestionsHash, // ФИКС: Используем хеш вместо length
+    questionnaire,
+    questionnaireRef,
+    isDev
   ]);
   
   // ФИКС: Логирование вынесено в useEffect

@@ -37,6 +37,20 @@ export function QuizQuestion({
   onBack,
   showBackButton,
 }: QuizQuestionProps) {
+  console.log('❓ [QuizQuestion] rendering question', {
+    questionId: question?.id,
+    questionCode: question?.code,
+    questionType: question?.type,
+    currentQuestionIndex,
+    allQuestionsLength,
+    answersCount: Object.keys(answers).length,
+    isRetakingQuiz,
+    isSubmitting,
+    showBackButton,
+    hasAnswer: question ? !!answers[question.id] : false,
+    questionText: question?.text?.substring(0, 100)
+  });
+
   const isLastQuestion = currentQuestionIndex === allQuestionsLength - 1;
   const showSubmitButton = isLastQuestion; // Always show submit button on last question
 
@@ -55,6 +69,17 @@ export function QuizQuestion({
   const useLimeStyle = (isGoalsQuestion && question?.type === 'multi_choice') || isSkinTypeQuestion;
 
   const questionText = question?.text || '';
+
+  console.log('🎨 [QuizQuestion] question styles determined', {
+    isNameQuestion,
+    hideProgressBar,
+    isGoalsQuestion,
+    isSkinTypeQuestion,
+    isLifestyleHabitsQuestion,
+    useLimeStyle,
+    isLastQuestion,
+    showSubmitButton
+  });
 
   const splitTitleSubtitle = (text: string) => {
     const parts = text.split('\n');
@@ -226,7 +251,13 @@ export function QuizQuestion({
             <button
               key={option.id}
               onClick={async () => {
+                console.log('📝 [QuizQuestion] SingleChoice: answering', {
+                  questionId: question.id,
+                  optionValue: option.value,
+                  optionLabel: option.label
+                });
                 await onAnswer(question.id, option.value);
+                console.log('➡️ [QuizQuestion] SingleChoice: calling onNext after delay');
                 setTimeout(() => onNext(), 300);
               }}
               style={{
@@ -327,13 +358,19 @@ export function QuizQuestion({
     // Debounced sync to answers state (300ms)
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const syncToAnswers = useCallback((value: string) => {
+      console.log('📝 [QuizQuestion] FreeText: debounced sync', {
+        questionId: question.id,
+        valueLength: value.length,
+        valuePreview: value.substring(0, 50)
+      });
       if (debounceTimeoutRef.current) {
         clearTimeout(debounceTimeoutRef.current);
       }
       debounceTimeoutRef.current = setTimeout(() => {
+        console.log('📝 [QuizQuestion] FreeText: executing debounced onAnswer');
         onAnswer(question.id, value);
       }, 300);
-    }, []);
+    }, [question?.id]);
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -345,6 +382,11 @@ export function QuizQuestion({
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const handleBlur = useCallback(() => {
+      console.log('📝 [QuizQuestion] FreeText: handleBlur called', {
+        questionId: question.id,
+        localValueLength: localValue.length,
+        hasPendingDebounce: !!debounceTimeoutRef.current
+      });
       // Immediate sync on blur - only if there's pending debounced update
       if (debounceTimeoutRef.current) {
         clearTimeout(debounceTimeoutRef.current);
@@ -352,10 +394,13 @@ export function QuizQuestion({
         // Sync immediately only if there's unsaved changes
         const currentAnswer = (answers[question.id] as string) || '';
         if (currentAnswer !== localValue) {
+          console.log('📝 [QuizQuestion] FreeText: syncing unsaved changes on blur');
           onAnswer(question.id, localValue);
+        } else {
+          console.log('📝 [QuizQuestion] FreeText: no unsaved changes on blur');
         }
       }
-    }, [localValue]);
+    }, [localValue, question?.id, answers]);
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const inputStyle = useMemo(() => ({
@@ -385,7 +430,14 @@ export function QuizQuestion({
 
         {String(localValue).trim().length > 0 && (
           <button
-            onClick={onNext}
+            onClick={() => {
+              console.log('➡️ [QuizQuestion] FreeText: "Далее" clicked', {
+                questionId: question.id,
+                valueLength: localValue.length,
+                valuePreview: localValue.substring(0, 50)
+              });
+              onNext();
+            }}
             style={{
               marginTop: '12px',
               width: '100%',
@@ -666,13 +718,28 @@ export function QuizQuestion({
                 isSkinTypeQuestion={isSkinTypeQuestion}
                 getImageUrl={getImageUrl}
                 onOptionClick={async () => {
+                  console.log('📝 [QuizQuestion] LimeStyle: option clicked', {
+                    questionId: question.id,
+                    optionValue: option.value,
+                    optionLabel: option.label?.substring(0, 50),
+                    isMultiChoice,
+                    wasSelected: isSelected
+                  });
+
                   if (isMultiChoice) {
                     const newAnswers = isSelected
                       ? currentAnswers.filter((v) => v !== option.value)
                       : [...currentAnswers, option.value];
+                    console.log('📝 [QuizQuestion] LimeStyle: multi-choice answer update', {
+                      oldAnswers: currentAnswers,
+                      newAnswers,
+                      action: isSelected ? 'removed' : 'added'
+                    });
                     await onAnswer(question.id, newAnswers);
                   } else {
+                    console.log('📝 [QuizQuestion] LimeStyle: single-choice answer');
                     await onAnswer(question.id, option.value);
+                    console.log('➡️ [QuizQuestion] LimeStyle: calling onNext after single choice');
                     setTimeout(() => onNext(), 300);
                   }
                 }}
@@ -683,7 +750,19 @@ export function QuizQuestion({
           {/* Кнопка продолжить/получить план только для multi_choice */}
           {question?.type === 'multi_choice' && hasAnswer(question.id) && (
             <button
-              onClick={showSubmitButton ? onSubmit : onNext}
+              onClick={() => {
+                console.log('➡️ [QuizQuestion] LimeStyle: continue/submit button clicked', {
+                  questionId: question.id,
+                  showSubmitButton,
+                  isLastQuestion,
+                  answersCount: Object.keys(answers).length
+                });
+                if (showSubmitButton) {
+                  onSubmit();
+                } else {
+                  onNext();
+                }
+              }}
               disabled={isSubmitting}
               style={{
                 marginTop: isGoalsQuestion ? 'auto' : '8px',

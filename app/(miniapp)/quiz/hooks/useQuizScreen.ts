@@ -35,11 +35,17 @@ export function useQuizScreen(currentQuestion: Question | null) {
     initCompleted,
   } = quizState;
 
+  // Проверяем состояние загрузки прогресса
+  const isLoadingProgress = progressQuery?.isLoading || false;
+
   const { data: questionnaireFromQuery } = questionnaireQuery;
 
   return useMemo((): Screen => {
     // Error state has higher priority
     if (error && !isRetakingQuiz) return 'ERROR';
+
+    // Loading progress state - show loader while progress is loading
+    if (isLoadingProgress) return 'LOADER';
 
     if (showRetakeScreen && isRetakingQuiz) return 'RETAKE';
 
@@ -66,5 +72,6 @@ export function useQuizScreen(currentQuestion: Question | null) {
     loading,
     currentQuestion,
     initCompleted,
+    isLoadingProgress,
   ]);
 }

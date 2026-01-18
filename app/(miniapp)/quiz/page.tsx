@@ -25,6 +25,7 @@ function QuizPageContent() {
     quizState,
     quizStateMachine,
     questionnaireQuery,
+    progressQuery,
     isDev
   } = useQuizContext();
 
@@ -58,7 +59,7 @@ function QuizPageContent() {
     hasResumed,
     isStartingOver,
     pendingInfoScreen,
-    isLoadingProgress: false, // TODO: implement proper loading state
+    isLoadingProgress: progressQuery.isLoading,
     questionnaireRef,
     currentInfoScreenIndexRef,
     allQuestionsRawPrevRef: { current: [] },

@@ -108,6 +108,19 @@ const ensureQuestionsReady = async (
 export { getTotalQuestionsCount };
 
 export async function handleNext(params: HandleNextParams): Promise<void> {
+  console.log('➡️ [handleNext] called', {
+    currentQuestionIndex: params.currentQuestionIndex,
+    currentInfoScreenIndex: params.currentInfoScreenIndex,
+    allQuestionsLength: params.allQuestions.length,
+    answersCount: Object.keys(params.answers).length,
+    isRetakingQuiz: params.isRetakingQuiz,
+    showRetakeScreen: params.showRetakeScreen,
+    hasResumed: params.hasResumed,
+    pendingInfoScreen: !!params.pendingInfoScreen,
+    loading: params.loading,
+    handleNextInProgress: params.handleNextInProgressRef.current
+  });
+
   const {
     handleNextInProgressRef,
     currentInfoScreenIndexRef,
