@@ -168,6 +168,12 @@ export function QuizQuestion({
               cursor: 'pointer',
               padding: 0,
               pointerEvents: 'auto',
+              transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
+              backfaceVisibility: 'hidden', // Оптимизация рендеринга
+              WebkitTransform: 'translateZ(0)', // Для Safari
+              isolation: 'isolate', // Создаем новый контекст стекирования
+              willChange: 'transform', // Оптимизация для браузера
+              contain: 'layout style paint', // Изолируем кнопку от остального контента
             }}
           >
             <svg width="12" height="20" viewBox="0 0 12 20" fill="none" xmlns="http://www.w3.org/2000/svg">
