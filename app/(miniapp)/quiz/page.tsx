@@ -1370,6 +1370,7 @@ export default function QuizPage() {
         handleNext={handleNext}
         submitAnswers={submitAnswers}
         handleBack={handleBack}
+        isInitialInfoScreen={true}
       />
     );
   }

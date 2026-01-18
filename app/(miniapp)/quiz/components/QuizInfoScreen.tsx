@@ -73,6 +73,7 @@ interface InfoScreenLayoutProps {
   onBack?: () => void;
   isHandlingNext?: boolean;
   showBackButton?: boolean;
+  isInitialInfoScreen?: boolean; // ФИКС: Флаг для начальных инфо экранов
 }
 
 function InfoScreenLayout({
@@ -84,13 +85,18 @@ function InfoScreenLayout({
   onBack,
   isHandlingNext = false,
   showBackButton = true,
+  isInitialInfoScreen = false,
 }: InfoScreenLayoutProps) {
   const isGeneralInfo = screen.id.includes('general_info') || screen.id.includes('goals_intro');
   const isPersonalAnalysis = screen.id === 'personal_analysis';
   const isWelcome = screen.id === 'welcome';
 
   // Кнопка "Назад"
-  const backButton = showBackButton && currentInfoScreenIndex > 0 && screen.id !== 'welcome' && onBack
+  // ФИКС: Для начальных инфо экранов показываем кнопку всегда, кроме welcome
+  const shouldShowBack = showBackButton && screen.id !== 'welcome' && onBack &&
+    (isInitialInfoScreen || currentInfoScreenIndex > 0);
+
+  const backButton = shouldShowBack
     ? createPortal(
         <button
           type="button"
@@ -320,6 +326,7 @@ interface QuizInfoScreenProps {
   submitAnswers: () => Promise<void>;
   handleBack: () => void; // ИСПРАВЛЕНО: Добавлен handleBack для правильной обработки кнопки "Назад"
   pendingInfoScreenRef?: React.MutableRefObject<InfoScreen | null>;
+  isInitialInfoScreen?: boolean; // ФИКС: Флаг для начальных инфо экранов
 }
 
 export function QuizInfoScreen({
@@ -341,6 +348,7 @@ export function QuizInfoScreen({
   submitAnswers,
   pendingInfoScreenRef,
   handleBack,
+  isInitialInfoScreen = false,
 }: QuizInfoScreenProps) {
   const isTinderScreen = screen.type === 'tinder';
   const isTestimonialsScreen = screen.type === 'testimonials';
@@ -569,6 +577,7 @@ export function QuizInfoScreen({
         onBack={handleBack}
         isHandlingNext={isHandlingNext}
         customContent={customStepsContent}
+        isInitialInfoScreen={isInitialInfoScreen}
       />
     );
   }
@@ -582,6 +591,7 @@ export function QuizInfoScreen({
         onContinue={handleNext}
         onBack={handleBack}
         isHandlingNext={isHandlingNext}
+        isInitialInfoScreen={isInitialInfoScreen}
       >
         <PersonalAnalysisScreen
           screen={screen}
