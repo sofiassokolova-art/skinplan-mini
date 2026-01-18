@@ -703,16 +703,16 @@ export function QuizInfoScreen({
           {screen.image && (
             <div style={{
               position: 'absolute',
-              width: '150px',
-              height: '181px',
-              top: '156px',
-              left: '103px',
+              width: '200px',
+              height: '241px',
+              top: '120px',
+              left: '60px',
               zIndex: 10,
             }}>
               <ImageWithLoading
                 src={screen.image}
                 alt={screen.title}
-                maxWidth="150px"
+                maxWidth="200px"
                 priority={true}
               />
             </div>
@@ -723,7 +723,7 @@ export function QuizInfoScreen({
             position: 'absolute',
             width: '342px',
             height: '93px',
-            top: '367px',
+            top: '320px',
             left: '20px',
             fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 700,
@@ -745,7 +745,7 @@ export function QuizInfoScreen({
               position: 'absolute',
               width: '342px',
               height: '93px',
-              top: '367px',
+              top: '430px',
               left: '20px',
               fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 400,
@@ -882,16 +882,16 @@ export function QuizInfoScreen({
           {screen.image && (
             <div style={{
               position: 'absolute',
-              width: '150px',
-              height: '181px',
-              top: '156px',
-              left: '103px',
+              width: '200px',
+              height: '241px',
+              top: '120px',
+              left: '60px',
               zIndex: 10,
             }}>
               <ImageWithLoading
                 src={screen.image}
                 alt={screen.title}
-                maxWidth="150px"
+                maxWidth="200px"
               />
             </div>
           )}
@@ -901,7 +901,7 @@ export function QuizInfoScreen({
             position: 'absolute',
             width: '342px',
             height: '93px',
-            top: '367px',
+            top: '320px',
             left: '20px',
             fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 700,
@@ -923,7 +923,7 @@ export function QuizInfoScreen({
               position: 'absolute',
               width: '342px',
               height: '93px',
-              top: '367px',
+              top: '430px',
               left: '20px',
               fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 400,
@@ -1232,16 +1232,16 @@ export function QuizInfoScreen({
           {screen.image && (
             <div style={{
               position: 'absolute',
-              width: '150px',
-              height: '181px',
-              top: '156px',
-              left: '103px',
+              width: '200px',
+              height: '241px',
+              top: '120px',
+              left: '60px',
               zIndex: 10,
             }}>
               <ImageWithLoading
                 src={screen.image}
                 alt={screen.title}
-                maxWidth="150px"
+                maxWidth="200px"
               />
             </div>
           )}
@@ -1251,7 +1251,7 @@ export function QuizInfoScreen({
             position: 'absolute',
             width: '342px',
             height: '93px',
-            top: '367px',
+            top: '320px',
             left: '20px',
             fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 700,
@@ -1273,7 +1273,7 @@ export function QuizInfoScreen({
               position: 'absolute',
               width: '342px',
               height: '93px',
-              top: '367px',
+              top: '430px',
               left: '20px',
               fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 400,
@@ -1412,16 +1412,16 @@ export function QuizInfoScreen({
           {screen.image && (
             <div style={{
               position: 'absolute',
-              width: '150px',
-              height: '181px',
-              top: '156px',
-              left: '103px',
+              width: '200px',
+              height: '241px',
+              top: '120px',
+              left: '60px',
               zIndex: 10,
             }}>
               <ImageWithLoading
                 src={screen.image}
                 alt={screen.title}
-                maxWidth="150px"
+                maxWidth="200px"
               />
             </div>
           )}
@@ -1431,7 +1431,7 @@ export function QuizInfoScreen({
             position: 'absolute',
             width: '342px',
             height: '93px',
-            top: '367px',
+            top: '320px',
             left: '20px',
             fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 700,
@@ -1453,7 +1453,7 @@ export function QuizInfoScreen({
               position: 'absolute',
               width: '342px',
               height: '93px',
-              top: '367px',
+              top: '430px',
               left: '20px',
               fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 400,
