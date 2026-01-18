@@ -28,58 +28,8 @@ function QuizPageContent() {
     isDev
   } = useQuizContext();
 
-  // ФИКС: Проверяем состояние загрузки данных
-  const isQuestionnaireLoading = questionnaireQuery.isLoading;
-  const questionnaireError = questionnaireQuery.error;
-  const progressError = progressQuery.error;
-
-  // Показываем лоадер пока загружается questionnaire
-  if (isQuestionnaireLoading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#FFFFFF',
-        padding: '20px',
-      }}>
-        <div style={{
-          fontSize: '18px',
-          color: '#666',
-          textAlign: 'center'
-        }}>
-          Загрузка анкеты...
-        </div>
-      </div>
-    );
-  }
-
-  if (questionnaireError || progressError) {
-    console.error('❌ [QuizPage] Data loading error:', {
-      questionnaireError: questionnaireError?.message,
-      progressError: progressError?.message
-    });
-    // Возвращаем компонент ошибки вместо рендеринга основного контента
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#FFFFFF',
-        padding: '20px',
-      }}>
-        <div style={{
-          fontSize: '18px',
-          color: '#666',
-          textAlign: 'center'
-        }}>
-          Ошибка загрузки данных анкеты
-        </div>
-      </div>
-    );
-  }
+  // ВСЕ ХУКИ ДОЛЖНЫ ВЫЗЫВАТЬСЯ ДО ЛЮБЫХ УСЛОВНЫХ RETURNS
+  // React Rule: Hooks must be called in the same order every time
 
   const {
     questionnaire,
@@ -153,6 +103,60 @@ function QuizPageContent() {
   }, []);
 
   const screen = getScreenFromViewMode(viewMode);
+
+  // ТОЛЬКО ПОСЛЕ ВСЕХ ХУКОВ можно делать условные returns
+  // ФИКС: Проверяем состояние загрузки данных ПОСЛЕ всех хуков
+  const isQuestionnaireLoading = questionnaireQuery.isLoading;
+  const questionnaireError = questionnaireQuery.error;
+  const progressError = progressQuery.error;
+
+  // Показываем лоадер пока загружается questionnaire
+  if (isQuestionnaireLoading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FFFFFF',
+        padding: '20px',
+      }}>
+        <div style={{
+          fontSize: '18px',
+          color: '#666',
+          textAlign: 'center'
+        }}>
+          Загрузка анкеты...
+        </div>
+      </div>
+    );
+  }
+
+  if (questionnaireError || progressError) {
+    console.error('❌ [QuizPage] Data loading error:', {
+      questionnaireError: questionnaireError?.message,
+      progressError: progressError?.message
+    });
+    // Возвращаем компонент ошибки вместо рендеринга основного контента
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FFFFFF',
+        padding: '20px',
+      }}>
+        <div style={{
+          fontSize: '18px',
+          color: '#666',
+          textAlign: 'center'
+        }}>
+          Ошибка загрузки данных анкеты
+        </div>
+      </div>
+    );
+  }
 
   return (
     <QuizRenderer
