@@ -632,7 +632,13 @@ export async function loadSavedProgressFromServer({
       // Если hasResumed = true, оставляем флаги установленными, чтобы предотвратить повторные вызовы
       clientLogger.log('🔒 loadSavedProgressFromServer: оставляем флаги установленными, так как hasResumed = true');
     }
-    
+
+    clientLogger.log('✅ loadSavedProgressFromServer: ФУНКЦИЯ ЗАВЕРШЕНА', {
+      progressLoaded: progressLoadedRef.current,
+      hasResumedRef: hasResumedRef.current,
+      hasResumed,
+    });
+
     // ИСПРАВЛЕНО: Дополнительная проверка после завершения загрузки
     // Если hasResumed стал true во время загрузки, очищаем состояния
     if (hasResumedRef.current || hasResumed) {
