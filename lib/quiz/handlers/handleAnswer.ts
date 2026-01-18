@@ -2,6 +2,7 @@
 // Вынесена функция handleAnswer из quiz/page.tsx для улучшения читаемости и поддержки
 
 import { clientLogger } from '@/lib/client-logger';
+import { safeSessionStorageSet } from '@/lib/storage-utils';
 import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 import type { Question, Questionnaire } from '@/lib/quiz/types';
 
@@ -142,16 +143,14 @@ export async function handleAnswer({
   
   // КРИТИЧНО: Сохраняем answers в sessionStorage для восстановления после перемонтирования
   // Это необходимо, так как без initData ответы не сохраняются в БД и не попадают в React Query кэш
-  if (typeof window !== 'undefined') {
-    try {
-      sessionStorage.setItem('quiz_answers_backup', JSON.stringify(newAnswers));
-      clientLogger.log('💾 Сохранены answers в sessionStorage для восстановления', {
-        questionId: actualQuestionId,
-        answersCount: Object.keys(newAnswers).length,
-      });
-    } catch (err) {
-      clientLogger.warn('⚠️ Не удалось сохранить answers в sessionStorage', err);
-    }
+  const saved = safeSessionStorageSet('quiz_answers_backup', JSON.stringify(newAnswers));
+  if (saved) {
+    clientLogger.log('💾 Сохранены answers в sessionStorage для восстановления', {
+      questionId: actualQuestionId,
+      answersCount: Object.keys(newAnswers).length,
+    });
+  } else {
+    clientLogger.warn('⚠️ Не удалось сохранить answers в sessionStorage');
   }
   
   // ИСПРАВЛЕНО: Ответы сохраняются только на сервер через API, не в localStorage

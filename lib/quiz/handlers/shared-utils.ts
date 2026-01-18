@@ -5,6 +5,7 @@
 import { clientLogger } from '@/lib/client-logger';
 import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
 import type { Questionnaire } from '@/lib/quiz/types';
+import { safeSessionStorageSet } from '@/lib/storage-utils';
 
 /**
  * Сохраняет индекс или код вопроса в sessionStorage с обработкой ошибок
@@ -15,15 +16,11 @@ export function saveIndexToSessionStorage(
   value: number | string,
   logMessage?: string
 ): void {
-  if (typeof window === 'undefined') return;
-
-  try {
-    sessionStorage.setItem(key, String(value));
-    if (logMessage) {
-      clientLogger.log(logMessage, { value, key });
-    }
-  } catch (err) {
-    clientLogger.warn(`⚠️ Не удалось сохранить ${key} в sessionStorage`, err);
+  const saved = safeSessionStorageSet(key, String(value));
+  if (saved && logMessage) {
+    clientLogger.log(logMessage, { value, key });
+  } else if (!saved) {
+    clientLogger.warn(`⚠️ Не удалось сохранить ${key} в sessionStorage`);
   }
 }
 

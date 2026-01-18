@@ -1,6 +1,7 @@
 // lib/quiz/handlers/submitAnswers.ts
 
 import { clientLogger } from '@/lib/client-logger';
+import { safeSessionStorageSet, safeSessionStorageRemove } from '@/lib/storage-utils';
 import { api } from '@/lib/api';
 import * as userPreferences from '@/lib/user-preferences';
 import type { Questionnaire } from '@/lib/quiz/types';
