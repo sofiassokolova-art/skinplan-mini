@@ -577,46 +577,51 @@ export function QuizInfoScreen({
     // Кнопка "Назад" теперь глобальная в layout - убрана из компонента
 
     return (
-      <div style={{ 
+      <div style={{
           padding: 0,
           margin: 0,
           minHeight: '100vh',
           background: '#FFFFFF',
-          display: 'flex',
-          flexDirection: 'column',
           position: 'relative',
           width: '100%',
         }}>
 
-        {/* Контент с анимацией */}
-        <div 
+        {/* Контент с абсолютным позиционированием */}
+        <div
           className="animate-fade-in"
           style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-            paddingTop: '100px',
-            paddingBottom: '120px',
-          paddingLeft: '20px',
-          paddingRight: '20px',
-          width: '100%',
-          boxSizing: 'border-box',
-        }}
-      >
-          {/* Картинка с плавной загрузкой */}
+            position: 'relative',
+            width: '100%',
+            height: '100vh',
+            boxSizing: 'border-box',
+          }}
+        >
+          {/* Картинка с абсолютным позиционированием */}
           {screen.image && (
-            <ImageWithLoading 
-              src={screen.image}
-              alt={screen.title}
-              maxWidth="320px"
-              priority={true} // ФИКС: Первые экраны загружаем с priority
-            />
+            <div style={{
+              position: 'absolute',
+              width: '150px',
+              height: '181px',
+              top: '156px',
+              left: '103px',
+              zIndex: 10,
+            }}>
+              <ImageWithLoading
+                src={screen.image}
+                alt={screen.title}
+                maxWidth="150px"
+                priority={true}
+              />
+            </div>
           )}
 
-          {/* Заголовок */}
+          {/* Заголовок с абсолютным позиционированием */}
           <h1 style={{
+            position: 'absolute',
+            width: '342px',
+            height: '93px',
+            top: '367px',
+            left: '20px',
             fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 700,
             fontSize: '32px',
@@ -624,17 +629,21 @@ export function QuizInfoScreen({
             letterSpacing: '0px',
             textAlign: 'left',
             color: '#000000',
-            margin: '0 0 16px 0',
-            width: '100%',
-            maxWidth: '320px',
+            margin: '0',
             whiteSpace: 'pre-line',
+            zIndex: 10,
           }}>
             {screen.title}
           </h1>
 
-          {/* Подзаголовок */}
+          {/* Подзаголовок с абсолютным позиционированием */}
           {screen.subtitle && (
             <div style={{
+              position: 'absolute',
+              width: '342px',
+              height: '93px',
+              top: '367px',
+              left: '20px',
               fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 400,
               fontSize: '18px',
@@ -642,8 +651,8 @@ export function QuizInfoScreen({
               letterSpacing: '0px',
               textAlign: 'left',
               color: '#000000',
-              width: '100%',
-              maxWidth: '320px',
+              whiteSpace: 'pre-line',
+              zIndex: 10,
             }}>
               {screen.subtitle}
             </div>
@@ -685,7 +694,7 @@ export function QuizInfoScreen({
     );
   }
 
-  // Экран "Общая информация" (general_info_intro) - такая же верстка как у goals_intro
+  // Экран "Общая информация" (general_info_intro) - абсолютное позиционирование
   if (isGeneralInfoIntroScreen) {
     // Кнопка "Назад" через портал для гарантированной фиксации
     const generalBackButton = currentInfoScreenIndex > 0 && typeof window !== 'undefined' && handleBack ? createPortal(
@@ -751,40 +760,45 @@ export function QuizInfoScreen({
           margin: 0,
           minHeight: '100vh',
           background: '#FFFFFF',
-          display: 'flex',
-          flexDirection: 'column',
           position: 'relative',
           width: '100%',
         }}>
 
-        {/* Контент с анимацией */}
+        {/* Контент с абсолютным позиционированием */}
         <div
           className="animate-fade-in"
           style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-            paddingTop: '140px', // ФИКС: Увеличен отступ сверху, чтобы картинка не перекрывала текст
-            paddingBottom: '120px',
-          paddingLeft: '20px',
-          paddingRight: '20px',
-          width: '100%',
-          boxSizing: 'border-box',
-        }}
-      >
-          {/* Картинка с плавной загрузкой */}
+            position: 'relative',
+            width: '100%',
+            height: '100vh',
+            boxSizing: 'border-box',
+          }}
+        >
+          {/* Картинка с абсолютным позиционированием */}
           {screen.image && (
-            <ImageWithLoading 
-              src={screen.image}
-              alt={screen.title}
-              maxWidth="240px"
-            />
+            <div style={{
+              position: 'absolute',
+              width: '150px',
+              height: '181px',
+              top: '156px',
+              left: '103px',
+              zIndex: 10,
+            }}>
+              <ImageWithLoading
+                src={screen.image}
+                alt={screen.title}
+                maxWidth="150px"
+              />
+            </div>
           )}
 
-          {/* Заголовок */}
+          {/* Заголовок с абсолютным позиционированием */}
           <h1 style={{
+            position: 'absolute',
+            width: '342px',
+            height: '93px',
+            top: '367px',
+            left: '20px',
             fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 700,
             fontSize: '32px',
@@ -792,17 +806,21 @@ export function QuizInfoScreen({
             letterSpacing: '0px',
             textAlign: 'left',
             color: '#000000',
-            margin: '0 0 16px 0',
-            width: '100%',
-            maxWidth: '320px',
+            margin: '0',
             whiteSpace: 'pre-line',
+            zIndex: 10,
           }}>
             {screen.title}
           </h1>
 
-          {/* Подзаголовок */}
+          {/* Подзаголовок с абсолютным позиционированием */}
           {screen.subtitle && (
             <div style={{
+              position: 'absolute',
+              width: '342px',
+              height: '93px',
+              top: '367px',
+              left: '20px',
               fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 400,
               fontSize: '18px',
@@ -810,8 +828,8 @@ export function QuizInfoScreen({
               letterSpacing: '0px',
               textAlign: 'left',
               color: '#000000',
-              width: '100%',
-              maxWidth: '320px',
+              whiteSpace: 'pre-line',
+              zIndex: 10,
             }}>
               {screen.subtitle}
             </div>
@@ -1092,40 +1110,45 @@ export function QuizInfoScreen({
           margin: 0,
           minHeight: '100vh',
           background: '#FFFFFF',
-          display: 'flex',
-          flexDirection: 'column',
           position: 'relative',
           width: '100%',
         }}>
 
-        {/* Контент с анимацией */}
+        {/* Контент с абсолютным позиционированием */}
         <div
           className="animate-fade-in"
           style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-            paddingTop: '60px', // Уменьшаем отступ сверху для большего места
-            paddingBottom: '120px',
-            paddingLeft: '20px',
-            paddingRight: '20px',
+            position: 'relative',
             width: '100%',
+            height: '100vh',
             boxSizing: 'border-box',
           }}
         >
-          {/* Картинка с плавной загрузкой */}
+          {/* Картинка с абсолютным позиционированием */}
           {screen.image && (
-            <ImageWithLoading
-              src={screen.image}
-              alt={screen.title}
-              maxWidth="180px" // Уменьшаем размер картинки, чтобы не перекрывала текст
-            />
+            <div style={{
+              position: 'absolute',
+              width: '150px',
+              height: '181px',
+              top: '156px',
+              left: '103px',
+              zIndex: 10,
+            }}>
+              <ImageWithLoading
+                src={screen.image}
+                alt={screen.title}
+                maxWidth="150px"
+              />
+            </div>
           )}
 
-          {/* Заголовок */}
+          {/* Заголовок с абсолютным позиционированием */}
           <h1 style={{
+            position: 'absolute',
+            width: '342px',
+            height: '93px',
+            top: '367px',
+            left: '20px',
             fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 700,
             fontSize: '32px',
@@ -1133,17 +1156,21 @@ export function QuizInfoScreen({
             letterSpacing: '0px',
             textAlign: 'left',
             color: '#000000',
-            margin: '0 0 16px 0',
-            width: '100%',
-            maxWidth: '320px',
+            margin: '0',
             whiteSpace: 'pre-line',
+            zIndex: 10,
           }}>
             {screen.title}
           </h1>
 
-          {/* Подзаголовок */}
+          {/* Подзаголовок с абсолютным позиционированием */}
           {screen.subtitle && (
             <div style={{
+              position: 'absolute',
+              width: '342px',
+              height: '93px',
+              top: '367px',
+              left: '20px',
               fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 400,
               fontSize: '18px',
@@ -1151,8 +1178,8 @@ export function QuizInfoScreen({
               letterSpacing: '0px',
               textAlign: 'left',
               color: '#000000',
-              width: '100%',
-              maxWidth: '320px',
+              whiteSpace: 'pre-line',
+              zIndex: 10,
             }}>
               {screen.subtitle}
             </div>
@@ -1263,40 +1290,45 @@ export function QuizInfoScreen({
           margin: 0,
           minHeight: '100vh',
           background: '#FFFFFF',
-          display: 'flex',
-          flexDirection: 'column',
           position: 'relative',
           width: '100%',
         }}>
 
-        {/* Контент с анимацией */}
+        {/* Контент с абсолютным позиционированием */}
         <div
           className="animate-fade-in"
           style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-            paddingTop: '60px', // Уменьшаем отступ сверху для большего места
-            paddingBottom: '120px',
-            paddingLeft: '20px',
-            paddingRight: '20px',
+            position: 'relative',
             width: '100%',
+            height: '100vh',
             boxSizing: 'border-box',
           }}
         >
-          {/* Картинка с плавной загрузкой */}
+          {/* Картинка с абсолютным позиционированием */}
           {screen.image && (
-            <ImageWithLoading
-              src={screen.image}
-              alt={screen.title}
-              maxWidth="180px" // Уменьшаем размер картинки, чтобы не перекрывала текст
-            />
+            <div style={{
+              position: 'absolute',
+              width: '150px',
+              height: '181px',
+              top: '156px',
+              left: '103px',
+              zIndex: 10,
+            }}>
+              <ImageWithLoading
+                src={screen.image}
+                alt={screen.title}
+                maxWidth="150px"
+              />
+            </div>
           )}
 
-          {/* Заголовок */}
+          {/* Заголовок с абсолютным позиционированием */}
           <h1 style={{
+            position: 'absolute',
+            width: '342px',
+            height: '93px',
+            top: '367px',
+            left: '20px',
             fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 700,
             fontSize: '32px',
@@ -1304,17 +1336,21 @@ export function QuizInfoScreen({
             letterSpacing: '0px',
             textAlign: 'left',
             color: '#000000',
-            margin: '0 0 16px 0',
-            width: '100%',
-            maxWidth: '320px',
+            margin: '0',
             whiteSpace: 'pre-line',
+            zIndex: 10,
           }}>
             {screen.title}
           </h1>
 
-          {/* Подзаголовок */}
+          {/* Подзаголовок с абсолютным позиционированием */}
           {screen.subtitle && (
             <div style={{
+              position: 'absolute',
+              width: '342px',
+              height: '93px',
+              top: '367px',
+              left: '20px',
               fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 400,
               fontSize: '18px',
@@ -1322,8 +1358,8 @@ export function QuizInfoScreen({
               letterSpacing: '0px',
               textAlign: 'left',
               color: '#000000',
-              width: '100%',
-              maxWidth: '320px',
+              whiteSpace: 'pre-line',
+              zIndex: 10,
             }}>
               {screen.subtitle}
             </div>
