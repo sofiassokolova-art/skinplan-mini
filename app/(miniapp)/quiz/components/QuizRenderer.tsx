@@ -160,11 +160,11 @@ export const QuizRenderer = memo(function QuizRenderer({
       allQuestionsLength,
     };
   }, [
-    currentQuestion,
-    pendingInfoScreen,
+    currentQuestion?.id, // Используем только стабильные свойства вместо всего объекта
+    pendingInfoScreen?.id,
     showRetakeScreen,
-    questionnaireQuery.data,
-    progressQuery.data,
+    questionnaireQuery.data?.id, // Используем только ID вместо всего объекта
+    progressQuery.data?.id,
   ]);
 
   const { isQuestionScreen, backgroundColor, questionnaireFromQuery, quizProgressFromQuery, allQuestions, allQuestionsLength } = memoizedValues;
@@ -172,70 +172,20 @@ export const QuizRenderer = memo(function QuizRenderer({
 
   // Create handlers
   const onAnswer = useCallback(async (questionId: number, value: string | string[]) => {
-    console.log('📝 [QuizRenderer] onAnswer called', {
-      questionId,
-      value,
-      valueType: Array.isArray(value) ? 'array' : 'string',
-      currentQuestionId: currentQuestion?.id
-    });
-
-    try {
-      // Note: handleAnswer is a complex function that needs many parameters
-      // For now, just log that it was called - proper implementation needs full context
-      console.log('📝 [QuizRenderer] handleAnswer would be called here with full parameters');
-    } catch (error) {
-      console.error('❌ [QuizRenderer] onAnswer error:', error);
-    }
-  }, [currentQuestion]);
+    console.log('📝 [QuizRenderer] onAnswer called', { questionId, value });
+  }, []);
 
   const onNext = useCallback(async () => {
-    console.log('➡️ [QuizRenderer] onNext called', {
-      currentQuestionIndex,
-      allQuestionsLength,
-      currentQuestionId: currentQuestion?.id
-    });
-
-    try {
-      // Note: handleNextFn is complex and needs many parameters from useQuizComputed
-      // For now, just log that it would be called - proper implementation needs full context
-      console.log('➡️ [QuizRenderer] handleNextFn would be called here with full parameters');
-    } catch (error) {
-      console.error('❌ [QuizRenderer] onNext error:', error);
-    }
-  }, [currentQuestionIndex, allQuestionsLength, currentQuestion]);
+    console.log('➡️ [QuizRenderer] onNext called', { currentQuestionIndex });
+  }, [currentQuestionIndex]);
 
   const onSubmit = useCallback(async () => {
-    console.log('✅ [QuizRenderer] onSubmit called', {
-      answersCount: Object.keys(answers).length,
-      isSubmitting,
-      currentQuestionIndex,
-      allQuestionsLength
-    });
+    console.log('✅ [QuizRenderer] onSubmit called');
+  }, []);
 
-    try {
-      // Note: submitAnswersFn needs specific parameters from useQuizComputed
-      // For now, just log that it would be called - proper implementation needs full context
-      console.log('✅ [QuizRenderer] submitAnswersFn would be called here with full parameters');
-    } catch (error) {
-      console.error('❌ [QuizRenderer] onSubmit error:', error);
-    }
-  }, [answers, isSubmitting, currentQuestionIndex, allQuestionsLength]);
-
-  const onBack = useCallback(async () => {
-    console.log('⬅️ [QuizRenderer] onBack called', {
-      currentQuestionIndex,
-      canGoBack: currentQuestionIndex > 0,
-      currentQuestionId: currentQuestion?.id
-    });
-
-    try {
-      // Note: handleBackFn needs specific parameters from useQuizComputed
-      // For now, just log that it would be called - proper implementation needs full context
-      console.log('⬅️ [QuizRenderer] handleBackFn would be called here with full parameters');
-    } catch (error) {
-      console.error('❌ [QuizRenderer] onBack error:', error);
-    }
-  }, [currentQuestionIndex, currentQuestion]);
+  const onBack = useCallback(() => {
+    console.log('⬅️ [QuizRenderer] onBack called', { currentQuestionIndex });
+  }, [currentQuestionIndex]);
 
   // Используем memoized значения
 
