@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import type { Questionnaire } from '@/lib/quiz/types';
@@ -30,9 +30,39 @@ function ImageWithLoading({
   maxWidth: string;
   priority?: boolean;
 }) {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+
   // Стандартные размеры для изображений в quiz (320px * 2 для retina = 640px)
   const width = 640;
   const height = 640;
+
+  // ФИКС: Показываем плейсхолдер пока изображение загружается или если произошла ошибка
+  if (imageError || !src) {
+    return (
+      <div style={{
+        width: '100%',
+        maxWidth,
+        marginBottom: '32px',
+        position: 'relative',
+        aspectRatio: '1 / 1',
+        backgroundColor: '#f5f5f5',
+        borderRadius: '12px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <div style={{
+          fontSize: '14px',
+          color: '#999',
+          textAlign: 'center',
+          padding: '20px'
+        }}>
+          {imageError ? 'Изображение недоступно' : 'Загрузка...'}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -43,6 +73,8 @@ function ImageWithLoading({
       aspectRatio: '1 / 1',
       background: 'transparent',
       backgroundColor: 'transparent',
+      opacity: imageLoaded ? 1 : 0.7,
+      transition: 'opacity 0.3s ease',
     }}>
       <Image
         src={src}
@@ -58,6 +90,8 @@ function ImageWithLoading({
           filter: 'none', // ФИКС: Убираем любые цветовые фильтры с изображения
         }}
         sizes={`(max-width: 768px) ${maxWidth}, ${maxWidth}`}
+        onLoad={() => setImageLoaded(true)}
+        onError={() => setImageError(true)}
       />
     </div>
   );
@@ -279,6 +313,29 @@ export function QuizInfoScreen({
   handleBack,
   isInitialInfoScreen = false,
 }: QuizInfoScreenProps) {
+  // ФИКС: Проверяем что screen существует
+  if (!screen) {
+    console.error('❌ [QuizInfoScreen] screen is null or undefined');
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FFFFFF',
+        padding: '20px',
+      }}>
+        <div style={{
+          fontSize: '18px',
+          color: '#666',
+          textAlign: 'center'
+        }}>
+          Ошибка загрузки экрана
+        </div>
+      </div>
+    );
+  }
+
   const isTinderScreen = screen.type === 'tinder';
   const isTestimonialsScreen = screen.type === 'testimonials';
   const isComparisonScreen = screen.type === 'comparison';

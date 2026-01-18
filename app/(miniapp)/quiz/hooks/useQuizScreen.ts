@@ -6,6 +6,7 @@
 import { useMemo } from 'react';
 import { useQuizContext } from '../components/QuizProvider';
 import { shouldShowInitialLoader } from '@/lib/quiz/utils/quizRenderHelpers';
+import { getInitialInfoScreens } from '../info-screens';
 import type { Question } from '@/lib/quiz/types';
 
 type Screen = 'LOADER' | 'ERROR' | 'RETAKE' | 'RESUME' | 'INFO' | 'INITIAL_INFO' | 'QUESTION';
@@ -44,12 +45,18 @@ export function useQuizScreen(currentQuestion: Question | null) {
     // Error state has higher priority
     if (error && !isRetakingQuiz) return 'ERROR';
 
-    // Loading progress state - show loader while progress is loading
-    if (isLoadingProgress) return 'LOADER';
-
     if (showRetakeScreen && isRetakingQuiz) return 'RETAKE';
 
     if (pendingInfoScreen && !isRetakingQuiz) return 'INFO';
+
+    // ФИКС: Проверяем нужно ли показывать начальные инфо-экраны
+    // Начальные экраны показываем независимо от загрузки прогресса
+    const initialInfoScreens = getInitialInfoScreens();
+    const onInitial = currentInfoScreenIndex < initialInfoScreens.length && currentInfoScreenIndex >= 0;
+    if (onInitial) return 'INITIAL_INFO';
+
+    // Loading progress state - show loader while progress is loading (but not for initial screens)
+    if (isLoadingProgress) return 'LOADER';
 
     const hasEnoughSavedAnswers = savedProgress?.answers && Object.keys(savedProgress.answers).length >= 2;
 

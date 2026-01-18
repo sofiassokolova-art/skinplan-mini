@@ -41,6 +41,7 @@ type Screen = 'LOADER' | 'ERROR' | 'RETAKE' | 'RESUME' | 'INFO' | 'INITIAL_INFO'
 interface QuizRendererProps {
   screen: Screen;
   currentQuestion: Question | null;
+  currentInitialInfoScreen?: any; // Для INITIAL_INFO экрана
   debugLogs: Array<{ time: string; message: string; data?: any }>;
   showDebugPanel: boolean;
 }
@@ -63,6 +64,7 @@ const preloadCriticalResources = () => {
 export const QuizRenderer = memo(function QuizRenderer({
   screen,
   currentQuestion,
+  currentInitialInfoScreen,
   debugLogs,
   showDebugPanel
 }: QuizRendererProps) {
@@ -297,9 +299,47 @@ export const QuizRenderer = memo(function QuizRenderer({
     );
   }
 
-  // Initial info screens - TODO: implement when needed
+  // Initial info screens - показываем начальные инфо-экраны перед вопросами
   if (screen === 'INITIAL_INFO') {
-    return <div>Initial info screen not implemented</div>;
+    if (!currentInitialInfoScreen) {
+      console.warn('⚠️ [QuizRenderer] INITIAL_INFO screen but no currentInitialInfoScreen');
+      return <QuizInitialLoader />;
+    }
+
+    console.log('📄 [QuizRenderer] rendering INITIAL_INFO screen', {
+      currentInitialInfoScreen: currentInitialInfoScreen?.id,
+      currentInfoScreenIndex: quizState.currentInfoScreenIndex,
+      questionnaireFromQuery: !!questionnaireFromQuery,
+      isSubmitting
+    });
+
+    return (
+      <ScreenErrorBoundary componentName="InitialInfoScreen">
+        <Suspense fallback={<div>Loading initial info screen...</div>}>
+          <QuizInfoScreen
+            screen={currentInitialInfoScreen}
+            currentInfoScreenIndex={quizState.currentInfoScreenIndex}
+            questionnaire={questionnaireFromQuery || questionnaireRef.current || questionnaire}
+            questionnaireRef={questionnaireRef}
+            error={error}
+            isSubmitting={isSubmitting}
+            isHandlingNext={false}
+            isDev={isDev}
+            handleNextInProgressRef={{ current: false }}
+            isSubmittingRef={isSubmittingRef}
+            setCurrentInfoScreenIndex={setCurrentInfoScreenIndex}
+            setIsSubmitting={setIsSubmitting}
+            setError={setError}
+            setLoading={setLoading}
+            handleNext={onNext}
+            submitAnswers={onSubmit}
+            pendingInfoScreenRef={quizState.pendingInfoScreenRef}
+            handleBack={onBack}
+            isInitialInfoScreen={true}
+          />
+        </Suspense>
+      </ScreenErrorBoundary>
+    );
   }
 
   // Question screen - используем memoized значения
@@ -314,6 +354,17 @@ export const QuizRenderer = memo(function QuizRenderer({
     backgroundColor
   });
 
+  // ФИКС: Проверяем что currentQuestion существует перед рендерингом
+  if (!currentQuestion) {
+    console.warn('⚠️ [QuizRenderer] currentQuestion is null, showing error screen');
+    return (
+      <QuizErrorScreen
+        title="Ошибка загрузки"
+        message="Вопрос не найден. Попробуйте обновить страницу."
+      />
+    );
+  }
+
   return (
     <QuestionErrorBoundary componentName="QuestionScreen">
       <div
@@ -326,7 +377,7 @@ export const QuizRenderer = memo(function QuizRenderer({
       >
         <Suspense fallback={<div>Loading question...</div>}>
           <QuizQuestion
-            question={currentQuestion!}
+            question={currentQuestion}
             currentQuestionIndex={currentQuestionIndex}
             allQuestionsLength={allQuestionsLength}
             answers={answers}

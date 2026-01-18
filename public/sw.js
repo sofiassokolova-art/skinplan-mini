@@ -25,10 +25,18 @@ self.addEventListener('install', (event) => {
     caches.open(STATIC_CACHE_NAME)
       .then((cache) => {
         console.log('Caching static assets...');
-        return cache.addAll(STATIC_ASSETS);
+        // Cache assets individually to handle failures gracefully
+        return Promise.allSettled(
+          STATIC_ASSETS.map(url =>
+            cache.add(url).catch(error => {
+              console.warn(`Failed to cache ${url}:`, error);
+              // Continue with other assets even if one fails
+            })
+          )
+        );
       })
       .catch((error) => {
-        console.error('Failed to cache static assets:', error);
+        console.error('Failed to open cache:', error);
       })
   );
 

@@ -71,8 +71,8 @@ const nextConfig = {
               "font-src 'self' data: https://fonts.gstatic.com https://api.fontshare.com",
               // ИСПРАВЛЕНО: Разрешаем загрузку изображений из всех источников
               "img-src 'self' data: https: blob:",
-              // ИСПРАВЛЕНО: Разрешаем подключения к API Telegram и другим источникам
-              "connect-src 'self' https://api.telegram.org https://*.telegram.org https://vercel.live ws: wss:",
+              // ИСПРАВЛЕНО: Разрешаем подключения к API Telegram, шрифтам и другим источникам
+              "connect-src 'self' https://api.telegram.org https://*.telegram.org https://fonts.googleapis.com https://fonts.gstatic.com https://vercel.live ws: wss:",
               // ИСПРАВЛЕНО: Разрешаем iframe для Telegram и других источников
               "frame-src https://telegram.org https://*.telegram.org https://vercel.live",
               "object-src 'none'",
