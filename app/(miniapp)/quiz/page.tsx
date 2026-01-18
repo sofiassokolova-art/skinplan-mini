@@ -1064,8 +1064,6 @@ export default function QuizPage() {
       setCurrentQuestionIndex,
       setPendingInfoScreen,
       saveProgress,
-      answers,
-      saveProgress,
       scopedStorageKeys,
       setAnswers, // ИСПРАВЛЕНО: Передаем setAnswers для сброса ответа при переходе назад
     });
