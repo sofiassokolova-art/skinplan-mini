@@ -3,6 +3,7 @@
 // Вынесен из useQuizStateExtended для разделения ответственности
 
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { clientLogger } from '@/lib/client-logger';
 import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
 
@@ -61,9 +62,16 @@ export function useQuizNavigation(): UseQuizNavigationReturn {
             // Игнорируем ошибки парсинга
           }
         }
-        
+
+        clientLogger.log('🔍 useQuizNavigation: инициализация currentInfoScreenIndex', {
+          savedAnswersStr: savedAnswersStr?.substring(0, 100),
+          savedAnswersCount,
+          hasAnswersBackup: !!savedAnswersStr,
+        });
+
         // ИСПРАВЛЕНО: Если нет ответов или только 1 ответ (имя), это новый пользователь - всегда начинаем с 0
         if (savedAnswersCount <= 1) {
+          clientLogger.log('🆕 useQuizNavigation: новый пользователь, начинаем с 0');
           // Очищаем сохраненный индекс для нового пользователя
           sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
           sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
@@ -72,24 +80,42 @@ export function useQuizNavigation(): UseQuizNavigationReturn {
         
         // Для пользователя с сохраненными ответами (> 1) восстанавливаем индекс
         const saved = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
+        clientLogger.log('🔍 useQuizNavigation: проверка сохраненного индекса', {
+          saved,
+          storageKey: QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN,
+        });
+
         if (saved !== null) {
           const savedIndex = parseInt(saved, 10);
           if (!isNaN(savedIndex) && savedIndex >= 0) {
             const initialInfoScreens = getInitialInfoScreens();
+            clientLogger.log('🔍 useQuizNavigation: анализ сохраненного индекса', {
+              savedIndex,
+              initialInfoScreensLength: initialInfoScreens.length,
+              savedAnswersCount,
+            });
+
             // ИСПРАВЛЕНО: Если индекс >= длины начальных экранов, это означает, что пользователь уже прошел их
             // Но если <= 1 ответ, это ошибка - сбрасываем на 0
             if (savedIndex < initialInfoScreens.length) {
+              clientLogger.log('✅ useQuizNavigation: восстанавливаем сохраненный индекс', savedIndex);
               return savedIndex;
             } else if (savedIndex >= initialInfoScreens.length && savedAnswersCount > 1) {
               // Пользователь уже прошел начальные экраны и есть ответы (> 1) - это нормально
+              clientLogger.log('✅ useQuizNavigation: пользователь уже прошел инфо-экраны', savedIndex);
               return savedIndex;
             } else {
               // Индекс >= длины начальных экранов, но <= 1 ответ - это ошибка, сбрасываем на 0
+              clientLogger.log('🔄 useQuizNavigation: некорректный индекс, сбрасываем на 0');
               sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
               return 0;
             }
           }
         }
+
+        // Нет сохраненного индекса - начинаем с 0
+        clientLogger.log('🆕 useQuizNavigation: нет сохраненного индекса, начинаем с 0');
+        return 0;
       } catch (err) {
         // Игнорируем ошибки sessionStorage
       }

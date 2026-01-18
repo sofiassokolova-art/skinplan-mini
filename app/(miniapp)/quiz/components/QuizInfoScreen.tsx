@@ -86,6 +86,7 @@ function InfoScreenLayout({
   showBackButton = true,
 }: InfoScreenLayoutProps) {
   const isGeneralInfo = screen.id.includes('general_info') || screen.id.includes('goals_intro');
+  const isPersonalAnalysis = screen.id === 'personal_analysis';
 
   // Кнопка "Назад"
   const backButton = showBackButton && currentInfoScreenIndex > 0 && screen.id !== 'welcome' && onBack
@@ -206,7 +207,7 @@ function InfoScreenLayout({
           )}
 
           {/* Заголовок */}
-          {screen.title && (
+          {screen.title && !isPersonalAnalysis && (
             <h1
               style={{
                 fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
