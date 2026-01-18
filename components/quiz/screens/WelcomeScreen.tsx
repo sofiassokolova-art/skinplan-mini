@@ -17,7 +17,7 @@ export interface WelcomeScreenProps {
 
 function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInfoScreenIndex = 0, onBack }: WelcomeScreenProps) {
   return (
-    <div style={{ 
+    <div style={{
       padding: 0,
       margin: 0,
       minHeight: '100vh',
@@ -29,23 +29,15 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
       width: '100%',
       maxWidth: '100vw',
     }}>
-      {/* Кнопка "Назад" - НИКОГДА не показывается на welcome экране */}
-      {currentInfoScreenIndex > 0 && onBack && screen.id !== 'welcome' && currentInfoScreenIndex !== 0 && (
-        <BackButton onClick={onBack} />
-      )}
-
-      {/* Картинка */}
+      {/* Картинка - во всю ширину экрана, начиная с верха */}
       {screen.image && (
         <div style={{
-          width: 'calc(100% + 6px)',
-          height: '60vh',
-          minHeight: '400px',
-          maxHeight: '500px',
-          position: 'relative',
-          marginLeft: '-3px',
-          marginTop: '-10px',
-          borderBottomRightRadius: '40px',
-          borderBottomLeftRadius: '40px',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          zIndex: 1,
           overflow: 'hidden',
         }}>
           <img
@@ -55,11 +47,26 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
               width: '100%',
               height: '100%',
               objectFit: 'cover',
-              display: 'block', // ФИКС: Предотвращает "пиксельную полоску" из-за baseline
+              display: 'block',
             }}
           />
         </div>
       )}
+
+      {/* Кнопка "Назад" - НИКОГДА не показывается на welcome экране */}
+      {currentInfoScreenIndex > 0 && onBack && screen.id !== 'welcome' && currentInfoScreenIndex !== 0 && (
+        <BackButton onClick={onBack} />
+      )}
+
+      {/* Контент поверх картинки */}
+      <div style={{
+        position: 'relative',
+        zIndex: 2,
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'flex-start',
+      }}>
 
       {/* Контент (текст) с анимацией */}
       <div 
@@ -103,7 +110,9 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
           </h1>
         </div>
       </div>
-      
+
+      </div> {/* Закрываем div с z-index: 2 */}
+
       {/* Фиксированная кнопка "Продолжить" внизу экрана */}
       <FixedContinueButton
         ctaText={screen.ctaText}
