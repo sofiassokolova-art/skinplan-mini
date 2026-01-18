@@ -1201,16 +1201,14 @@ export function QuizInfoScreen({
               height: '56px',
               borderRadius: '20px',
               background: '#D5FE61',
-              border: 'none',
               color: '#000000',
-              fontSize: '16px',
+              border: 'none',
+              fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 600,
-              cursor: isHandlingNext ? 'not-allowed' : 'pointer',
-              opacity: isHandlingNext ? 0.7 : 1,
-              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-              transition: 'opacity 0.2s',
+              fontSize: '16px',
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(213, 254, 97, 0.3)',
             }}
-            disabled={isHandlingNext}
           >
             {screen.ctaText || 'Продолжить'}
           </button>

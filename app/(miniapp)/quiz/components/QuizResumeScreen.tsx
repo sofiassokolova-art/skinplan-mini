@@ -90,10 +90,10 @@ export function QuizResumeScreen({
   });
 
   // Вычисляем номер следующего неотвеченного вопроса (N+1)
-  let displayQuestionNumber = savedProgress.questionIndex + 2; // Fallback: следующий после сохраненного (N+1)
+  let displayQuestionNumber = (savedProgress?.questionIndex ?? 0) + 2; // Fallback: следующий после сохраненного (N+1)
   
   if (allQuestions.length > 0) {
-    const answeredQuestionIds = Object.keys(savedProgress.answers || {}).map(id => Number(id));
+    const answeredQuestionIds = Object.keys(savedProgress?.answers || {}).map(id => Number(id));
     
     // Находим следующий неотвеченный вопрос
     const nextUnansweredQuestion = allQuestions.find((q) => {

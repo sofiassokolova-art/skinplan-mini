@@ -1310,10 +1310,16 @@ export default function QuizPage() {
   }
 
   if (screen === 'RESUME') {
+    // Guard: если savedProgress null — не показываем экран resume
+    if (!savedProgress) {
+      clientLogger.warn('⚠️ RESUME screen requested but savedProgress is null, showing loader');
+      return <QuizInitialLoader />;
+    }
+
     const isBusy = loading || isLoadingProgress;
     return (
       <QuizResumeScreen
-        savedProgress={savedProgress!}
+        savedProgress={savedProgress}
         questionnaire={questionnaire}
         answers={answers}
         isRetakingQuiz={isRetakingQuiz}
