@@ -64,6 +64,8 @@ const nextConfig = {
               "default-src 'self'",
               // ИСПРАВЛЕНО: Разрешаем все необходимые источники для скриптов, включая Telegram SDK
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org https://*.telegram.org https://vercel.live data:",
+              // ИСПРАВЛЕНО: Разрешаем подключения к Telegram WebApp
+              "connect-src 'self' https://telegram.org https://api.telegram.org https://*.telegram.org https://fonts.googleapis.com https://fonts.gstatic.com https://vercel.live ws: wss:",
               // ИСПРАВЛЕНО: Разрешаем inline стили и внешние стили
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.fontshare.com",
               "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.fontshare.com",
@@ -72,7 +74,6 @@ const nextConfig = {
               // ИСПРАВЛЕНО: Разрешаем загрузку изображений из всех источников
               "img-src 'self' data: https: blob:",
               // ИСПРАВЛЕНО: Разрешаем подключения к API Telegram, шрифтам и другим источникам
-              "connect-src 'self' https://api.telegram.org https://*.telegram.org https://fonts.googleapis.com https://fonts.gstatic.com https://vercel.live ws: wss:",
               // ИСПРАВЛЕНО: Разрешаем iframe для Telegram и других источников
               "frame-src https://telegram.org https://*.telegram.org https://vercel.live",
               "object-src 'none'",

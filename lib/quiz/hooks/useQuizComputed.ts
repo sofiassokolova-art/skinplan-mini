@@ -409,8 +409,6 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     pendingInfoScreen,
     allQuestionsHash, // ФИКС: Используем хеш вместо length
     allQuestions.length, // Добавлено для логирования
-    currentInfoScreenIndexRef, // Добавлено для логирования
-    pendingInfoScreenRef, // Добавлено для логирования
   ]);
   
   // ФИКС: isShowingInitialInfoScreen теперь просто проверяет viewMode

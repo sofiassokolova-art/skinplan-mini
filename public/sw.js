@@ -10,11 +10,9 @@ const STATIC_ASSETS = [
   '/quiz',
   '/manifest.json',
   '/favicon.ico',
-  // Шрифты
-  '/fonts/inter-var.woff2',
   // Критические изображения
   '/skiniq-logo.png',
-  '/quiz_welocme_image.png',
+  '/quiz_welcome_image.png',
 ];
 
 // Установка Service Worker
