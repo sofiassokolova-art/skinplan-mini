@@ -354,14 +354,6 @@ export function QuizQuestion({
             outline: 'none',
             transition: 'all 0.2s',
           }}
-          onFocus={(e) => {
-            e.currentTarget.style.borderColor = '#000000';
-            e.currentTarget.style.boxShadow = '0 0 0 2px rgba(0, 0, 0, 0.1)';
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderColor = '#000000';
-            e.currentTarget.style.boxShadow = 'none';
-          }}
         />
 
         {String(localValue).trim().length > 0 && (

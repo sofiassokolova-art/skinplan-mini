@@ -32,6 +32,7 @@ export interface StartOverParams {
   setError: React.Dispatch<React.SetStateAction<string | null>>;
   setIsProgressCleared: React.Dispatch<React.SetStateAction<boolean>>;
   questionnaire: Questionnaire | null;
+  savedProgress: any;
 }
 
 export async function startOver(params: StartOverParams): Promise<void> {

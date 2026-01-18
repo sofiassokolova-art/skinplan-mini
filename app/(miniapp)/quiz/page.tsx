@@ -226,7 +226,7 @@ export default function QuizPage() {
   }, [savedProgress]);
 
   const {
-    answersCount,
+    answersCount: computedAnswersCount,
     allQuestionsRaw,
     allQuestions,
     initialInfoScreens,
@@ -783,7 +783,7 @@ export default function QuizPage() {
     setPendingInfoScreen,
     setAnswers,
     isShowingInitialInfoScreen,
-    initialInfoScreens,
+    initialInfoScreens.length,
     saveProgress,
     scopedStorageKeys,
   ]);
@@ -802,7 +802,7 @@ export default function QuizPage() {
     await submitAnswersFn({
       questionnaire: currentQuestionnaire,
       answers: currentAnswers,
-      isSubmitting: isSubmittingRef.current,
+      isSubmitting,
       isSubmittingRef,
       isMountedRef,
       isDev,
@@ -823,6 +823,7 @@ export default function QuizPage() {
   }, [
     questionnaireRef,
     initData,
+    isSubmitting,
     isSubmittingRef,
     isMountedRef,
     isDev,
@@ -922,6 +923,7 @@ export default function QuizPage() {
       setError,
       setIsProgressCleared,
       questionnaire,
+      savedProgress,
     });
   }, [
     scope,
@@ -971,9 +973,6 @@ export default function QuizPage() {
         if (!isMountedRef.current) return;
         if (!submitAnswersRef.current) return;
         if (isSubmittingRef.current) return;
-
-        isSubmittingRef.current = true;
-        setIsSubmitting(true);
 
         submitAnswersRef.current().catch((err: unknown) => {
           if (!isMountedRef.current) return;
@@ -1085,7 +1084,7 @@ export default function QuizPage() {
     isDev,
     hasResumed,
     isStartingOver,
-    answersCount,
+    answersCount: computedAnswersCount,
     scope,
   });
 
@@ -1167,6 +1166,7 @@ export default function QuizPage() {
   const [resumeLocked, setResumeLocked] = useState(false);
 
   const resumeInvalidated =
+    startedThisSessionRef.current ||
     isStartingOver ||
     hasResumed ||
     isRetakingQuiz ||
@@ -1244,6 +1244,15 @@ export default function QuizPage() {
     shouldShowLoader,
     currentQuestion,
   ]);
+
+  /**
+   * ✅ Safety-effect для progressLoaded
+   */
+  useEffect(() => {
+    if (!isLoadingProgress && progressLoadedRef.current && !progressLoaded) {
+      setProgressLoaded(true);
+    }
+  }, [isLoadingProgress, progressLoadedRef, progressLoaded]);
 
   /**
    * ✅ Render
