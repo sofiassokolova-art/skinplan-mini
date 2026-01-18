@@ -231,25 +231,16 @@ export const QuizRenderer = memo(function QuizRenderer({
         pendingInfoScreen,
         pendingInfoScreenRef: quizState.pendingInfoScreenRef,
         answers,
-        setIsHandlingNext: () => {}, // Will be passed from parent
         setCurrentInfoScreenIndex,
         setCurrentQuestionIndex,
         setPendingInfoScreen,
-        setAnswers,
         setLoading,
         setError,
         saveProgress,
-        saveQuizProgressMutation: saveProgressMutation,
-        lastSavedAnswerRef: quizState.lastSavedAnswerRef,
         justClosedInfoScreenRef: { current: false }, // Will be passed from parent
-        scopedStorageKeys: {
-          CURRENT_INFO_SCREEN: QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN,
-          CURRENT_QUESTION: QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION,
-          CURRENT_QUESTION_CODE: QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE,
-          INIT_CALLED: QUIZ_CONFIG.STORAGE_KEYS.INIT_CALLED,
-          JUST_SUBMITTED: QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED,
-        },
-        scope: 'default',
+        setIsHandlingNext: () => {}, // Will be passed from parent
+        loadQuestionnaire: async () => null, // Will be passed from parent
+        initInProgressRef: { current: false }, // Will be passed from parent
         isDev,
       });
     } catch (err) {
@@ -287,35 +278,25 @@ export const QuizRenderer = memo(function QuizRenderer({
     try {
       await submitAnswers({
         answers,
-        allQuestions,
         questionnaire,
-        setIsSubmitting,
+        isSubmitting,
         isSubmittingRef,
-        saveQuizProgressMutation: saveProgressMutation,
-        setError,
+        isMountedRef: { current: true }, // Will be passed from parent
+        initData: null, // Will be passed from parent
+        setAnswers,
+        setIsSubmitting,
         setLoading,
+        setError,
         setFinalizing,
         setFinalizingStep,
         setFinalizeError,
-        setAnswers,
-        questionnaireRef,
-        setCurrentQuestionIndex,
-        setCurrentInfoScreenIndex,
-        setPendingInfoScreen,
-        setSavedProgress,
-        setHasFullRetakePayment,
-        saveProgress,
-        lastSavedAnswerRef: quizState.lastSavedAnswerRef,
-        currentQuestionIndexRef: quizState.currentQuestionIndexRef,
-        currentInfoScreenIndexRef: quizState.currentInfoScreenIndexRef,
+        redirectInProgressRef: { current: false }, // Will be passed from parent
+        submitAnswersRef: { current: null }, // Will be passed from parent
+        isRetakingQuiz,
+        getInitData: async () => null, // Will be passed from parent
         scopedStorageKeys: {
-          CURRENT_INFO_SCREEN: QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN,
-          CURRENT_QUESTION: QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION,
-          CURRENT_QUESTION_CODE: QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE,
-          INIT_CALLED: QUIZ_CONFIG.STORAGE_KEYS.INIT_CALLED,
           JUST_SUBMITTED: QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED,
         },
-        scope: 'default',
         isDev,
       });
     } catch (err) {
@@ -343,7 +324,6 @@ export const QuizRenderer = memo(function QuizRenderer({
     setHasFullRetakePayment,
     saveProgress,
     quizState.lastSavedAnswerRef,
-    quizState.answersRef,
     quizState.currentQuestionIndexRef,
     quizState.currentInfoScreenIndexRef,
     isDev,
@@ -362,22 +342,14 @@ export const QuizRenderer = memo(function QuizRenderer({
         setPendingInfoScreen,
         setAnswers,
         saveProgress,
-        saveQuizProgressMutation: saveProgressMutation,
-        setError,
-        setLoading,
         questionnaireRef,
-        currentQuestionIndexRef: quizState.currentQuestionIndexRef,
         currentInfoScreenIndexRef: quizState.currentInfoScreenIndexRef,
-        lastSavedAnswerRef: quizState.lastSavedAnswerRef,
+        pendingInfoScreen,
+        handleBackInProgressRef: { current: false }, // Will be passed from parent
         scopedStorageKeys: {
           CURRENT_INFO_SCREEN: QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN,
           CURRENT_QUESTION: QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION,
-          CURRENT_QUESTION_CODE: QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE,
-          INIT_CALLED: QUIZ_CONFIG.STORAGE_KEYS.INIT_CALLED,
-          JUST_SUBMITTED: QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED,
         },
-        scope: 'default',
-        isDev,
       });
     } catch (err) {
       console.error('❌ [QuizRenderer] Error in onBack:', err);
@@ -400,7 +372,6 @@ export const QuizRenderer = memo(function QuizRenderer({
     questionnaireRef,
     quizState.currentQuestionIndexRef,
     quizState.currentInfoScreenIndexRef,
-    quizState.answersRef,
     quizState.lastSavedAnswerRef,
     isDev,
   ]);
