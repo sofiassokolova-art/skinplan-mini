@@ -123,11 +123,20 @@ export const QuizRenderer = memo(function QuizRenderer({
     currentQuestionIndex,
   } = quizState;
 
-  // Функция для сохранения прогресса
-  const saveProgress = saveProgressMutation.mutateAsync;
+  // Функция для сохранения прогресса - мемоизируем чтобы избежать перерендеринга
+  const saveProgress = useCallback(async (answers: Record<number, string | string[]>, questionIndex: number, infoScreenIndex: number) => {
+    return await saveProgressMutation.mutateAsync({
+      questionnaireId: questionnaire?.id || 0,
+      questionId: 0, // Not used for progress saving
+      answerValue: undefined,
+      answerValues: undefined,
+      questionIndex,
+      infoScreenIndex,
+    });
+  }, [saveProgressMutation, questionnaire?.id]);
 
-  // Мониторинг производительности
-  usePerformanceMonitor('QuizRenderer', isDev);
+  // Мониторинг производительности - временно отключен для отладки
+  // usePerformanceMonitor('QuizRenderer', isDev);
 
   // Preload критических ресурсов при монтировании
   useEffect(() => {

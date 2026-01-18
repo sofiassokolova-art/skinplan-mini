@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { QuizProvider } from './components/QuizProvider';
 import { QuizRenderer } from './components/QuizRenderer';
 import { useQuizContext } from './components/QuizProvider';
@@ -103,7 +103,7 @@ function QuizPageContent() {
   const answersVersion = Object.keys(answers).length + JSON.stringify(Object.values(answers)).length;
   const savedProgressVersion = savedProgress ? JSON.stringify(savedProgress).length : undefined;
 
-  const { currentQuestion, currentInitialInfoScreen, viewMode } = useQuizComputed({
+  const quizComputedResult = useQuizComputed({
     questionnaire,
     answers,
     answersVersion,
@@ -127,9 +127,11 @@ function QuizPageContent() {
     isDev,
   });
 
+  const { currentQuestion, currentInitialInfoScreen, viewMode } = quizComputedResult;
+
   // ФИКС: Используем viewMode из useQuizComputed для консистентности
   // Преобразуем viewMode в screen формат
-  const getScreenFromViewMode = (mode: ViewMode): 'LOADER' | 'ERROR' | 'RETAKE' | 'RESUME' | 'INFO' | 'INITIAL_INFO' | 'QUESTION' => {
+  const getScreenFromViewMode = useCallback((mode: ViewMode): 'LOADER' | 'ERROR' | 'RETAKE' | 'RESUME' | 'INFO' | 'INITIAL_INFO' | 'QUESTION' => {
     switch (mode) {
       case 'LOADING_PROGRESS':
         return 'LOADER';
@@ -148,7 +150,7 @@ function QuizPageContent() {
       default:
         return 'LOADER';
     }
-  };
+  }, []);
 
   const screen = getScreenFromViewMode(viewMode);
 
