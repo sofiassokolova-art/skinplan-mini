@@ -87,6 +87,7 @@ function InfoScreenLayout({
 }: InfoScreenLayoutProps) {
   const isGeneralInfo = screen.id.includes('general_info') || screen.id.includes('goals_intro');
   const isPersonalAnalysis = screen.id === 'personal_analysis';
+  const isWelcome = screen.id === 'welcome';
 
   // Кнопка "Назад"
   const backButton = showBackButton && currentInfoScreenIndex > 0 && screen.id !== 'welcome' && onBack
@@ -190,7 +191,7 @@ function InfoScreenLayout({
           }}
         >
           {/* Изображение */}
-          {screen.image && (
+          {screen.image && !isWelcome && (
             <div style={{
               display: 'flex',
               justifyContent: 'center',
@@ -207,7 +208,7 @@ function InfoScreenLayout({
           )}
 
           {/* Заголовок */}
-          {screen.title && !isPersonalAnalysis && (
+          {screen.title && !isPersonalAnalysis && !isWelcome && (
             <h1
               style={{
                 fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
