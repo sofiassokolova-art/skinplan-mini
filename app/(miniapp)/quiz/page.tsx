@@ -1326,6 +1326,9 @@ export default function QuizPage() {
   }
 
   if (screen === 'INFO') {
+    // Проверить, является ли pendingInfoScreen начальным экраном
+    const isPendingInitialScreen = pendingInfoScreen ? initialInfoScreens.some(screen => screen.id === pendingInfoScreen.id) : false;
+
     return (
       <QuizInfoScreen
         screen={pendingInfoScreen!}
@@ -1346,6 +1349,7 @@ export default function QuizPage() {
         submitAnswers={submitAnswers}
         pendingInfoScreenRef={quizState.pendingInfoScreenRef}
         handleBack={handleBack}
+        isInitialInfoScreen={isPendingInitialScreen}
       />
     );
   }
