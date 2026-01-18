@@ -161,12 +161,10 @@ function InfoScreenLayout({
     : null;
 
   return (
-    <>
-      {backButton}
-      <div style={{
-        padding: 0,
-        margin: 0,
-        minHeight: '100vh',
+    <div style={{
+      padding: 0,
+      margin: 0,
+      minHeight: '100vh',
         background: '#FFFFFF',
         display: 'flex',
         flexDirection: 'column',
@@ -297,8 +295,7 @@ function InfoScreenLayout({
             </button>
           </div>
         )}
-      </div>
-    </>
+    </div>
   );
 }
 
@@ -405,15 +402,6 @@ export function QuizInfoScreen({
               setTimeout(() => {
                 window.scrollTo(scrollLeft, scrollTop);
               }, 0);
-            }}
-            onTouchStart={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-            onTouchEnd={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleBack();
             }}
             style={{
               position: 'fixed',
@@ -1273,6 +1261,7 @@ export function QuizInfoScreen({
                 height: '100%',
                 objectFit: 'cover',
                 display: 'block',
+                filter: 'none', // ФИКС: Убираем любые цветовые фильтры с изображения
               }}
               sizes="(max-width: 768px) 100vw, 420px"
             />
@@ -1408,7 +1397,6 @@ export function QuizInfoScreen({
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  if (isSubmitting) return;
                   submitAnswers().catch((err) => {
                     console.error('Error submitting answers:', err);
                     const errorMessage = String(err?.message || 'Ошибка отправки ответов');
