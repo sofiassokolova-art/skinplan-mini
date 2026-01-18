@@ -580,11 +580,6 @@ export default function QuizPage() {
 
       await loadSavedProgressFromServer();
 
-      clientLogger.log('✅ init: loadSavedProgressFromServer завершена, устанавливаем initCompleted', {
-        initCompletedRef: initCompletedRef.current,
-        progressLoaded: progressLoadedRef.current,
-      });
-
       initCompletedRef.current = true;
       setInitCompleted(true);
 
@@ -1200,30 +1195,13 @@ export default function QuizPage() {
     if (errorScreen) return 'ERROR';
 
     // ЖЕСТКИЙ ГЕЙТ: пока грузится прогресс - показываем только LOADER
-    if (isLoadingProgress || !progressLoaded) {
-      clientLogger.log('🌀 screen resolver: LOADER (progress loading)', {
-        isLoadingProgress,
-        progressLoaded,
-        progressLoadedRef: progressLoadedRef.current,
-        initCompleted: initCompletedRef.current,
-      });
-      return 'LOADER';
-    }
+    if (isLoadingProgress || !progressLoaded) return 'LOADER';
 
-    if (resumeLocked) {
-      clientLogger.log('📋 screen resolver: RESUME (resumeLocked)', { resumeLocked });
-      return 'RESUME';
-    }
+    if (resumeLocked) return 'RESUME';
 
-    if (showRetakeScreen && isRetakingQuiz) {
-      clientLogger.log('📋 screen resolver: RETAKE', { showRetakeScreen, isRetakingQuiz });
-      return 'RETAKE';
-    }
+    if (showRetakeScreen && isRetakingQuiz) return 'RETAKE';
 
-    if (pendingInfoScreen && !isRetakingQuiz) {
-      clientLogger.log('📋 screen resolver: INFO', { pendingInfoScreen });
-      return 'INFO';
-    }
+    if (pendingInfoScreen && !isRetakingQuiz) return 'INFO';
 
     const hasEnoughSavedAnswers = savedProgress?.answers && Object.keys(savedProgress.answers).length >= 2;
     if (
@@ -1244,20 +1222,8 @@ export default function QuizPage() {
     if (shouldShowLoader) return 'LOADER';
 
     // IMPORTANT: если вопроса нет — не показываем "пустой фон"
-    if (!currentQuestion) {
-      clientLogger.log('🌀 screen resolver: LOADER (no currentQuestion)', {
-        currentQuestionIndex,
-        allQuestionsLength: allQuestions.length,
-        currentQuestion: !!currentQuestion,
-      });
-      return 'LOADER';
-    }
+    if (!currentQuestion) return 'LOADER';
 
-    clientLogger.log('❓ screen resolver: QUESTION', {
-      currentQuestionIndex,
-      currentInfoScreenIndex,
-      allQuestionsLength: allQuestions.length,
-    });
     return 'QUESTION';
   }, [
     errorScreen,
