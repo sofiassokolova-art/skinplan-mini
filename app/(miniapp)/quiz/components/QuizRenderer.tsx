@@ -26,14 +26,15 @@ import {
   getQuizBackgroundColor,
   isQuestionScreen as isQuestionScreenUtil,
 } from '@/lib/quiz/utils/quizRenderHelpers';
+import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 
 import type { Question } from '@/lib/quiz/types';
 
 // Import handlers
 import { handleAnswer } from '@/lib/quiz/handlers/handleAnswer';
-import { handleNext as handleNextFn } from '@/lib/quiz/handlers/handleNext';
-import { submitAnswers as submitAnswersFn } from '@/lib/quiz/handlers/submitAnswers';
-import { handleBack as handleBackFn } from '@/lib/quiz/handlers/handleBack';
+import { handleNext } from '@/lib/quiz/handlers/handleNext';
+import { submitAnswers } from '@/lib/quiz/handlers/submitAnswers';
+import { handleBack } from '@/lib/quiz/handlers/handleBack';
 import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
 
 type Screen = 'LOADER' | 'ERROR' | 'RETAKE' | 'RESUME' | 'INFO' | 'INITIAL_INFO' | 'QUESTION';
@@ -172,20 +173,237 @@ export const QuizRenderer = memo(function QuizRenderer({
 
   // Create handlers
   const onAnswer = useCallback(async (questionId: number, value: string | string[]) => {
-    console.log('📝 [QuizRenderer] onAnswer called', { questionId, value });
-  }, []);
+    try {
+      await handleAnswer({
+        questionId,
+        value,
+        currentQuestion,
+        answers,
+        allQuestions,
+        questionnaire,
+        setAnswers,
+        saveProgress,
+        currentQuestionIndex,
+        currentInfoScreenIndex,
+        saveQuizProgressMutation: saveProgressMutation,
+        lastSavedAnswerRef: quizState.lastSavedAnswerRef,
+        setCurrentQuestionIndex,
+        currentQuestionIndexRef: quizState.currentQuestionIndexRef,
+        scopedStorageKeys: { CURRENT_QUESTION_CODE: QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE },
+        scope: 'default',
+      });
+    } catch (err) {
+      console.error('❌ [QuizRenderer] Error in onAnswer:', err);
+      setError(err instanceof Error ? err.message : 'Ошибка при сохранении ответа');
+    }
+  }, [
+    currentQuestion,
+    answers,
+    allQuestions,
+    questionnaire,
+    setAnswers,
+    saveProgress,
+    currentQuestionIndex,
+    currentInfoScreenIndex,
+    saveProgressMutation,
+    quizState.lastSavedAnswerRef,
+    setCurrentQuestionIndex,
+    quizState.currentQuestionIndexRef,
+    setError,
+  ]);
 
   const onNext = useCallback(async () => {
-    console.log('➡️ [QuizRenderer] onNext called', { currentQuestionIndex });
-  }, [currentQuestionIndex]);
+    try {
+      await handleNext({
+        handleNextInProgressRef: { current: false }, // Will be passed from parent
+        currentInfoScreenIndexRef: quizState.currentInfoScreenIndexRef,
+        currentQuestionIndexRef: quizState.currentQuestionIndexRef,
+        questionnaireRef,
+        initCompletedRef: quizState.initCompletedRef,
+        questionnaire,
+        loading: false, // Will be passed from parent
+        currentInfoScreenIndex,
+        currentQuestionIndex,
+        allQuestions,
+        isRetakingQuiz,
+        showRetakeScreen,
+        hasResumed,
+        pendingInfoScreen,
+        pendingInfoScreenRef: quizState.pendingInfoScreenRef,
+        answers,
+        setIsHandlingNext: () => {}, // Will be passed from parent
+        setCurrentInfoScreenIndex,
+        setCurrentQuestionIndex,
+        setPendingInfoScreen,
+        setAnswers,
+        setLoading,
+        setError,
+        saveProgress,
+        saveQuizProgressMutation: saveProgressMutation,
+        lastSavedAnswerRef: quizState.lastSavedAnswerRef,
+        justClosedInfoScreenRef: { current: false }, // Will be passed from parent
+        scopedStorageKeys: {
+          CURRENT_INFO_SCREEN: QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN,
+          CURRENT_QUESTION: QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION,
+          CURRENT_QUESTION_CODE: QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE,
+          INIT_CALLED: QUIZ_CONFIG.STORAGE_KEYS.INIT_CALLED,
+          JUST_SUBMITTED: QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED,
+        },
+        scope: 'default',
+        isDev,
+      });
+    } catch (err) {
+      console.error('❌ [QuizRenderer] Error in onNext:', err);
+      setError(err instanceof Error ? err.message : 'Ошибка при переходе к следующему шагу');
+    }
+  }, [
+    quizState.currentInfoScreenIndexRef,
+    quizState.currentQuestionIndexRef,
+    questionnaireRef,
+    quizState.initCompletedRef,
+    questionnaire,
+    currentInfoScreenIndex,
+    currentQuestionIndex,
+    allQuestions,
+    isRetakingQuiz,
+    showRetakeScreen,
+    hasResumed,
+    pendingInfoScreen,
+    quizState.pendingInfoScreenRef,
+    answers,
+    setCurrentInfoScreenIndex,
+    setCurrentQuestionIndex,
+    setPendingInfoScreen,
+    setAnswers,
+    setLoading,
+    setError,
+    saveProgress,
+    saveProgressMutation,
+    quizState.lastSavedAnswerRef,
+    isDev,
+  ]);
 
   const onSubmit = useCallback(async () => {
-    console.log('✅ [QuizRenderer] onSubmit called');
-  }, []);
+    try {
+      await submitAnswers({
+        answers,
+        allQuestions,
+        questionnaire,
+        setIsSubmitting,
+        isSubmittingRef,
+        saveQuizProgressMutation: saveProgressMutation,
+        setError,
+        setLoading,
+        setFinalizing,
+        setFinalizingStep,
+        setFinalizeError,
+        setAnswers,
+        questionnaireRef,
+        setCurrentQuestionIndex,
+        setCurrentInfoScreenIndex,
+        setPendingInfoScreen,
+        setSavedProgress,
+        setHasFullRetakePayment,
+        saveProgress,
+        lastSavedAnswerRef: quizState.lastSavedAnswerRef,
+        currentQuestionIndexRef: quizState.currentQuestionIndexRef,
+        currentInfoScreenIndexRef: quizState.currentInfoScreenIndexRef,
+        scopedStorageKeys: {
+          CURRENT_INFO_SCREEN: QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN,
+          CURRENT_QUESTION: QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION,
+          CURRENT_QUESTION_CODE: QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE,
+          INIT_CALLED: QUIZ_CONFIG.STORAGE_KEYS.INIT_CALLED,
+          JUST_SUBMITTED: QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED,
+        },
+        scope: 'default',
+        isDev,
+      });
+    } catch (err) {
+      console.error('❌ [QuizRenderer] Error in onSubmit:', err);
+      setError(err instanceof Error ? err.message : 'Ошибка при отправке ответов');
+    }
+  }, [
+    answers,
+    allQuestions,
+    questionnaire,
+    setIsSubmitting,
+    isSubmittingRef,
+    saveProgressMutation,
+    setError,
+    setLoading,
+    setFinalizing,
+    setFinalizingStep,
+    setFinalizeError,
+    setAnswers,
+    questionnaireRef,
+    setCurrentQuestionIndex,
+    setCurrentInfoScreenIndex,
+    setPendingInfoScreen,
+    setSavedProgress,
+    setHasFullRetakePayment,
+    saveProgress,
+    quizState.lastSavedAnswerRef,
+    quizState.answersRef,
+    quizState.currentQuestionIndexRef,
+    quizState.currentInfoScreenIndexRef,
+    isDev,
+  ]);
 
-  const onBack = useCallback(() => {
-    console.log('⬅️ [QuizRenderer] onBack called', { currentQuestionIndex });
-  }, [currentQuestionIndex]);
+  const onBack = useCallback(async () => {
+    try {
+      await handleBack({
+        currentQuestionIndex,
+        currentInfoScreenIndex,
+        allQuestions,
+        answers,
+        questionnaire,
+        setCurrentQuestionIndex,
+        setCurrentInfoScreenIndex,
+        setPendingInfoScreen,
+        setAnswers,
+        saveProgress,
+        saveQuizProgressMutation: saveProgressMutation,
+        setError,
+        setLoading,
+        questionnaireRef,
+        currentQuestionIndexRef: quizState.currentQuestionIndexRef,
+        currentInfoScreenIndexRef: quizState.currentInfoScreenIndexRef,
+        lastSavedAnswerRef: quizState.lastSavedAnswerRef,
+        scopedStorageKeys: {
+          CURRENT_INFO_SCREEN: QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN,
+          CURRENT_QUESTION: QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION,
+          CURRENT_QUESTION_CODE: QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE,
+          INIT_CALLED: QUIZ_CONFIG.STORAGE_KEYS.INIT_CALLED,
+          JUST_SUBMITTED: QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED,
+        },
+        scope: 'default',
+        isDev,
+      });
+    } catch (err) {
+      console.error('❌ [QuizRenderer] Error in onBack:', err);
+      setError(err instanceof Error ? err.message : 'Ошибка при возврате назад');
+    }
+  }, [
+    currentQuestionIndex,
+    currentInfoScreenIndex,
+    allQuestions,
+    answers,
+    questionnaire,
+    setCurrentQuestionIndex,
+    setCurrentInfoScreenIndex,
+    setPendingInfoScreen,
+    setAnswers,
+    saveProgress,
+    saveProgressMutation,
+    setError,
+    setLoading,
+    questionnaireRef,
+    quizState.currentQuestionIndexRef,
+    quizState.currentInfoScreenIndexRef,
+    quizState.answersRef,
+    quizState.lastSavedAnswerRef,
+    isDev,
+  ]);
 
   // Используем memoized значения
 

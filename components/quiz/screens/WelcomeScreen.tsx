@@ -61,7 +61,7 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
       )}
 
       {/* Контент (текст) с анимацией */}
-      <div 
+      <div
         className="animate-fade-in"
         style={{
           flex: 1,
@@ -83,7 +83,7 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
           maxWidth: '320px',
           textAlign: 'center',
         }}>
-          <h1 
+          <h1
             className="quiz-welcome-title"
             style={{
               fontFamily: "var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif",
