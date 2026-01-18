@@ -3,9 +3,7 @@
 
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
-import { api } from '@/lib/api';
 import { useCart, useRemoveFromCart } from '@/hooks/useCart';
 import type { CartResponse } from '@/lib/api-types';
 import toast from 'react-hot-toast';

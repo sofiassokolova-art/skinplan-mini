@@ -329,7 +329,7 @@ export function QuizQuestion({
       debounceTimeoutRef.current = setTimeout(() => {
         onAnswer(question.id, value);
       }, 300);
-    }, [onAnswer, question.id]);
+    }, []);
 
     const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
       const newValue = e.target.value;
@@ -349,7 +349,7 @@ export function QuizQuestion({
           onAnswer(question.id, localValue);
         }
       }
-    }, [onAnswer, question.id, localValue, answers]);
+    }, [localValue, answers, question.id, onAnswer]);
 
     const inputStyle = useMemo(() => ({
       padding: '16px',
@@ -431,7 +431,7 @@ export function QuizQuestion({
       }
 
       return imageUrl;
-    }, [isGoalsQuestion, isSkinTypeQuestion]);
+    }, []);
 
     // Memoized option card to prevent unnecessary re-renders of images
     const OptionCard = memo(({
@@ -451,7 +451,8 @@ export function QuizQuestion({
       getImageUrl: (index: number) => string;
       onOptionClick: () => void;
     }) => {
-      const imageUrl = getImageUrl(index);
+      // Memoize image URL to prevent re-calculations
+      const imageUrl = useMemo(() => getImageUrl(index), [getImageUrl, index]);
 
       const optionText = option.label || '';
       const optionParts = optionText.split('\n');
@@ -1041,7 +1042,7 @@ export function QuizQuestion({
         )}
 
         {/* Лаймовый прогресс-бар (для лайм-экранов) */}
-        {useLimeStyle && <ProgressBar useLimeOffsets={isGoalsQuestion || isSkinTypeQuestion ? false : true} />}
+        {useLimeStyle && <ProgressBar useLimeOffsets={isSkinTypeQuestion ? false : true} />}
 
         {/* Рендеры */}
         <LimeStyle />

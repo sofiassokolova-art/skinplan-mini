@@ -10,7 +10,7 @@ import PageTransition from '@/components/PageTransition';
 import { NetworkStatus } from '@/components/NetworkStatus';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { ServiceFeedbackPopup } from '@/components/ServiceFeedbackPopup';
-import { tg, useTelegram } from '@/lib/telegram-client';
+import { useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
 import { BackButton } from '@/components/quiz/buttons';
 
@@ -183,7 +183,7 @@ function LayoutContent({
       aborted = true;
       newUserCheckInProgressRef.current = false;
     };
-  }, [pathname, initData]); // Добавляем initData в зависимости, чтобы перепроверить при его появлении
+  }, [pathname, initData, isNewUser]); // Добавляем isNewUser в зависимости
 
   // УДАЛЕНО: Старая проверка профиля, которая вызывала множественные запросы
   /* useEffect(() => {

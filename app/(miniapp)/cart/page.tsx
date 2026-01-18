@@ -33,7 +33,7 @@ export default function CartPage() {
   
   // ИСПРАВЛЕНО: Используем React Query хуки для автоматического обновления
   // Хуки автоматически инвалидируют кэш после добавления/удаления товара
-  const { data: wishlistData, isLoading: loading, error } = useWishlist();
+  const { data: wishlistData, isLoading: loading } = useWishlist();
   const removeMutation = useRemoveFromWishlist();
 
   // Маппим данные из API в формат WishlistItemData

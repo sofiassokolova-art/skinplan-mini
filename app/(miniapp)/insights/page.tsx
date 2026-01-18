@@ -69,7 +69,7 @@ export default function InsightsPage() {
             notes: profileData.notes || '',
           });
         }
-      } catch (err) {
+      } catch (_err) {
         clientLogger.warn('Profile not found, using fallback');
       }
 

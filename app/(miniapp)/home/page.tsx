@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
@@ -51,7 +51,7 @@ const ICONS: Record<string, string> = {
 
 export default function HomePage() {
   const router = useRouter();
-  const { initialize, isAvailable } = useTelegram();
+  const { initialize } = useTelegram();
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [hasPlan, setHasPlan] = useState(false); // Есть ли сохранённый 28-дневный план
@@ -193,7 +193,7 @@ export default function HomePage() {
     };
 
     initAndLoad();
-  }, [router]);
+  }, [router, initialize]);
 
   // Фолбэк: строим рутину напрямую из 28-дневного плана, если рекомендации по каким‑то причинам пустые
   const buildRoutineFromPlan = async () => {
@@ -454,7 +454,7 @@ export default function HomePage() {
     }
   };
 
-  const loadRecommendations = async () => {
+  const loadRecommendations = useCallback(async () => {
     setLoading(true); // ИСПРАВЛЕНО: Устанавливаем loading в true перед началом загрузки
     setError(null); // ИСПРАВЛЕНО: Очищаем ошибку перед началом новой загрузки
     try {
@@ -704,7 +704,7 @@ export default function HomePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [hasPlan, router, setLoading, setError, setMorningItems, setEveningItems, buildRoutineFromPlan]);
 
   const toggleItem = (itemId: string) => {
     if (tab === 'AM') {

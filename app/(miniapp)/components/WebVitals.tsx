@@ -31,7 +31,7 @@ export function WebVitalsTracker() {
               }
             });
             lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] });
-          } catch (e) {
+          } catch (_e) {
             // Игнорируем ошибки, если API не поддерживается
           }
 
@@ -47,7 +47,7 @@ export function WebVitalsTracker() {
               });
             });
             fidObserver.observe({ entryTypes: ['first-input'] });
-          } catch (e) {
+          } catch (_e) {
             // Игнорируем ошибки, если API не поддерживается
           }
 
@@ -64,7 +64,7 @@ export function WebVitalsTracker() {
               reportWebVitals({ cls: clsValue });
             });
             clsObserver.observe({ entryTypes: ['layout-shift'] });
-          } catch (e) {
+          } catch (_e) {
             // Игнорируем ошибки, если API не поддерживается
           }
 
@@ -79,7 +79,7 @@ export function WebVitalsTracker() {
               });
             });
             fcpObserver.observe({ entryTypes: ['paint'] });
-          } catch (e) {
+          } catch (_e) {
             // Игнорируем ошибки, если API не поддерживается
           }
         }

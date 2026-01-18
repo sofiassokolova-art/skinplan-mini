@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnalysisLoading } from '@/components/AnalysisLoading';
 import { UserProfileCard } from '@/components/UserProfileCard';
@@ -28,18 +28,7 @@ function AnalysisPageContent() {
   const [inRoutineProducts, setInRoutineProducts] = useState<Set<number>>(new Set());
   const [wishlistProductIds, setWishlistProductIds] = useState<Set<number>>(new Set());
 
-  useEffect(() => {
-    loadAnalysisData();
-  }, []);
-
-  // Останавливаем анимацию загрузки, если произошла ошибка
-  useEffect(() => {
-    if (error && showLoading) {
-      setShowLoading(false);
-    }
-  }, [error, showLoading]);
-
-  const loadAnalysisData = async () => {
+  const loadAnalysisData = useCallback(async () => {
     try {
       clientLogger.info('📥 Loading analysis data');
       setLoading(true);
@@ -97,7 +86,18 @@ function AnalysisPageContent() {
       setError(err?.message || 'Ошибка загрузки данных анализа');
       setLoading(false);
     }
-  };
+  }, [setLoading, setError, setAnalysisData]);
+
+  useEffect(() => {
+    loadAnalysisData();
+  }, [loadAnalysisData]);
+
+  // Останавливаем анимацию загрузки, если произошла ошибка
+  useEffect(() => {
+    if (error && showLoading) {
+      setShowLoading(false);
+    }
+  }, [error, showLoading]);
 
   const handleAddToRoutine = async (productId: number) => {
     const newSet = new Set(inRoutineProducts);

@@ -38,7 +38,6 @@ export default function LoadingPage() {
   const searchParams = useSearchParams();
   const [step, setStep] = useState<LoadingStep>('saving_answers');
   const [error, setError] = useState<string | null>(null);
-  const [profileId, setProfileId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -79,8 +78,6 @@ export default function LoadingPage() {
         }
 
         const resolvedProfileId = profile.id;
-        const version = profile.version;
-        setProfileId(resolvedProfileId);
 
         if (cancelled) return;
 

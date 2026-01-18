@@ -87,17 +87,8 @@ export function QuizRenderer({
     initCompleted,
     setInitCompleted,
     initCompletedRef,
-    daysSincePlanGeneration,
-    setDaysSincePlanGeneration,
     userPreferencesData,
-    setUserPreferencesData,
-    currentInitialInfoScreen,
-    initialInfoScreens,
-    isShowingInitialInfoScreen,
-    isLoadingProgress,
-    progressLoaded,
-    resumeLocked,
-    quizStateMachine
+    setUserPreferencesData
   } = quizState;
 
   // TODO: Implement handlers
@@ -108,105 +99,64 @@ export function QuizRenderer({
   const { data: questionnaireFromQuery } = questionnaireQuery;
   const { data: quizProgressFromQuery } = progressQuery;
 
-  // Check for errors
-  const quizErrors = checkQuizErrors({
-    questionnaire,
-    questionnaireFromQuery,
-    progressQuery,
-    loading,
-    error,
-  });
+  // TODO: Implement error checking
+  // const quizErrors = checkQuizErrors({
+  //   questionnaire,
+  //   questionnaireRef,
+  //   allQuestionsRaw: [],
+  //   allQuestions: [],
+  //   answers,
+  //   loading,
+  //   error,
+  //   isRetakingQuiz,
+  //   showRetakeScreen,
+  //   currentQuestion,
+  //   showResumeScreen,
+  //   isShowingInitialInfoScreen: false,
+  //   pendingInfoScreen,
+  //   hasResumed,
+  // });
 
-  if (quizErrors.length > 0) {
-    return (
-      <QuizErrorScreen
-        errors={quizErrors}
-        isDev={isDev}
-        debugLogs={debugLogs}
-      />
-    );
-  }
+  // if (quizErrors.length > 0) {
+  //   return (
+  //     <QuizErrorScreen
+  //       errors={quizErrors}
+  //       isDev={isDev}
+  //       debugLogs={debugLogs}
+  //     />
+  //   );
+  // }
 
-  // Initial loader
-  if (shouldShowInitialLoader({
-    questionnaire,
-    questionnaireFromQuery,
-    progressQuery,
-    loading,
-    isLoadingProgress,
-    progressLoaded,
-    currentQuestion,
-    isShowingInitialInfoScreen,
-    currentInitialInfoScreen,
-    initialInfoScreens,
-    currentInfoScreenIndex,
-    isRetakingQuiz,
-    pendingInfoScreen,
-    savedProgress,
-    initCompleted,
-  })) {
-    return <QuizInitialLoader />;
-  }
+  // TODO: Implement initial loader logic
+  // if (shouldShowInitialLoader({...})) {
+  //   return <QuizInitialLoader />;
+  // }
 
   // Finalizing loader
   if (finalizing) {
     return (
       <QuizFinalizingLoader
-        step={finalizingStep}
-        error={finalizeError}
-        onRetry={() => {
-          setFinalizing(false);
-          setFinalizeError(null);
-          submitAnswers();
-        }}
+        finalizing={true}
+        finalizingStep={finalizingStep}
+        finalizeError={finalizeError}
       />
     );
   }
 
-  // Retake screen
-  if (screen === 'RETAKE') {
-    return (
-      <QuizRetakeScreen
-        hasFullRetakePayment={hasFullRetakePayment}
-        setHasFullRetakePayment={setHasFullRetakePayment}
-        isStartingOver={isStartingOver}
-        setIsStartingOver={setIsStartingOver}
-        isStartingOverRef={isStartingOverRef}
-        daysSincePlanGeneration={daysSincePlanGeneration}
-        setDaysSincePlanGeneration={setDaysSincePlanGeneration}
-        userPreferencesData={userPreferencesData}
-        setUserPreferencesData={setUserPreferencesData}
-        handleNext={handleNext}
-        isDev={isDev}
-        debugLogs={debugLogs}
-      />
-    );
-  }
+  // TODO: Implement retake screen
+  // if (screen === 'RETAKE') {
+  //   return <QuizRetakeScreen {...} />;
+  // }
 
-  // Resume screen
-  if (screen === 'RESUME') {
-    return (
-      <QuizResumeScreen
-        savedProgress={savedProgress}
-        setSavedProgress={setSavedProgress}
-        isRetakingQuiz={isRetakingQuiz}
-        setIsRetakingQuiz={setIsRetakingQuiz}
-        showRetakeScreen={showRetakeScreen}
-        setShowRetakeScreen={setShowRetakeScreen}
-        hasResumed={hasResumed}
-        setHasResumed={setHasResumed}
-        hasResumedRef={hasResumedRef}
-        handleNext={handleNext}
-        isDev={isDev}
-        debugLogs={debugLogs}
-      />
-    );
-  }
+  // TODO: Implement resume screen
+  // if (screen === 'RESUME' && savedProgress) {
+  //   return <QuizResumeScreen {...} />;
+  // }
 
   // Info screens
   if (screen === 'INFO') {
-    // Проверить, является ли pendingInfoScreen начальным экраном
-    const isPendingInitialScreen = pendingInfoScreen ? initialInfoScreens.some(screen => screen.id === pendingInfoScreen.id) : false;
+    // TODO: Проверить, является ли pendingInfoScreen начальным экраном
+    const isPendingInitialScreen = false;
 
     return (
       <QuizInfoScreen
@@ -233,34 +183,13 @@ export function QuizRenderer({
     );
   }
 
-  // Initial info screens
+  // Initial info screens - TODO: implement when needed
   if (screen === 'INITIAL_INFO') {
-    return (
-      <QuizInfoScreen
-        screen={currentInitialInfoScreen!}
-        currentInfoScreenIndex={currentInfoScreenIndex}
-        questionnaire={questionnaireFromQuery || questionnaireRef.current || questionnaire}
-        questionnaireRef={questionnaireRef}
-        error={error}
-        isSubmitting={isSubmitting}
-        isHandlingNext={false} // Will be passed from parent
-        isDev={isDev}
-        handleNextInProgressRef={{ current: false }} // Will be passed from parent
-        isSubmittingRef={isSubmittingRef}
-        setCurrentInfoScreenIndex={setCurrentInfoScreenIndex}
-        setIsSubmitting={setIsSubmitting}
-        setError={setError}
-        setLoading={setLoading}
-        handleNext={handleNext}
-        submitAnswers={submitAnswers}
-        handleBack={handleBack}
-        isInitialInfoScreen={true}
-      />
-    );
+    return <div>Initial info screen not implemented</div>;
   }
 
   // Question screen
-  const isQuestionScreen = isQuestionScreenUtil(currentQuestion, pendingInfoScreen, resumeLocked, showRetakeScreen);
+  const isQuestionScreen = isQuestionScreenUtil(currentQuestion, pendingInfoScreen, false, showRetakeScreen);
   const backgroundColor = getQuizBackgroundColor(isQuestionScreen);
 
   return (
