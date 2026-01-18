@@ -1181,6 +1181,10 @@ export default function QuizPage() {
   const screen: Screen = useMemo(() => {
     if (errorScreen) return 'ERROR';
 
+    // ЖЕСТКИЙ ГЕЙТ: пока грузится прогресс - показываем только LOADER
+    if (isLoadingProgress) return 'LOADER';
+    if (!progressLoadedRef.current) return 'LOADER';
+
     if (resumeLocked) return 'RESUME';
 
     if (showRetakeScreen && isRetakingQuiz) return 'RETAKE';
@@ -1220,6 +1224,7 @@ export default function QuizPage() {
     currentInfoScreenIndex,
     initialInfoScreens.length,
     isLoadingProgress,
+    progressLoadedRef.current,
     savedProgress,
     questionnaireFromQuery,
     questionnaireRef,

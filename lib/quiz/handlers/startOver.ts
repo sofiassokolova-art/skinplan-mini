@@ -97,7 +97,7 @@ export async function startOver(params: StartOverParams): Promise<void> {
       clientLogger.warn('⚠️ Не удалось очистить quiz данные из sessionStorage', err);
     }
   }
-  params.setShowResumeScreen(false);
+  // Убрано: setShowResumeScreen управляется только через resumeLocked
   // ВАЖНО: Сбрасываем и state, и ref для hasResumed
   params.hasResumedRef.current = false;
   params.setHasResumed(false);

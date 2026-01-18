@@ -95,7 +95,7 @@ export function QuizRetakeScreen({
     // Полный сброс ответов и прогресса
     setAnswers({});
     setSavedProgress(null);
-    setShowResumeScreen(false);
+    // Убрано: setShowResumeScreen управляется только через resumeLocked
     setHasResumed(false);
     hasResumedRef.current = false;
 

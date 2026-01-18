@@ -77,7 +77,7 @@ export function resumeQuiz(params: ResumeQuizParams): void {
   // Используем ref для синхронной установки, чтобы асинхронные функции сразу видели новое значение
   params.hasResumedRef.current = true;
   params.setHasResumed(true);
-  params.setShowResumeScreen(false); // Устанавливаем сразу, чтобы предотвратить повторное появление экрана
+  // Убрано: setShowResumeScreen управляется только через resumeLocked
   // ИСПРАВЛЕНО: Очищаем pendingInfoScreen при resume, чтобы он не блокировал показ вопроса
   if (params.setPendingInfoScreen) {
     clientLogger.warn('🧹 ИНФО-СКРИН: Очищаем pendingInfoScreen в resumeQuiz', {

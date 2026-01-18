@@ -67,7 +67,7 @@ export async function handleFullRetake({
 
   setAnswers({});
   setSavedProgress(null);
-  setShowResumeScreen(false);
+  // Убрано: setShowResumeScreen управляется только через resumeLocked
   setHasResumed(false);
   hasResumedRef.current = false;
 
