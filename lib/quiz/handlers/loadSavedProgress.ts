@@ -161,6 +161,10 @@ export async function loadSavedProgressFromServer({
     }
     // Проверяем, что Telegram WebApp доступен перед запросом
     if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
+      clientLogger.log('ℹ️ loadSavedProgressFromServer: Telegram initData недоступен, устанавливаем progressLoaded = true');
+      progressLoadedRef.current = true;
+      setProgressLoaded(true);
+      setLoading(false);
       return;
     }
     
