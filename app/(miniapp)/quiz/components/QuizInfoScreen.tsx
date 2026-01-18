@@ -19,14 +19,14 @@ import { QuizErrorDisplay } from './QuizErrorDisplay';
 
 // ФИКС: Оптимизированный компонент для загрузки изображений с next/image
 // Использует WebP/AVIF оптимизацию, lazy-loading, и правильные размеры
-function ImageWithLoading({ 
-  src, 
-  alt, 
+function ImageWithLoading({
+  src,
+  alt,
   maxWidth,
   priority = false,
-}: { 
-  src: string; 
-  alt: string; 
+}: {
+  src: string;
+  alt: string;
   maxWidth: string;
   priority?: boolean;
 }) {
@@ -60,6 +60,245 @@ function ImageWithLoading({
         sizes={`(max-width: 768px) ${maxWidth}, ${maxWidth}`}
       />
     </div>
+  );
+}
+
+// Единый layout для всех инфо-экранов
+interface InfoScreenLayoutProps {
+  screen: InfoScreen;
+  currentInfoScreenIndex: number;
+  children?: React.ReactNode;
+  customContent?: React.ReactNode;
+  onContinue: () => void;
+  onBack?: () => void;
+  isHandlingNext?: boolean;
+  showBackButton?: boolean;
+}
+
+function InfoScreenLayout({
+  screen,
+  currentInfoScreenIndex,
+  children,
+  customContent,
+  onContinue,
+  onBack,
+  isHandlingNext = false,
+  showBackButton = true,
+}: InfoScreenLayoutProps) {
+  const isGeneralInfo = screen.id.includes('general_info') || screen.id.includes('goals_intro');
+
+  // Кнопка "Назад"
+  const backButton = showBackButton && currentInfoScreenIndex > 0 && screen.id !== 'welcome' && onBack
+    ? createPortal(
+        <button
+          type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              // Prevent any scroll effects
+              const html = document.documentElement;
+              const body = document.body;
+              const scrollTop = window.pageYOffset || html.scrollTop || body.scrollTop || 0;
+              const scrollLeft = window.pageXOffset || html.scrollLeft || body.scrollLeft || 0;
+
+              onBack();
+
+              // Restore scroll position in case something changed it
+              setTimeout(() => {
+                window.scrollTo(scrollLeft, scrollTop);
+              }, 0);
+            }}
+          onTouchStart={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onBack();
+          }}
+          style={{
+            position: 'fixed',
+            top: 'clamp(20px, 4vh, 40px)',
+            left: 'clamp(19px, 5vw, 24px)',
+            zIndex: 99999,
+            width: '44px',
+            height: '44px',
+            background: 'transparent',
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            padding: 0,
+            pointerEvents: 'auto',
+            transform: 'translateZ(0)',
+            backfaceVisibility: 'hidden',
+            WebkitTransform: 'translateZ(0)',
+            isolation: 'isolate',
+            willChange: 'transform',
+            contain: 'layout style paint',
+          }}
+        >
+          <svg
+            width="12"
+            height="20"
+            viewBox="0 0 12 20"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M10 2L2 10L10 18"
+              stroke="#1A1A1A"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>,
+        document.body
+      )
+    : null;
+
+  return (
+    <>
+      {backButton}
+      <div style={{
+        padding: 0,
+        margin: 0,
+        minHeight: '100vh',
+        background: '#FFFFFF',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+        width: '100%',
+      }}>
+        {/* Контент с анимацией */}
+        <div
+          className="animate-fade-in"
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'flex-start',
+            paddingTop: isGeneralInfo ? '80px' : '120px',
+            paddingBottom: '100px',
+            paddingLeft: '20px',
+            paddingRight: '20px',
+            width: '100%',
+            boxSizing: 'border-box',
+          }}
+        >
+          {/* Изображение */}
+          {screen.image && (
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              width: '100%',
+              marginBottom: isGeneralInfo ? '20px' : '32px',
+            }}>
+              <ImageWithLoading
+                src={screen.image}
+                alt={screen.title || ''}
+                maxWidth="280px"
+                priority={currentInfoScreenIndex < 2}
+              />
+            </div>
+          )}
+
+          {/* Заголовок */}
+          {screen.title && (
+            <h1
+              style={{
+                fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 700,
+                fontSize: '24px',
+                lineHeight: '100%',
+                textAlign: 'center',
+                color: '#000000',
+                margin: `0 0 ${isGeneralInfo ? '8px' : '60px'} 0`, // Уменьшенный margin для general info
+                maxWidth: '320px',
+              }}
+            >
+              {screen.title}
+            </h1>
+          )}
+
+          {/* Подзаголовок */}
+          {screen.subtitle && (
+            <div
+              style={{
+                fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 400,
+                fontSize: '16px',
+                lineHeight: '140%',
+                textAlign: 'center',
+                color: '#6B7280',
+                marginBottom: '32px',
+                maxWidth: '320px',
+                whiteSpace: 'pre-line',
+              }}
+            >
+              {screen.subtitle}
+            </div>
+          )}
+
+          {/* Кастомный контент (шаги, testimonials, products и т.д.) */}
+          {customContent}
+
+          {/* Children для обратной совместимости */}
+          {children}
+        </div>
+
+        {/* Кнопка продолжения */}
+        {screen.ctaText && (
+          <div style={{
+            position: 'fixed',
+            bottom: 'clamp(40px, 6vh, 60px)',
+            left: 0,
+            right: 0,
+            padding: '0 clamp(20px, 5vw, 40px)',
+            background: 'transparent',
+            zIndex: 100,
+            display: 'flex',
+            justifyContent: 'center',
+          }}>
+            <button
+              onClick={onContinue}
+              disabled={isHandlingNext}
+              style={{
+                width: '100%',
+                maxWidth: 'clamp(224px, 60vw, 320px)',
+                height: 'clamp(56px, 8vh, 64px)',
+                borderRadius: '20px',
+                background: '#D5FE61',
+                color: '#000000',
+                border: 'none',
+                fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 600,
+                fontSize: 'clamp(14px, 4vw, 16px)',
+                cursor: isHandlingNext ? 'not-allowed' : 'pointer',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                opacity: isHandlingNext ? 0.7 : 1,
+              }}
+              onMouseDown={(e) => {
+                if (!isHandlingNext) e.currentTarget.style.transform = 'scale(0.98)';
+              }}
+              onMouseUp={(e) => {
+                if (!isHandlingNext) e.currentTarget.style.transform = 'scale(1)';
+              }}
+              onMouseLeave={(e) => {
+                if (!isHandlingNext) e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              {isHandlingNext ? 'Загрузка...' : String(screen.ctaText || 'Продолжить')}
+            </button>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -150,7 +389,28 @@ export function QuizInfoScreen({
     handleBack
       ? createPortal(
           <button
+            type="button"
             onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              // Prevent any scroll effects
+              const html = document.documentElement;
+              const body = document.body;
+              const scrollTop = window.pageYOffset || html.scrollTop || body.scrollTop || 0;
+              const scrollLeft = window.pageXOffset || html.scrollLeft || body.scrollLeft || 0;
+
+              handleBack();
+
+              // Restore scroll position in case something changed it
+              setTimeout(() => {
+                window.scrollTo(scrollLeft, scrollTop);
+              }, 0);
+            }}
+            onTouchStart={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onTouchEnd={(e) => {
               e.preventDefault();
               e.stopPropagation();
               handleBack();
@@ -198,11 +458,21 @@ export function QuizInfoScreen({
         )
       : null;
 
-  // РЕФАКТОРИНГ: Используем компонент WelcomeScreen
+  // РЕФАКТОРИНГ: Используем унифицированный layout для welcome screen
   if (isWelcomeScreen) {
     return (
-      <>
-        {backButton}
+      <InfoScreenLayout
+        screen={screen}
+        currentInfoScreenIndex={currentInfoScreenIndex}
+        onContinue={() => {
+          if (!handleNextInProgressRef.current && !isHandlingNext) {
+            handleNext();
+          }
+        }}
+        onBack={handleBack}
+        isHandlingNext={isHandlingNext}
+        showBackButton={false} // Welcome screen never shows back button
+      >
         <WelcomeScreen
           screen={screen}
           onContinue={() => {
@@ -214,205 +484,121 @@ export function QuizInfoScreen({
           currentInfoScreenIndex={currentInfoScreenIndex}
           onBack={handleBack}
         />
-      </>
+      </InfoScreenLayout>
     );
   }
 
-  // Специальный рендеринг для экрана "Как это работает?"
+  // Специальный рендеринг для экрана "Как это работает?" с унифицированным layout
   if (isHowItWorksScreen) {
     const steps = screen.subtitle?.split('\n').filter(line => line.trim()) || [];
 
+    const customStepsContent = (
+      <div style={{
+        width: '100%',
+        maxWidth: '320px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '40px',
+        alignItems: 'center',
+      }}>
+        {steps.map((step, index) => {
+          const stepNumber = index + 1;
+          const stepText = step.replace(/^\d+\.\s*/, '');
 
-    return (
-      <>
-        {backButton}
-        <div style={{ 
-          padding: 0,
-          margin: 0,
-          minHeight: '100vh',
-          background: '#FFFFFF',
-          display: 'flex',
-          flexDirection: 'column',
-          position: 'relative',
-          width: '100%',
-        }}>
-
-        {/* Контент с анимацией */}
-        <div 
-          className="animate-fade-in"
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-            paddingTop: '120px',
-            paddingBottom: '100px',
-            paddingLeft: '20px',
-            paddingRight: '20px',
-            width: '100%',
-            boxSizing: 'border-box',
-          }}
-        >
-          {/* Заголовок */}
-          <h1 
-            className="quiz-how-it-works-title"
-            style={{
-              fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 700,
-              fontStyle: 'normal',
-              fontSize: '24px',
-              lineHeight: '100%',
-              letterSpacing: '0px',
-              textAlign: 'center',
-              color: '#000000',
-              margin: '0 0 60px 0',
-            }}>
-            {screen.title}
-          </h1>
-
-          {/* Шаги */}
-          <div style={{
-            width: '100%',
-            maxWidth: '320px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '40px',
-            marginBottom: '0',
-            alignItems: 'center',
-          }}>
-            {steps.map((step, index) => {
-              const stepNumber = index + 1;
-              const stepText = step.replace(/^\d+\.\s*/, '');
-              
-              return (
-                <div
-                  key={index}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    textAlign: 'center',
-                    width: '100%',
-                  }}
-                >
-                  {/* Круг с номером и текстом "Шаг" */}
-                  <div style={{
-                    width: '44px',
-                    height: '44px',
-                    borderRadius: '50%',
-                    background: '#D5FE61',
-                    border: 'none',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-                    color: '#000000',
-                    marginBottom: '8px',
-                    padding: '2px 0',
-                  }}>
-                    {/* Номер шага */}
-                    <div style={{
-                      fontWeight: 800,
-                      fontSize: '20px',
-                      lineHeight: '19.45px',
-                      letterSpacing: '0px',
-                    }}>
-                      {stepNumber}
-                    </div>
-                    {/* Текст "Шаг" */}
-                    <div style={{
-                      fontWeight: 100,
-                      fontSize: '10px',
-                      lineHeight: '12px',
-                      letterSpacing: '0px',
-                      marginTop: '-2px',
-                    }}>
-                      Шаг
-                    </div>
-                  </div>
-                  
-                  {/* Текст шага */}
-                  <div style={{
-                    fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-                    fontWeight: 400,
-                    fontSize: '16px',
-                    lineHeight: '140%',
-                    letterSpacing: '0px',
-                    color: '#000000',
-                    textAlign: 'center',
-                  }}>
-                    {stepText}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        
-        {/* Фиксированная кнопка "Продолжить" внизу экрана */}
-        {screen.ctaText && (
-          <div style={{
-            position: 'fixed',
-            bottom: 'clamp(40px, 6vh, 60px)',
-            left: 0,
-            right: 0,
-            padding: '0 clamp(20px, 5vw, 40px)',
-            background: 'transparent',
-            zIndex: 100,
-            display: 'flex',
-            justifyContent: 'center',
-          }}>
-            <button
-              onClick={handleNext}
+          return (
+            <div
+              key={index}
               style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                textAlign: 'center',
                 width: '100%',
-                maxWidth: 'clamp(224px, 60vw, 320px)',
-                height: 'clamp(56px, 8vh, 64px)',
-                borderRadius: '20px',
-                background: '#D5FE61',
-                color: '#000000',
-                border: 'none',
-                fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-                fontWeight: 600,
-                fontSize: 'clamp(14px, 4vw, 16px)',
-                cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-              }}
-              onMouseDown={(e) => {
-                e.currentTarget.style.transform = 'scale(0.98)';
-              }}
-              onMouseUp={(e) => {
-                e.currentTarget.style.transform = 'scale(1)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)';
               }}
             >
-              {String(screen.ctaText || 'Продолжить')}
-            </button>
-          </div>
-        )}
+              {/* Круг с номером и текстом "Шаг" */}
+              <div style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '50%',
+                background: '#D5FE61',
+                border: 'none',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
+                color: '#000000',
+                marginBottom: '8px',
+                padding: '2px 0',
+              }}>
+                {/* Номер шага */}
+                <div style={{
+                  fontWeight: 800,
+                  fontSize: '20px',
+                  lineHeight: '19.45px',
+                  letterSpacing: '0px',
+                }}>
+                  {stepNumber}
+                </div>
+                {/* Текст "Шаг" */}
+                <div style={{
+                  fontWeight: 100,
+                  fontSize: '10px',
+                  lineHeight: '12px',
+                  letterSpacing: '0px',
+                  marginTop: '-2px',
+                }}>
+                  Шаг
+                </div>
+              </div>
+
+              {/* Текст шага */}
+              <div style={{
+                fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 400,
+                fontSize: '16px',
+                lineHeight: '140%',
+                letterSpacing: '0px',
+                color: '#000000',
+                textAlign: 'center',
+              }}>
+                {stepText}
+              </div>
+            </div>
+          );
+        })}
       </div>
-      </>
+    );
+
+    return (
+      <InfoScreenLayout
+        screen={screen}
+        currentInfoScreenIndex={currentInfoScreenIndex}
+        onContinue={handleNext}
+        onBack={handleBack}
+        isHandlingNext={isHandlingNext}
+        customContent={customStepsContent}
+      />
     );
   }
 
   // РЕФАКТОРИНГ: Используем компонент PersonalAnalysisScreen
   if (isPersonalAnalysisScreen) {
-    // Кнопка "Назад" через портал для гарантированной фиксации
-
     return (
-      <>
-        {backButton}
+      <InfoScreenLayout
+        screen={screen}
+        currentInfoScreenIndex={currentInfoScreenIndex}
+        onContinue={handleNext}
+        onBack={handleBack}
+        isHandlingNext={isHandlingNext}
+      >
         <PersonalAnalysisScreen
           screen={screen}
           currentInfoScreenIndex={currentInfoScreenIndex}
           onContinue={handleNext}
         />
-      </>
+      </InfoScreenLayout>
     );
   }
 
@@ -784,121 +970,16 @@ export function QuizInfoScreen({
     );
   }
 
-  // Экран "Узнаем особенности вашей кожи" (skin_features_intro) - такая же верстка как у general_info_intro
+  // Экран "Узнаем особенности вашей кожи" (skin_features_intro) - унифицированный layout
   if (isSkinFeaturesIntroScreen) {
-    // Кнопка "Назад" через портал для гарантированной фиксации
-
     return (
-      <>
-        {backButton}
-        <div style={{
-          padding: 0,
-          margin: 0,
-          minHeight: '100vh',
-          background: '#FFFFFF',
-          display: 'flex',
-          flexDirection: 'column',
-          position: 'relative',
-          width: '100%',
-        }}>
-
-        {/* Контент с анимацией */}
-        <div
-          className="animate-fade-in"
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-            paddingTop: '60px', // Уменьшаем отступ сверху для большего места
-            paddingBottom: '120px',
-            paddingLeft: '20px',
-            paddingRight: '20px',
-            width: '100%',
-            boxSizing: 'border-box',
-            // ИСПРАВЛЕНО: Убираем все возможные фоны для прозрачности контейнера изображения
-            background: 'transparent',
-            backgroundColor: 'transparent',
-          }}
-        >
-          {/* Картинка с плавной загрузкой */}
-          {screen.image && (
-            <ImageWithLoading
-              src={screen.image}
-              alt={screen.title}
-              maxWidth="180px" // Уменьшаем размер картинки, чтобы не перекрывала текст
-            />
-          )}
-
-          {/* Заголовок */}
-          <h1 style={{
-            fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 700,
-            fontSize: '32px',
-            lineHeight: '120%',
-            letterSpacing: '0px',
-            textAlign: 'left',
-            color: '#000000',
-            margin: '0 0 16px 0',
-            width: '100%',
-            maxWidth: '320px',
-            whiteSpace: 'pre-line',
-          }}>
-            {screen.title}
-          </h1>
-
-          {/* Подзаголовок */}
-          {screen.subtitle && (
-            <div style={{
-              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 400,
-              fontSize: '18px',
-              lineHeight: '140%',
-              letterSpacing: '0px',
-              textAlign: 'left',
-              color: '#000000',
-              width: '100%',
-              maxWidth: '320px',
-            }}>
-              {screen.subtitle}
-            </div>
-          )}
-        </div>
-        
-        {/* Фиксированная кнопка "Продолжить" внизу экрана */}
-        <div style={{
-          position: 'fixed',
-          bottom: '40px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '100%',
-          maxWidth: '320px',
-          padding: '0 20px',
-          boxSizing: 'border-box',
-          zIndex: 100,
-        }}>
-          <button
-            onClick={handleNext}
-            style={{
-              width: '100%',
-              height: '56px',
-              borderRadius: '20px',
-              background: '#D5FE61',
-              color: '#000000',
-              border: 'none',
-              fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 600,
-              fontSize: '16px',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(213, 254, 97, 0.3)',
-            }}
-          >
-            {screen.ctaText || 'Продолжить'}
-          </button>
-        </div>
-      </div>
-      </>
+      <InfoScreenLayout
+        screen={screen}
+        currentInfoScreenIndex={currentInfoScreenIndex}
+        onContinue={handleNext}
+        onBack={handleBack}
+        isHandlingNext={isHandlingNext}
+      />
     );
   }
 

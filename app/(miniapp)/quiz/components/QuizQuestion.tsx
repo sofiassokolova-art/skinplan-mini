@@ -7,6 +7,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { createPortal } from 'react-dom';
+import { useState, useCallback, useRef, useEffect, memo } from 'react';
 import type { Question } from '@/lib/quiz/types';
 import { getInfoScreenAfterQuestion } from '../info-screens';
 
@@ -39,7 +40,7 @@ export function QuizQuestion({
 }: QuizQuestionProps) {
   const isLastQuestion = currentQuestionIndex === allQuestionsLength - 1;
   const hasInfoScreenAfter = !isRetakingQuiz && getInfoScreenAfterQuestion(question.code);
-  const showSubmitButton = isLastQuestion && !hasInfoScreenAfter;
+  const showSubmitButton = isLastQuestion; // Always show submit button on last question
 
   // Первый вопрос (user_name) - специальный стиль (без прогресс-бара)
   const isNameQuestion = question?.code === 'user_name' || question?.type === 'free_text';
@@ -298,16 +299,49 @@ export function QuizQuestion({
   const FreeText = () => {
     if (question?.type !== 'free_text') return null;
 
-    const value = (answers[question.id] as string) || '';
+    // Use local state to prevent keyboard reset
+    const [localValue, setLocalValue] = useState((answers[question.id] as string) || '');
+    const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Sync local value with answers when answers change (e.g., from saved progress)
+    useEffect(() => {
+      const savedValue = (answers[question.id] as string) || '';
+      if (savedValue !== localValue) {
+        setLocalValue(savedValue);
+      }
+    }, [answers[question.id], localValue]);
+
+    // Debounced sync to answers state (300ms)
+    const syncToAnswers = useCallback((value: string) => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+      debounceTimeoutRef.current = setTimeout(() => {
+        onAnswer(question.id, value);
+      }, 300);
+    }, [onAnswer, question.id]);
+
+    const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+      const newValue = e.target.value;
+      setLocalValue(newValue);
+      syncToAnswers(newValue);
+    }, [syncToAnswers]);
+
+    const handleBlur = useCallback(() => {
+      // Immediate sync on blur
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+      onAnswer(question.id, localValue);
+    }, [onAnswer, question.id, localValue]);
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <input
           type="text"
-          value={value}
-          onChange={(e) => {
-            onAnswer(question.id, e.target.value);
-          }}
+          value={localValue}
+          onChange={handleChange}
+          onBlur={handleBlur}
           placeholder="Введите ваше имя"
           style={{
             padding: '16px',
@@ -330,7 +364,7 @@ export function QuizQuestion({
           }}
         />
 
-        {String(value).trim().length > 0 && (
+        {String(localValue).trim().length > 0 && (
           <button
             onClick={onNext}
             style={{
@@ -386,6 +420,149 @@ export function QuizQuestion({
 
       return imageUrl;
     };
+
+    // Memoized option card to prevent unnecessary re-renders of images
+    const OptionCard = memo(({
+      option,
+      index,
+      isSelected,
+      isMultiChoice,
+      isSkinTypeQuestion,
+      onOptionClick
+    }: {
+      option: any;
+      index: number;
+      isSelected: boolean;
+      isMultiChoice: boolean;
+      isSkinTypeQuestion: boolean;
+      onOptionClick: () => void;
+    }) => {
+      const imageUrl = getImageUrl(index);
+
+      const optionText = option.label || '';
+      const optionParts = optionText.split('\n');
+      const optionTitle = optionParts[0] || '';
+      const optionDescription = optionParts.slice(1).join('\n') || '';
+
+      return (
+        <button
+          onClick={onOptionClick}
+          style={{
+            padding: '0',
+            borderRadius: '16px',
+            border: isSelected ? '2px solid #FFFFFF' : 'none',
+            backgroundColor: isSelected ? '#D5FE61' : '#FFFFFF',
+            cursor: 'pointer',
+            textAlign: 'left',
+            overflow: 'hidden',
+            transition: 'all 0.2s',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          }}
+        >
+          {/* Картинка */}
+          <div
+            style={{
+              width: '100%',
+              height: '140px',
+              backgroundColor: '#f0f0f0',
+              overflow: 'hidden',
+              position: 'relative',
+            }}
+          >
+            <Image
+              src={imageUrl}
+              alt={option.label}
+              width={600}
+              height={140}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                display: 'block',
+              }}
+              sizes="(max-width: 768px) 100vw, 420px"
+            />
+          </div>
+
+          {/* Текст */}
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              flex: 1,
+              padding: '16px',
+              backgroundColor: isSelected ? '#D5FE61' : '#FFFFFF',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: optionDescription ? '8px' : '0',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: '16px',
+                  fontWeight: 500,
+                  color: '#000000',
+                  fontFamily:
+                    "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                }}
+              >
+                {optionTitle}
+              </span>
+
+              {/* чекбокс убираем для skin_type */}
+              {!isSkinTypeQuestion && (
+                <div
+                  style={{
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '50%',
+                    backgroundColor: isSelected ? '#000000' : '#D5FE61',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    boxShadow: isSelected ? 'none' : 'inset 0 2px 4px rgba(0, 0, 0, 0.15)',
+                  }}
+                >
+                  {isSelected && (
+                    <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
+                      <path
+                        d="M1 5L5 9L13 1"
+                        stroke="#FFFFFF"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {optionDescription && (
+              <span
+                style={{
+                  fontSize: '14px',
+                  fontWeight: 400,
+                  color: '#6B7280',
+                  fontFamily:
+                    "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  lineHeight: '1.4',
+                }}
+              >
+                {optionDescription}
+              </span>
+            )}
+          </div>
+        </button>
+      );
+    });
 
     return (
       <div
@@ -456,17 +633,15 @@ export function QuizQuestion({
 
             const isSelected = currentAnswers.includes(option.value);
 
-            const imageUrl = getImageUrl(index);
-
-            const optionText = option.label || '';
-            const optionParts = optionText.split('\n');
-            const optionTitle = optionParts[0] || '';
-            const optionDescription = optionParts.slice(1).join('\n') || '';
-
             return (
-              <button
+              <OptionCard
                 key={option.id}
-                onClick={async () => {
+                option={option}
+                index={index}
+                isSelected={isSelected}
+                isMultiChoice={isMultiChoice}
+                isSkinTypeQuestion={isSkinTypeQuestion}
+                onOptionClick={async () => {
                   if (isMultiChoice) {
                     const newAnswers = isSelected
                       ? currentAnswers.filter((v) => v !== option.value)
@@ -477,121 +652,7 @@ export function QuizQuestion({
                     setTimeout(() => onNext(), 300);
                   }
                 }}
-                style={{
-                  padding: '0',
-                  borderRadius: '16px',
-                  border: isSelected ? '2px solid #FFFFFF' : 'none',
-                  backgroundColor: isSelected ? '#D5FE61' : '#FFFFFF',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  overflow: 'hidden',
-                  transition: 'all 0.2s',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                }}
-              >
-                {/* Картинка */}
-                <div
-                  style={{
-                    width: '100%',
-                    height: '140px',
-                    backgroundColor: '#f0f0f0',
-                    overflow: 'hidden',
-                    position: 'relative',
-                  }}
-                >
-                  <Image
-                    src={imageUrl}
-                    alt={option.label}
-                    width={600}
-                    height={140}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      display: 'block',
-                    }}
-                    sizes="(max-width: 768px) 100vw, 420px"
-                  />
-                </div>
-
-                {/* Текст */}
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    flex: 1,
-                    padding: '16px',
-                    backgroundColor: isSelected ? '#D5FE61' : '#FFFFFF',
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      marginBottom: optionDescription ? '8px' : '0',
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: '16px',
-                        fontWeight: 500,
-                        color: '#000000',
-                        fontFamily:
-                          "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                      }}
-                    >
-                      {optionTitle}
-                    </span>
-
-                    {/* чекбокс убираем для skin_type */}
-                    {!isSkinTypeQuestion && (
-                      <div
-                        style={{
-                          width: '28px',
-                          height: '28px',
-                          borderRadius: '50%',
-                          backgroundColor: isSelected ? '#000000' : '#D5FE61',
-                          border: 'none',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0,
-                          boxShadow: isSelected ? 'none' : 'inset 0 2px 4px rgba(0, 0, 0, 0.15)',
-                        }}
-                      >
-                        {isSelected && (
-                          <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
-                            <path
-                              d="M1 5L5 9L13 1"
-                              stroke="#FFFFFF"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {optionDescription && (
-                    <div
-                      style={{
-                        fontSize: '14px',
-                        fontWeight: 400,
-                        color: '#666666',
-                        fontFamily:
-                          "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                        lineHeight: '1.4',
-                        whiteSpace: 'pre-line',
-                      }}
-                    >
-                      {optionDescription}
-                    </div>
-                  )}
-                </div>
-              </button>
+              />
             );
           })}
 

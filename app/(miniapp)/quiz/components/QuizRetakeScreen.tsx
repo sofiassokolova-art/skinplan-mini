@@ -63,41 +63,42 @@ export function QuizRetakeScreen({
     router.push(`/quiz/update/${topic.id}`);
   };
 
-  // РЕФАКТОРИНГ: Используем переданный обработчик или внутренний fallback
+  // РЕФАКТОРИНГ: Используем переданный обработчик с обработкой ошибок
   const handleFullRetake = async () => {
-    if (onFullRetake) {
-      await onFullRetake();
-      return;
-    }
-
-    // Fallback: старая логика (для обратной совместимости)
-    if (!hasFullRetakePayment) {
-      clientLogger.log('⚠️ Full retake payment not completed, showing payment gate');
-      return;
-    }
-
-    clientLogger.log('✅ Full retake payment completed, starting full questionnaire reset');
-
-    // Сбрасываем флаг оплаты после использования в БД
     try {
-      await userPreferences.setPaymentFullRetakeCompleted(false);
-      clientLogger.log('🔄 Full retake payment flag cleared');
-    } catch (err) {
-      clientLogger.warn('Failed to clear full retake payment flag:', err);
-    }
+      if (onFullRetake) {
+        await onFullRetake();
+        return;
+      }
 
-    // Полное перепрохождение
-    setShowRetakeScreen(false);
-    setIsRetakingQuiz(true);
-    setIsStartingOver(true);
-    isStartingOverRef.current = true;
+      // Fallback: старая логика (для обратной совместимости)
+      if (!hasFullRetakePayment) {
+        clientLogger.log('⚠️ Full retake payment not completed, showing payment gate');
+        return;
+      }
 
-    // Полный сброс ответов и прогресса
-    setAnswers({});
-    setSavedProgress(null);
-    // Убрано: setShowResumeScreen управляется только через resumeLocked
-    setHasResumed(false);
-    hasResumedRef.current = false;
+      clientLogger.log('✅ Full retake payment completed, starting full questionnaire reset');
+
+      // Сбрасываем флаг оплаты после использования в БД
+      try {
+        await userPreferences.setPaymentFullRetakeCompleted(false);
+        clientLogger.log('🔄 Full retake payment flag cleared');
+      } catch (err) {
+        clientLogger.warn('Failed to clear full retake payment flag:', err);
+      }
+
+      // Полное перепрохождение
+      setShowRetakeScreen(false);
+      setIsRetakingQuiz(true);
+      setIsStartingOver(true);
+      isStartingOverRef.current = true;
+
+      // Полный сброс ответов и прогресса
+      setAnswers({});
+      setSavedProgress(null);
+      // Убрано: setShowResumeScreen управляется только через resumeLocked
+      setHasResumed(false);
+      hasResumedRef.current = false;
 
     autoSubmitTriggeredRef.current = false;
     setAutoSubmitTriggered(false);
@@ -117,6 +118,15 @@ export function QuizRetakeScreen({
       setCurrentQuestionIndex(0);
       setPendingInfoScreen(null);
       clientLogger.log('✅ Full retake: answers and progress cleared, starting from first info screen');
+    }
+    } catch (error) {
+      // Логируем ошибку и показываем пользователю
+      clientLogger.error('❌ handleFullRetake failed in QuizRetakeScreen', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      // Показываем ошибку пользователю
+      setError('Не удалось начать полное перепрохождение анкеты. Попробуйте ещё раз.');
     }
   };
 

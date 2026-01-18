@@ -296,6 +296,25 @@ export default function QuizPage() {
   }, [scopedStorageKeys.JUST_SUBMITTED, setIsSubmitting, isSubmittingRef]);
 
   /**
+   * ✅ Clamp currentQuestionIndex after question filtering
+   * Fixes "sticking" after retinoid/adapalene answers when allQuestions gets filtered
+   */
+  useEffect(() => {
+    if (allQuestions.length > 0 && currentQuestionIndex >= allQuestions.length) {
+      const clampedIndex = Math.min(currentQuestionIndex, allQuestions.length - 1);
+      if (clampedIndex !== currentQuestionIndex) {
+        if (isDev) clientLogger.log('🔧 Clamping currentQuestionIndex after filtering', {
+          before: currentQuestionIndex,
+          after: clampedIndex,
+          allQuestionsLength: allQuestions.length,
+        });
+        setCurrentQuestionIndex(clampedIndex);
+        currentQuestionIndexRef.current = clampedIndex;
+      }
+    }
+  }, [allQuestions.length, currentQuestionIndex, setCurrentQuestionIndex, currentQuestionIndexRef, isDev]);
+
+  /**
    * ✅ Freeze scope once questionnaire id is known
    */
   useEffect(() => {
@@ -745,6 +764,8 @@ export default function QuizPage() {
       setCurrentQuestionIndex,
       setPendingInfoScreen,
       setAnswers,
+      isShowingInitialInfoScreen,
+      initialInfoScreensLength: initialInfoScreens.length,
       saveProgress,
       scopedStorageKeys,
     });
@@ -761,6 +782,8 @@ export default function QuizPage() {
     setCurrentQuestionIndex,
     setPendingInfoScreen,
     setAnswers,
+    isShowingInitialInfoScreen,
+    initialInfoScreens,
     saveProgress,
     scopedStorageKeys,
   ]);
@@ -1103,6 +1126,14 @@ export default function QuizPage() {
   /**
    * ✅ Resume decision + LOCK (фикс мигания)
    */
+  const startedThisSessionRef = useRef(false);
+
+  useEffect(() => {
+    if (Object.keys(answers).length > 0) {
+      startedThisSessionRef.current = true;
+    }
+  }, [answers]);
+
   const savedAnswersCount = useMemo(() => {
     if (!savedProgress?.answers) return 0;
     return Object.keys(savedProgress.answers).length;
@@ -1112,6 +1143,7 @@ export default function QuizPage() {
     return (
       !!savedProgress &&
       savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN &&
+      !startedThisSessionRef.current &&   // ✅ вот это главное
       !isStartingOver &&
       !hasResumed &&
       !isRetakingQuiz &&

@@ -46,46 +46,68 @@ export async function handleFullRetake({
   setCurrentQuestionIndex,
   setPendingInfoScreen,
 }: HandleFullRetakeParams): Promise<void> {
-  if (!hasFullRetakePayment) {
-    clientLogger.log('⚠️ Full retake payment not completed, showing payment gate');
-    return;
-  }
-
-  clientLogger.log('✅ Full retake payment completed, starting full questionnaire reset');
-
   try {
-    await userPreferences.setPaymentFullRetakeCompleted(false);
-    clientLogger.log('🔄 Full retake payment flag cleared');
-  } catch (err) {
-    clientLogger.warn('Failed to clear full retake payment flag:', err);
-  }
+    if (!hasFullRetakePayment) {
+      clientLogger.log('⚠️ Full retake payment not completed, showing payment gate');
+      return;
+    }
 
-  setShowRetakeScreen(false);
-  setIsRetakingQuiz(true);
-  setIsStartingOver(true);
-  isStartingOverRef.current = true;
+    clientLogger.log('✅ Full retake payment completed, starting full questionnaire reset');
 
-  setAnswers({});
-  setSavedProgress(null);
-  // Убрано: setShowResumeScreen управляется только через resumeLocked
-  setHasResumed(false);
-  hasResumedRef.current = false;
+    try {
+      await userPreferences.setPaymentFullRetakeCompleted(false);
+      clientLogger.log('🔄 Full retake payment flag cleared');
+    } catch (err) {
+      clientLogger.warn('Failed to clear full retake payment flag:', err);
+    }
 
-  autoSubmitTriggeredRef.current = false;
-  setAutoSubmitTriggered(false);
-  setError(null);
+    // Сбрасываем состояния - делаем безопасно даже если questionnaire/savedProgress null
+    setShowRetakeScreen(false);
+    setIsRetakingQuiz(true);
+    setIsStartingOver(true);
+    isStartingOverRef.current = true;
 
-  try {
-    await userPreferences.setIsRetakingQuiz(false);
-    await userPreferences.setFullRetakeFromHome(false);
-  } catch (err) {
-    clientLogger.warn('Failed to clear retake flags:', err);
-  }
+    setAnswers({});
+    setSavedProgress(null);
+    // Убрано: setShowResumeScreen управляется только через resumeLocked
+    setHasResumed(false);
+    hasResumedRef.current = false;
 
-  if (questionnaire) {
+    autoSubmitTriggeredRef.current = false;
+    setAutoSubmitTriggered(false);
+    setError(null);
+
+    try {
+      await userPreferences.setIsRetakingQuiz(false);
+      await userPreferences.setFullRetakeFromHome(false);
+    } catch (err) {
+      clientLogger.warn('Failed to clear retake flags:', err);
+    }
+
+    // Всегда сбрасываем индексы и pendingInfoScreen, даже если questionnaire null
     setCurrentInfoScreenIndex(0);
     setCurrentQuestionIndex(0);
     setPendingInfoScreen(null);
-    clientLogger.log('✅ Full retake: answers and progress cleared, starting from first info screen');
+
+    clientLogger.log('✅ Full retake: answers and progress cleared, starting from first info screen', {
+      questionnaireLoaded: !!questionnaire,
+    });
+  } catch (error) {
+    // Логируем ошибку на сервер и показываем пользователю
+    clientLogger.error('❌ handleFullRetake failed', {
+      error: error instanceof Error ? error.message : String(error),
+      hasFullRetakePayment,
+      questionnaire: !!questionnaire,
+    });
+
+    // Показываем ошибку пользователю
+    setError('Не удалось начать полное перепрохождение анкеты. Попробуйте обновить страницу.');
+
+    // Сбрасываем флаги в случае ошибки
+    setIsRetakingQuiz(false);
+    setIsStartingOver(false);
+    isStartingOverRef.current = false;
+
+    throw error; // Перебрасываем ошибку для обработки выше
   }
 }

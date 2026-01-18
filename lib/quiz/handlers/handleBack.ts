@@ -37,6 +37,10 @@ export interface HandleBackParams {
   setPendingInfoScreen: React.Dispatch<React.SetStateAction<InfoScreen | null>>;
   setAnswers: React.Dispatch<React.SetStateAction<Record<number, string | string[]>>>;
 
+  // additional context for initial info flow
+  isShowingInitialInfoScreen?: boolean;
+  initialInfoScreensLength?: number;
+
   // persistence
   saveProgress: (
     answers: Record<number, string | string[]>,
@@ -88,6 +92,9 @@ export async function handleBack(params: HandleBackParams): Promise<void> {
     setCurrentQuestionIndex,
     setPendingInfoScreen,
     setAnswers,
+
+    isShowingInitialInfoScreen = false,
+    initialInfoScreensLength = 0,
 
     saveProgress,
     scopedStorageKeys,
@@ -154,13 +161,28 @@ export async function handleBack(params: HandleBackParams): Promise<void> {
     // 2) На первом вопросе: назад в инфо-экраны
     // =========================================
     if (currentQuestionIndex === 0 && allQuestions.length > 0) {
-      const newInfoScreenIndex = Math.max(0, initialInfoScreens.length - 1);
-      updateInfoScreenIndex(newInfoScreenIndex, currentInfoScreenIndexRef, setCurrentInfoScreenIndex);
-      setPendingInfoScreen(null);
+      // Check if we're in initial info flow - if so, step back instead of jumping to last
+      const isInInitialInfoFlow = isShowingInitialInfoScreen && currentInfoScreenIndex < initialInfoScreensLength;
 
-      setSessionIndex(scopedStorageKeys.CURRENT_INFO_SCREEN, newInfoScreenIndex);
-      void saveProgressSafely(saveProgress, answers, currentQuestionIndex, newInfoScreenIndex);
-      return;
+      if (isInInitialInfoFlow && currentInfoScreenIndex > 0) {
+        // Step back through initial info screens
+        const newInfoScreenIndex = currentInfoScreenIndex - 1;
+        updateInfoScreenIndex(newInfoScreenIndex, currentInfoScreenIndexRef, setCurrentInfoScreenIndex);
+        setPendingInfoScreen(null);
+
+        setSessionIndex(scopedStorageKeys.CURRENT_INFO_SCREEN, newInfoScreenIndex);
+        void saveProgressSafely(saveProgress, answers, currentQuestionIndex, newInfoScreenIndex);
+        return;
+      } else {
+        // Jump to last initial info screen (existing behavior)
+        const newInfoScreenIndex = Math.max(0, initialInfoScreens.length - 1);
+        updateInfoScreenIndex(newInfoScreenIndex, currentInfoScreenIndexRef, setCurrentInfoScreenIndex);
+        setPendingInfoScreen(null);
+
+        setSessionIndex(scopedStorageKeys.CURRENT_INFO_SCREEN, newInfoScreenIndex);
+        void saveProgressSafely(saveProgress, answers, currentQuestionIndex, newInfoScreenIndex);
+        return;
+      }
     }
 
     // ======================
