@@ -27,23 +27,13 @@ export interface SubmitAnswersParams {
   submitAnswersRef: React.MutableRefObject<(() => Promise<void>) | null>;
   isRetakingQuiz: boolean;
   getInitData: () => Promise<string | null>;
+  scopedStorageKeys: {
+    JUST_SUBMITTED: string;
+  };
 }
 
 export async function submitAnswers(params: SubmitAnswersParams): Promise<void> {
   clientLogger.log('🚀 submitAnswers вызвана');
-  
-  // КРИТИЧНО: Устанавливаем флаги quiz_just_submitted СРАЗУ, синхронно, ДО любых асинхронных операций
-  // Это защита от редиректа на первый экран, если что-то пойдет не так
-  // НУЖНО СТАВИТЬ ОБА КЛЮЧА: и обычный для RootPage, и scoped для quiz-логики
-  if (typeof window !== 'undefined') {
-    try {
-      sessionStorage.setItem('quiz_just_submitted', 'true');
-      sessionStorage.setItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED, 'true');
-      clientLogger.log('✅ Флаги quiz_just_submitted установлены СРАЗУ при вызове submitAnswers');
-    } catch (storageError) {
-      clientLogger.warn('⚠️ Не удалось установить флаги quiz_just_submitted:', storageError);
-    }
-  }
   
   // ВАЖНО: Логируем вызов submitAnswers на сервер
   // ИСПРАВЛЕНО: Используем синхронный доступ к params.initData, чтобы не блокировать выполнение
@@ -734,36 +724,25 @@ export async function submitAnswers(params: SubmitAnswersParams): Promise<void> 
       params.setIsSubmitting(false);
     }
     
+    // УСПЕШНОЕ ЗАВЕРШЕНИЕ: устанавливаем флаги и редиректим
     if (typeof window !== 'undefined') {
       try {
-        // ИСПРАВЛЕНО: Устанавливаем isMountedRef.current = false только непосредственно перед редиректом
-        // Это гарантирует, что лоадер успеет показаться
-        params.isMountedRef.current = false;
-        
+        // Устанавливаем флаги только после успешного ответа
+        sessionStorage.setItem('quiz_just_submitted', 'true');
+        sessionStorage.setItem(params.scopedStorageKeys.JUST_SUBMITTED, 'true');
+
         // Редирект на страницу плана с состоянием generating
-        // ИСПРАВЛЕНО: Передаем profileId для read-your-write consistency
         const profileId = result?.profile?.id;
-        const planUrl = profileId 
+        const planUrl = profileId
           ? `/plan?state=generating&profileId=${profileId}`
           : '/plan?state=generating';
-        // ИСПРАВЛЕНО: Guard против множественных редиректов
-        if (params.redirectInProgressRef.current) {
-          return; // Редирект уже в процессе
-        }
-        params.redirectInProgressRef.current = true;
-        clientLogger.log('🔄 Редирект на /plan?state=generating после показа лоадера', {
+
+        clientLogger.log('🔄 Редирект на /plan?state=generating после успешной отправки', {
           profileId: profileId || null,
           planUrl,
         });
-        if (typeof window !== 'undefined') {
-          sessionStorage.removeItem('quiz_init_done');
-          window.location.replace(planUrl);
-          // ФИКС: Сбрасываем params.redirectInProgressRef через задержку после редиректа
-          setTimeout(() => {
-            params.redirectInProgressRef.current = false;
-          }, 1000);
-        }
-        // После редиректа код не должен выполняться, но на всякий случай выходим
+
+        window.location.replace(planUrl);
         return;
       } catch (redirectError) {
         console.error('❌ Ошибка при редиректе:', redirectError);
@@ -916,10 +895,6 @@ export async function submitAnswers(params: SubmitAnswersParams): Promise<void> 
       }
     }
     
-    // ВАЖНО: Используем setTimeout с проверкой params.isMountedRef, чтобы избежать React Error #300
-    // Сбрасываем флаг монтирования перед редиректом
-    params.isMountedRef.current = false;
-    
     // ИСПРАВЛЕНО: Guard против множественных редиректов
     if (params.redirectInProgressRef.current) {
       return; // Редирект уже в процессе
@@ -968,20 +943,15 @@ export async function submitAnswers(params: SubmitAnswersParams): Promise<void> 
       }
     }
   } finally {
-    // ИСПРАВЛЕНО: Гарантированно сбрасываем флаг params.isSubmitting только если компонент смонтирован
-    // Ref синхронизируется автоматически через useEffect
-    // Это предотвращает блокировку повторных попыток отправки
-    if (params.isMountedRef.current) {
-      // Сбрасываем state только если он еще true (не был сброшен в catch блоке)
-      // Если state уже false, значит он был сброшен в catch блоке, ничего не делаем
-      if (params.isSubmitting) {
-        params.setIsSubmitting(false);
-        clientLogger.log('✅ Флаг params.isSubmitting сброшен в finally блоке');
-      }
-    } else {
-      // Компонент размонтирован - сбрасываем флаг принудительно
-      params.isSubmittingRef.current = false;
-      clientLogger.log('✅ Флаг params.isSubmittingRef сброшен в finally (компонент размонтирован)');
+    // КРИТИЧНО: Если редирект уже начался - не трогаем UI (избегаем прыжков)
+    if (params.redirectInProgressRef.current) {
+      return;
+    }
+
+    // Сбрасываем isSubmitting только если компонент смонтирован и редирект не начался
+    if (params.isMountedRef.current && params.isSubmitting) {
+      params.setIsSubmitting(false);
+      clientLogger.log('✅ Флаг isSubmitting сброшен в finally (редирект не начался)');
     }
   }
 }

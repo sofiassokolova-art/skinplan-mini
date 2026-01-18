@@ -40,7 +40,8 @@ export interface LoadSavedProgressParams {
   } | null>>;
   setShowResumeScreen: React.Dispatch<React.SetStateAction<boolean>>;
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
-  
+  setProgressLoaded: React.Dispatch<React.SetStateAction<boolean>>; // NEW: для триггеринга ререндеров
+
   // React Query
   quizProgressFromQuery: any;
   isLoadingProgress: boolean;
@@ -70,6 +71,7 @@ export async function loadSavedProgressFromServer({
   setSavedProgress,
   setShowResumeScreen,
   setLoading,
+  setProgressLoaded,
   quizProgressFromQuery,
   isLoadingProgress,
 }: LoadSavedProgressParams): Promise<void> {
@@ -250,6 +252,7 @@ export async function loadSavedProgressFromServer({
       setSavedProgress(null);
       setShowResumeScreen(false);
       progressLoadedRef.current = true;
+      setProgressLoaded(true);
       setLoading(false);
       return;
     }
@@ -322,6 +325,7 @@ export async function loadSavedProgressFromServer({
         });
       }
       progressLoadedRef.current = true;
+      setProgressLoaded(true);
       setLoading(false);
       return;
     }
@@ -525,11 +529,13 @@ export async function loadSavedProgressFromServer({
       // Устанавливаем loading = false после установки savedProgress и showResumeScreen
       setLoading(false);
       progressLoadedRef.current = true;
+      setProgressLoaded(true);
     } else {
       clientLogger.log('ℹ️ Прогресс на сервере не найден или пуст');
       // ИСПРАВЛЕНО: Прогресс хранится в БД, localStorage больше не используется
       setSavedProgress(null);
       progressLoadedRef.current = true;
+      setProgressLoaded(true);
       
       // КРИТИЧНО: Если прогресса на сервере нет, очищаем sessionStorage
       // Это гарантирует, что пользователь увидит начальные инфо-экраны
@@ -570,6 +576,7 @@ export async function loadSavedProgressFromServer({
       // ИСПРАВЛЕНО: Прогресс хранится в БД, localStorage больше не используется
       setSavedProgress(null);
       progressLoadedRef.current = true;
+      setProgressLoaded(true);
       return;
     }
       
@@ -606,6 +613,7 @@ export async function loadSavedProgressFromServer({
         setCurrentQuestionIndex(0);
       }
       progressLoadedRef.current = true;
+      setProgressLoaded(true);
       return;
     }
       
@@ -614,6 +622,7 @@ export async function loadSavedProgressFromServer({
     setSavedProgress(null);
     setShowResumeScreen(false);
     progressLoadedRef.current = true;
+    setProgressLoaded(true);
   } finally {
     // ИСПРАВЛЕНО: Не сбрасываем флаги, если пользователь уже продолжил анкету
     // Это предотвращает повторные вызовы loadSavedProgressFromServer в Telegram Mini App

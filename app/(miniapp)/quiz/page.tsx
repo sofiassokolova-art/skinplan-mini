@@ -172,6 +172,9 @@ export default function QuizPage() {
   const [scope, setScope] = useState<string>('global');
   const scopeFrozenRef = useRef(false);
 
+  // State для progress loaded (триггерит ререндеры в отличие от ref)
+  const [progressLoaded, setProgressLoaded] = useState(false);
+
   const scopedStorageKeys = useMemo(
     () => ({
       CURRENT_INFO_SCREEN: QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN, scope),
@@ -439,6 +442,7 @@ export default function QuizPage() {
       setSavedProgress,
       setShowResumeScreen,
       setLoading,
+      setProgressLoaded,
       quizProgressFromQuery,
       isLoadingProgress,
     });
@@ -462,6 +466,7 @@ export default function QuizPage() {
     setSavedProgress,
     setShowResumeScreen,
     setLoading,
+    setProgressLoaded,
     quizProgressFromQuery,
     isLoadingProgress,
   ]);
@@ -790,6 +795,7 @@ export default function QuizPage() {
       submitAnswersRef,
       isRetakingQuiz: isRetakingQuizRef.current,
       getInitData: () => Promise.resolve(currentInitData),
+      scopedStorageKeys,
     });
   }, [
     questionnaireRef,
@@ -1157,8 +1163,7 @@ export default function QuizPage() {
     if (errorScreen) return 'ERROR';
 
     // ЖЕСТКИЙ ГЕЙТ: пока грузится прогресс - показываем только LOADER
-    if (isLoadingProgress) return 'LOADER';
-    if (!progressLoadedRef.current) return 'LOADER';
+    if (isLoadingProgress || !progressLoaded) return 'LOADER';
 
     if (resumeLocked) return 'RESUME';
 
@@ -1199,7 +1204,7 @@ export default function QuizPage() {
     currentInfoScreenIndex,
     initialInfoScreens.length,
     isLoadingProgress,
-    progressLoadedRef.current,
+    progressLoaded,
     savedProgress,
     questionnaireFromQuery,
     questionnaireRef,
