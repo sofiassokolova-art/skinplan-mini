@@ -725,35 +725,24 @@ export default function QuizPage() {
 
   const handleBackInProgressRef = useRef(false);
 
-  const handleBack = useCallback(() => {
-    if (handleBackInProgressRef.current) return;
-
-    handleBackInProgressRef.current = true;
-
-    try {
-      return handleBackFn({
-        currentInfoScreenIndex,
-        currentQuestionIndex,
-        questionnaire,
-        questionnaireRef,
-        pendingInfoScreen,
-        currentInfoScreenIndexRef,
-        allQuestions,
-        answers,
-        handleBackInProgressRef,
-        setCurrentInfoScreenIndex,
-        setCurrentQuestionIndex,
-        setPendingInfoScreen,
-        setAnswers,
-        saveProgress,
-        scopedStorageKeys,
-      });
-    } finally {
-      // небольшой debounce, чтобы не ловить двойные тапы
-      setTimeout(() => {
-        handleBackInProgressRef.current = false;
-      }, 250);
-    }
+  const handleBack = useCallback(async () => {
+    return handleBackFn({
+      currentInfoScreenIndex,
+      currentQuestionIndex,
+      questionnaire,
+      questionnaireRef,
+      pendingInfoScreen,
+      currentInfoScreenIndexRef,
+      allQuestions,
+      answers,
+      handleBackInProgressRef,
+      setCurrentInfoScreenIndex,
+      setCurrentQuestionIndex,
+      setPendingInfoScreen,
+      setAnswers,
+      saveProgress,
+      scopedStorageKeys,
+    });
   }, [
     currentInfoScreenIndex,
     currentQuestionIndex,
@@ -763,7 +752,6 @@ export default function QuizPage() {
     currentInfoScreenIndexRef,
     allQuestions,
     answers,
-    handleBackInProgressRef,
     setCurrentInfoScreenIndex,
     setCurrentQuestionIndex,
     setPendingInfoScreen,

@@ -100,6 +100,7 @@ export async function handleBack(params: HandleBackParams): Promise<void> {
   handleBackInProgressRef.current = true;
 
   try {
+    // Все вычисления внутри try для предотвращения залипания флага
     const initialInfoScreens = getInitialInfoScreens();
     const isOnQuestionsValue = isOnQuestions(currentInfoScreenIndex, currentInfoScreenIndexRef);
     // если на вопросах (кроме случая “первый вопрос -> назад в инфо”), анкета должна быть
