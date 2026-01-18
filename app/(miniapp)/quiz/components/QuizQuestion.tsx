@@ -1036,7 +1036,7 @@ export function QuizQuestion({
         )}
 
         {/* Лаймовый прогресс-бар (для лайм-экранов) */}
-        {useLimeStyle && <ProgressBar useLimeOffsets={isGoalsQuestion ? false : true} />}
+        {useLimeStyle && <ProgressBar useLimeOffsets={isGoalsQuestion || isSkinTypeQuestion ? false : true} />}
 
         {/* Рендеры */}
         <LimeStyle />
