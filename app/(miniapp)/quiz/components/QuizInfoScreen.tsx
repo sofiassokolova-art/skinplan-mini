@@ -392,12 +392,65 @@ export function QuizInfoScreen({
 
   // РЕФАКТОРИНГ: Используем компонент PersonalAnalysisScreen
   if (isPersonalAnalysisScreen) {
+    // Кнопка "Назад" через портал для гарантированной фиксации
+    const personalAnalysisBackButton = currentInfoScreenIndex > 0 && typeof window !== 'undefined' && handleBack ? createPortal(
+      <div
+        style={{
+          position: 'fixed',
+          top: 'clamp(20px, 4vh, 40px)',
+          left: 'clamp(19px, 5vw, 24px)',
+          zIndex: 99999,
+          pointerEvents: 'auto',
+          isolation: 'isolate', // Создаем новый контекст стекирования
+          willChange: 'transform', // Оптимизация для браузера
+        }}
+      >
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleBack();
+          }}
+          style={{
+            position: 'relative',
+            width: '44px',
+            height: '44px',
+            background: 'transparent',
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            padding: 0,
+            margin: 0,
+            transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
+            backfaceVisibility: 'hidden', // Оптимизация рендеринга
+            WebkitTransform: 'translateZ(0)', // Для Safari
+          }}
+        >
+          <svg width="12" height="20" viewBox="0 0 12 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M10 2L2 10L10 18"
+              stroke="#1A1A1A"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      </div>,
+      document.body
+    ) : null;
+
     return (
-      <PersonalAnalysisScreen
-        screen={screen}
-        currentInfoScreenIndex={currentInfoScreenIndex}
-        onContinue={handleNext}
-      />
+      <>
+        {personalAnalysisBackButton}
+        <PersonalAnalysisScreen
+          screen={screen}
+          currentInfoScreenIndex={currentInfoScreenIndex}
+          onContinue={handleNext}
+        />
+      </>
     );
   }
 
@@ -574,10 +627,60 @@ export function QuizInfoScreen({
 
   // Экран "Какую цель вы ставите перед собой?" (goals_intro)
   if (isGoalsIntroScreen) {
-    // Кнопка "Назад" теперь глобальная в layout - убрана из компонента
+    // Кнопка "Назад" через портал для гарантированной фиксации
+    const goalsIntroBackButton = currentInfoScreenIndex > 0 && typeof window !== 'undefined' && handleBack ? createPortal(
+      <div
+        style={{
+          position: 'fixed',
+          top: 'clamp(20px, 4vh, 40px)',
+          left: 'clamp(19px, 5vw, 24px)',
+          zIndex: 99999,
+          pointerEvents: 'auto',
+          isolation: 'isolate', // Создаем новый контекст стекирования
+          willChange: 'transform', // Оптимизация для браузера
+        }}
+      >
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleBack();
+          }}
+          style={{
+            position: 'relative',
+            width: '44px',
+            height: '44px',
+            background: 'transparent',
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            padding: 0,
+            margin: 0,
+            transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
+            backfaceVisibility: 'hidden', // Оптимизация рендеринга
+            WebkitTransform: 'translateZ(0)', // Для Safari
+          }}
+        >
+          <svg width="12" height="20" viewBox="0 0 12 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M10 2L2 10L10 18"
+              stroke="#1A1A1A"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      </div>,
+      document.body
+    ) : null;
 
     return (
-      <div style={{
+      <>
+        {goalsIntroBackButton}
+        <div style={{
           padding: 0,
           margin: 0,
           minHeight: '100vh',
@@ -691,6 +794,7 @@ export function QuizInfoScreen({
           </button>
         </div>
       </div>
+      </>
     );
   }
 
