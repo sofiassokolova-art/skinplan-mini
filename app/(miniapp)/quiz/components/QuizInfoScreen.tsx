@@ -1266,7 +1266,7 @@ export function QuizInfoScreen({
           <h1 style={{
             position: 'absolute',
             width: '342px',
-            height: '93px',
+            height: '140px', // Увеличена высота для длинного заголовка
             top: '320px',
             left: '20px',
             fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
@@ -1289,7 +1289,7 @@ export function QuizInfoScreen({
               position: 'absolute',
               width: '342px',
               height: '93px',
-              top: '430px',
+              top: '470px', // Сдвинут ниже из-за увеличенной высоты заголовка
               left: '20px',
               fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 400,
