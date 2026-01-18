@@ -302,14 +302,16 @@ export function QuizQuestion({
     // Use local state to prevent keyboard reset
     const [localValue, setLocalValue] = useState((answers[question.id] as string) || '');
     const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
 
     // Sync local value with answers when answers change (e.g., from saved progress)
+    // IMPORTANT: Don't include localValue in deps to prevent infinite loops
     useEffect(() => {
       const savedValue = (answers[question.id] as string) || '';
       if (savedValue !== localValue) {
         setLocalValue(savedValue);
       }
-    }, [answers[question.id], localValue]);
+    }, [answers[question.id]]); // Removed localValue from deps
 
     // Debounced sync to answers state (300ms)
     const syncToAnswers = useCallback((value: string) => {
@@ -328,21 +330,28 @@ export function QuizQuestion({
     }, [syncToAnswers]);
 
     const handleBlur = useCallback(() => {
-      // Immediate sync on blur
+      // Immediate sync on blur - only if there's pending debounced update
       if (debounceTimeoutRef.current) {
         clearTimeout(debounceTimeoutRef.current);
+        debounceTimeoutRef.current = null;
+        // Sync immediately only if there's unsaved changes
+        const currentAnswer = (answers[question.id] as string) || '';
+        if (currentAnswer !== localValue) {
+          onAnswer(question.id, localValue);
+        }
       }
-      onAnswer(question.id, localValue);
-    }, [onAnswer, question.id, localValue]);
+    }, [onAnswer, question.id, localValue, answers]);
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <input
+          ref={inputRef}
           type="text"
           value={localValue}
           onChange={handleChange}
           onBlur={handleBlur}
           placeholder="Введите ваше имя"
+          autoFocus
           style={{
             padding: '16px',
             borderRadius: '16px',
