@@ -1143,82 +1143,63 @@ export function QuizInfoScreen({
     <>
       {/* Кнопка "Назад" - рендерится через портал в body для гарантированной фиксации */}
       {backButton}
-      <div style={{ 
+      <div style={{
         padding: '20px',
         paddingBottom: '100px',
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
         position: 'relative',
       }}>
 
-      <div style={{
-        width: '88%',
-        maxWidth: isTestimonialsScreen ? '90%' : '420px',
-        backgroundColor: 'rgba(255, 255, 255, 0.58)',
-        backdropFilter: 'blur(26px)',
-        border: '1px solid rgba(255, 255, 255, 0.2)',
-        borderRadius: '44px',
-        padding: '36px 28px 32px 28px',
-        paddingBottom: screen.ctaText ? '32px' : '32px',
-        boxShadow: '0 16px 48px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.08)',
-        position: 'relative',
-        zIndex: 1,
-        marginTop: '80px',
-      }}>
-        {/* Изображение */}
-        {screen.image && !isTinderScreen && !isWelcomeScreen && (
+        {/* КАРТИНКА — отдельно, без backdropFilter */}
+        {screen.image && !isWelcomeScreen && (
           <div style={{
-            width: '100%',
-            height: '320px',
-            borderRadius: '32px 32px 0 0',
-            overflow: 'hidden',
-            marginBottom: '24px',
-            position: 'relative',
-          }}>
-            <Image
-              src={screen.image}
-              alt={screen.title}
-              width={1200} // ФИКС: Фиксированные размеры для избежания layout shift
-              height={320}
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                display: 'block', // ФИКС: Предотвращает "пиксельную полоску" из-за baseline
-              }}
-              sizes="(max-width: 768px) 100vw, 420px"
-            />
-          </div>
-        )}
-
-        {/* Tinder-экран с изображением */}
-        {isTinderScreen && screen.image && (
-          <div style={{
-            width: '100%',
-            height: '400px',
+            width: '88%',
+            maxWidth: '420px',
+            height: isTinderScreen ? '400px' : '320px',
             borderRadius: '32px',
             overflow: 'hidden',
+            marginTop: '80px',
             marginBottom: '24px',
             position: 'relative',
+            background: '#fff', // важно: нейтральная подложка
           }}>
             <Image
               src={screen.image}
               alt={screen.title}
-              width={1200} // ФИКС: Фиксированные размеры для избежания layout shift
-              height={400}
+              width={1200}
+              height={isTinderScreen ? 400 : 320}
               style={{
                 width: '100%',
                 height: '100%',
                 objectFit: 'cover',
-                display: 'block', // ФИКС: Предотвращает "пиксельную полоску" из-за baseline
+                display: 'block',
               }}
               sizes="(max-width: 768px) 100vw, 420px"
             />
           </div>
         )}
+
+        {/* КАРТОЧКА — стекло, но без изображения */}
+        <div style={{
+          width: '88%',
+          maxWidth: isTestimonialsScreen ? '90%' : '420px',
+          backgroundColor: 'rgba(255, 255, 255, 0.58)',
+          backdropFilter: 'blur(26px)',
+          WebkitBackdropFilter: 'blur(26px)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          borderRadius: '44px',
+          padding: '36px 28px 32px 28px',
+          paddingBottom: screen.ctaText ? '32px' : '32px',
+          boxShadow: '0 16px 48px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.08)',
+          position: 'relative',
+          zIndex: 1,
+        }}>
+
         
         {/* Заголовок */}
         <h1 className="quiz-title" style={{
