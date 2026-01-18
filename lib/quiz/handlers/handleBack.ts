@@ -1,6 +1,7 @@
 // lib/quiz/handlers/handleBack.ts
 
 import { clientLogger } from '@/lib/client-logger';
+import { safeSessionStorageSet } from '@/lib/storage-utils';
 import {
   getInitialInfoScreens,
   getInfoScreenAfterQuestion,
@@ -55,14 +56,7 @@ export interface HandleBackParams {
   };
 }
 
-function setSessionIndex(key: string, value: number) {
-  try {
-    if (typeof window === 'undefined') return;
-    sessionStorage.setItem(key, String(value));
-  } catch {
-    // ignore
-  }
-}
+// Функция заменена на импортированную из storage-utils
 
 function dropAnswer(
   answers: Record<number, string | string[]>,
@@ -163,7 +157,7 @@ export async function handleBack(params: HandleBackParams): Promise<void> {
       updateQuestionIndex(targetQuestionIndex, undefined, setCurrentQuestionIndex);
 
       // потом сохраняем
-      setSessionIndex(scopedStorageKeys.CURRENT_QUESTION, targetQuestionIndex);
+      safeSessionStorageSet(scopedStorageKeys.CURRENT_QUESTION, String(targetQuestionIndex));
       void saveProgressSafely(saveProgress, nextAnswers, targetQuestionIndex, currentInfoScreenIndex);
       return;
     }
@@ -181,7 +175,7 @@ export async function handleBack(params: HandleBackParams): Promise<void> {
         updateInfoScreenIndex(newInfoScreenIndex, currentInfoScreenIndexRef, setCurrentInfoScreenIndex);
         setPendingInfoScreen(null);
 
-        setSessionIndex(scopedStorageKeys.CURRENT_INFO_SCREEN, newInfoScreenIndex);
+        safeSessionStorageSet(scopedStorageKeys.CURRENT_INFO_SCREEN, String(newInfoScreenIndex));
         void saveProgressSafely(saveProgress, answers, currentQuestionIndex, newInfoScreenIndex);
         return;
       } else {
@@ -190,7 +184,7 @@ export async function handleBack(params: HandleBackParams): Promise<void> {
         updateInfoScreenIndex(newInfoScreenIndex, currentInfoScreenIndexRef, setCurrentInfoScreenIndex);
         setPendingInfoScreen(null);
 
-        setSessionIndex(scopedStorageKeys.CURRENT_INFO_SCREEN, newInfoScreenIndex);
+        safeSessionStorageSet(scopedStorageKeys.CURRENT_INFO_SCREEN, String(newInfoScreenIndex));
         void saveProgressSafely(saveProgress, answers, currentQuestionIndex, newInfoScreenIndex);
         return;
       }
@@ -221,7 +215,7 @@ export async function handleBack(params: HandleBackParams): Promise<void> {
           setPendingInfoScreen(last);
           updateQuestionIndex(prevIndex, undefined, setCurrentQuestionIndex);
 
-          setSessionIndex(scopedStorageKeys.CURRENT_QUESTION, prevIndex);
+          safeSessionStorageSet(scopedStorageKeys.CURRENT_QUESTION, String(prevIndex));
           void saveProgressSafely(saveProgress, nextAnswers, prevIndex, currentInfoScreenIndex);
           return;
         }
@@ -229,7 +223,7 @@ export async function handleBack(params: HandleBackParams): Promise<void> {
 
       // 3.2 обычный шаг назад по вопросам
       updateQuestionIndex(prevIndex, undefined, setCurrentQuestionIndex);
-      setSessionIndex(scopedStorageKeys.CURRENT_QUESTION, prevIndex);
+      safeSessionStorageSet(scopedStorageKeys.CURRENT_QUESTION, String(prevIndex));
       void saveProgressSafely(saveProgress, nextAnswers, prevIndex, currentInfoScreenIndex);
       return;
     }
@@ -247,7 +241,7 @@ export async function handleBack(params: HandleBackParams): Promise<void> {
       const newInfoScreenIndex = effectiveInfoIdx - 1;
       updateInfoScreenIndex(newInfoScreenIndex, currentInfoScreenIndexRef, setCurrentInfoScreenIndex);
 
-      setSessionIndex(scopedStorageKeys.CURRENT_INFO_SCREEN, newInfoScreenIndex);
+      safeSessionStorageSet(scopedStorageKeys.CURRENT_INFO_SCREEN, String(newInfoScreenIndex));
       void saveProgressSafely(saveProgress, answers, currentQuestionIndex, newInfoScreenIndex);
       return;
     }

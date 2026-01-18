@@ -165,8 +165,24 @@ export const QuizRenderer = memo(function QuizRenderer({
       valueType: Array.isArray(value) ? 'array' : 'string',
       currentQuestionId: currentQuestion?.id
     });
-    // TODO: implement onAnswer
-  }, [currentQuestion]);
+
+    try {
+      await handleAnswer({
+        questionId,
+        value,
+        answers,
+        setAnswers,
+        currentQuestionIndex,
+        allQuestions,
+        currentInfoScreenIndex,
+        saveProgress,
+        handleNext: onNext,
+        isDev,
+      });
+    } catch (error) {
+      console.error('❌ [QuizRenderer] onAnswer error:', error);
+    }
+  }, [answers, setAnswers, currentQuestionIndex, allQuestions, currentInfoScreenIndex, saveProgress, onNext, isDev]);
 
   const onNext = useCallback(async () => {
     console.log('➡️ [QuizRenderer] onNext called', {
@@ -174,8 +190,63 @@ export const QuizRenderer = memo(function QuizRenderer({
       allQuestionsLength,
       currentQuestionId: currentQuestion?.id
     });
-    // TODO: implement onNext
-  }, [currentQuestionIndex, allQuestionsLength, currentQuestion]);
+
+    try {
+      await handleNextFn({
+        handleNextInProgressRef: { current: false },
+        currentInfoScreenIndexRef: { current: currentInfoScreenIndex },
+        currentQuestionIndexRef: { current: currentQuestionIndex },
+        questionnaireRef: questionnaireRef,
+        initCompletedRef: { current: initCompleted },
+        answersRef: { current: answers },
+        questionnaire,
+        loading: false,
+        currentInfoScreenIndex,
+        currentQuestionIndex,
+        allQuestions,
+        isRetakingQuiz,
+        showRetakeScreen,
+        hasResumed,
+        pendingInfoScreen,
+        pendingInfoScreenRef: quizState.pendingInfoScreenRef,
+        justClosedInfoScreenRef: { current: false },
+        answers,
+        setIsHandlingNext: () => {},
+        setCurrentInfoScreenIndex,
+        setCurrentQuestionIndex,
+        setPendingInfoScreen,
+        setError,
+        saveProgress: saveProgress,
+        loadQuestionnaire: async () => null,
+        initInProgressRef: { current: false },
+        setLoading: () => {},
+        isDev,
+      });
+    } catch (error) {
+      console.error('❌ [QuizRenderer] onNext error:', error);
+    }
+  }, [
+    currentQuestionIndex,
+    allQuestionsLength,
+    currentQuestion,
+    questionnaireRef,
+    initCompleted,
+    answers,
+    questionnaire,
+    currentInfoScreenIndex,
+    allQuestions,
+    isRetakingQuiz,
+    showRetakeScreen,
+    hasResumed,
+    pendingInfoScreen,
+    quizState.pendingInfoScreenRef,
+    setCurrentInfoScreenIndex,
+    setCurrentQuestionIndex,
+    setPendingInfoScreen,
+    setError,
+    saveProgress,
+    isDev,
+  ]);
 
   const onSubmit = useCallback(async () => {
     console.log('✅ [QuizRenderer] onSubmit called', {
@@ -184,17 +255,49 @@ export const QuizRenderer = memo(function QuizRenderer({
       currentQuestionIndex,
       allQuestionsLength
     });
-    // TODO: implement onSubmit
-  }, [answers, isSubmitting, currentQuestionIndex, allQuestionsLength]);
 
-  const onBack = useCallback(() => {
+    try {
+      await submitAnswersFn({
+        answers,
+        questionnaire,
+        questionnaireRef,
+        setIsSubmitting,
+        setFinalizing,
+        setFinalizingStep,
+        setFinalizeError,
+        isDev,
+      });
+    } catch (error) {
+      console.error('❌ [QuizRenderer] onSubmit error:', error);
+    }
+  }, [answers, questionnaire, questionnaireRef, setIsSubmitting, setFinalizing, setFinalizingStep, setFinalizeError, isDev, isSubmitting, currentQuestionIndex, allQuestionsLength]);
+
+  const onBack = useCallback(async () => {
     console.log('⬅️ [QuizRenderer] onBack called', {
       currentQuestionIndex,
       canGoBack: currentQuestionIndex > 0,
       currentQuestionId: currentQuestion?.id
     });
-    // TODO: implement onBack
-  }, [currentQuestionIndex, currentQuestion]);
+
+    try {
+      await handleBackFn({
+        currentQuestionIndex,
+        currentInfoScreenIndex,
+        allQuestions,
+        answers,
+        setCurrentQuestionIndex,
+        setCurrentInfoScreenIndex,
+        setPendingInfoScreen,
+        setAnswers,
+        saveProgress,
+        questionnaire,
+        questionnaireRef,
+        isDev,
+      });
+    } catch (error) {
+      console.error('❌ [QuizRenderer] onBack error:', error);
+    }
+  }, [currentQuestionIndex, currentInfoScreenIndex, allQuestions, answers, setCurrentQuestionIndex, setCurrentInfoScreenIndex, setPendingInfoScreen, setAnswers, saveProgress, questionnaire, questionnaireRef, isDev, currentQuestion]);
 
   // Используем memoized значения
 
@@ -273,7 +376,8 @@ export const QuizRenderer = memo(function QuizRenderer({
     return (
       <ScreenErrorBoundary componentName="InfoScreen">
         <Suspense fallback={<div>Loading info screen...</div>}>
-          <QuizInfoScreen
+          <ScreenErrorBoundary componentName="QuizInfoScreen">
+            <QuizInfoScreen
             screen={pendingInfoScreen!}
             currentInfoScreenIndex={currentInfoScreenIndex}
             questionnaire={questionnaireFromQuery || questionnaireRef.current || questionnaire}

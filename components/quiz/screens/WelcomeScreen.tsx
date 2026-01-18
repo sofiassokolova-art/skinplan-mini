@@ -32,13 +32,12 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
       {/* Картинка */}
       {screen.image && (
         <div style={{
-          width: 'calc(100% + 6px)',
+          width: '100%',
           height: '60vh',
           minHeight: '400px',
           maxHeight: '500px',
           position: 'relative',
-          marginLeft: '-3px',
-          marginTop: '-10px',
+          margin: 0,
           borderBottomRightRadius: '40px',
           borderBottomLeftRadius: '40px',
           overflow: 'hidden',

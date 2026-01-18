@@ -3,6 +3,7 @@
 
 import type React from 'react';
 import { clientLogger } from '@/lib/client-logger';
+import { safeSessionStorageGet } from '@/lib/storage-utils';
 import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 import { INFO_SCREENS, getInitialInfoScreens, getNextInfoScreenAfterScreen, getInfoScreenAfterQuestion } from '@/app/(miniapp)/quiz/info-screens';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
@@ -378,7 +379,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       // ИСПРАВЛЕНО: Теперь используем questions из questionnaireRef как источник истины
       // Восстанавливаем questionCode из sessionStorage для пользователей с прогрессом
       const scopedQuestionCodeKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE, qid);
-      const savedQuestionCode = typeof window !== 'undefined' ? sessionStorage.getItem(scopedQuestionCodeKey) : null;
+      const savedQuestionCode = safeSessionStorageGet(scopedQuestionCodeKey);
       const answeredQuestionIds = Object.keys(answers).map(id => Number(id));
       let nextQuestionIndex = 0;
 

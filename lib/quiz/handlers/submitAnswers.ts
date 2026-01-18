@@ -36,23 +36,7 @@ export interface SubmitAnswersParams {
   };
 }
 
-function safeSetSession(key: string, value: string) {
-  try {
-    if (typeof window === 'undefined') return;
-    sessionStorage.setItem(key, value);
-  } catch {
-    // ignore
-  }
-}
-
-function safeRemoveSession(key: string) {
-  try {
-    if (typeof window === 'undefined') return;
-    sessionStorage.removeItem(key);
-  } catch {
-    // ignore
-  }
-}
+// Функции заменены на импортированные из storage-utils
 
 function getTelegramInitDataFallback(params: SubmitAnswersParams): string | null {
   try {
@@ -198,18 +182,18 @@ export async function submitAnswers(params: SubmitAnswersParams): Promise<void> 
     const profileId = await ensureProfileId(result);
     if (!profileId) {
       // очень важно: не оставляем "just_submitted" если профиля нет
-      safeRemoveSession('quiz_just_submitted');
-      safeRemoveSession(params.scopedStorageKeys.JUST_SUBMITTED);
+      safeSessionStorageRemove('quiz_just_submitted');
+      safeSessionStorageRemove(params.scopedStorageKeys.JUST_SUBMITTED);
       throw new Error('Не удалось создать профиль. Попробуйте ещё раз.');
     }
 
     // 7) ставим флаги ДО редиректа
-    safeSetSession('quiz_just_submitted', 'true');
-    safeSetSession(params.scopedStorageKeys.JUST_SUBMITTED, 'true');
+    safeSessionStorageSet('quiz_just_submitted', 'true');
+    safeSessionStorageSet(params.scopedStorageKeys.JUST_SUBMITTED, 'true');
 
     // чистим кэш профиля (чтобы /plan не взял старое)
-    safeRemoveSession('profile_check_cache');
-    safeRemoveSession('profile_check_cache_timestamp');
+    safeSessionStorageRemove('profile_check_cache');
+    safeSessionStorageRemove('profile_check_cache_timestamp');
 
     // помечаем что есть прогресс плана
     try {
