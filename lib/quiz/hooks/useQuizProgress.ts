@@ -27,12 +27,14 @@ export function useQuizProgress() {
   const answersKeysCount = Object.keys(answers || {}).length;
   const savedProgressAnswersKeysCount = Object.keys(savedProgress?.answers || {}).length;
   
-  const effectiveAnswers = useMemo(() => 
-    getEffectiveAnswers(answers, savedProgress?.answers), 
+  const effectiveAnswers = useMemo(() =>
+    getEffectiveAnswers(answers, savedProgress?.answers),
     [answersKeysCount, savedProgressAnswersKeysCount]
   );
-  
-  const answersCount = useMemo(() => Object.keys(effectiveAnswers).length, [effectiveAnswers]);
+
+  // ФИКС: Убираем лишний useMemo, который зависит от объекта и может вызывать бесконечные циклы
+  // answersCount вычисляется напрямую из effectiveAnswers
+  const answersCount = Object.keys(effectiveAnswers).length;
 
   // Синхронизация ref с state
   useEffect(() => {

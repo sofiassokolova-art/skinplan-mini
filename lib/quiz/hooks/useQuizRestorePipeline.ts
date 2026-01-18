@@ -173,7 +173,7 @@ export function useQuizRestorePipeline(params: UseQuizRestorePipelineParams) {
     scope,
     isStartingOver,
     isLoadingProgress,
-    savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0,
+    savedProgress, // ФИКС: Используем сам объект вместо вычисления количества ключей
   ]);
   
   // Шаг 2: Восстановление answers из React Query кэша
@@ -221,7 +221,7 @@ export function useQuizRestorePipeline(params: UseQuizRestorePipelineParams) {
   }, [
     isLoadingProgress,
     isStartingOver,
-    quizProgressFromQuery?.progress?.answers ? Object.keys(quizProgressFromQuery.progress.answers).length : 0,
+    quizProgressFromQuery, // ФИКС: Используем сам объект вместо вычисления количества ключей
   ]);
   
   // Шаг 3: Восстановление индексов из sessionStorage или progress
@@ -338,9 +338,7 @@ export function useQuizRestorePipeline(params: UseQuizRestorePipelineParams) {
     allQuestions.length,
     isStartingOver,
     isLoadingProgress,
-    savedProgress?.questionIndex,
-    savedProgress?.infoScreenIndex,
-    savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0,
+    savedProgress, // ФИКС: Используем сам объект вместо отдельных свойств и вычислений
   ]);
   
   return {
