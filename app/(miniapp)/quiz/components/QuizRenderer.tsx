@@ -75,10 +75,7 @@ export const QuizRenderer = memo(function QuizRenderer({
     currentQuestionId: currentQuestion?.id,
     currentQuestionCode: currentQuestion?.code,
     currentQuestionText: currentQuestion?.text?.substring(0, 50),
-    showDebugPanel,
-    currentInfoScreenIndex,
-    currentQuestionIndex,
-    viewMode
+    showDebugPanel
   });
 
   const {
@@ -127,6 +124,12 @@ export const QuizRenderer = memo(function QuizRenderer({
     setInitCompleted,
     currentQuestionIndex,
   } = quizState;
+
+  // Дополнительное логгирование после деструктуризации
+  console.log('🎨 [QuizRenderer] state destructured', {
+    currentInfoScreenIndex,
+    currentQuestionIndex
+  });
 
   // Функция для сохранения прогресса - мемоизируем чтобы избежать перерендеринга
   const saveProgress = useCallback(async (answers: Record<number, string | string[]>, questionIndex: number, infoScreenIndex: number) => {
@@ -520,7 +523,6 @@ export const QuizRenderer = memo(function QuizRenderer({
       currentInfoScreenIndexRef: quizState.currentInfoScreenIndexRef.current,
       questionnaireFromQuery: !!questionnaireFromQuery,
       isSubmitting,
-      viewMode,
       screen
     });
 
