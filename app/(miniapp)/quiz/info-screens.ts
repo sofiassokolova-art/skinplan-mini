@@ -334,7 +334,7 @@ export function getNextInfoScreenAfterScreen(screenId: string): InfoScreen | und
 
 // Функция для получения инфо-экрана, который должен показываться перед указанным вопросом
 // Возвращает последний инфо-экран в цепочке, который идет перед этим вопросом
-export function getInfoScreenBeforeQuestion(questionCode: string): InfoScreen | undefined {
+export function getInfoScreenBeforeQuestion(_questionCode: string): InfoScreen | undefined {
   // Ищем все инфо-экраны, которые могут быть связаны с этим вопросом
   // Проверяем цепочки: question -> infoScreen -> nextInfoScreen -> ... -> currentQuestion
   // Находим последний инфо-экран в цепочке, который идет перед текущим вопросом

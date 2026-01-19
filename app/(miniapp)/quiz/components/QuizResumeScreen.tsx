@@ -5,7 +5,6 @@
 
 import { useState, useRef } from 'react';
 import { clientLogger } from '@/lib/client-logger';
-import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 import { filterQuestions } from '@/lib/quiz/filterQuestions';
 import type { Questionnaire, SavedProgress } from '@/lib/quiz/types';
 

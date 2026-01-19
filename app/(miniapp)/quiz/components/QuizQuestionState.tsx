@@ -3,13 +3,11 @@
 
 'use client';
 
-import { clientLogger } from '@/lib/client-logger';
 import type { Questionnaire } from '@/lib/quiz/types';
 import { QuestionSkeleton } from '@/components/ui/SkeletonLoader';
 
 interface QuizQuestionStateProps {
   currentQuestion: any;
-  currentQuestionIndex: number;
   currentInfoScreenIndex: number;
   currentInfoScreenIndexRef: React.MutableRefObject<number>;
   isPastInitialScreens: boolean;
@@ -20,15 +18,10 @@ interface QuizQuestionStateProps {
   questionnaire: Questionnaire | null;
   questionnaireRef: React.MutableRefObject<Questionnaire | null>;
   quizStateMachineQuestionnaire: Questionnaire | null;
-  pendingInfoScreen: any;
-  showResumeScreen: boolean;
-  hasResumed: boolean;
-  isDev: boolean;
 }
 
 export function QuizQuestionState({
   currentQuestion,
-  currentQuestionIndex,
   currentInfoScreenIndex,
   currentInfoScreenIndexRef,
   isPastInitialScreens,
@@ -39,10 +32,6 @@ export function QuizQuestionState({
   questionnaire,
   questionnaireRef,
   quizStateMachineQuestionnaire,
-  pendingInfoScreen,
-  showResumeScreen,
-  hasResumed,
-  isDev,
 }: QuizQuestionStateProps) {
   const isPastInitialScreensRef = currentInfoScreenIndexRef.current >= initialInfoScreensLength;
   const hasQuestions = allQuestionsLength > 0;

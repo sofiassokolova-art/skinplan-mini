@@ -95,13 +95,17 @@ export async function handleInfoScreenNavigation(params: InfoScreenNavigationPar
   // Начальные инфо-экраны закончились, проверяем специальные условия
   if (isRetakingQuiz && showRetakeScreen) {
     clientLogger.log('🔄 handleNext: переходим к экрану перепрохождения');
-    // TODO: Обработка экрана перепрохождения
+    setPendingInfoScreen(null);
+    setCurrentInfoScreenIndex(totalInitialScreens);
+    currentInfoScreenIndexRef.current = totalInitialScreens;
     return false;
   }
 
   if (hasResumed) {
     clientLogger.log('▶️ handleNext: возобновляем с сохраненной позиции');
-    // TODO: Обработка возобновления
+    setPendingInfoScreen(null);
+    setCurrentInfoScreenIndex(totalInitialScreens);
+    currentInfoScreenIndexRef.current = totalInitialScreens;
     return false;
   }
 

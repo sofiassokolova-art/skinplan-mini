@@ -15,7 +15,6 @@ const QuizQuestion = lazy(() => import('./QuizQuestion').then(mod => ({ default:
 
 interface QuizPageContentProps {
   backgroundColor: string;
-  isDev: boolean;
   showDebugPanel: boolean;
   debugLogs: Array<{ time: string; message: string; data?: any }>;
   setShowDebugPanel: (show: boolean) => void;
@@ -32,9 +31,7 @@ interface QuizPageContentProps {
   questionnaire: any;
   questionnaireRef: React.MutableRefObject<any>;
   quizStateMachineQuestionnaire: any;
-  pendingInfoScreen: any;
   showResumeScreen: boolean;
-  hasResumed: boolean;
   answers: Record<string, any>;
   isRetakingQuiz: boolean;
   isSubmitting: boolean;
@@ -53,7 +50,6 @@ interface QuizPageContentProps {
 export function QuizPageContent(props: QuizPageContentProps) {
   const {
     backgroundColor,
-    isDev,
     showDebugPanel,
     debugLogs,
     setShowDebugPanel,
@@ -70,9 +66,7 @@ export function QuizPageContent(props: QuizPageContentProps) {
     questionnaire,
     questionnaireRef,
     quizStateMachineQuestionnaire,
-    pendingInfoScreen,
     showResumeScreen,
-    hasResumed,
     answers,
     isRetakingQuiz,
     isSubmitting,
@@ -129,7 +123,6 @@ export function QuizPageContent(props: QuizPageContentProps) {
       >
         <QuizQuestionState
           currentQuestion={currentQuestion}
-          currentQuestionIndex={currentQuestionIndex}
           currentInfoScreenIndex={currentInfoScreenIndex}
           currentInfoScreenIndexRef={currentInfoScreenIndexRef}
           isPastInitialScreens={isPastInitialScreens}
@@ -140,10 +133,6 @@ export function QuizPageContent(props: QuizPageContentProps) {
           questionnaire={questionnaire}
           questionnaireRef={questionnaireRef}
           quizStateMachineQuestionnaire={quizStateMachineQuestionnaire}
-          pendingInfoScreen={pendingInfoScreen}
-          showResumeScreen={showResumeScreen}
-          hasResumed={hasResumed}
-          isDev={isDev}
         />
 
         {shouldShowQuestion && (

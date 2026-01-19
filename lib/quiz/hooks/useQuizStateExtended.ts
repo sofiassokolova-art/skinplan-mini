@@ -72,6 +72,7 @@ export interface UseQuizStateExtendedReturn {
   hasResumed: boolean;
   setHasResumed: React.Dispatch<React.SetStateAction<boolean>>;
   hasResumedRef: React.MutableRefObject<boolean>;
+  resumeCompletedRef: React.MutableRefObject<boolean>;
   
   // User preferences
   userPreferencesData: {
@@ -108,6 +109,7 @@ export interface UseQuizStateExtendedReturn {
   autoSubmitTriggeredRef: React.MutableRefObject<boolean>;
   
   // Refs для синхронизации
+  initCalledRef: React.MutableRefObject<boolean>;
   questionnaireRef: React.MutableRefObject<Questionnaire | null>;
   isMountedRef: React.MutableRefObject<boolean>;
   redirectTimeoutRef: React.MutableRefObject<NodeJS.Timeout | null>;
@@ -116,11 +118,16 @@ export interface UseQuizStateExtendedReturn {
   lastSavedAnswerRef: React.MutableRefObject<{ questionId: number; answer: string | string[] } | null>;
   pendingProgressRef: React.MutableRefObject<{ questionIndex?: number; infoScreenIndex?: number } | null>;
   progressLoadedRef: React.MutableRefObject<boolean>;
+  answersRef: React.MutableRefObject<Record<number, string | string[]>>;
+  answersCountRef: React.MutableRefObject<number>;
+  lastRestoredAnswersIdRef: React.MutableRefObject<string | null>;
   loadingRefForTimeout: React.MutableRefObject<boolean>;
   loadingStartTimeRef: React.MutableRefObject<number | null>;
   initCompletedRef: React.MutableRefObject<boolean>;
   initCompleted: boolean;
   setInitCompleted: React.Dispatch<React.SetStateAction<boolean>>;
+  isProgressCleared: boolean;
+  setIsProgressCleared: React.Dispatch<React.SetStateAction<boolean>>;
   
   // Refs для синхронизации с State Machine и React Query
   lastSyncedFromQueryIdRef: React.MutableRefObject<string | number | null>;
@@ -188,6 +195,7 @@ export function useQuizStateExtended(): UseQuizStateExtendedReturn {
   // Resume состояния
   const [hasResumed, setHasResumed] = useState(false);
   const hasResumedRef = useRef(false);
+  const resumeCompletedRef = useRef(false);
   
   // User preferences
   const [userPreferencesData, setUserPreferencesData] = useState<{
@@ -202,10 +210,12 @@ export function useQuizStateExtended(): UseQuizStateExtendedReturn {
   const [isStartingOver, setIsStartingOver] = useState(false);
   const isStartingOverRef = useRef(false);
   const [daysSincePlanGeneration, setDaysSincePlanGeneration] = useState<number | null>(null);
+  const [isProgressCleared, setIsProgressCleared] = useState(false);
   
   // РЕФАКТОРИНГ: Debug и Auto submit состояния теперь в useQuizUI
   
   // Refs для синхронизации
+  const initCalledRef = useRef(false);
   const questionnaireRef = useRef<Questionnaire | null>(null);
   const isMountedRef = useRef(true);
   const redirectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -214,6 +224,9 @@ export function useQuizStateExtended(): UseQuizStateExtendedReturn {
   const lastSavedAnswerRef = useRef<{ questionId: number; answer: string | string[] } | null>(null);
   const pendingProgressRef = useRef<{ questionIndex?: number; infoScreenIndex?: number } | null>(null);
   const progressLoadedRef = useRef(false);
+  const answersRef = useRef<Record<number, string | string[]>>({});
+  const answersCountRef = useRef(0);
+  const lastRestoredAnswersIdRef = useRef<string | null>(null);
   const loadingRefForTimeout = useRef(true);
   const loadingStartTimeRef = useRef<number | null>(null);
   const initCompletedRef = useRef(false);
@@ -222,6 +235,11 @@ export function useQuizStateExtended(): UseQuizStateExtendedReturn {
   useEffect(() => {
     initCompletedRef.current = initCompleted;
   }, [initCompleted]);
+
+  useEffect(() => {
+    answersRef.current = answers;
+    answersCountRef.current = Object.keys(answers).length;
+  }, [answers]);
   
   // Refs для синхронизации с State Machine и React Query
   const lastSyncedFromQueryIdRef = useRef<string | number | null>(null);
@@ -357,6 +375,7 @@ export function useQuizStateExtended(): UseQuizStateExtendedReturn {
     hasResumed,
     setHasResumed,
     hasResumedRef,
+    resumeCompletedRef,
     
     // User preferences
     userPreferencesData,
@@ -370,6 +389,7 @@ export function useQuizStateExtended(): UseQuizStateExtendedReturn {
     setDaysSincePlanGeneration,
     
     // Refs для синхронизации
+    initCalledRef,
     questionnaireRef,
     isMountedRef,
     redirectTimeoutRef,
@@ -378,11 +398,16 @@ export function useQuizStateExtended(): UseQuizStateExtendedReturn {
     lastSavedAnswerRef,
     pendingProgressRef,
     progressLoadedRef,
+    answersRef,
+    answersCountRef,
+    lastRestoredAnswersIdRef,
     loadingRefForTimeout,
     loadingStartTimeRef,
     initCompletedRef,
     initCompleted,
     setInitCompleted,
+    isProgressCleared,
+    setIsProgressCleared,
     
     // Refs для синхронизации с State Machine и React Query
     lastSyncedFromQueryIdRef,
@@ -408,5 +433,3 @@ export function useQuizStateExtended(): UseQuizStateExtendedReturn {
     firstScreenResetRef,
   };
 }
-
-

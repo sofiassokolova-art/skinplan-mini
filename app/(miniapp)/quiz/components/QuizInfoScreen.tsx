@@ -10,7 +10,7 @@ import Image from 'next/image';
 import type { Questionnaire } from '@/lib/quiz/types';
 import type { InfoScreen } from '../info-screens';
 import { getNextInfoScreenAfterScreen } from '../info-screens';
-import { WelcomeScreen, PersonalAnalysisScreen, GoalsIntroScreen } from '@/components/quiz/screens';
+import { WelcomeScreen, PersonalAnalysisScreen, GoalsIntroScreen, HowItWorksScreen } from '@/components/quiz/screens';
 import { FixedContinueButton, TinderButtons } from '@/components/quiz/buttons';
 import { TestimonialsCarousel, ProductsGrid } from '@/components/quiz/content';
 import { clientLogger } from '@/lib/client-logger';
@@ -97,181 +97,6 @@ function ImageWithLoading({
   );
 }
 
-// Единый layout для всех инфо-экранов
-interface InfoScreenLayoutProps {
-  screen: InfoScreen;
-  currentInfoScreenIndex: number;
-  children?: React.ReactNode;
-  customContent?: React.ReactNode;
-  onContinue: () => void;
-  onBack?: () => void;
-  isHandlingNext?: boolean;
-  showBackButton?: boolean;
-  isInitialInfoScreen?: boolean; // ФИКС: Флаг для начальных инфо экранов
-}
-
-function InfoScreenLayout({
-  screen,
-  currentInfoScreenIndex,
-  children,
-  customContent,
-  onContinue,
-  onBack: _onBack,
-  isHandlingNext = false,
-  showBackButton: _showBackButton = true,
-  isInitialInfoScreen: _isInitialInfoScreen = false,
-}: InfoScreenLayoutProps) {
-  const isGeneralInfo = screen.id.includes('general_info') || screen.id.includes('goals_intro');
-  const isPersonalAnalysis = screen.id === 'personal_analysis';
-  const isWelcome = screen.id === 'welcome';
-
-  // Кнопка "Назад"
-  // ФИКС: Для начальных инфо экранов показываем кнопку всегда, кроме welcome
-  // shouldShowBack is defined later in the component
-
-  // backButton is defined later in the component
-
-  return (
-    <div style={{
-      padding: 0,
-      margin: 0,
-      width: '100%',
-      height: '100vh',
-      maxWidth: '737px',
-      maxHeight: '727px',
-      background: '#FFFFFF',
-      position: 'relative',
-      border: '0px solid rgb(229, 231, 235)',
-      boxSizing: 'border-box',
-    }}>
-        {/* Контент с анимацией */}
-        <div
-          className="animate-fade-in"
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-            paddingTop: isGeneralInfo ? '80px' : '120px',
-            paddingBottom: '100px',
-            paddingLeft: '20px',
-            paddingRight: '20px',
-            width: '100%',
-            height: '100%',
-            boxSizing: 'border-box',
-          }}
-        >
-          {/* Изображение */}
-          {screen.image && !isWelcome && (
-            <div style={{
-              display: 'flex',
-              justifyContent: 'center',
-              width: '100%',
-              marginBottom: isGeneralInfo ? '20px' : '32px',
-            }}>
-              <ImageWithLoading
-                src={screen.image}
-                alt={screen.title || ''}
-                maxWidth="280px"
-                priority={currentInfoScreenIndex < 2}
-              />
-            </div>
-          )}
-
-          {/* Заголовок */}
-          {screen.title && !isPersonalAnalysis && !isWelcome && (
-            <h1
-              style={{
-                fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontWeight: 700,
-                fontSize: '24px',
-                lineHeight: '100%',
-                textAlign: 'center',
-                color: '#000000',
-                margin: `0 0 ${isGeneralInfo ? '8px' : '60px'} 0`, // Уменьшенный margin для general info
-                maxWidth: '320px',
-              }}
-            >
-              {screen.title}
-            </h1>
-          )}
-
-          {/* Подзаголовок */}
-          {screen.subtitle && (
-            <div
-              style={{
-                fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontWeight: 400,
-                fontSize: '16px',
-                lineHeight: '140%',
-                textAlign: 'center',
-                color: '#6B7280',
-                marginBottom: '32px',
-                maxWidth: '320px',
-                whiteSpace: 'pre-line',
-              }}
-            >
-              {screen.subtitle}
-            </div>
-          )}
-
-          {/* Кастомный контент (шаги, testimonials, products и т.д.) */}
-          {customContent}
-
-          {/* Children для обратной совместимости */}
-          {children}
-        </div>
-
-        {/* Кнопка продолжения */}
-        {screen.ctaText && (
-          <div style={{
-            position: 'fixed',
-            bottom: 'clamp(40px, 6vh, 60px)',
-            left: 0,
-            right: 0,
-            padding: '0 clamp(20px, 5vw, 40px)',
-            background: 'transparent',
-            zIndex: 100,
-            display: 'flex',
-            justifyContent: 'center',
-          }}>
-            <button
-              onClick={onContinue}
-              disabled={isHandlingNext}
-              style={{
-                width: '100%',
-                maxWidth: 'clamp(224px, 60vw, 320px)',
-                height: 'clamp(56px, 8vh, 64px)',
-                borderRadius: '20px',
-                background: '#D5FE61',
-                color: '#000000',
-                border: 'none',
-                fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-                fontWeight: 600,
-                fontSize: 'clamp(14px, 4vw, 16px)',
-                cursor: isHandlingNext ? 'not-allowed' : 'pointer',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-                opacity: isHandlingNext ? 0.7 : 1,
-              }}
-              onMouseDown={(e) => {
-                if (!isHandlingNext) e.currentTarget.style.transform = 'scale(0.98)';
-              }}
-              onMouseUp={(e) => {
-                if (!isHandlingNext) e.currentTarget.style.transform = 'scale(1)';
-              }}
-              onMouseLeave={(e) => {
-                if (!isHandlingNext) e.currentTarget.style.transform = 'scale(1)';
-              }}
-            >
-              {isHandlingNext ? 'Загрузка...' : String(screen.ctaText || 'Продолжить')}
-            </button>
-          </div>
-        )}
-    </div>
-  );
-}
-
 interface QuizInfoScreenProps {
   screen: InfoScreen;
   currentInfoScreenIndex: number;
@@ -315,6 +140,47 @@ export function QuizInfoScreen({
   handleBack,
   isInitialInfoScreen = false,
 }: QuizInfoScreenProps) {
+  const screenId = screen?.id;
+
+  const isTinderScreen = screen.type === 'tinder';
+  const isTestimonialsScreen = screen.type === 'testimonials';
+  const isComparisonScreen = screen.type === 'comparison';
+  const isProductsScreen = screen.type === 'products';
+  const isTransformationScreen = screen.type === 'transformation';
+  const isWelcomeScreen = screen.id === 'welcome';
+  const isHowItWorksScreen = screen.id === 'how_it_works';
+  const isPersonalAnalysisScreen = screen.id === 'personal_analysis';
+  const isGoalsIntroScreen = screen.id === 'goals_intro';
+  const isGeneralInfoIntroScreen = screen.id === 'general_info_intro';
+  const isHealthDataScreen = screen.id === 'health_data';
+  const isSkinFeaturesIntroScreen = screen.id === 'skin_features_intro';
+  const isHabitsMatterScreen = screen.id === 'habits_matter';
+
+  // ФИКС: Prefetch следующих 1-2 изображений для ускорения загрузки
+  // Используем new Image().src для предзагрузки в кэш браузера
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!screenId) return;
+    
+    // Находим следующие 1-2 экрана после текущего
+    const nextScreen1 = getNextInfoScreenAfterScreen(screenId);
+    const nextScreen2 = nextScreen1 ? getNextInfoScreenAfterScreen(nextScreen1.id) : null;
+    
+    // Prefetch изображения следующих экранов
+    const prefetchImage = (imageSrc: string | undefined) => {
+      if (!imageSrc) return;
+      const img = document.createElement('img');
+      img.src = imageSrc;
+    };
+    
+    if (nextScreen1?.image) {
+      prefetchImage(nextScreen1.image);
+    }
+    if (nextScreen2?.image) {
+      prefetchImage(nextScreen2.image);
+    }
+  }, [screenId]);
+
   // ФИКС: Проверяем что screen существует
   if (!screen) {
     console.error('❌ [QuizInfoScreen] screen is null or undefined');
@@ -337,44 +203,6 @@ export function QuizInfoScreen({
       </div>
     );
   }
-
-  const isTinderScreen = screen.type === 'tinder';
-  const isTestimonialsScreen = screen.type === 'testimonials';
-  const isComparisonScreen = screen.type === 'comparison';
-  const isProductsScreen = screen.type === 'products';
-  const isTransformationScreen = screen.type === 'transformation';
-  const isWelcomeScreen = screen.id === 'welcome';
-  const isHowItWorksScreen = screen.id === 'how_it_works';
-  const isPersonalAnalysisScreen = screen.id === 'personal_analysis';
-  const isGoalsIntroScreen = screen.id === 'goals_intro';
-  const isGeneralInfoIntroScreen = screen.id === 'general_info_intro';
-  const isHealthDataScreen = screen.id === 'health_data';
-  const isSkinFeaturesIntroScreen = screen.id === 'skin_features_intro';
-  const isHabitsMatterScreen = screen.id === 'habits_matter';
-
-  // ФИКС: Prefetch следующих 1-2 изображений для ускорения загрузки
-  // Используем new Image().src для предзагрузки в кэш браузера
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    // Находим следующие 1-2 экрана после текущего
-    const nextScreen1 = getNextInfoScreenAfterScreen(screen.id);
-    const nextScreen2 = nextScreen1 ? getNextInfoScreenAfterScreen(nextScreen1.id) : null;
-    
-    // Prefetch изображения следующих экранов
-    const prefetchImage = (imageSrc: string | undefined) => {
-      if (!imageSrc) return;
-      const img = document.createElement('img');
-      img.src = imageSrc;
-    };
-    
-    if (nextScreen1?.image) {
-      prefetchImage(nextScreen1.image);
-    }
-    if (nextScreen2?.image) {
-      prefetchImage(nextScreen2.image);
-    }
-  }, [screen.id]);
 
   // ФИКС: Кнопка "Назад" - создаём один раз для всех экранов
   // Для начальных инфо-экранов показываем кнопку всегда, кроме welcome
@@ -445,128 +273,30 @@ export function QuizInfoScreen({
         )
       : null;
 
-  // РЕФАКТОРИНГ: Используем унифицированный layout для welcome screen
   if (isWelcomeScreen) {
     return (
-      <InfoScreenLayout
+      <WelcomeScreen
         screen={screen}
-        currentInfoScreenIndex={currentInfoScreenIndex}
         onContinue={() => {
           if (!handleNextInProgressRef.current && !isHandlingNext) {
             handleNext();
           }
         }}
-        onBack={handleBack}
         isHandlingNext={isHandlingNext}
-        showBackButton={false} // Welcome screen never shows back button
-      >
-        <WelcomeScreen
-          screen={screen}
-          onContinue={() => {
-            if (!handleNextInProgressRef.current && !isHandlingNext) {
-              handleNext();
-            }
-          }}
-          isHandlingNext={isHandlingNext}
-          currentInfoScreenIndex={currentInfoScreenIndex}
-          onBack={handleBack}
-        />
-      </InfoScreenLayout>
+        currentInfoScreenIndex={currentInfoScreenIndex}
+        onBack={handleBack}
+      />
     );
   }
 
   // Специальный рендеринг для экрана "Как это работает?" с шагами
   if (isHowItWorksScreen) {
-    const steps = screen.subtitle?.split('\n').filter(line => line.trim()) || [];
-
-    const customStepsContent = (
-      <div style={{
-        width: '100%',
-        maxWidth: '320px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '40px',
-        alignItems: 'center',
-      }}>
-        {steps.map((step, index) => {
-          const stepNumber = index + 1;
-          const stepText = step.replace(/^\d+\.\s*/, '');
-
-          return (
-            <div
-              key={index}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                textAlign: 'center',
-                width: '100%',
-              }}
-            >
-              {/* Круг с номером и текстом "Шаг" */}
-              <div style={{
-                width: '44px',
-                height: '44px',
-                borderRadius: '50%',
-                background: '#D5FE61',
-                border: 'none',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-                color: '#000000',
-                marginBottom: '8px',
-                padding: '2px 0',
-              }}>
-                {/* Номер шага */}
-                <div style={{
-                  fontWeight: 800,
-                  fontSize: '20px',
-                  lineHeight: '19.45px',
-                  letterSpacing: '0px',
-                }}>
-                  {stepNumber}
-                </div>
-                {/* Текст "Шаг" */}
-                <div style={{
-                  fontWeight: 100,
-                  fontSize: '10px',
-                  lineHeight: '12px',
-                  letterSpacing: '0px',
-                  marginTop: '-2px',
-                }}>
-                  Шаг
-                </div>
-              </div>
-
-              {/* Текст шага */}
-              <div style={{
-                fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-                fontWeight: 400,
-                fontSize: '16px',
-                lineHeight: '140%',
-                letterSpacing: '0px',
-                color: '#000000',
-                textAlign: 'center',
-              }}>
-                {stepText}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-
     return (
-      <InfoScreenLayout
+      <HowItWorksScreen
         screen={screen}
         currentInfoScreenIndex={currentInfoScreenIndex}
-        onContinue={handleNext}
         onBack={handleBack}
-        isHandlingNext={isHandlingNext}
-        customContent={customStepsContent}
-        isInitialInfoScreen={isInitialInfoScreen}
+        onContinue={handleNext}
       />
     );
   }
@@ -1496,4 +1226,3 @@ export function QuizInfoScreen({
     </>
   );
 }
-

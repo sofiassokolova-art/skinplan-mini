@@ -59,12 +59,15 @@ export function useQuizUI(): UseQuizUIReturn {
 
   // ФИКС: Синхронизируем ref с state для получения актуального значения в замыканиях
   // ИСПРАВЛЕНО: Добавлено логирование для диагностики проблемы с синхронизацией
+  const shouldLogDebug = process.env.NODE_ENV === 'development' ||
+    process.env.NEXT_PUBLIC_DEBUG === 'true';
+
   useEffect(() => {
     const previousValue = pendingInfoScreenRef.current;
     pendingInfoScreenRef.current = pendingInfoScreen;
     
     // Логируем изменения для диагностики
-    if (process.env.NODE_ENV === 'development' || true) {
+    if (shouldLogDebug) {
       if (previousValue?.id !== pendingInfoScreen?.id) {
         console.log('🔄 pendingInfoScreenRef обновлен:', {
           previous: previousValue?.id || null,
@@ -73,12 +76,12 @@ export function useQuizUI(): UseQuizUIReturn {
         });
       }
     }
-  }, [pendingInfoScreen]);
+  }, [pendingInfoScreen, shouldLogDebug]);
   
   // ФИКС: Обертка для setPendingInfoScreen с логированием
   const setPendingInfoScreenWithLogging = useCallback((value: InfoScreen | null | ((prev: InfoScreen | null) => InfoScreen | null)) => {
     const newValue = typeof value === 'function' ? value(pendingInfoScreen) : value;
-    if (process.env.NODE_ENV === 'development' || true) {
+    if (shouldLogDebug) {
       console.log('🔄 setPendingInfoScreen вызван:', {
         previous: pendingInfoScreen?.id || null,
         new: newValue?.id || null,
@@ -87,7 +90,7 @@ export function useQuizUI(): UseQuizUIReturn {
       });
     }
     setPendingInfoScreen(value);
-  }, [pendingInfoScreen]);
+  }, [pendingInfoScreen, shouldLogDebug]);
 
   // Синхронизация refs с state
   useEffect(() => {
