@@ -135,18 +135,19 @@ function InfoScreenLayout({
     <div style={{
       padding: 0,
       margin: 0,
-      minHeight: '100vh',
-        background: '#FFFFFF',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-        width: '100%',
-      }}>
+      width: '100%',
+      height: '100vh',
+      maxWidth: '737px',
+      maxHeight: '727px',
+      background: '#FFFFFF',
+      position: 'relative',
+      border: '0px solid rgb(229, 231, 235)',
+      boxSizing: 'border-box',
+    }}>
         {/* Контент с анимацией */}
         <div
           className="animate-fade-in"
           style={{
-            flex: 1,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -156,6 +157,7 @@ function InfoScreenLayout({
             paddingLeft: '20px',
             paddingRight: '20px',
             width: '100%',
+            height: '100%',
             boxSizing: 'border-box',
           }}
         >
@@ -375,7 +377,8 @@ export function QuizInfoScreen({
   }, [screen.id]);
 
   // ФИКС: Кнопка "Назад" - создаём один раз для всех экранов
-  const shouldShowBackButton = currentInfoScreenIndex > 0 && screen.id !== 'welcome';
+  // Для начальных инфо-экранов показываем кнопку всегда, кроме welcome
+  const shouldShowBackButton = screen.id !== 'welcome' && (isInitialInfoScreen || currentInfoScreenIndex > 0);
   const backButton =
     shouldShowBackButton &&
     typeof window !== 'undefined' &&
@@ -472,7 +475,7 @@ export function QuizInfoScreen({
     );
   }
 
-  // Специальный рендеринг для экрана "Как это работает?" с унифицированным layout
+  // Специальный рендеринг для экрана "Как это работает?" с шагами
   if (isHowItWorksScreen) {
     const steps = screen.subtitle?.split('\n').filter(line => line.trim()) || [];
 
@@ -568,23 +571,15 @@ export function QuizInfoScreen({
     );
   }
 
-  // РЕФАКТОРИНГ: Используем компонент PersonalAnalysisScreen
+  // Экран "SkinIQ — ваш персональный анализ кожи" - абсолютное позиционирование как у goals_intro
   if (isPersonalAnalysisScreen) {
     return (
-      <InfoScreenLayout
+      <PersonalAnalysisScreen
         screen={screen}
         currentInfoScreenIndex={currentInfoScreenIndex}
         onContinue={handleNext}
         onBack={handleBack}
-        isHandlingNext={isHandlingNext}
-        isInitialInfoScreen={isInitialInfoScreen}
-      >
-        <PersonalAnalysisScreen
-          screen={screen}
-          currentInfoScreenIndex={currentInfoScreenIndex}
-          onContinue={handleNext}
-        />
-      </InfoScreenLayout>
+      />
     );
   }
 
@@ -717,10 +712,14 @@ export function QuizInfoScreen({
         <div style={{
           padding: 0,
           margin: 0,
-          minHeight: '100vh',
+          width: '100%',
+          height: '100vh',
+          maxWidth: '737px',
+          maxHeight: '727px',
           background: '#FFFFFF',
           position: 'relative',
-          width: '100%',
+          border: '0px solid rgb(229, 231, 235)',
+          boxSizing: 'border-box',
         }}>
 
         {/* Контент с абсолютным позиционированием */}
@@ -729,7 +728,7 @@ export function QuizInfoScreen({
           style={{
             position: 'relative',
             width: '100%',
-            height: '100vh',
+            height: '100%',
             boxSizing: 'border-box',
           }}
         >

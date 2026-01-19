@@ -33,14 +33,17 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
       {screen.image && (
         <div style={{
           width: '100%',
-          height: '60vh',
-          minHeight: '400px',
-          maxHeight: '500px',
+          height: '100vh',
+          maxWidth: '737px',
+          maxHeight: '727px',
           position: 'relative',
           margin: 0,
+          padding: 0,
           borderBottomRightRadius: '40px',
           borderBottomLeftRadius: '40px',
+          border: '0px solid rgb(229, 231, 235)',
           overflow: 'hidden',
+          boxSizing: 'border-box',
         }}>
           <img
             src={screen.image}

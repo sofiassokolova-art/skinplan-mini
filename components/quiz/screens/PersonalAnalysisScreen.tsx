@@ -93,10 +93,14 @@ function PersonalAnalysisScreenComponent({
       <div style={{
         padding: 0,
         margin: 0,
-        minHeight: '100vh',
+        width: '100%',
+        height: '100vh',
+        maxWidth: '737px',
+        maxHeight: '727px',
         background: '#FFFFFF',
         position: 'relative',
-        width: '100%',
+        border: '0px solid rgb(229, 231, 235)',
+        boxSizing: 'border-box',
       }}>
 
       {/* Контент с абсолютным позиционированием */}

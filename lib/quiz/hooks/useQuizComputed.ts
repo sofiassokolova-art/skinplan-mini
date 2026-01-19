@@ -41,6 +41,8 @@ export interface UseQuizComputedParams {
   isStartingOver: boolean;
   pendingInfoScreen: any | null;
   isLoadingProgress: boolean;
+  isLoadingQuestionnaire?: boolean; // Новое поле для загрузки анкеты
+  isQuestionnaireLoading?: boolean; // Новое поле для состояния loading из quizState
   
   // Refs
   questionnaireRef: React.MutableRefObject<Questionnaire | null>;
@@ -76,6 +78,8 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     isStartingOver,
     pendingInfoScreen,
     isLoadingProgress,
+    isLoadingQuestionnaire = false, // Новое поле
+    isQuestionnaireLoading = false, // Новое поле
     questionnaireRef,
     currentInfoScreenIndexRef,
     allQuestionsRawPrevRef,
@@ -324,6 +328,8 @@ export function useQuizComputed(params: UseQuizComputedParams) {
   const viewMode = useMemo<ViewMode>(() => {
     console.log('🔍 [useQuizComputed] viewMode: computing', {
       isLoadingProgress,
+      isLoadingQuestionnaire,
+      isQuestionnaireLoading,
       savedProgressAnswersCount,
       isStartingOver,
       hasResumed,
@@ -336,9 +342,13 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       allQuestionsHash
     });
 
-    // Приоритет 1: Загрузка прогресса
-    if (isLoadingProgress) {
-      console.log('📺 [useQuizComputed] viewMode: LOADING_PROGRESS (highest priority)');
+    // Приоритет 1: Загрузка прогресса или анкеты
+    if (isLoadingProgress || isLoadingQuestionnaire || isQuestionnaireLoading) {
+      console.log('📺 [useQuizComputed] viewMode: LOADING_PROGRESS (highest priority)', {
+        isLoadingProgress,
+        isLoadingQuestionnaire,
+        isQuestionnaireLoading
+      });
       return 'LOADING_PROGRESS';
     }
 
@@ -399,6 +409,8 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     return 'ERROR';
   }, [
     isLoadingProgress,
+    isLoadingQuestionnaire, // Новое поле
+    isQuestionnaireLoading, // Новое поле
     savedProgressAnswersCount,
     isStartingOver,
     hasResumed,

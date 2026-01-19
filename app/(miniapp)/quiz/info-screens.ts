@@ -63,6 +63,8 @@ export const INFO_SCREENS: InfoScreen[] = [
   {
     id: 'personal_analysis',
     title: 'SkinIQ — ваш персональный анализ кожи',
+    subtitle: '92% пользователей SkinIQ отмечают улучшение состояния кожи за 1 месяц',
+    image: '/personal_analysis.jpg',
     ctaText: 'Продолжить',
   },
   

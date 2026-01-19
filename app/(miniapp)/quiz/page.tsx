@@ -68,6 +68,8 @@ function QuizPageContent() {
     isStartingOver,
     pendingInfoScreen,
     isLoadingProgress: progressQuery.isLoading,
+    isLoadingQuestionnaire: questionnaireQuery.isLoading,
+    isQuestionnaireLoading: loading, // Добавляем состояние loading из quizState
     questionnaireRef,
     currentInfoScreenIndexRef,
     allQuestionsRawPrevRef,

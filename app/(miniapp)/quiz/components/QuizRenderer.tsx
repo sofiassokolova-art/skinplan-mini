@@ -75,7 +75,10 @@ export const QuizRenderer = memo(function QuizRenderer({
     currentQuestionId: currentQuestion?.id,
     currentQuestionCode: currentQuestion?.code,
     currentQuestionText: currentQuestion?.text?.substring(0, 50),
-    showDebugPanel
+    showDebugPanel,
+    currentInfoScreenIndex,
+    currentQuestionIndex,
+    viewMode
   });
 
   const {
@@ -514,8 +517,11 @@ export const QuizRenderer = memo(function QuizRenderer({
     console.log('📄 [QuizRenderer] rendering INITIAL_INFO screen', {
       currentInitialInfoScreen: currentInitialInfoScreen?.id,
       currentInfoScreenIndex: quizState.currentInfoScreenIndex,
+      currentInfoScreenIndexRef: quizState.currentInfoScreenIndexRef.current,
       questionnaireFromQuery: !!questionnaireFromQuery,
-      isSubmitting
+      isSubmitting,
+      viewMode,
+      screen
     });
 
     return (
@@ -529,9 +535,9 @@ export const QuizRenderer = memo(function QuizRenderer({
             questionnaireRef={questionnaireRef}
             error={error}
             isSubmitting={isSubmitting}
-            isHandlingNext={false}
+            isHandlingNext={handleNextInProgressRef.current}
             isDev={isDev}
-            handleNextInProgressRef={{ current: false }}
+            handleNextInProgressRef={handleNextInProgressRef}
             isSubmittingRef={isSubmittingRef}
             setCurrentInfoScreenIndex={setCurrentInfoScreenIndex}
             setIsSubmitting={setIsSubmitting}
