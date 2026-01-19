@@ -19,9 +19,13 @@ export function useQuestionnaire() {
     staleTime: QUIZ_CONFIG.REACT_QUERY.QUESTIONNAIRE_STALE_TIME,
     gcTime: QUIZ_CONFIG.REACT_QUERY.QUESTIONNAIRE_GC_TIME,
     retry: (failureCount, error: any) => {
-      // Не повторяем при 403 (Forbidden) - это не временная ошибка
+      // Не повторяем при 403 (Forbidden), если initData уже доступен
       if (error?.status === 403) {
-        return false;
+        const hasInitData = typeof window !== 'undefined' &&
+          !!window.Telegram?.WebApp?.initData;
+        if (hasInitData) {
+          return false;
+        }
       }
       return failureCount < QUIZ_CONFIG.RETRY.QUESTIONNAIRE_MAX_ATTEMPTS;
     },
@@ -113,4 +117,3 @@ export function useClearQuizProgress() {
     retryDelay: 1000,
   });
 }
-

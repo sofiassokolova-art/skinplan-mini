@@ -31,10 +31,14 @@ import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 import type { Question } from '@/lib/quiz/types';
 
 // Import handlers
+import { createClearProgress } from '@/lib/quiz/handlers/clearProgress';
 import { handleAnswer } from '@/lib/quiz/handlers/handleAnswer';
-import { handleNext } from '@/lib/quiz/handlers/handleNext';
-import { submitAnswers } from '@/lib/quiz/handlers/submitAnswers';
 import { handleBack } from '@/lib/quiz/handlers/handleBack';
+import { handleFullRetake } from '@/lib/quiz/handlers/handleFullRetake';
+import { handleNext } from '@/lib/quiz/handlers/handleNext';
+import { resumeQuiz } from '@/lib/quiz/handlers/resumeQuiz';
+import { startOver } from '@/lib/quiz/handlers/startOver';
+import { submitAnswers } from '@/lib/quiz/handlers/submitAnswers';
 import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
 import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
 
@@ -109,6 +113,8 @@ export const QuizRenderer = memo(function QuizRenderer({
     isRetakingQuiz,
     showRetakeScreen,
     hasResumed,
+    hasResumedRef,
+    setHasResumed,
     error,
     setError,
     setCurrentInfoScreenIndex,
@@ -128,6 +134,22 @@ export const QuizRenderer = memo(function QuizRenderer({
     initCompleted,
     setInitCompleted,
     currentQuestionIndex,
+    isStartingOver,
+    setIsStartingOver,
+    isStartingOverRef,
+    autoSubmitTriggeredRef,
+    setAutoSubmitTriggered,
+    initCalledRef,
+    redirectInProgressRef,
+    loadProgressInProgressRef,
+    progressLoadInProgressRef,
+    initCompletedRef,
+    resumeCompletedRef,
+    answersRef,
+    answersCountRef,
+    lastRestoredAnswersIdRef,
+    firstScreenResetRef,
+    setIsProgressCleared,
   } = quizState;
 
   // Дополнительное логгирование после деструктуризации
@@ -147,6 +169,175 @@ export const QuizRenderer = memo(function QuizRenderer({
       infoScreenIndex,
     });
   }, [saveProgressMutation, questionnaire?.id]);
+
+  const clearProgress = useMemo(() => createClearProgress({
+    setSavedProgress,
+    setShowResumeScreen,
+    hasResumedRef,
+    setHasResumed,
+    lastSavedAnswerRef: quizState.lastSavedAnswerRef,
+  }), [
+    setSavedProgress,
+    setShowResumeScreen,
+    hasResumedRef,
+    setHasResumed,
+    quizState.lastSavedAnswerRef,
+  ]);
+
+  const handleResume = useCallback(() => {
+    if (!savedProgress) {
+      return;
+    }
+
+    resumeQuiz({
+      savedProgress,
+      questionnaire: questionnaireFromQuery || questionnaireRef.current || questionnaire,
+      allQuestions,
+      redirectInProgressRef,
+      initCompletedRef,
+      setInitCompleted,
+      setLoading,
+      hasResumed,
+      currentInfoScreenIndex,
+      currentQuestionIndex,
+      hasResumedRef,
+      setHasResumed,
+      setShowResumeScreen,
+      setSavedProgress,
+      loadProgressInProgressRef,
+      progressLoadInProgressRef,
+      setAnswers,
+      setCurrentQuestionIndex,
+      setCurrentInfoScreenIndex,
+      setPendingInfoScreen,
+      pendingInfoScreenRef: quizState.pendingInfoScreenRef,
+      resumeCompletedRef,
+    });
+  }, [
+    savedProgress,
+    questionnaireFromQuery,
+    questionnaireRef,
+    questionnaire,
+    allQuestions,
+    redirectInProgressRef,
+    initCompletedRef,
+    setInitCompleted,
+    setLoading,
+    hasResumed,
+    currentInfoScreenIndex,
+    currentQuestionIndex,
+    hasResumedRef,
+    setHasResumed,
+    setShowResumeScreen,
+    setSavedProgress,
+    loadProgressInProgressRef,
+    progressLoadInProgressRef,
+    setAnswers,
+    setCurrentQuestionIndex,
+    setCurrentInfoScreenIndex,
+    setPendingInfoScreen,
+    quizState.pendingInfoScreenRef,
+    resumeCompletedRef,
+  ]);
+
+  const handleStartOver = useCallback(async () => {
+    await startOver({
+      scope: 'default',
+      isStartingOverRef,
+      setIsStartingOver,
+      initCompletedRef,
+      setInitCompleted,
+      initCalledRef,
+      clearProgress,
+      setAnswers,
+      answersRef,
+      answersCountRef,
+      lastRestoredAnswersIdRef,
+      setCurrentQuestionIndex,
+      setCurrentInfoScreenIndex,
+      currentInfoScreenIndexRef: quizState.currentInfoScreenIndexRef,
+      setShowResumeScreen,
+      hasResumedRef,
+      setHasResumed,
+      setSavedProgress,
+      setPendingInfoScreen,
+      setIsRetakingQuiz,
+      setShowRetakeScreen,
+      firstScreenResetRef,
+      setLoading,
+      setError,
+      setIsProgressCleared,
+      questionnaire,
+      savedProgress,
+    });
+  }, [
+    isStartingOverRef,
+    setIsStartingOver,
+    initCompletedRef,
+    setInitCompleted,
+    initCalledRef,
+    clearProgress,
+    setAnswers,
+    answersRef,
+    answersCountRef,
+    lastRestoredAnswersIdRef,
+    setCurrentQuestionIndex,
+    setCurrentInfoScreenIndex,
+    quizState.currentInfoScreenIndexRef,
+    setShowResumeScreen,
+    hasResumedRef,
+    setHasResumed,
+    setSavedProgress,
+    setPendingInfoScreen,
+    setIsRetakingQuiz,
+    setShowRetakeScreen,
+    firstScreenResetRef,
+    setLoading,
+    setError,
+    setIsProgressCleared,
+    questionnaire,
+    savedProgress,
+  ]);
+
+  const handleFullRetakeSelection = useCallback(async () => {
+    await handleFullRetake({
+      hasFullRetakePayment,
+      setShowRetakeScreen,
+      setIsRetakingQuiz,
+      setIsStartingOver,
+      isStartingOverRef,
+      setAnswers,
+      setSavedProgress,
+      setShowResumeScreen,
+      setHasResumed,
+      hasResumedRef,
+      autoSubmitTriggeredRef,
+      setAutoSubmitTriggered,
+      setError,
+      questionnaire,
+      setCurrentInfoScreenIndex,
+      setCurrentQuestionIndex,
+      setPendingInfoScreen,
+    });
+  }, [
+    hasFullRetakePayment,
+    setShowRetakeScreen,
+    setIsRetakingQuiz,
+    setIsStartingOver,
+    isStartingOverRef,
+    setAnswers,
+    setSavedProgress,
+    setShowResumeScreen,
+    setHasResumed,
+    hasResumedRef,
+    autoSubmitTriggeredRef,
+    setAutoSubmitTriggered,
+    setError,
+    questionnaire,
+    setCurrentInfoScreenIndex,
+    setCurrentQuestionIndex,
+    setPendingInfoScreen,
+  ]);
 
   // Мониторинг производительности - временно отключен для отладки
   // usePerformanceMonitor('QuizRenderer', isDev);
@@ -207,6 +398,7 @@ export const QuizRenderer = memo(function QuizRenderer({
         value,
         currentQuestion,
         answers,
+        answersRef,
         allQuestions,
         questionnaire,
         setAnswers,
@@ -227,6 +419,7 @@ export const QuizRenderer = memo(function QuizRenderer({
   }, [
     currentQuestion,
     answers,
+    answersRef,
     allQuestions,
     questionnaire,
     setAnswers,
@@ -264,6 +457,7 @@ export const QuizRenderer = memo(function QuizRenderer({
         pendingInfoScreen,
         pendingInfoScreenRef: quizState.pendingInfoScreenRef,
         answers,
+        answersRef,
         setIsHandlingNext,
         setCurrentInfoScreenIndex,
         setCurrentQuestionIndex,
@@ -294,6 +488,7 @@ export const QuizRenderer = memo(function QuizRenderer({
     pendingInfoScreen,
     quizState.pendingInfoScreenRef,
     answers,
+    answersRef,
     setCurrentInfoScreenIndex,
     setCurrentQuestionIndex,
     setPendingInfoScreen,
@@ -464,15 +659,58 @@ export const QuizRenderer = memo(function QuizRenderer({
     );
   }
 
-  // TODO: Implement retake screen
-  // if (screen === 'RETAKE') {
-  //   return <QuizRetakeScreen {...} />;
-  // }
+  if (screen === 'RETAKE') {
+    return (
+      <ScreenErrorBoundary componentName="RetakeScreen">
+        <Suspense fallback={<div>Loading retake screen...</div>}>
+          <ScreenErrorBoundary componentName="QuizRetakeScreen">
+            <QuizRetakeScreen
+              questionnaire={questionnaireFromQuery || questionnaireRef.current || questionnaire}
+              hasFullRetakePayment={hasFullRetakePayment}
+              setShowRetakeScreen={setShowRetakeScreen}
+              setIsRetakingQuiz={setIsRetakingQuiz}
+              setIsStartingOver={setIsStartingOver}
+              isStartingOverRef={isStartingOverRef}
+              setAnswers={setAnswers}
+              setSavedProgress={setSavedProgress}
+              setShowResumeScreen={setShowResumeScreen}
+              setHasResumed={setHasResumed}
+              hasResumedRef={hasResumedRef}
+              setAutoSubmitTriggered={setAutoSubmitTriggered}
+              autoSubmitTriggeredRef={autoSubmitTriggeredRef}
+              setError={setError}
+              setCurrentInfoScreenIndex={setCurrentInfoScreenIndex}
+              setCurrentQuestionIndex={setCurrentQuestionIndex}
+              setPendingInfoScreen={setPendingInfoScreen}
+              setHasFullRetakePayment={setHasFullRetakePayment}
+              onFullRetake={handleFullRetakeSelection}
+            />
+          </ScreenErrorBoundary>
+        </Suspense>
+      </ScreenErrorBoundary>
+    );
+  }
 
-  // TODO: Implement resume screen
-  // if (screen === 'RESUME' && savedProgress) {
-  //   return <QuizResumeScreen {...} />;
-  // }
+  if (screen === 'RESUME' && savedProgress) {
+    return (
+      <ScreenErrorBoundary componentName="ResumeScreen">
+        <Suspense fallback={<div>Loading resume screen...</div>}>
+          <ScreenErrorBoundary componentName="QuizResumeScreen">
+            <QuizResumeScreen
+              savedProgress={savedProgress}
+              questionnaire={questionnaireFromQuery || questionnaireRef.current || questionnaire}
+              answers={answers}
+              isRetakingQuiz={isRetakingQuiz}
+              showRetakeScreen={showRetakeScreen}
+              onResume={handleResume}
+              onStartOver={handleStartOver}
+              isBusy={isStartingOver || isSubmitting}
+            />
+          </ScreenErrorBoundary>
+        </Suspense>
+      </ScreenErrorBoundary>
+    );
+  }
 
   // Info screens
   if (screen === 'INFO') {
@@ -483,8 +721,10 @@ export const QuizRenderer = memo(function QuizRenderer({
       isSubmitting
     });
 
-    // TODO: Проверить, является ли pendingInfoScreen начальным экраном
-    const isPendingInitialScreen = false;
+    const initialInfoScreens = getInitialInfoScreens();
+    const isPendingInitialScreen = pendingInfoScreen
+      ? initialInfoScreens.some((screen) => screen.id === pendingInfoScreen.id)
+      : false;
 
     return (
       <ScreenErrorBoundary componentName="InfoScreen">
@@ -497,9 +737,9 @@ export const QuizRenderer = memo(function QuizRenderer({
             questionnaireRef={questionnaireRef}
             error={error}
             isSubmitting={isSubmitting}
-            isHandlingNext={false} // Will be passed from parent
+            isHandlingNext={handleNextInProgressRef.current}
             isDev={isDev}
-            handleNextInProgressRef={{ current: false }} // Will be passed from parent
+            handleNextInProgressRef={handleNextInProgressRef}
             isSubmittingRef={isSubmittingRef}
             setCurrentInfoScreenIndex={setCurrentInfoScreenIndex}
             setIsSubmitting={setIsSubmitting}

@@ -10,7 +10,7 @@ import Image from 'next/image';
 import type { Questionnaire } from '@/lib/quiz/types';
 import type { InfoScreen } from '../info-screens';
 import { getNextInfoScreenAfterScreen } from '../info-screens';
-import { WelcomeScreen, PersonalAnalysisScreen, GoalsIntroScreen } from '@/components/quiz/screens';
+import { WelcomeScreen, PersonalAnalysisScreen, GoalsIntroScreen, HowItWorksScreen } from '@/components/quiz/screens';
 import { FixedContinueButton, TinderButtons } from '@/components/quiz/buttons';
 import { TestimonialsCarousel, ProductsGrid } from '@/components/quiz/content';
 import { clientLogger } from '@/lib/client-logger';
@@ -445,128 +445,30 @@ export function QuizInfoScreen({
         )
       : null;
 
-  // РЕФАКТОРИНГ: Используем унифицированный layout для welcome screen
   if (isWelcomeScreen) {
     return (
-      <InfoScreenLayout
+      <WelcomeScreen
         screen={screen}
-        currentInfoScreenIndex={currentInfoScreenIndex}
         onContinue={() => {
           if (!handleNextInProgressRef.current && !isHandlingNext) {
             handleNext();
           }
         }}
-        onBack={handleBack}
         isHandlingNext={isHandlingNext}
-        showBackButton={false} // Welcome screen never shows back button
-      >
-        <WelcomeScreen
-          screen={screen}
-          onContinue={() => {
-            if (!handleNextInProgressRef.current && !isHandlingNext) {
-              handleNext();
-            }
-          }}
-          isHandlingNext={isHandlingNext}
-          currentInfoScreenIndex={currentInfoScreenIndex}
-          onBack={handleBack}
-        />
-      </InfoScreenLayout>
+        currentInfoScreenIndex={currentInfoScreenIndex}
+        onBack={handleBack}
+      />
     );
   }
 
   // Специальный рендеринг для экрана "Как это работает?" с шагами
   if (isHowItWorksScreen) {
-    const steps = screen.subtitle?.split('\n').filter(line => line.trim()) || [];
-
-    const customStepsContent = (
-      <div style={{
-        width: '100%',
-        maxWidth: '320px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '40px',
-        alignItems: 'center',
-      }}>
-        {steps.map((step, index) => {
-          const stepNumber = index + 1;
-          const stepText = step.replace(/^\d+\.\s*/, '');
-
-          return (
-            <div
-              key={index}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                textAlign: 'center',
-                width: '100%',
-              }}
-            >
-              {/* Круг с номером и текстом "Шаг" */}
-              <div style={{
-                width: '44px',
-                height: '44px',
-                borderRadius: '50%',
-                background: '#D5FE61',
-                border: 'none',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-                color: '#000000',
-                marginBottom: '8px',
-                padding: '2px 0',
-              }}>
-                {/* Номер шага */}
-                <div style={{
-                  fontWeight: 800,
-                  fontSize: '20px',
-                  lineHeight: '19.45px',
-                  letterSpacing: '0px',
-                }}>
-                  {stepNumber}
-                </div>
-                {/* Текст "Шаг" */}
-                <div style={{
-                  fontWeight: 100,
-                  fontSize: '10px',
-                  lineHeight: '12px',
-                  letterSpacing: '0px',
-                  marginTop: '-2px',
-                }}>
-                  Шаг
-                </div>
-              </div>
-
-              {/* Текст шага */}
-              <div style={{
-                fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-                fontWeight: 400,
-                fontSize: '16px',
-                lineHeight: '140%',
-                letterSpacing: '0px',
-                color: '#000000',
-                textAlign: 'center',
-              }}>
-                {stepText}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-
     return (
-      <InfoScreenLayout
+      <HowItWorksScreen
         screen={screen}
         currentInfoScreenIndex={currentInfoScreenIndex}
-        onContinue={handleNext}
         onBack={handleBack}
-        isHandlingNext={isHandlingNext}
-        customContent={customStepsContent}
-        isInitialInfoScreen={isInitialInfoScreen}
+        onContinue={handleNext}
       />
     );
   }
@@ -1496,4 +1398,3 @@ export function QuizInfoScreen({
     </>
   );
 }
-

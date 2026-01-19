@@ -1,6 +1,7 @@
 // lib/quiz/hooks/useQuizComputed.ts
 // РЕФАКТОРИНГ: Хук для группировки всех вычисляемых значений из quiz/page.tsx
 // Вынесен для улучшения читаемости и поддержки
+// ВАЖНО: единая точка выбора экрана (старый useQuizScreen удален во избежание расхождений)
 
 import { useMemo, useRef, useEffect } from 'react';
 import { clientLogger } from '@/lib/client-logger';
@@ -339,12 +340,18 @@ export function useQuizComputed(params: UseQuizComputedParams) {
   
   // ФИКС: Единый computed "режим экрана" вместо множественных проверок и возврата null
   const viewMode = useMemo<ViewMode>(() => {
+    const hasQuestionnaire = !!questionnaireRef.current ||
+      !!questionnaire ||
+      !!quizStateMachine.questionnaire;
+    const isLoadingAnyQuestionnaire = isLoadingQuestionnaire || isQuestionnaireLoading;
+
     console.log('🔍 [useQuizComputed] viewMode: computing', {
       isLoadingProgress,
       isLoadingQuestionnaire,
       isQuestionnaireLoading,
       questionnaireError: !!questionnaireError,
       progressError: !!progressError,
+      hasQuestionnaire,
       savedProgressAnswersCount,
       isStartingOver,
       hasResumed,
@@ -357,6 +364,10 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       allQuestionsHash
     });
 
+    const hasTelegramInitData = typeof window !== 'undefined' &&
+      !!window.Telegram?.WebApp?.initData;
+    const isTelegramInitDataMissing = !hasTelegramInitData;
+
     // Приоритет 0: Ошибки загрузки (высший приоритет)
     if (questionnaireError || progressError) {
       console.log('📺 [useQuizComputed] viewMode: ERROR (data loading error)', {
@@ -366,6 +377,13 @@ export function useQuizComputed(params: UseQuizComputedParams) {
         progressErrorStatus: (progressError as any)?.status,
         isTelegramUser: !!(typeof window !== 'undefined' && window.Telegram?.WebApp?.initData),
       });
+
+      if (isTelegramInitDataMissing) {
+        console.log('📺 [useQuizComputed] viewMode: LOADING_PROGRESS (waiting for Telegram initData)', {
+          isTelegramInitDataMissing,
+        });
+        return 'LOADING_PROGRESS';
+      }
 
       // Специальная обработка 403 ошибки - пользователь должен открыть через Telegram
       if ((questionnaireError as any)?.status === 403 || (progressError as any)?.status === 403) {
@@ -378,56 +396,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       return 'ERROR';
     }
 
-    // Приоритет 1: Загрузка анкеты (если данные еще не получены)
-    if (isLoadingQuestionnaire && !questionnaire) {
-      console.log('📺 [useQuizComputed] viewMode: LOADING_QUESTIONNAIRE (waiting for questionnaire data)', {
-        isLoadingQuestionnaire,
-        hasQuestionnaire: !!questionnaire
-      });
-      return 'LOADING_PROGRESS';
-    }
-
-    // Приоритет 2: Загрузка прогресса (если анкета уже есть, но прогресс еще грузится)
-    if (isLoadingProgress && questionnaire) {
-      console.log('📺 [useQuizComputed] viewMode: LOADING_PROGRESS (questionnaire ready, waiting for progress)', {
-        isLoadingProgress,
-        hasQuestionnaire: !!questionnaire
-      });
-      return 'LOADING_PROGRESS';
-    }
-
-    // Приоритет 3: Загрузка внутреннего состояния (если данные есть, но внутреннее состояние еще не готово)
-    if (isQuestionnaireLoading && questionnaire) {
-      console.log('📺 [useQuizComputed] viewMode: LOADING_PROGRESS (data ready, waiting for internal state)', {
-        isQuestionnaireLoading,
-        hasQuestionnaire: !!questionnaire
-      });
-      return 'LOADING_PROGRESS';
-    }
-
-    // Приоритет 4: Нет анкеты - это критическая ошибка после загрузки
-    if (!questionnaire && !isLoadingQuestionnaire) {
-      console.log('📺 [useQuizComputed] viewMode: ERROR (no questionnaire after loading)', {
-        hasQuestionnaire: !!questionnaire,
-        isLoadingQuestionnaire
-      });
-      return 'ERROR';
-    }
-
-    // Приоритет 5: Анкета есть, но все вопросы отфильтрованы - ошибка
-    if (questionnaire && allQuestions.length === 0 && !isLoadingProgress && !isLoadingQuestionnaire && !isQuestionnaireLoading) {
-      console.log('📺 [useQuizComputed] viewMode: ERROR (questionnaire exists but no questions after filtering)', {
-        hasQuestionnaire: !!questionnaire,
-        allQuestionsLength: allQuestions.length,
-        allQuestionsRawLength: allQuestionsRaw.length,
-        isLoadingProgress,
-        isLoadingQuestionnaire,
-        isQuestionnaireLoading
-      });
-      return 'ERROR';
-    }
-
-    // Приоритет 2: Резюм-экран
+    // Приоритет 1: Резюм-экран
     const savedCount = Object.keys(savedProgress?.answers ?? {}).length;
     if (!isStartingOver && savedCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN && !hasResumed) {
       console.log('📺 [useQuizComputed] viewMode: RESUME (saved progress available)', {
@@ -445,7 +414,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       return 'RETAKE_SELECT';
     }
 
-    // Приоритет 4: Начальные инфо-экраны
+    // Приоритет 3: Начальные инфо-экраны (показываем независимо от загрузки анкеты)
     const initialLen = initialInfoScreens.length;
     const onInitial = currentInfoScreenIndex < initialLen && currentInfoScreenIndexRef.current < initialLen;
     if (onInitial) {
@@ -457,7 +426,64 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       return 'INITIAL_INFO';
     }
 
-    // Приоритет 5: Pending инфо-экран между вопросами
+    // Приоритет 4: Загрузка анкеты (если данные еще не получены)
+    if (isLoadingAnyQuestionnaire && !hasQuestionnaire) {
+      console.log('📺 [useQuizComputed] viewMode: LOADING_QUESTIONNAIRE (waiting for questionnaire data)', {
+        isLoadingQuestionnaire,
+        isQuestionnaireLoading,
+        hasQuestionnaire
+      });
+      return 'LOADING_PROGRESS';
+    }
+
+    // Приоритет 5: Загрузка прогресса (если анкета уже есть, но прогресс еще грузится)
+    if (isLoadingProgress && hasQuestionnaire) {
+      console.log('📺 [useQuizComputed] viewMode: LOADING_PROGRESS (questionnaire ready, waiting for progress)', {
+        isLoadingProgress,
+        hasQuestionnaire
+      });
+      return 'LOADING_PROGRESS';
+    }
+
+    // Приоритет 6: Загрузка внутреннего состояния (loading из quizState)
+    if (isQuestionnaireLoading) {
+      console.log('📺 [useQuizComputed] viewMode: LOADING_PROGRESS (waiting for internal state)', {
+        isQuestionnaireLoading,
+        hasQuestionnaire
+      });
+      return 'LOADING_PROGRESS';
+    }
+
+    // Приоритет 7: Нет анкеты - это критическая ошибка после загрузки
+    if (!hasQuestionnaire && !isLoadingAnyQuestionnaire) {
+      console.log('📺 [useQuizComputed] viewMode: ERROR (no questionnaire after loading)', {
+        hasQuestionnaire,
+        isLoadingQuestionnaire,
+        isQuestionnaireLoading
+      });
+      if (isTelegramInitDataMissing) {
+        console.log('📺 [useQuizComputed] viewMode: LOADING_PROGRESS (waiting for Telegram initData)', {
+          isTelegramInitDataMissing,
+        });
+        return 'LOADING_PROGRESS';
+      }
+      return 'ERROR';
+    }
+
+    // Приоритет 8: Анкета есть, но все вопросы отфильтрованы - ошибка
+    if (hasQuestionnaire && allQuestions.length === 0 && !isLoadingProgress && !isLoadingAnyQuestionnaire) {
+      console.log('📺 [useQuizComputed] viewMode: ERROR (questionnaire exists but no questions after filtering)', {
+        hasQuestionnaire,
+        allQuestionsLength: allQuestions.length,
+        allQuestionsRawLength: allQuestionsRaw.length,
+        isLoadingProgress,
+        isLoadingQuestionnaire,
+        isQuestionnaireLoading
+      });
+      return 'ERROR';
+    }
+
+    // Приоритет 9: Pending инфо-экран между вопросами
     const effectivePending = pendingInfoScreenRef?.current ?? pendingInfoScreen;
     if (effectivePending && !isRetakingQuiz) {
       console.log('📺 [useQuizComputed] viewMode: PENDING_INFO (pending info screen)', {
@@ -469,7 +495,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       return 'PENDING_INFO';
     }
 
-    // Приоритет 6: Вопросы
+    // Приоритет 10: Вопросы
     if (allQuestions.length > 0) {
       console.log('📺 [useQuizComputed] viewMode: QUESTION (questions available)', {
         allQuestionsLength: allQuestions.length,
@@ -482,7 +508,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       return 'QUESTION';
     }
 
-    // Приоритет 7: Ошибка (нет вопросов)
+    // Приоритет 11: Ошибка (нет вопросов)
     console.log('❌ [useQuizComputed] viewMode: ERROR (no questions, no screens, no progress)', {
       allQuestionsLength: allQuestions.length,
       allQuestionsRawLength: allQuestionsRaw.length,
@@ -656,4 +682,3 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     viewMode, // ФИКС: Возвращаем viewMode для использования в page.tsx
   };
 }
-

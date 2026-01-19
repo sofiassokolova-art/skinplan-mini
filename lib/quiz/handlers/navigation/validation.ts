@@ -5,6 +5,7 @@ import type React from 'react';
 import { clientLogger } from '@/lib/client-logger';
 import type { Questionnaire, Question } from '@/lib/quiz/types';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
+import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
 
 export interface ValidationParams {
   handleNextInProgressRef: React.MutableRefObject<boolean>;
@@ -31,6 +32,9 @@ export function validateAndGetPendingInfoScreen(params: ValidationParams): InfoS
     isDev,
   } = params;
 
+  const initialInfoScreens = getInitialInfoScreens();
+  const isOnInitialInfoScreens = currentInfoScreenIndex < initialInfoScreens.length;
+
   // ФИКС: Используем ref для получения актуального значения pendingInfoScreen
   const currentPendingInfoScreen = (pendingInfoScreenRef?.current !== undefined && pendingInfoScreenRef?.current !== null)
     ? pendingInfoScreenRef.current
@@ -56,12 +60,12 @@ export function validateAndGetPendingInfoScreen(params: ValidationParams): InfoS
   }
 
   // Базовая валидация
-  if (loading) {
+  if (loading && !isOnInitialInfoScreens) {
     clientLogger.warn('⏸️ handleNext: загрузка в процессе, пропускаем');
     return null;
   }
 
-  if (!questionnaire) {
+  if (!questionnaire && !isOnInitialInfoScreens) {
     clientLogger.warn('⏸️ handleNext: нет questionnaire, пропускаем');
     return null;
   }
