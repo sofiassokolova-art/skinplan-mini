@@ -46,6 +46,7 @@ function QuizPageContent() {
     questionnaireRef,
     currentInfoScreenIndexRef,
     pendingInfoScreenRef,
+    loading,
   } = quizState;
 
   // Current question from computed hook with proper parameters
