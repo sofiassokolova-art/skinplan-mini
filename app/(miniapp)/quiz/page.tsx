@@ -118,6 +118,7 @@ function QuizPageContent() {
       currentInitialInfoScreen={currentInitialInfoScreen}
       debugLogs={debugLogs}
       showDebugPanel={showDebugPanel}
+      dataError={questionnaireQuery.error || progressQuery.error}
     />
   );
 }

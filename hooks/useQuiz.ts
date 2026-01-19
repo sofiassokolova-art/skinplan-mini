@@ -18,7 +18,13 @@ export function useQuestionnaire() {
     queryFn: () => api.getActiveQuestionnaire() as Promise<any>,
     staleTime: QUIZ_CONFIG.REACT_QUERY.QUESTIONNAIRE_STALE_TIME,
     gcTime: QUIZ_CONFIG.REACT_QUERY.QUESTIONNAIRE_GC_TIME,
-    retry: QUIZ_CONFIG.RETRY.QUESTIONNAIRE_MAX_ATTEMPTS,
+    retry: (failureCount, error: any) => {
+      // Не повторяем при 403 (Forbidden) - это не временная ошибка
+      if (error?.status === 403) {
+        return false;
+      }
+      return failureCount < QUIZ_CONFIG.RETRY.QUESTIONNAIRE_MAX_ATTEMPTS;
+    },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 }

@@ -90,7 +90,7 @@ async function handleHttpError(response: Response, endpoint: string, initData: s
       hasInitData: !!initData,
       error: errorData.error,
     });
-    
+
     if (!initData) {
       if (process.env.NODE_ENV === 'development') {
         console.warn('⚠️ 401 без initData в dev, возвращаем null вместо ошибки для endpoint:', endpoint);
@@ -101,7 +101,39 @@ async function handleHttpError(response: Response, endpoint: string, initData: s
       throw new Error(errorData.error || 'Ошибка авторизации. Попробуйте обновить страницу.');
     }
   }
-  
+
+  // Для 403 ошибок (Forbidden)
+  if (response.status === 403) {
+    const errorText = await response.text().catch(() => '');
+    let errorData: any = {};
+    try {
+      errorData = JSON.parse(errorText);
+    } catch {
+      // Если это HTML страница ошибки (например, Vercel), а не JSON
+      if (errorText.includes('<!DOCTYPE html>') || errorText.includes('<html')) {
+        errorData = {
+          error: 'Доступ запрещен',
+          message: 'Возможно, истек срок действия сессии или требуется повторная авторизация'
+        };
+      } else {
+        errorData = { error: errorText || 'Forbidden' };
+      }
+    }
+    console.error('❌ 403 Forbidden:', {
+      endpoint,
+      hasInitData: !!initData,
+      error: errorData.error,
+      isHtmlError: errorText.includes('<!DOCTYPE html>'),
+    });
+    const forbiddenError = new Error(errorData.message || errorData.error || 'Доступ запрещен') as any;
+    forbiddenError.status = 403;
+    forbiddenError.response = {
+      status: 403,
+      data: errorData,
+    };
+    throw forbiddenError;
+  }
+
   // Для 301/302 редиректов
   if (response.status === 301 || response.status === 302) {
     const location = response.headers.get('Location');

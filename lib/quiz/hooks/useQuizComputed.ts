@@ -361,8 +361,20 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     if (questionnaireError || progressError) {
       console.log('📺 [useQuizComputed] viewMode: ERROR (data loading error)', {
         questionnaireError: questionnaireError?.message,
-        progressError: progressError?.message
+        questionnaireErrorStatus: (questionnaireError as any)?.status,
+        progressError: progressError?.message,
+        progressErrorStatus: (progressError as any)?.status,
+        isTelegramUser: !!(typeof window !== 'undefined' && window.Telegram?.WebApp?.initData),
       });
+
+      // Специальная обработка 403 ошибки - пользователь должен открыть через Telegram
+      if ((questionnaireError as any)?.status === 403 || (progressError as any)?.status === 403) {
+        console.log('🚫 [useQuizComputed] viewMode: FORBIDDEN_ERROR (403)', {
+          message: 'Пользователь должен открыть приложение через Telegram Mini App'
+        });
+        return 'ERROR';
+      }
+
       return 'ERROR';
     }
 

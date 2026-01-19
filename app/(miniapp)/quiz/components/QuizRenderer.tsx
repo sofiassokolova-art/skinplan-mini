@@ -46,6 +46,7 @@ interface QuizRendererProps {
   currentInitialInfoScreen?: any; // Для INITIAL_INFO экрана
   debugLogs: Array<{ time: string; message: string; data?: any }>;
   showDebugPanel: boolean;
+  dataError?: Error | null; // Информация об ошибке для отображения в ERROR экране
 }
 
 // Preload критических ресурсов при загрузке компонента
@@ -68,7 +69,8 @@ export const QuizRenderer = memo(function QuizRenderer({
   currentQuestion,
   currentInitialInfoScreen,
   debugLogs,
-  showDebugPanel
+  showDebugPanel,
+  dataError
 }: QuizRendererProps) {
   console.log('🎨 [QuizRenderer] rendering', {
     screen,
@@ -410,33 +412,35 @@ export const QuizRenderer = memo(function QuizRenderer({
 
   // Используем memoized значения
 
-  // TODO: Implement error checking
-  // const quizErrors = checkQuizErrors({
-  //   questionnaire,
-  //   questionnaireRef,
-  //   allQuestionsRaw: [],
-  //   allQuestions: [],
-  //   answers,
-  //   loading,
-  //   error,
-  //   isRetakingQuiz,
-  //   showRetakeScreen,
-  //   currentQuestion,
-  //   showResumeScreen,
-  //   isShowingInitialInfoScreen: false,
-  //   pendingInfoScreen,
-  //   hasResumed,
-  // });
+  // Обработка ошибок загрузки данных
+  if (screen === 'ERROR') {
+    console.log('❌ [QuizRenderer] rendering ERROR screen', {
+      dataError: dataError,
+      hasQuestionnaire: !!questionnaire,
+      isTelegramUser: !!(typeof window !== 'undefined' && window.Telegram?.WebApp?.initData)
+    });
 
-  // if (quizErrors.length > 0) {
-  //   return (
-  //     <QuizErrorScreen
-  //       errors={quizErrors}
-  //       isDev={isDev}
-  //       debugLogs={debugLogs}
-  //     />
-  //   );
-  // }
+    // Специальная обработка для 403 ошибки
+    if ((dataError as any)?.status === 403) {
+      return (
+        <QuizErrorScreen
+          title="Требуется авторизация"
+          message="Для работы с анкетой необходимо открыть приложение через Telegram Mini App. Пожалуйста, перейдите по ссылке из Telegram."
+          buttonText="Обновить страницу"
+          onReload={() => window.location.reload()}
+        />
+      );
+    }
+
+    return (
+      <QuizErrorScreen
+        title="Ошибка загрузки"
+        message="Не удалось загрузить анкету. Пожалуйста, попробуйте обновить страницу."
+        buttonText="Обновить страницу"
+        onReload={() => window.location.reload()}
+      />
+    );
+  }
 
   // TODO: Implement initial loader logic
   // if (shouldShowInitialLoader({...})) {
