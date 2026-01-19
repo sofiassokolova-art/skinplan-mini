@@ -3,7 +3,7 @@
 
 'use client';
 
-import React, { createContext, useContext, useCallback, memo } from 'react';
+import React, { createContext, useContext, useCallback, memo, useRef, useEffect } from 'react';
 import { useQuizStateMachine } from '@/lib/quiz/hooks/useQuizStateMachine';
 import { useQuizStateExtended } from '@/lib/quiz/hooks/useQuizStateExtended';
 import { useQuestionnaire, useQuizProgress, useSaveQuizProgress } from '@/hooks/useQuiz';

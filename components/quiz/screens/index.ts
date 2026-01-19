@@ -10,6 +10,9 @@ export type { HowItWorksScreenProps } from './HowItWorksScreen';
 export { PersonalAnalysisScreen } from './PersonalAnalysisScreen';
 export type { PersonalAnalysisScreenProps } from './PersonalAnalysisScreen';
 
+export { GoalsIntroScreen } from './GoalsIntroScreen';
+export type { GoalsIntroScreenProps } from './GoalsIntroScreen';
+
 export { LoadingScreen } from './LoadingScreen';
 export type { LoadingScreenProps } from './LoadingScreen';
 

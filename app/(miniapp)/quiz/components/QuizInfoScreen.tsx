@@ -10,7 +10,7 @@ import Image from 'next/image';
 import type { Questionnaire } from '@/lib/quiz/types';
 import type { InfoScreen } from '../info-screens';
 import { getNextInfoScreenAfterScreen } from '../info-screens';
-import { WelcomeScreen, PersonalAnalysisScreen } from '@/components/quiz/screens';
+import { WelcomeScreen, PersonalAnalysisScreen, GoalsIntroScreen } from '@/components/quiz/screens';
 import { FixedContinueButton, TinderButtons } from '@/components/quiz/buttons';
 import { TestimonialsCarousel, ProductsGrid } from '@/components/quiz/content';
 import { clientLogger } from '@/lib/client-logger';
@@ -704,130 +704,17 @@ export function QuizInfoScreen({
 
   // Экран "Какую цель вы ставите перед собой?" (goals_intro)
   if (isGoalsIntroScreen) {
-    // Кнопка "Назад" через портал для гарантированной фиксации
-
     return (
-      <>
-        {backButton}
-        <div style={{
-          padding: 0,
-          margin: 0,
-          width: '100%',
-          height: '100vh',
-          maxWidth: '737px',
-          maxHeight: '727px',
-          background: '#FFFFFF',
-          position: 'relative',
-          border: '0px solid rgb(229, 231, 235)',
-          boxSizing: 'border-box',
-        }}>
-
-        {/* Контент с абсолютным позиционированием */}
-        <div
-          className="animate-fade-in"
-          style={{
-            position: 'relative',
-            width: '100%',
-            height: '100%',
-            boxSizing: 'border-box',
-          }}
-        >
-          {/* Картинка с абсолютным позиционированием */}
-          {screen.image && (
-            <div style={{
-              position: 'absolute',
-              width: '200px',
-              height: '241px',
-              top: '120px',
-              left: '60px',
-              zIndex: 10,
-            }}>
-              <ImageWithLoading
-                src={screen.image}
-                alt={screen.title}
-                maxWidth="200px"
-                priority={true}
-              />
-            </div>
-          )}
-
-          {/* Заголовок с абсолютным позиционированием */}
-          <h1 style={{
-            position: 'absolute',
-            width: '342px',
-            height: '93px',
-            top: '320px',
-            left: '20px',
-            fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 700,
-            fontSize: '32px',
-            lineHeight: '120%',
-            letterSpacing: '0px',
-            textAlign: 'left',
-            color: '#000000',
-            margin: '0',
-            whiteSpace: 'pre-line',
-            zIndex: 10,
-          }}>
-            {screen.title}
-          </h1>
-
-          {/* Подзаголовок с абсолютным позиционированием */}
-          {screen.subtitle && (
-            <div style={{
-              position: 'absolute',
-              width: '342px',
-              height: '93px',
-              top: '430px',
-              left: '20px',
-              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 400,
-              fontSize: '18px',
-              lineHeight: '140%',
-              letterSpacing: '0px',
-              textAlign: 'left',
-              color: '#000000',
-              whiteSpace: 'pre-line',
-              zIndex: 10,
-            }}>
-              {screen.subtitle}
-            </div>
-          )}
-        </div>
-        
-        {/* Фиксированная кнопка "Продолжить" внизу экрана */}
-        <div style={{
-          position: 'fixed',
-          bottom: '40px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '100%',
-          maxWidth: '320px',
-          padding: '0 20px',
-          boxSizing: 'border-box',
-          zIndex: 100,
-        }}>
-          <button
-            onClick={handleNext}
-            style={{
-              width: '100%',
-              height: '56px',
-              borderRadius: '20px',
-              background: '#D5FE61',
-              color: '#000000',
-              border: 'none',
-              fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 600,
-              fontSize: '16px',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-            }}
-          >
-            {screen.ctaText || 'Продолжить'}
-          </button>
-        </div>
-      </div>
-      </>
+      <GoalsIntroScreen
+        screen={screen}
+        currentInfoScreenIndex={currentInfoScreenIndex}
+        onBack={handleBack}
+        onContinue={() => {
+          if (!handleNextInProgressRef.current && !isHandlingNext) {
+            handleNext();
+          }
+        }}
+      />
     );
   }
 

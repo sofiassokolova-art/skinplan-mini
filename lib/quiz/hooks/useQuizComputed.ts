@@ -108,9 +108,9 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     const result = getEffectiveAnswers(answers, savedProgress?.answers);
     return result;
   }, [
-    // ФИКС: Зависеть от версии ответов, чтобы пересчитывать при изменении значений
-    answersVersion,
-    savedProgressVersion,
+    // ФИКС: Зависеть от ревизии ответов, чтобы пересчитывать при изменении значений
+    answersRevision,
+    savedProgressRevision,
     answersKeysCount, // Также от количества для новых/удаленных ответов
     savedProgressAnswersKeysCount,
   ]);
