@@ -3,7 +3,7 @@
 
 'use client';
 
-import React, { Suspense, lazy, memo, useEffect, useMemo, useCallback } from 'react';
+import React, { Suspense, lazy, memo, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useQuizContext } from './QuizProvider';
 import { ScreenErrorBoundary, QuestionErrorBoundary, QuizErrorBoundary } from '@/components/QuizErrorBoundary';
 import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
@@ -36,6 +36,7 @@ import { handleNext } from '@/lib/quiz/handlers/handleNext';
 import { submitAnswers } from '@/lib/quiz/handlers/submitAnswers';
 import { handleBack } from '@/lib/quiz/handlers/handleBack';
 import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
+import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
 
 type Screen = 'LOADER' | 'ERROR' | 'RETAKE' | 'RESUME' | 'INFO' | 'INITIAL_INFO' | 'QUESTION';
 
@@ -171,6 +172,22 @@ export const QuizRenderer = memo(function QuizRenderer({
   const { isQuestionScreen, backgroundColor, questionnaireFromQuery, quizProgressFromQuery, allQuestions, allQuestionsLength } = memoizedValues;
 
 
+  // Refs for handleNext/handleBack
+  const handleNextInProgressRef = useRef(false);
+  const initInProgressRef = useRef(false);
+
+  // Functions for handleNext
+  const setIsHandlingNext = useCallback((value: boolean | ((prev: boolean) => boolean)) => {
+    const newValue = typeof value === 'function' ? value(handleNextInProgressRef.current) : value;
+    handleNextInProgressRef.current = newValue;
+  }, []);
+
+  const loadQuestionnaire = useCallback(async () => {
+    // This should trigger questionnaire loading through React Query
+    // For now, return current questionnaire
+    return questionnaire;
+  }, [questionnaire]);
+
   // Create handlers
   const onAnswer = useCallback(async (questionId: number, value: string | string[]) => {
     try {
@@ -220,13 +237,13 @@ export const QuizRenderer = memo(function QuizRenderer({
     });
     try {
       await handleNext({
-        handleNextInProgressRef: { current: false }, // Will be passed from parent
+        handleNextInProgressRef,
         currentInfoScreenIndexRef: quizState.currentInfoScreenIndexRef,
         currentQuestionIndexRef: quizState.currentQuestionIndexRef,
         questionnaireRef,
         initCompletedRef: quizState.initCompletedRef,
         questionnaire,
-        loading: false, // Will be passed from parent
+        loading: false,
         currentInfoScreenIndex,
         currentQuestionIndex,
         allQuestions,
@@ -236,16 +253,15 @@ export const QuizRenderer = memo(function QuizRenderer({
         pendingInfoScreen,
         pendingInfoScreenRef: quizState.pendingInfoScreenRef,
         answers,
+        setIsHandlingNext,
         setCurrentInfoScreenIndex,
         setCurrentQuestionIndex,
         setPendingInfoScreen,
         setLoading,
         setError,
         saveProgress,
-        justClosedInfoScreenRef: { current: false }, // Will be passed from parent
-        setIsHandlingNext: () => {}, // Will be passed from parent
-        loadQuestionnaire: async () => null, // Will be passed from parent
-        initInProgressRef: { current: false }, // Will be passed from parent
+        loadQuestionnaire,
+        initInProgressRef,
         isDev,
       });
     } catch (err) {
@@ -351,6 +367,8 @@ export const QuizRenderer = memo(function QuizRenderer({
         currentInfoScreenIndexRef: quizState.currentInfoScreenIndexRef,
         pendingInfoScreen,
         handleBackInProgressRef: { current: false }, // Will be passed from parent
+        isShowingInitialInfoScreen: screen === 'INITIAL_INFO',
+        initialInfoScreensLength: getInitialInfoScreens().length,
         scopedStorageKeys: {
           CURRENT_INFO_SCREEN: QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN,
           CURRENT_QUESTION: QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION,

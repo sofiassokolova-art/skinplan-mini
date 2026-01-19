@@ -3,6 +3,7 @@
 // Вынесен из renderInfoScreen для улучшения читаемости
 
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { FixedContinueButton } from '../buttons/FixedContinueButton';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 
@@ -10,168 +11,204 @@ export interface PersonalAnalysisScreenProps {
   screen: InfoScreen;
   currentInfoScreenIndex: number;
   onContinue: () => void;
+  onBack?: () => void;
 }
 
 function PersonalAnalysisScreenComponent({
   screen,
   currentInfoScreenIndex,
-  onContinue
+  onContinue,
+  onBack
 }: PersonalAnalysisScreenProps) {
-  const features = [
-    {
-      icon: (
-        <img 
-          src="/icons/detailed_3.PNG" 
-          alt="Точная оценка" 
-          style={{ width: '48px', height: '48px', objectFit: 'contain' }}
-        />
-      ),
-      text: 'Точная оценка состояния кожи',
-      boldPart: null,
-    },
-    {
-      icon: (
-        <img 
-          src="/icons/hydration_3.PNG" 
-          alt="Индивидуальный уход" 
-          style={{ width: '48px', height: '48px', objectFit: 'contain' }}
-        />
-      ),
-      text: 'Индивидуально подобранные средства ухода',
-      boldPart: null,
-    },
-    {
-      icon: (
-        <img 
-          src="/icons/face_3.PNG" 
-          alt="Умная рутина" 
-          style={{ width: '48px', height: '48px', objectFit: 'contain' }}
-        />
-      ),
-      text: 'Умная рутина, которая работает ',
-      boldPart: 'в 3 раза эффективнее',
-    },
-  ];
+  // Кнопка "Назад" - создаём один раз для всех экранов
+  const shouldShowBackButton = currentInfoScreenIndex > 0 && screen.id !== 'welcome';
+  const backButton =
+    shouldShowBackButton &&
+    typeof window !== 'undefined' &&
+    onBack
+      ? createPortal(
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              // Prevent any scroll effects
+              const html = document.documentElement;
+              const body = document.body;
+              const scrollTop = window.pageYOffset || html.scrollTop || body.scrollTop || 0;
+              const scrollLeft = window.pageXOffset || html.scrollLeft || body.scrollLeft || 0;
 
+              onBack();
+
+              // Restore scroll position in case something changed it
+              setTimeout(() => {
+                window.scrollTo(scrollLeft, scrollTop);
+              }, 0);
+            }}
+            style={{
+              position: 'fixed',
+              top: 'clamp(20px, 4vh, 40px)',
+              left: 'clamp(19px, 5vw, 24px)',
+              zIndex: 99999,
+              width: '44px',
+              height: '44px',
+              background: 'transparent',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              padding: 0,
+              pointerEvents: 'auto',
+              transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
+              backfaceVisibility: 'hidden', // Оптимизация рендеринга
+              WebkitTransform: 'translateZ(0)', // Для Safari
+              isolation: 'isolate', // Создаем новый контекст стекирования
+              willChange: 'transform', // Оптимизация для браузера
+              contain: 'layout style paint', // Изолируем кнопку от остального контента
+            }}
+          >
+            <svg
+              width="12"
+              height="20"
+              viewBox="0 0 12 20"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M10 2L2 10L10 18"
+                stroke="#1A1A1A"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>,
+          document.body
+        )
+      : null;
   return (
-    <div style={{ 
-      padding: 0,
-      margin: 0,
-      minHeight: '100vh',
-      background: '#FFFFFF',
-      display: 'flex',
-      flexDirection: 'column',
-      position: 'relative',
-      width: '100%',
-    }}>
-      {/* Кнопка "Назад" - убрана, так как рендерится общей логикой в QuizInfoScreen */}
+    <>
+      {/* Кнопка "Назад" - будет рендерится общей логикой в QuizInfoScreen */}
+      <div style={{
+        padding: 0,
+        margin: 0,
+        minHeight: '100vh',
+        background: '#FFFFFF',
+        position: 'relative',
+        width: '100%',
+      }}>
 
-      {/* Контент с анимацией */}
-      <div 
+      {/* Контент с абсолютным позиционированием */}
+      <div
         className="animate-fade-in"
         style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'flex-start',
-          paddingTop: '120px',
-          paddingBottom: '100px',
-          paddingLeft: '20px',
-          paddingRight: '20px',
+          position: 'relative',
           width: '100%',
+          height: '100vh',
           boxSizing: 'border-box',
         }}
       >
-        {/* Заголовок */}
-        <h1 
-          className="quiz-title"
-          style={{
-            fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontStyle: 'normal',
-            fontSize: '32px',
-            lineHeight: '120%',
-            letterSpacing: '0px',
-            textAlign: 'center',
-            color: '#000000',
-            margin: '0 0 12px 0',
-            maxWidth: '311px',
+        {/* Картинка с абсолютным позиционированием */}
+        {screen.image && (
+          <div style={{
+            position: 'absolute',
+            width: '200px',
+            height: '241px',
+            top: '120px',
+            left: '60px',
+            zIndex: 10,
           }}>
-          <span style={{ fontWeight: 700 }}>SkinIQ</span>
-          <span style={{ fontWeight: 400 }}> — ваш персональный анализ кожи</span>
+            <img
+              src={screen.image}
+              alt={screen.title}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+                display: 'block',
+              }}
+            />
+          </div>
+        )}
+
+        {/* Заголовок с абсолютным позиционированием */}
+        <h1 style={{
+          position: 'absolute',
+          width: '342px',
+          height: '93px',
+          top: '320px',
+          left: '20px',
+          fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+          fontWeight: 700,
+          fontSize: '32px',
+          lineHeight: '120%',
+          letterSpacing: '0px',
+          textAlign: 'left',
+          color: '#000000',
+          margin: '0',
+          whiteSpace: 'pre-line',
+          zIndex: 10,
+        }}>
+          {screen.title}
         </h1>
 
-        {/* Подзаголовок - статистика */}
-        <div style={{
-          fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-          fontWeight: 400,
-          fontSize: '14px',
-          lineHeight: '140%',
-          letterSpacing: '0px',
-          textAlign: 'center',
-          color: '#9D9D9D',
-          marginBottom: '40px',
-          maxWidth: '320px',
-        }}>
-          92% пользователей SkinIQ отмечают улучшение состояния кожи за 1 месяц
-        </div>
-
-        {/* Список функций с иконками */}
-        <div style={{
-          width: '100%',
-          maxWidth: '320px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '24px',
-          marginBottom: '40px',
-        }}>
-          {features.map((feature, index) => (
-            <div
-              key={index}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                textAlign: 'center',
-                gap: '12px',
-              }}
-            >
-              {/* Иконка */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                {feature.icon}
-              </div>
-              {/* Текст */}
-              <div style={{
-                fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontWeight: 400,
-                fontSize: '16px',
-                lineHeight: '120%',
-                letterSpacing: '0px',
-                textAlign: 'center',
-                color: '#000000',
-                maxWidth: '289px',
-              }}>
-                {feature.text}
-                {feature.boldPart && (
-                  <span style={{ fontWeight: 700 }}>{feature.boldPart}</span>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-
+        {/* Подзаголовок с абсолютным позиционированием */}
+        {screen.subtitle && (
+          <div style={{
+            position: 'absolute',
+            width: '342px',
+            height: '93px',
+            top: '430px',
+            left: '20px',
+            fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 400,
+            fontSize: '18px',
+            lineHeight: '140%',
+            letterSpacing: '0px',
+            textAlign: 'left',
+            color: '#000000',
+            whiteSpace: 'pre-line',
+            zIndex: 10,
+          }}>
+            {screen.subtitle}
+          </div>
+        )}
       </div>
-      
+
       {/* Фиксированная кнопка "Продолжить" внизу экрана */}
-      <FixedContinueButton
-        ctaText={screen.ctaText}
-        onClick={onContinue}
-      />
+      <div style={{
+        position: 'fixed',
+        bottom: '40px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '100%',
+        maxWidth: '320px',
+        padding: '0 20px',
+        boxSizing: 'border-box',
+        zIndex: 100,
+      }}>
+        <button
+          onClick={onContinue}
+          style={{
+            width: '100%',
+            height: '56px',
+            borderRadius: '20px',
+            background: '#D5FE61',
+            color: '#000000',
+            border: 'none',
+            fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 600,
+            fontSize: '16px',
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(213, 254, 97, 0.3)',
+          }}
+        >
+          {screen.ctaText || 'Продолжить'}
+        </button>
+      </div>
     </div>
+    </>
   );
 }
 
