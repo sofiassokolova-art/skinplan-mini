@@ -22,7 +22,6 @@ interface QuizRetakeScreenProps {
   isStartingOverRef: React.MutableRefObject<boolean>;
   setAnswers: (answers: Record<number, string | string[]>) => void;
   setSavedProgress: (progress: any) => void;
-  setShowResumeScreen: (show: boolean) => void;
   setHasResumed: (hasResumed: boolean) => void;
   hasResumedRef: React.MutableRefObject<boolean>;
   setAutoSubmitTriggered: (triggered: boolean) => void;
@@ -44,7 +43,6 @@ export function QuizRetakeScreen({
   isStartingOverRef,
   setAnswers,
   setSavedProgress,
-  setShowResumeScreen,
   setHasResumed,
   hasResumedRef,
   setAutoSubmitTriggered,

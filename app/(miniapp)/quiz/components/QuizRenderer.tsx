@@ -5,8 +5,7 @@
 
 import React, { Suspense, lazy, memo, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useQuizContext } from './QuizProvider';
-import { ScreenErrorBoundary, QuestionErrorBoundary, QuizErrorBoundary } from '@/components/QuizErrorBoundary';
-import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
+import { ScreenErrorBoundary, QuestionErrorBoundary } from '@/components/QuizErrorBoundary';
 
 // Lazy loading для тяжелых компонентов
 const QuizInfoScreen = lazy(() => import('./QuizInfoScreen').then(mod => ({ default: mod.QuizInfoScreen })));
@@ -16,13 +15,10 @@ const QuizRetakeScreen = lazy(() => import('./QuizRetakeScreen').then(mod => ({ 
 
 // Не ленивые импорты для часто используемых компонентов
 import { QuizInitialLoader } from './QuizInitialLoader';
-import { checkQuizErrors } from './QuizErrorChecker';
-import { QuizPageContent } from './QuizPageContent';
 import { QuizErrorScreen } from './QuizErrorScreen';
 import { QuizFinalizingLoader } from './QuizFinalizingLoader';
 
 import {
-  shouldShowInitialLoader,
   getQuizBackgroundColor,
   isQuestionScreen as isQuestionScreenUtil,
 } from '@/lib/quiz/utils/quizRenderHelpers';
@@ -72,7 +68,7 @@ export const QuizRenderer = memo(function QuizRenderer({
   screen,
   currentQuestion,
   currentInitialInfoScreen,
-  debugLogs,
+  debugLogs: _debugLogs,
   showDebugPanel,
   dataError
 }: QuizRendererProps) {
@@ -102,7 +98,7 @@ export const QuizRenderer = memo(function QuizRenderer({
     pendingInfoScreen,
     currentInfoScreenIndex,
     answers,
-    showResumeScreen,
+    showResumeScreen: _showResumeScreen,
     isSubmitting,
     setIsSubmitting,
     isSubmittingRef,
@@ -131,7 +127,7 @@ export const QuizRenderer = memo(function QuizRenderer({
     setAnswers,
     setShowResumeScreen,
     hasFullRetakePayment,
-    initCompleted,
+    initCompleted: _initCompleted,
     setInitCompleted,
     currentQuestionIndex,
     isStartingOver,
@@ -339,9 +335,6 @@ export const QuizRenderer = memo(function QuizRenderer({
     setPendingInfoScreen,
   ]);
 
-  // Мониторинг производительности - временно отключен для отладки
-  // usePerformanceMonitor('QuizRenderer', isDev);
-
   // Preload критических ресурсов при монтировании
   useEffect(() => {
     preloadCriticalResources();
@@ -363,15 +356,16 @@ export const QuizRenderer = memo(function QuizRenderer({
       allQuestions,
       allQuestionsLength,
     };
-  }, [
-    currentQuestion?.id, // Используем только стабильные свойства вместо всего объекта
-    pendingInfoScreen?.id,
-    showRetakeScreen,
-    questionnaireQuery.data?.id, // Используем только ID вместо всего объекта
-    progressQuery.data?.id,
-  ]);
+  }, [currentQuestion, pendingInfoScreen, showRetakeScreen, questionnaireQuery.data, progressQuery.data]);
 
-  const { isQuestionScreen, backgroundColor, questionnaireFromQuery, quizProgressFromQuery, allQuestions, allQuestionsLength } = memoizedValues;
+  const {
+    isQuestionScreen,
+    backgroundColor,
+    questionnaireFromQuery,
+    quizProgressFromQuery: _quizProgressFromQuery,
+    allQuestions,
+    allQuestionsLength,
+  } = memoizedValues;
 
 
   // Refs for handleNext/handleBack
@@ -496,9 +490,10 @@ export const QuizRenderer = memo(function QuizRenderer({
     setLoading,
     setError,
     saveProgress,
-    saveProgressMutation,
-    quizState.lastSavedAnswerRef,
+    loadQuestionnaire,
     isDev,
+    screen,
+    setIsHandlingNext,
   ]);
 
   const onSubmit = useCallback(async () => {
@@ -532,27 +527,17 @@ export const QuizRenderer = memo(function QuizRenderer({
     }
   }, [
     answers,
-    allQuestions,
     questionnaire,
+    isSubmitting,
     setIsSubmitting,
     isSubmittingRef,
-    saveProgressMutation,
     setError,
     setLoading,
     setFinalizing,
     setFinalizingStep,
     setFinalizeError,
     setAnswers,
-    questionnaireRef,
-    setCurrentQuestionIndex,
-    setCurrentInfoScreenIndex,
-    setPendingInfoScreen,
-    setSavedProgress,
-    setHasFullRetakePayment,
-    saveProgress,
-    quizState.lastSavedAnswerRef,
-    quizState.currentQuestionIndexRef,
-    quizState.currentInfoScreenIndexRef,
+    isRetakingQuiz,
     isDev,
   ]);
 
@@ -603,6 +588,8 @@ export const QuizRenderer = memo(function QuizRenderer({
     quizState.currentInfoScreenIndexRef,
     quizState.lastSavedAnswerRef,
     isDev,
+    pendingInfoScreen,
+    screen,
   ]);
 
   // Используем memoized значения
@@ -673,7 +660,6 @@ export const QuizRenderer = memo(function QuizRenderer({
               isStartingOverRef={isStartingOverRef}
               setAnswers={setAnswers}
               setSavedProgress={setSavedProgress}
-              setShowResumeScreen={setShowResumeScreen}
               setHasResumed={setHasResumed}
               hasResumedRef={hasResumedRef}
               setAutoSubmitTriggered={setAutoSubmitTriggered}
