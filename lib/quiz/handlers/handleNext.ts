@@ -109,6 +109,11 @@ const ensureQuestionsReady = async (
 export { getTotalQuestionsCount };
 
 export async function handleNext(params: HandleNextParams): Promise<void> {
+  console.log('🚀 [handleNext] START - called from QuizRenderer', {
+    currentInfoScreenIndex: params.currentInfoScreenIndex,
+    currentQuestionIndex: params.currentQuestionIndex,
+    allQuestionsLength: params.allQuestions.length,
+  });
   console.log('➡️ [handleNext] called', {
     currentQuestionIndex: params.currentQuestionIndex,
     currentInfoScreenIndex: params.currentInfoScreenIndex,

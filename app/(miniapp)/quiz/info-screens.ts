@@ -32,7 +32,14 @@ export interface InfoScreen {
 // ИСПРАВЛЕНО: Единая функция для получения начальных инфо-экранов
 // Начальные экраны - это те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
 export function getInitialInfoScreens(): InfoScreen[] {
-  return INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId);
+  const allScreens = INFO_SCREENS;
+  const initialScreens = allScreens.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId);
+  console.log('📊 [getInitialInfoScreens]', {
+    totalScreens: allScreens.length,
+    initialScreens: initialScreens.length,
+    initialScreenIds: initialScreens.map(s => s.id)
+  });
+  return initialScreens;
 }
 
 export const INFO_SCREENS: InfoScreen[] = [

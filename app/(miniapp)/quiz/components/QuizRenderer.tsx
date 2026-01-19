@@ -213,6 +213,11 @@ export const QuizRenderer = memo(function QuizRenderer({
   ]);
 
   const onNext = useCallback(async () => {
+    console.log('🎯 [QuizRenderer] onNext called from button click', {
+      currentInfoScreenIndex,
+      currentQuestionIndex,
+      screen
+    });
     try {
       await handleNext({
         handleNextInProgressRef: { current: false }, // Will be passed from parent
