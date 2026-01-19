@@ -166,6 +166,33 @@ export const QuizRenderer = memo(function QuizRenderer({
     });
   }, [saveProgressMutation, questionnaire?.id]);
 
+  // Мемоизация вычислений для оптимизации рендеринга
+  const memoizedValues = useMemo(() => {
+    const isQuestionScreen = isQuestionScreenUtil(currentQuestion, pendingInfoScreen, false, showRetakeScreen);
+    const backgroundColor = getQuizBackgroundColor(isQuestionScreen);
+    const effectiveQuestionnaire = questionnaireQuery.data;
+    const allQuestions = effectiveQuestionnaire ? extractQuestionsFromQuestionnaire(effectiveQuestionnaire) : [];
+    const allQuestionsLength = allQuestions.length;
+
+    return {
+      isQuestionScreen,
+      backgroundColor,
+      questionnaireFromQuery: questionnaireQuery.data,
+      quizProgressFromQuery: progressQuery.data,
+      allQuestions,
+      allQuestionsLength,
+    };
+  }, [currentQuestion, pendingInfoScreen, showRetakeScreen, questionnaireQuery.data, progressQuery.data]);
+
+  const {
+    isQuestionScreen,
+    backgroundColor,
+    questionnaireFromQuery,
+    quizProgressFromQuery: _quizProgressFromQuery,
+    allQuestions,
+    allQuestionsLength,
+  } = memoizedValues;
+
   const clearProgress = useMemo(() => createClearProgress({
     setSavedProgress,
     setShowResumeScreen,
@@ -339,33 +366,6 @@ export const QuizRenderer = memo(function QuizRenderer({
   useEffect(() => {
     preloadCriticalResources();
   }, []);
-
-  // Мемоизация вычислений для оптимизации рендеринга
-  const memoizedValues = useMemo(() => {
-    const isQuestionScreen = isQuestionScreenUtil(currentQuestion, pendingInfoScreen, false, showRetakeScreen);
-    const backgroundColor = getQuizBackgroundColor(isQuestionScreen);
-    const effectiveQuestionnaire = questionnaireQuery.data;
-    const allQuestions = effectiveQuestionnaire ? extractQuestionsFromQuestionnaire(effectiveQuestionnaire) : [];
-    const allQuestionsLength = allQuestions.length;
-
-    return {
-      isQuestionScreen,
-      backgroundColor,
-      questionnaireFromQuery: questionnaireQuery.data,
-      quizProgressFromQuery: progressQuery.data,
-      allQuestions,
-      allQuestionsLength,
-    };
-  }, [currentQuestion, pendingInfoScreen, showRetakeScreen, questionnaireQuery.data, progressQuery.data]);
-
-  const {
-    isQuestionScreen,
-    backgroundColor,
-    questionnaireFromQuery,
-    quizProgressFromQuery: _quizProgressFromQuery,
-    allQuestions,
-    allQuestionsLength,
-  } = memoizedValues;
 
 
   // Refs for handleNext/handleBack
