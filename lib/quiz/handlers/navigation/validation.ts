@@ -47,7 +47,7 @@ export function validateAndGetPendingInfoScreen(params: ValidationParams): InfoS
   }
 
   // ФИКС: Логирование состояния pendingInfoScreen при входе в handleNext
-  if (isDev || true) { // Всегда логируем для диагностики
+  if (isDev) {
     clientLogger.warn('🔍 handleNext: вход в функцию', {
       pendingInfoScreen: pendingInfoScreen ? pendingInfoScreen.id : null,
       pendingInfoScreenFromRef: currentPendingInfoScreen ? currentPendingInfoScreen.id : null,
