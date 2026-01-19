@@ -50,16 +50,15 @@ function QuizPageContent() {
   } = quizState;
 
   // Current question from computed hook with proper parameters
-  // ФИКС: Добавляем версии для более точного отслеживания изменений
-  const answersVersion = Object.keys(answers).length + JSON.stringify(Object.values(answers)).length;
-  const savedProgressVersion = savedProgress ? JSON.stringify(savedProgress).length : undefined;
+  // ФИКС: Используем ревизии вместо stringify для оптимизации
+  const { answersRevision, savedProgressRevision } = useQuizContext();
 
   const quizComputedResult = useQuizComputed({
     questionnaire,
     answers,
-    answersVersion,
+    answersRevision,
     savedProgress,
-    savedProgressVersion,
+    savedProgressRevision,
     currentInfoScreenIndex,
     currentQuestionIndex,
     isRetakingQuiz,
@@ -71,6 +70,8 @@ function QuizPageContent() {
     isLoadingProgress: progressQuery.isLoading,
     isLoadingQuestionnaire: questionnaireQuery.isLoading,
     isQuestionnaireLoading: loading, // Добавляем состояние loading из quizState
+    questionnaireError: questionnaireQuery.error,
+    progressError: progressQuery.error,
     questionnaireRef,
     currentInfoScreenIndexRef,
     allQuestionsRawPrevRef,
@@ -107,59 +108,8 @@ function QuizPageContent() {
 
   const screen = getScreenFromViewMode(viewMode);
 
-  // ТОЛЬКО ПОСЛЕ ВСЕХ ХУКОВ можно делать условные returns
-  // ФИКС: Проверяем состояние загрузки данных ПОСЛЕ всех хуков
-  const isQuestionnaireLoading = questionnaireQuery.isLoading;
-  const questionnaireError = questionnaireQuery.error;
-  const progressError = progressQuery.error;
-
-  // Показываем лоадер пока загружается questionnaire
-  if (isQuestionnaireLoading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#FFFFFF',
-        padding: '20px',
-      }}>
-        <div style={{
-          fontSize: '18px',
-          color: '#666',
-          textAlign: 'center'
-        }}>
-          Загрузка анкеты...
-        </div>
-      </div>
-    );
-  }
-
-  if (questionnaireError || progressError) {
-    console.error('❌ [QuizPage] Data loading error:', {
-      questionnaireError: questionnaireError?.message,
-      progressError: progressError?.message
-    });
-    // Возвращаем компонент ошибки вместо рендеринга основного контента
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#FFFFFF',
-        padding: '20px',
-      }}>
-        <div style={{
-          fontSize: '18px',
-          color: '#666',
-          textAlign: 'center'
-        }}>
-          Ошибка загрузки данных анкеты
-        </div>
-      </div>
-    );
-  }
+  // ФИКС: Убираем ранние return'ы - теперь viewMode является единственным источником правды
+  // Передаем информацию о загрузке и ошибках в useQuizComputed
 
   return (
     <QuizRenderer

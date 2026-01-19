@@ -27,6 +27,10 @@ interface QuizContextType {
 
   // Computed values
   isDev: boolean;
+
+  // Ревизии для оптимизации (вместо stringify)
+  answersRevision: number;
+  savedProgressRevision: number;
 }
 
 const QuizContext = createContext<QuizContextType | null>(null);
@@ -36,6 +40,10 @@ export const QuizProvider = memo(function QuizProvider({ children }: { children:
 
   // Telegram init
   const telegram = useTelegram();
+
+  // Ревизии для оптимизации пересчетов (вместо stringify)
+  const answersRevisionRef = useRef(0);
+  const savedProgressRevisionRef = useRef(0);
 
   // State machine (UI only)
   const quizStateMachine = useQuizStateMachine({
@@ -62,6 +70,15 @@ export const QuizProvider = memo(function QuizProvider({ children }: { children:
   // Global quiz state
   const quizState = useQuizStateExtended();
 
+  // Обновляем ревизии при изменениях
+  useEffect(() => {
+    answersRevisionRef.current++;
+  }, [quizState.answers]);
+
+  useEffect(() => {
+    savedProgressRevisionRef.current++;
+  }, [quizState.savedProgress]);
+
   const value: QuizContextType = {
     quizStateMachine,
     questionnaireQuery,
@@ -70,6 +87,8 @@ export const QuizProvider = memo(function QuizProvider({ children }: { children:
     telegram,
     quizState,
     isDev,
+    answersRevision: answersRevisionRef.current,
+    savedProgressRevision: savedProgressRevisionRef.current,
   };
 
   return (

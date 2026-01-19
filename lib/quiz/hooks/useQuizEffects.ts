@@ -329,13 +329,15 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
   // Инициализация компонента (init)
   useEffect(() => {
     isMountedRef.current = true;
-    
+
     if (resumeCompletedRef.current) {
       // clientLogger.log('⛔ useEffect: init() skipped: resumeQuiz already completed, not resetting state');
       return;
     }
-    
-    if (initCalledRef.current || initInProgressRef.current) {
+
+    // ФИКС: Убрана проверка initCalledRef.current, которая могла блокировать инициализацию
+    // для новых пользователей в Telegram
+    if (initInProgressRef.current) {
       // // clientLogger.log('⛔ useEffect: init() already called or in progress, skipping', {
       //   initCalled: initCalledRef.current,
       //   initInProgress: initInProgressRef.current,
@@ -343,21 +345,27 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
       // });
       return;
     }
-    
-    if (initCompletedRef.current && !isStartingOverRef.current && questionnaireRef.current) {
-      // // clientLogger.log('⛔ useEffect: init() already completed with questionnaire, skipping', {
-      //   questionnaireId: questionnaireRef.current?.id,
-      // });
-      return;
-    }
-    
+
+    // ФИКС: Убрана проверка initCompletedRef.current, которая могла блокировать инициализацию
+    // для Telegram пользователей где initCompleted уже был установлен в true
+    // if (initCompletedRef.current && !isStartingOverRef.current && questionnaireRef.current) {
+    //   // clientLogger.log('⛔ useEffect: init() already completed with questionnaire, skipping', {
+    //     questionnaireId: questionnaireRef.current?.id,
+    //   });
+    //   return;
+    // }
+
     initCalledRef.current = true;
-    
+
     if (typeof window !== 'undefined') {
       const alreadyInit = sessionStorage.getItem('quiz_init_done') === 'true';
       if (alreadyInit) {
-        // clientLogger.log('⛔ useEffect: init() skipped: quiz_init_done in sessionStorage');
-        
+        clientLogger.log('⛔ useEffect: init() skipped: quiz_init_done in sessionStorage', {
+          isTelegramUser: !!(window.Telegram?.WebApp?.initData),
+          initCompleted: initCompletedRef.current,
+          hasQuestionnaire: !!questionnaireRef.current,
+        });
+
         // Восстановление состояния после ремоунта
         try {
           if (!questionnaire && (questionnaireRef.current || quizStateMachine.questionnaire)) {
@@ -374,7 +382,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
               }
             }
           }
-          
+
           // Восстановление currentQuestionIndex
           // ИСПРАВЛЕНО: НЕ восстанавливаем индекс, если пользователь уже активно отвечает
           // Это предотвращает перезапись правильного индекса после перехода к следующему вопросу
@@ -389,8 +397,8 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
           // КРИТИЧНО: НЕ восстанавливаем индекс, если есть сохраненный прогресс с >= 2 ответами
           // Это гарантирует, что резюм-экран будет показан
           const hasSavedProgress = savedProgress && savedProgress.answers && Object.keys(savedProgress.answers).length >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN;
-          const isActiveSession = currentQuestionIndex > 0 || 
-                                  Object.keys(answers).length > 0 || 
+          const isActiveSession = currentQuestionIndex > 0 ||
+                                  Object.keys(answers).length > 0 ||
                                   hasPassedInitialScreens;
           const savedQuestionIndex = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
           // КРИТИЧНО: НЕ восстанавливаем индекс, если есть сохраненный прогресс с >= 2 ответами
@@ -399,10 +407,10 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
             const questionIndex = parseInt(savedQuestionIndex, 10);
             if (!isNaN(questionIndex) && questionIndex >= 0) {
               const currentAllQuestionsLength = allQuestionsPrevRef.current.length || allQuestions.length;
-              const validIndex = currentAllQuestionsLength > 0 
+              const validIndex = currentAllQuestionsLength > 0
                 ? (questionIndex < currentAllQuestionsLength ? questionIndex : Math.max(0, currentAllQuestionsLength - 1))
                 : 0;
-              
+
               if (currentAllQuestionsLength > 0) {
                 setCurrentQuestionIndex(validIndex);
                     // // clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage (синхронно)', {
@@ -428,7 +436,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
             //   answersCount: Object.keys(answers).length,
             // });
           }
-          
+
           // Восстановление currentInfoScreenIndex
           // КРИТИЧНО: НЕ восстанавливаем, если пользователь активно проходит анкету
           // Это предотвращает сброс индекса во время активного прохождения
@@ -442,17 +450,17 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
               const initialInfoScreens = getInitialInfoScreens();
               const isActivelyOnInfoScreens = currentInfoScreenIndex > 0 && currentInfoScreenIndex < initialInfoScreens.length;
               const isOnQuestions = currentInfoScreenIndex >= initialInfoScreens.length;
-              
+
               // Восстанавливаем только если:
               // 1. Текущий индекс равен 0 (начало) ИЛИ
               // 2. Сохраненный индекс больше текущего (пользователь вернулся назад) ИЛИ
               // 3. Пользователь не активно проходит анкету
-              const shouldRestore = currentInfoScreenIndex === 0 || 
-                                   infoScreenIndex > currentInfoScreenIndex || 
+              const shouldRestore = currentInfoScreenIndex === 0 ||
+                                   infoScreenIndex > currentInfoScreenIndex ||
                                    (!isActivelyOnInfoScreens && !isOnQuestions);
-              
+
               if (shouldRestore) {
-                // clientLogger.log('🔄 Восстанавливаем currentInfoScreenIndex из sessionStorage', { 
+                // clientLogger.log('🔄 Восстанавливаем currentInfoScreenIndex из sessionStorage', {
                 //   savedIndex: infoScreenIndex,
                 //   currentIndex: currentInfoScreenIndex,
                 //   isActivelyOnInfoScreens,
@@ -470,7 +478,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
               }
             }
           }
-          
+
           // Восстановление answers из React Query или API
           if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
             if (quizProgressFromQuery?.progress?.answers && Object.keys(quizProgressFromQuery.progress.answers).length > 0) {
@@ -514,20 +522,45 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
         } catch (restoreError) {
           clientLogger.warn('⚠️ Ошибка при восстановлении состояния из sessionStorage:', restoreError);
         }
-        
+
+        // ФИКС: Для Telegram пользователей всегда вызываем init(), даже если quiz_init_done установлен
+        // Это исправляет проблему, когда пользователь застревает на лоадере
+        if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+          clientLogger.log('🔄 Telegram user detected, forcing init() despite quiz_init_done flag');
+          init();
+          return;
+        }
+
         return;
       }
       sessionStorage.setItem('quiz_init_done', 'true');
     }
-    
+
     // // clientLogger.log('🚀 useEffect: calling init()', {
     //   initCalled: initCalledRef.current,
     //   initInProgress: initInProgressRef.current,
     //   initCompleted: initCompletedRef.current,
     //   hasLoadQuestionnaire: !!loadQuestionnaire,
     // });
-    
-    init();
+
+    // ФИКС: Добавлен таймаут для принудительного завершения загрузки
+    // Если init() зависнет, через 10 секунд установим loading=false
+    const initTimeout = setTimeout(() => {
+      if (loading && isMountedRef.current) {
+        clientLogger.warn('⚠️ init() timeout reached, forcing loading=false', {
+          initCompleted: initCompletedRef.current,
+          initInProgress: initInProgressRef.current,
+          hasQuestionnaire: !!questionnaireRef.current,
+          isTelegramUser: !!(typeof window !== 'undefined' && window.Telegram?.WebApp?.initData),
+        });
+        setLoading(false);
+        setError('Ошибка загрузки. Пожалуйста, обновите страницу.');
+      }
+    }, 10000); // 10 секунд таймаут
+
+    init().finally(() => {
+      clearTimeout(initTimeout);
+    });
 
     return () => {
       isMountedRef.current = false;

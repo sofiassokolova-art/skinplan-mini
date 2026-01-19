@@ -329,6 +329,16 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     }
 
     if (currentInfoScreenIndex === initialInfoScreens.length - 1) {
+      clientLogger.warn('🔄 handleNext: последний начальный экран, переходим к вопросам', {
+        currentInfoScreenIndex,
+        initialInfoScreensLength: initialInfoScreens.length,
+        hasQuestionnaire: !!questionnaire,
+        hasQuestionnaireRef: !!questionnaireRef.current,
+        questionnaireQuestionsLength: questionnaireRef.current?.questions?.length,
+        loading,
+        initCompleted: initCompletedRef.current,
+      });
+
       // КРИТИЧНО: Используем ensureQuestionsReady вместо проверки allQuestions
       // Это гарантирует, что вопросы будут готовы перед переходом к ним
       const ok = await ensureQuestionsReady(
@@ -344,11 +354,17 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
           hasQuestionnaireRef: !!questionnaireRef.current,
           loading,
           initCompleted: initCompletedRef.current,
+          questionnaireQuestionsLength: questionnaireRef.current?.questions?.length,
         });
         // Показываем ошибку пользователю
         setError('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
         return;
       }
+
+      clientLogger.warn('✅ handleNext: вопросы готовы, устанавливаем currentInfoScreenIndex', {
+        questionnaireQuestionsLength: questionnaireRef.current?.questions?.length,
+        newInfoIndex: initialInfoScreens.length,
+      });
 
       const newInfoIndex = initialInfoScreens.length;
       // Получаем плоский массив вопросов (теперь всегда нормализован в questionnaire.questions)

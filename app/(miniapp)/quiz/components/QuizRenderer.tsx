@@ -75,7 +75,10 @@ export const QuizRenderer = memo(function QuizRenderer({
     currentQuestionId: currentQuestion?.id,
     currentQuestionCode: currentQuestion?.code,
     currentQuestionText: currentQuestion?.text?.substring(0, 50),
-    showDebugPanel
+    showDebugPanel,
+    screenType: typeof screen,
+    hasCurrentQuestion: !!currentQuestion,
+    currentInitialInfoScreen: currentInitialInfoScreen?.id
   });
 
   const {
@@ -561,17 +564,25 @@ export const QuizRenderer = memo(function QuizRenderer({
   console.log('❓ [QuizRenderer] rendering QUESTION screen', {
     currentQuestion: !!currentQuestion,
     currentQuestionId: currentQuestion?.id,
+    currentQuestionCode: currentQuestion?.code,
     currentQuestionIndex,
     allQuestionsLength,
     answersCount: Object.keys(answers).length,
     isRetakingQuiz,
     isSubmitting,
-    backgroundColor
+    backgroundColor,
+    screen,
+    currentInitialInfoScreen: currentInitialInfoScreen?.id
   });
 
   // ФИКС: Проверяем что currentQuestion существует перед рендерингом
   if (!currentQuestion) {
-    console.warn('⚠️ [QuizRenderer] currentQuestion is null, showing error screen');
+    console.warn('⚠️ [QuizRenderer] currentQuestion is null, showing error screen', {
+      screen,
+      currentQuestionIndex,
+      allQuestionsLength,
+      currentInitialInfoScreen: currentInitialInfoScreen?.id
+    });
     return (
       <QuizErrorScreen
         title="Ошибка загрузки"

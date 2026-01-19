@@ -25,13 +25,13 @@ export interface UseQuizComputedParams {
   // State
   questionnaire: Questionnaire | null;
   answers: Record<number, string | string[]>;
-  answersVersion?: number; // ФИКС: Версия ответов для отслеживания изменений значений
+  answersRevision?: number; // Ревизия ответов вместо версии
   savedProgress: {
     answers: Record<number, string | string[]>;
     questionIndex: number;
     infoScreenIndex: number;
   } | null;
-  savedProgressVersion?: number; // ФИКС: Версия savedProgress для отслеживания изменений
+  savedProgressRevision?: number; // Ревизия savedProgress вместо версии
   currentInfoScreenIndex: number;
   currentQuestionIndex: number;
   isRetakingQuiz: boolean;
@@ -43,7 +43,9 @@ export interface UseQuizComputedParams {
   isLoadingProgress: boolean;
   isLoadingQuestionnaire?: boolean; // Новое поле для загрузки анкеты
   isQuestionnaireLoading?: boolean; // Новое поле для состояния loading из quizState
-  
+  questionnaireError?: Error | null; // Ошибка загрузки анкеты
+  progressError?: Error | null; // Ошибка загрузки прогресса
+
   // Refs
   questionnaireRef: React.MutableRefObject<Questionnaire | null>;
   currentInfoScreenIndexRef: React.MutableRefObject<number>;
@@ -66,9 +68,9 @@ export function useQuizComputed(params: UseQuizComputedParams) {
   const {
     questionnaire,
     answers,
-    answersVersion = 0, // ФИКС: Версия ответов
+    answersRevision = 0, // Ревизия ответов
     savedProgress,
-    savedProgressVersion = 0, // ФИКС: Версия savedProgress
+    savedProgressRevision = 0, // Ревизия savedProgress
     currentInfoScreenIndex,
     currentQuestionIndex,
     isRetakingQuiz,
@@ -80,6 +82,8 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     isLoadingProgress,
     isLoadingQuestionnaire = false, // Новое поле
     isQuestionnaireLoading = false, // Новое поле
+    questionnaireError,
+    progressError,
     questionnaireRef,
     currentInfoScreenIndexRef,
     allQuestionsRawPrevRef,
@@ -220,13 +224,15 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     return allQuestionsRawIds;
   }, [allQuestionsRawIds, allQuestionsRaw.length]);
   
-  // ФИКС: Вычисляем хеш отфильтрованных вопросов для отслеживания изменений состава
-  const allQuestionsHash = useMemo(() => {
-    // Вычисляем хеш на основе allQuestionsRaw и ответов для определения изменений
-    const rawIds = allQuestionsRaw.map(q => q.id).sort((a, b) => a - b).join(',');
-    const answersKeys = Object.keys(answers).sort((a, b) => Number(a) - Number(b)).join(',');
-    return `${rawIds}|${answersKeys}`;
-  }, [allQuestionsRawHash, answersVersion]);
+      // ФИКС: Вычисляем хеш отфильтрованных вопросов для отслеживания изменений состава
+      const allQuestionsHash = useMemo(() => {
+        // Вычисляем хеш на основе allQuestionsRaw и ответов для определения изменений
+        const rawIds = allQuestionsRaw.map(q => q.id).sort((a, b) => a - b).join(',');
+        const answersKeys = Object.keys(answers).sort((a, b) => Number(a) - Number(b)).join(',');
+        const hash = `${rawIds}|${answersKeys}`;
+        // Отладка: console.log('🔍 [useQuizComputed] allQuestionsHash computed', { hash, allQuestionsRawLength: allQuestionsRaw.length, answersRevision });
+        return hash;
+      }, [allQuestionsRawHash, answersRevision]);
   
   const allQuestions = useMemo<Question[]>(() => {
     try {
@@ -257,7 +263,11 @@ export function useQuizComputed(params: UseQuizComputedParams) {
         savedProgressAnswers: savedProgress?.answers,
         isRetakingQuiz,
         showRetakeScreen,
-        logger: undefined, // ФИКС: Не передаем logger в useMemo
+        logger: {
+          log: (message: string, data?: any) => console.log(`🔍 [filterQuestions] ${message}`, data),
+          warn: (message: string, data?: any) => console.warn(`⚠️ [filterQuestions] ${message}`, data),
+          error: (message: string, data?: any) => console.error(`❌ [filterQuestions] ${message}`, data),
+        },
       });
       
       // Сохраняем результат в ref
@@ -266,6 +276,9 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       } else if (allQuestionsPrevRef.current.length > 0) {
         // НЕ перезаписываем ref, оставляем предыдущее значение
       }
+
+      // Отладка: console.log('🔍 [useQuizComputed] filterQuestions result', { allQuestionsRawLength: allQuestionsRaw.length, filteredLength: filtered.length });
+
       return filtered;
     } catch (err) {
       console.error('❌ Error computing allQuestions:', err);
@@ -279,8 +292,8 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     // ФИКС: Зависеть от хеша, а не от length
     allQuestionsHash,
     stableQuestionnaireId,
-    answersVersion,
-    savedProgressVersion,
+    answersRevision,
+    savedProgressRevision,
     isRetakingQuiz,
     showRetakeScreen,
   ]);
@@ -330,6 +343,8 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       isLoadingProgress,
       isLoadingQuestionnaire,
       isQuestionnaireLoading,
+      questionnaireError: !!questionnaireError,
+      progressError: !!progressError,
       savedProgressAnswersCount,
       isStartingOver,
       hasResumed,
@@ -342,14 +357,62 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       allQuestionsHash
     });
 
-    // Приоритет 1: Загрузка прогресса или анкеты
-    if (isLoadingProgress || isLoadingQuestionnaire || isQuestionnaireLoading) {
-      console.log('📺 [useQuizComputed] viewMode: LOADING_PROGRESS (highest priority)', {
+    // Приоритет 0: Ошибки загрузки (высший приоритет)
+    if (questionnaireError || progressError) {
+      console.log('📺 [useQuizComputed] viewMode: ERROR (data loading error)', {
+        questionnaireError: questionnaireError?.message,
+        progressError: progressError?.message
+      });
+      return 'ERROR';
+    }
+
+    // Приоритет 1: Загрузка анкеты (если данные еще не получены)
+    if (isLoadingQuestionnaire && !questionnaire) {
+      console.log('📺 [useQuizComputed] viewMode: LOADING_QUESTIONNAIRE (waiting for questionnaire data)', {
+        isLoadingQuestionnaire,
+        hasQuestionnaire: !!questionnaire
+      });
+      return 'LOADING_PROGRESS';
+    }
+
+    // Приоритет 2: Загрузка прогресса (если анкета уже есть, но прогресс еще грузится)
+    if (isLoadingProgress && questionnaire) {
+      console.log('📺 [useQuizComputed] viewMode: LOADING_PROGRESS (questionnaire ready, waiting for progress)', {
+        isLoadingProgress,
+        hasQuestionnaire: !!questionnaire
+      });
+      return 'LOADING_PROGRESS';
+    }
+
+    // Приоритет 3: Загрузка внутреннего состояния (если данные есть, но внутреннее состояние еще не готово)
+    if (isQuestionnaireLoading && questionnaire) {
+      console.log('📺 [useQuizComputed] viewMode: LOADING_PROGRESS (data ready, waiting for internal state)', {
+        isQuestionnaireLoading,
+        hasQuestionnaire: !!questionnaire
+      });
+      return 'LOADING_PROGRESS';
+    }
+
+    // Приоритет 4: Нет анкеты - это критическая ошибка после загрузки
+    if (!questionnaire && !isLoadingQuestionnaire) {
+      console.log('📺 [useQuizComputed] viewMode: ERROR (no questionnaire after loading)', {
+        hasQuestionnaire: !!questionnaire,
+        isLoadingQuestionnaire
+      });
+      return 'ERROR';
+    }
+
+    // Приоритет 5: Анкета есть, но все вопросы отфильтрованы - ошибка
+    if (questionnaire && allQuestions.length === 0 && !isLoadingProgress && !isLoadingQuestionnaire && !isQuestionnaireLoading) {
+      console.log('📺 [useQuizComputed] viewMode: ERROR (questionnaire exists but no questions after filtering)', {
+        hasQuestionnaire: !!questionnaire,
+        allQuestionsLength: allQuestions.length,
+        allQuestionsRawLength: allQuestionsRaw.length,
         isLoadingProgress,
         isLoadingQuestionnaire,
         isQuestionnaireLoading
       });
-      return 'LOADING_PROGRESS';
+      return 'ERROR';
     }
 
     // Приоритет 2: Резюм-экран
@@ -399,18 +462,33 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       console.log('📺 [useQuizComputed] viewMode: QUESTION (questions available)', {
         allQuestionsLength: allQuestions.length,
         firstQuestionId: allQuestions[0]?.id,
-        firstQuestionCode: allQuestions[0]?.code
+        firstQuestionCode: allQuestions[0]?.code,
+        currentInfoScreenIndex,
+        initialInfoScreensLength: initialInfoScreens.length,
+        isOnInitial: currentInfoScreenIndex < initialInfoScreens.length
       });
       return 'QUESTION';
     }
 
     // Приоритет 7: Ошибка (нет вопросов)
-    console.log('❌ [useQuizComputed] viewMode: ERROR (no questions, no screens, no progress)');
+    console.log('❌ [useQuizComputed] viewMode: ERROR (no questions, no screens, no progress)', {
+      allQuestionsLength: allQuestions.length,
+      allQuestionsRawLength: allQuestionsRaw.length,
+      questionnaireExists: !!questionnaire,
+      currentInfoScreenIndex,
+      initialInfoScreensLength: initialInfoScreens.length,
+      isOnInitial: currentInfoScreenIndex < initialInfoScreens.length,
+      isLoadingProgress,
+      isLoadingQuestionnaire,
+      isQuestionnaireLoading
+    });
     return 'ERROR';
   }, [
     isLoadingProgress,
     isLoadingQuestionnaire, // Новое поле
     isQuestionnaireLoading, // Новое поле
+    questionnaireError,
+    progressError,
     savedProgressAnswersCount,
     isStartingOver,
     hasResumed,
@@ -527,6 +605,8 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     viewMode, // ФИКС: Зависеть от viewMode вместо множественных проверок
     currentQuestionIndex,
     allQuestionsHash, // ФИКС: Используем хеш вместо length
+    answersRevision,
+    savedProgressRevision,
     questionnaire,
     questionnaireRef,
     isDev

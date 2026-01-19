@@ -171,28 +171,52 @@ export function useQuizInit(params: UseQuizInitParams) {
       clientLogger.log('⛔ init() skipped: resumeQuiz already completed, not resetting state');
       return;
     }
-    
-    if (initCalledRef.current && initCompletedRef.current && !isStartingOverRef.current) {
-      // Если анкета уже загружена, не нужно вызывать init() повторно
-      if (questionnaireRef.current) {
-        clientLogger.log('⛔ init() skipped: already called, completed, and questionnaire loaded', {
-          questionnaireId: questionnaireRef.current.id,
-        });
-        return;
+
+    // ФИКС: Убрана проверка initCalledRef.current && initCompletedRef.current для Telegram пользователей
+    // Это могло блокировать инициализацию для новых Telegram пользователей
+    if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+      // Для Telegram пользователей пропускаем некоторые проверки
+      clientLogger.log('🔄 Telegram user detected in init(), checking conditions...', {
+        initCalled: initCalledRef.current,
+        initCompleted: initCompletedRef.current,
+        initInProgress: initInProgressRef.current,
+        hasQuestionnaire: !!questionnaireRef.current,
+        isStartingOver: isStartingOverRef.current,
+      });
+    } else {
+      if (initCalledRef.current && initCompletedRef.current && !isStartingOverRef.current) {
+        // Если анкета уже загружена, не нужно вызывать init() повторно
+        if (questionnaireRef.current) {
+          clientLogger.log('⛔ init() skipped: already called, completed, and questionnaire loaded', {
+            questionnaireId: questionnaireRef.current.id,
+          });
+          return;
+        }
       }
     }
-    
+
     if (initInProgressRef.current) {
       clientLogger.log('⛔ init() skipped: already in progress');
       return;
     }
-    
-    if (initCompletedRef.current && !isStartingOverRef.current && questionnaireRef.current) {
-      // Если init завершен и анкета загружена, не нужно вызывать init() повторно
-      clientLogger.log('⛔ init() skipped: already completed with questionnaire', {
-        questionnaireId: questionnaireRef.current.id,
-      });
-      return;
+
+    // ФИКС: Для Telegram пользователей не проверяем initCompleted, если это первый вызов
+    if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+      // Для Telegram пользователей менее строгая проверка
+      if (initCompletedRef.current && !isStartingOverRef.current && questionnaireRef.current && initCalledRef.current) {
+        clientLogger.log('⛔ init() skipped for Telegram user: already completed with questionnaire', {
+          questionnaireId: questionnaireRef.current.id,
+        });
+        return;
+      }
+    } else {
+      if (initCompletedRef.current && !isStartingOverRef.current && questionnaireRef.current) {
+        // Если init завершен и анкета загружена, не нужно вызывать init() повторно
+        clientLogger.log('⛔ init() skipped: already completed with questionnaire', {
+          questionnaireId: questionnaireRef.current.id,
+        });
+        return;
+      }
     }
 
     initInProgressRef.current = true;
@@ -214,7 +238,13 @@ export function useQuizInit(params: UseQuizInitParams) {
       isStartingOver: isStartingOverRef.current,
       hasQuestionnaire: !!questionnaireRef.current,
       questionnaireId: questionnaireRef.current?.id,
+      isTelegramUser: !!(typeof window !== 'undefined' && window.Telegram?.WebApp?.initData),
     });
+
+    // ФИКС: Для Telegram пользователей устанавливаем loading=true в начале
+    if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+      setLoading(true);
+    }
 
     try {
       // ИСПРАВЛЕНО: Сначала проверяем, новый ли это пользователь, и очищаем sessionStorage ДО восстановления
