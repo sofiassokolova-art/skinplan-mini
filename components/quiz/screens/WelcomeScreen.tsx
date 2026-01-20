@@ -20,12 +20,11 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
       padding: 0,
       margin: 0,
       width: '100%',
-      height: '100vh',
-      maxWidth: '737px',
-      maxHeight: '727px',
+      minHeight: '100vh',
       background: '#FFFFFF',
-      position: 'relative',
-      border: '0px solid rgb(229, 231, 235)',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
       boxSizing: 'border-box',
     }}>
       {/* Контент с анимацией */}
@@ -35,21 +34,25 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'center',
-          paddingTop: '120px',
-          paddingBottom: '100px',
+          justifyContent: 'flex-start',
+          paddingTop: '40px',
+          paddingBottom: '80px',
           paddingLeft: '20px',
           paddingRight: '20px',
           width: '100%',
-          height: '100%',
           boxSizing: 'border-box',
         }}
       >
         {screen.image && (
           <div style={{
-            width: '100%',
-            height: '436px',
-            marginBottom: '24px',
+            width: '378px',
+            height: '479px',
+            marginTop: '-10px',
+            marginLeft: '-3px',
+            borderBottomLeftRadius: '40px',
+            borderBottomRightRadius: '40px',
+            overflow: 'hidden',
+            background: '#FFFFFF',
           }}>
             <img
               src={screen.image}
@@ -72,7 +75,7 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
           lineHeight: '120%',
           textAlign: 'center',
           color: '#000000',
-          margin: '0 0 20px 0',
+          margin: '24px 0 24px 0',
           maxWidth: '320px',
         }}>
           {screen.title}
