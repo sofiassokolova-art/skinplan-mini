@@ -89,6 +89,7 @@ function PersonalAnalysisScreenComponent({
       : null;
   return (
     <>
+      {backButton}
       {/* Кнопка "Назад" - будет рендерится общей логикой в QuizInfoScreen */}
       <div style={{
         padding: 0,
@@ -218,4 +219,3 @@ function PersonalAnalysisScreenComponent({
 
 // ФИКС: Оптимизация рендеринга - мемоизируем компонент для предотвращения лишних перерендеров
 export const PersonalAnalysisScreen = React.memo(PersonalAnalysisScreenComponent);
-
