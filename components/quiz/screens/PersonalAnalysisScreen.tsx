@@ -4,7 +4,6 @@
 
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { FixedContinueButton } from '../buttons/FixedContinueButton';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 
 export interface PersonalAnalysisScreenProps {
@@ -49,7 +48,7 @@ function PersonalAnalysisScreenComponent({
               position: 'fixed',
               top: 'clamp(20px, 4vh, 40px)',
               left: 'clamp(19px, 5vw, 24px)',
-              zIndex: 99999,
+              zIndex: 1000,
               width: '44px',
               height: '44px',
               background: 'transparent',
@@ -60,12 +59,6 @@ function PersonalAnalysisScreenComponent({
               cursor: 'pointer',
               padding: 0,
               pointerEvents: 'auto',
-              transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
-              backfaceVisibility: 'hidden', // Оптимизация рендеринга
-              WebkitTransform: 'translateZ(0)', // Для Safari
-              isolation: 'isolate', // Создаем новый контекст стекирования
-              willChange: 'transform', // Оптимизация для браузера
-              contain: 'layout style paint', // Изолируем кнопку от остального контента
             }}
           >
             <svg
@@ -94,119 +87,163 @@ function PersonalAnalysisScreenComponent({
       <div style={{
         padding: 0,
         margin: 0,
-        width: '100%',
-        height: '100vh',
-        maxWidth: '737px',
-        maxHeight: '727px',
+        minHeight: '100vh',
         background: '#FFFFFF',
+        display: 'flex',
+        flexDirection: 'column',
         position: 'relative',
+        width: '100%',
         border: '0px solid rgb(229, 231, 235)',
         boxSizing: 'border-box',
       }}>
 
-      {/* Контент с абсолютным позиционированием */}
       <div
         className="animate-fade-in"
         style={{
-          position: 'relative',
+          flex: '1 1 0%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'flex-start',
+          padding: '120px 20px 100px',
           width: '100%',
-          height: '100vh',
           boxSizing: 'border-box',
         }}
       >
-        {/* Картинка с абсолютным позиционированием */}
-        {screen.image && (
-          <div style={{
-            position: 'absolute',
-            width: '200px',
-            height: '241px',
-            top: '120px',
-            left: '60px',
-            zIndex: 10,
-          }}>
-            <img
-              src={screen.image}
-              alt={screen.title}
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-                display: 'block',
-              }}
-            />
-          </div>
-        )}
-
-        {/* Заголовок с абсолютным позиционированием */}
-        <h1 style={{
-          position: 'absolute',
-          width: '342px',
-          height: '93px',
-          top: '320px',
-          left: '20px',
-          fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-          fontWeight: 700,
-          fontSize: '32px',
-          lineHeight: '120%',
-          letterSpacing: '0px',
-          textAlign: 'left',
-          color: '#000000',
-          margin: '0',
-          whiteSpace: 'pre-line',
-          zIndex: 10,
-        }}>
-          {screen.title}
+        <h1
+          className="quiz-title"
+          style={{
+            fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontStyle: 'normal',
+            fontSize: '32px',
+            lineHeight: '120%',
+            letterSpacing: '0px',
+            textAlign: 'center',
+            color: '#000000',
+            margin: '0 0 12px 0',
+            maxWidth: '311px',
+          }}
+        >
+          <span style={{ fontWeight: 700 }}>SkinIQ</span>
+          <span style={{ fontWeight: 400 }}> — ваш персональный анализ кожи</span>
         </h1>
 
-        {/* Подзаголовок с абсолютным позиционированием */}
         {screen.subtitle && (
-          <div style={{
-            position: 'absolute',
-            width: '342px',
-            height: '93px',
-            top: '430px',
-            left: '20px',
-            fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 400,
-            fontSize: '18px',
-            lineHeight: '140%',
-            letterSpacing: '0px',
-            textAlign: 'left',
-            color: '#000000',
-            whiteSpace: 'pre-line',
-            zIndex: 10,
-          }}>
+          <div
+            style={{
+              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 400,
+              fontSize: '14px',
+              lineHeight: '140%',
+              letterSpacing: '0px',
+              textAlign: 'center',
+              color: '#9D9D9D',
+              marginBottom: '40px',
+              maxWidth: '320px',
+            }}
+          >
             {screen.subtitle}
           </div>
         )}
+
+        <div
+          style={{
+            width: '100%',
+            maxWidth: '320px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '24px',
+            marginBottom: '40px',
+          }}
+        >
+          {[
+            {
+              icon: '/icons/detailed_3.PNG',
+              alt: 'Точная оценка',
+              text: 'Точная оценка состояния кожи',
+            },
+            {
+              icon: '/icons/hydration_3.PNG',
+              alt: 'Индивидуальный уход',
+              text: 'Индивидуально подобранные средства ухода',
+            },
+            {
+              icon: '/icons/face_3.PNG',
+              alt: 'Умная рутина',
+              text: (
+                <>
+                  Умная рутина, которая работает <span style={{ fontWeight: 700 }}>в 3 раза эффективнее</span>
+                </>
+              ),
+            },
+          ].map((item) => (
+            <div
+              key={item.alt}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                textAlign: 'center',
+                gap: '12px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <img
+                  alt={item.alt}
+                  src={item.icon}
+                  style={{ width: '48px', height: '48px', objectFit: 'contain' }}
+                />
+              </div>
+              <div
+                style={{
+                  fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontWeight: 400,
+                  fontSize: '16px',
+                  lineHeight: '120%',
+                  letterSpacing: '0px',
+                  textAlign: 'center',
+                  color: '#000000',
+                  maxWidth: '289px',
+                }}
+              >
+                {item.text}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Фиксированная кнопка "Продолжить" внизу экрана */}
-      <div style={{
-        position: 'fixed',
-        bottom: '40px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: '100%',
-        maxWidth: '320px',
-        padding: '0 20px',
-        boxSizing: 'border-box',
-        zIndex: 100,
-      }}>
+      <div
+        style={{
+          position: 'fixed',
+          bottom: 'clamp(40px, 6vh, 60px)',
+          left: 0,
+          right: 0,
+          padding: '0 clamp(20px, 5vw, 40px)',
+          background: 'transparent',
+          zIndex: 100,
+          display: 'flex',
+          justifyContent: 'center',
+        }}
+      >
         <button
           onClick={onContinue}
           style={{
             width: '100%',
-            height: '56px',
+            maxWidth: 'clamp(224px, 60vw, 320px)',
+            height: 'clamp(56px, 8vh, 64px)',
             borderRadius: '20px',
             background: '#D5FE61',
             color: '#000000',
             border: 'none',
             fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 600,
-            fontSize: '16px',
+            fontSize: 'clamp(14px, 4vw, 16px)',
             cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(213, 254, 97, 0.3)',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+            transition: 'transform 0.2s, box-shadow 0.2s',
+            opacity: 1,
+            transform: 'scale(1)',
           }}
         >
           {screen.ctaText || 'Продолжить'}
