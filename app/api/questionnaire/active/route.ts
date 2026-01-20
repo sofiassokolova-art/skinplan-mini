@@ -115,21 +115,26 @@ export async function GET(request: NextRequest) {
       version: activeQuestionnaireCheck?.version,
     });
     
+    let directQuestionsCount = 0;
+    let directGroupsCount = 0;
+    let directQuestionsInGroupsCount = 0;
+    let directQuestionsWithoutGroupCount = 0;
+
     // ДИАГНОСТИКА: Проверяем количество вопросов напрямую в БД
     if (activeQuestionnaireCheck) {
-      const directQuestionsCount = await prisma.question.count({
+      directQuestionsCount = await prisma.question.count({
         where: { questionnaireId: activeQuestionnaireCheck.id },
       });
-      const directGroupsCount = await prisma.questionGroup.count({
+      directGroupsCount = await prisma.questionGroup.count({
         where: { questionnaireId: activeQuestionnaireCheck.id },
       });
-      const directQuestionsInGroupsCount = await prisma.question.count({
+      directQuestionsInGroupsCount = await prisma.question.count({
         where: {
           questionnaireId: activeQuestionnaireCheck.id,
           groupId: { not: null },
         },
       });
-      const directQuestionsWithoutGroupCount = await prisma.question.count({
+      directQuestionsWithoutGroupCount = await prisma.question.count({
         where: {
           questionnaireId: activeQuestionnaireCheck.id,
           groupId: null,
@@ -164,15 +169,7 @@ export async function GET(request: NextRequest) {
         hasQuestionsWithWrongQuestionnaireId: allQuestionsDirect.some(q => q.questionnaireId !== activeQuestionnaireCheck.id),
       });
       
-      // КРИТИЧНО: Если в БД есть вопросы, но Prisma не возвращает их - это проблема Prisma
-      if (directQuestionsCount > 0) {
-        logger.warn('⚠️ В БД ЕСТЬ вопросы, но Prisma может не возвращать их!', {
-          directQuestionsCount,
-          directQuestionsInGroupsCount,
-          directQuestionsWithoutGroupCount,
-          directGroupsCount,
-        });
-      } else {
+      if (directQuestionsCount === 0) {
         logger.error('❌ КРИТИЧЕСКАЯ ПРОБЛЕМА: В БД НЕТ вопросов для активной анкеты!', {
           questionnaireId: activeQuestionnaireCheck.id,
           totalQuestionsInDB: directQuestionsCount,
@@ -213,12 +210,26 @@ export async function GET(request: NextRequest) {
     
     // ДИАГНОСТИКА: Логируем результат запроса к базе данных
     if (questionnaire) {
+      const prismaGroupQuestionsCount = questionnaire.questionGroups?.reduce((sum, group) => sum + (group.questions?.length || 0), 0) || 0;
+      const prismaQuestionsCount = prismaGroupQuestionsCount + (questionnaire.questions?.length || 0);
+
+      if (typeof directQuestionsCount !== 'undefined' && directQuestionsCount > 0 && prismaQuestionsCount === 0) {
+        logger.warn('⚠️ В БД ЕСТЬ вопросы, но Prisma не вернул их в анкете!', {
+          directQuestionsCount,
+          directQuestionsInGroupsCount,
+          directQuestionsWithoutGroupCount,
+          directGroupsCount,
+          prismaGroupQuestionsCount,
+          prismaQuestionsCount,
+        });
+      }
       logger.info('✅ Questionnaire found in DB', {
         questionnaireId: questionnaire.id,
         hasQuestionGroups: !!questionnaire.questionGroups,
         hasQuestions: !!questionnaire.questions,
         questionGroupsCount: questionnaire.questionGroups?.length || 0,
         questionsCount: questionnaire.questions?.length || 0,
+        prismaQuestionsCount,
         questionGroupsWithQuestions: questionnaire.questionGroups?.map(g => ({
           id: g.id,
           title: g.title,
