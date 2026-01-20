@@ -9,6 +9,7 @@ import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
 import type { Questionnaire, Question } from '@/lib/quiz/types';
 import { api } from '@/lib/api';
 import * as userPreferences from '@/lib/user-preferences';
+import { useQuestionnaireSync } from './useQuestionnaireSync';
 
 export interface UseQuizEffectsParams {
   // State
@@ -189,6 +190,18 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     answersCount,
     scope,
   } = params;
+
+  const { setQuestionnaireWithStateMachine } = useQuestionnaireSync({
+    questionnaireFromQuery,
+    questionnaire,
+    questionnaireRef,
+    setQuestionnaire,
+    quizStateMachine,
+    isLoadingQuestionnaire,
+    questionnaireError,
+    setLoading,
+    setError,
+  });
 
   // ============================================
   // ГРУППА 1: Синхронизация questionnaire между React Query, state и State Machine
@@ -376,10 +389,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
               //   fromRef: !!questionnaireRef.current,
               //   fromStateMachine: !!quizStateMachine.questionnaire,
               // });
-              setQuestionnaire(restoredQuestionnaire);
-              if (!quizStateMachine.questionnaire && questionnaireRef.current) {
-                setQuestionnaireInStateMachine(questionnaireRef.current);
-              }
+              setQuestionnaireWithStateMachine(restoredQuestionnaire);
             }
           }
 
@@ -1138,4 +1148,3 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     };
   }, []);
 }
-

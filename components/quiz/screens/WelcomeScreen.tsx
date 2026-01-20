@@ -44,16 +44,21 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
           boxSizing: 'border-box',
         }}
       >
-        {/* Logo/Brand */}
-        <div style={{
-          fontSize: '32px',
-          fontWeight: 'bold',
-          color: '#000000',
-          marginBottom: '40px',
-          textAlign: 'center',
-        }}>
-          SkinIQ
-        </div>
+        {screen.image && (
+          <img
+            src={screen.image}
+            alt="Welcome"
+            style={{
+              width: '100%',
+              maxWidth: '320px',
+              height: 'auto',
+              marginBottom: '32px',
+              display: 'block',
+              borderRadius: '16px',
+              objectFit: 'cover',
+            }}
+          />
+        )}
 
         {/* Title */}
         <h1 style={{

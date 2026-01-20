@@ -95,6 +95,7 @@ export const QuizRenderer = memo(function QuizRenderer({
   const {
     questionnaire,
     questionnaireRef,
+    setQuestionnaire,
     pendingInfoScreen,
     currentInfoScreenIndex,
     answers,
@@ -367,6 +368,13 @@ export const QuizRenderer = memo(function QuizRenderer({
     preloadCriticalResources();
   }, []);
 
+  useEffect(() => {
+    if (questionnaireQuery.data && !questionnaireRef.current) {
+      setQuestionnaire(questionnaireQuery.data);
+      questionnaireRef.current = questionnaireQuery.data;
+    }
+  }, [questionnaireQuery.data, questionnaireRef, setQuestionnaire]);
+
 
   // Refs for handleNext/handleBack
   const handleNextInProgressRef = useRef(false);
@@ -379,10 +387,27 @@ export const QuizRenderer = memo(function QuizRenderer({
   }, []);
 
   const loadQuestionnaire = useCallback(async () => {
-    // This should trigger questionnaire loading through React Query
-    // For now, return current questionnaire
+    if (questionnaireRef.current) {
+      return questionnaireRef.current;
+    }
+
+    if (questionnaireQuery.data) {
+      setQuestionnaire(questionnaireQuery.data);
+      questionnaireRef.current = questionnaireQuery.data;
+      return questionnaireQuery.data;
+    }
+
+    if (questionnaireQuery.refetch) {
+      const result = await questionnaireQuery.refetch();
+      if (result.data) {
+        setQuestionnaire(result.data);
+        questionnaireRef.current = result.data;
+        return result.data;
+      }
+    }
+
     return questionnaire;
-  }, [questionnaire]);
+  }, [questionnaire, questionnaireQuery, questionnaireRef, setQuestionnaire]);
 
   // Create handlers
   const onAnswer = useCallback(async (questionId: number, value: string | string[]) => {
