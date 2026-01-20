@@ -4,6 +4,7 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { clientLogger } from '@/lib/client-logger';
 import type { Questionnaire } from '@/lib/quiz/types';
+import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
 
 interface UseQuestionnaireSyncParams {
   questionnaireFromQuery: Questionnaire | null | undefined;
@@ -73,10 +74,15 @@ export function useQuestionnaireSync({
     // clientLogger.log('🔄 Syncing questionnaire from React Query', {...});
 
     // ИСПРАВЛЕНО: Используем ref для setQuestionnaire, чтобы избежать включения функции в зависимости
-    setQuestionnaireRef.current(questionnaireFromQuery);
-    questionnaireRef.current = questionnaireFromQuery;
+    const normalizedQuestionnaire = {
+      ...questionnaireFromQuery,
+      questions: extractQuestionsFromQuestionnaire(questionnaireFromQuery),
+    };
+
+    setQuestionnaireRef.current(normalizedQuestionnaire);
+    questionnaireRef.current = normalizedQuestionnaire;
     if (setQuestionnaireInStateMachineRef.current) {
-      setQuestionnaireInStateMachineRef.current(questionnaireFromQuery);
+      setQuestionnaireInStateMachineRef.current(normalizedQuestionnaire);
     }
   }, [questionnaireFromQuery]);
 
