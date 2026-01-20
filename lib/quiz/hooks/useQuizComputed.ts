@@ -152,7 +152,11 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     // ref.current не должен быть в зависимостях, так как изменения ref не триггерят ререндер
     // и это вызывает React Error #300
     questionnaire?.id,
+    questionnaire?.questions?.length,
+    questionnaire?.groups?.length,
     quizStateMachine.questionnaire?.id,
+    quizStateMachine.questionnaire?.questions?.length,
+    quizStateMachine.questionnaire?.groups?.length,
     isDev
   ]);
 
@@ -208,6 +212,10 @@ export function useQuizComputed(params: UseQuizComputedParams) {
   }, [
     // ФИКС: Используем stableQuestionnaireId вместо отдельных источников
     stableQuestionnaireId,
+    questionnaire?.questions?.length,
+    questionnaire?.groups?.length,
+    quizStateMachine.questionnaire?.questions?.length,
+    quizStateMachine.questionnaire?.groups?.length,
   ]);
 
   // ============================================
