@@ -376,9 +376,13 @@ export const QuizRenderer = memo(function QuizRenderer({
   }, []);
 
   useEffect(() => {
-    if (questionnaireQuery.data && !questionnaireRef.current) {
-      setQuestionnaire(questionnaireQuery.data);
-      questionnaireRef.current = questionnaireQuery.data;
+    if (questionnaireQuery.data) {
+      const normalizedQuestionnaire = {
+        ...questionnaireQuery.data,
+        questions: extractQuestionsFromQuestionnaire(questionnaireQuery.data),
+      };
+      setQuestionnaire(normalizedQuestionnaire);
+      questionnaireRef.current = normalizedQuestionnaire;
     }
   }, [questionnaireQuery.data, questionnaireRef, setQuestionnaire]);
 
@@ -394,8 +398,20 @@ export const QuizRenderer = memo(function QuizRenderer({
   }, []);
 
   const loadQuestionnaire = useCallback(async () => {
-    if (questionnaireRef.current) {
+    if (questionnaireRef.current?.questions?.length) {
       return questionnaireRef.current;
+    }
+
+    if (questionnaireQuery.data) {
+      const normalizedQuestionnaire = {
+        ...questionnaireQuery.data,
+        questions: extractQuestionsFromQuestionnaire(questionnaireQuery.data),
+      };
+      setQuestionnaire(normalizedQuestionnaire);
+      questionnaireRef.current = normalizedQuestionnaire;
+      if (normalizedQuestionnaire.questions.length > 0) {
+        return normalizedQuestionnaire;
+      }
     }
 
     return await loadQuestionnaireHandler({

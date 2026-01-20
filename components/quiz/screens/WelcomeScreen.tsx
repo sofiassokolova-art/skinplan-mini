@@ -45,19 +45,22 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
         }}
       >
         {screen.image && (
-          <img
-            src={screen.image}
-            alt="Welcome"
-            style={{
-              width: '100%',
-              maxWidth: '320px',
-              height: 'auto',
-              marginBottom: '32px',
-              display: 'block',
-              borderRadius: '16px',
-              objectFit: 'cover',
-            }}
-          />
+          <div style={{
+            width: '100%',
+            height: '436px',
+            marginBottom: '24px',
+          }}>
+            <img
+              src={screen.image}
+              alt={screen.title}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                display: 'block',
+              }}
+            />
+          </div>
         )}
 
         {/* Title */}
