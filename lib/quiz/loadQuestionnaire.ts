@@ -603,6 +603,15 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
       normalizedQuestionsCount: normalizedQuestions.length,
       totalQuestions,
     });
+    if (normalizedQuestions.length === 0) {
+      clientLogger.warn('⚠️ Questionnaire normalized with zero questions', {
+        questionnaireId: questionnaireData?.id,
+        groupsCount: groups.length,
+        questionsCount: questions.length,
+        questionsFromGroupsCount: questionsFromGroups.length,
+        questionsFromRootCount: questionsFromRoot.length,
+      });
+    }
     
     // ИСПРАВЛЕНО: Обновляем ref ПЕРЕД установкой state, чтобы guards работали корректно
     clientLogger.log('🟢 SETTING questionnaireRef.current', {
