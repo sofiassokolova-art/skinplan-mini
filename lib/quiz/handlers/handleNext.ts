@@ -21,6 +21,7 @@ import {
   updateQuestionIndex,
   canNavigate
 } from './shared-utils';
+import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
 
 export interface HandleNextParams {
   // Refs
@@ -78,6 +79,17 @@ const ensureQuestionsReady = async (
   const qLen = getTotalQuestionsCount(questionnaireRef.current);
   if (qLen > 0) return true;
 
+  if (questionnaireRef.current) {
+    const normalizedQuestions = extractQuestionsFromQuestionnaire(questionnaireRef.current);
+    if (normalizedQuestions.length > 0) {
+      questionnaireRef.current = {
+        ...questionnaireRef.current,
+        questions: normalizedQuestions,
+      };
+      return true;
+    }
+  }
+
   // 2) Если загрузка уже идёт — просто ждём немного
   if (initInProgressRef.current) {
     let attempts = 0;
@@ -96,8 +108,21 @@ const ensureQuestionsReady = async (
   }
   try {
     const loaded = await loadQuestionnaire();
-    // Проверяем общее количество вопросов после загрузки (включая groups)
-    return getTotalQuestionsCount(loaded) > 0;
+    if (!loaded) return false;
+
+    const loadedQuestionsCount = getTotalQuestionsCount(loaded);
+    if (loadedQuestionsCount > 0) return true;
+
+    const normalizedQuestions = extractQuestionsFromQuestionnaire(loaded);
+    if (normalizedQuestions.length > 0) {
+      questionnaireRef.current = {
+        ...loaded,
+        questions: normalizedQuestions,
+      };
+      return true;
+    }
+
+    return false;
   } finally {
     if (setLoading) {
       setLoading(false);
@@ -1180,4 +1205,3 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     // Это позволяет флагу работать на следующем клике/вызове
   }
 }
-
