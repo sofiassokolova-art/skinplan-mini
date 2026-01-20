@@ -103,9 +103,11 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
   }
   // ИСПРАВЛЕНО: Проверяем ref вместо state, чтобы избежать race conditions
   // Это предотвращает повторные вызовы даже если state еще не обновился
-  if (loadQuestionnaireAttemptedRef.current && questionnaireRef.current) {
+  const refQuestionsCount = questionnaireRef.current?.questions?.length ?? 0;
+  if (loadQuestionnaireAttemptedRef.current && questionnaireRef.current && refQuestionsCount > 0) {
     clientLogger.log('⛔ loadQuestionnaire() skipped: already attempted and questionnaire exists in ref', {
       questionnaireId: questionnaireRef.current?.id,
+      questionsCount: refQuestionsCount,
       hasState: !!questionnaire,
       stackTrace: new Error().stack?.substring(0, 300),
     });
@@ -868,4 +870,3 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
     });
   }
 }
-
