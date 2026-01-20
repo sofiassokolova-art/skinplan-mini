@@ -36,6 +36,8 @@ import { resumeQuiz } from '@/lib/quiz/handlers/resumeQuiz';
 import { startOver } from '@/lib/quiz/handlers/startOver';
 import { submitAnswers } from '@/lib/quiz/handlers/submitAnswers';
 import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
+import { loadQuestionnaire as loadQuestionnaireHandler } from '@/lib/quiz/loadQuestionnaire';
+import * as userPreferences from '@/lib/user-preferences';
 import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
 
 type Screen = 'LOADER' | 'ERROR' | 'RETAKE' | 'RESUME' | 'INFO' | 'INITIAL_INFO' | 'QUESTION';
@@ -114,6 +116,7 @@ export const QuizRenderer = memo(function QuizRenderer({
     setHasResumed,
     error,
     setError,
+    loading,
     setCurrentInfoScreenIndex,
     setCurrentQuestionIndex,
     setLoading,
@@ -124,6 +127,7 @@ export const QuizRenderer = memo(function QuizRenderer({
     setSavedProgress,
     setIsRetakingQuiz,
     setShowRetakeScreen,
+    setHasRetakingPayment,
     setHasFullRetakePayment,
     setAnswers,
     setShowResumeScreen,
@@ -140,6 +144,8 @@ export const QuizRenderer = memo(function QuizRenderer({
     redirectInProgressRef,
     loadProgressInProgressRef,
     progressLoadInProgressRef,
+    loadQuestionnaireInProgressRef,
+    loadQuestionnaireAttemptedRef,
     initCompletedRef,
     resumeCompletedRef,
     answersRef,
@@ -147,6 +153,7 @@ export const QuizRenderer = memo(function QuizRenderer({
     lastRestoredAnswersIdRef,
     firstScreenResetRef,
     setIsProgressCleared,
+    setUserPreferencesData,
   } = quizState;
 
   // Дополнительное логгирование после деструктуризации
@@ -391,23 +398,60 @@ export const QuizRenderer = memo(function QuizRenderer({
       return questionnaireRef.current;
     }
 
-    if (questionnaireQuery.data) {
-      setQuestionnaire(questionnaireQuery.data);
-      questionnaireRef.current = questionnaireQuery.data;
-      return questionnaireQuery.data;
-    }
-
-    if (questionnaireQuery.refetch) {
-      const result = await questionnaireQuery.refetch();
-      if (result.data) {
-        setQuestionnaire(result.data);
-        questionnaireRef.current = result.data;
-        return result.data;
-      }
-    }
-
-    return questionnaire;
-  }, [questionnaire, questionnaireQuery, questionnaireRef, setQuestionnaire]);
+    return await loadQuestionnaireHandler({
+      questionnaireRef,
+      loadQuestionnaireInProgressRef,
+      loadQuestionnaireAttemptedRef,
+      redirectInProgressRef,
+      initCompletedRef,
+      setInitCompleted,
+      questionnaire,
+      loading,
+      error,
+      isRetakingQuiz,
+      showRetakeScreen,
+      savedProgress,
+      currentQuestionIndex,
+      hasResumed,
+      setQuestionnaire,
+      setLoading,
+      setError,
+      setCurrentQuestionIndex,
+      setUserPreferencesData,
+      setIsRetakingQuiz,
+      setShowRetakeScreen,
+      setHasRetakingPayment,
+      setHasFullRetakePayment,
+      isDev,
+      userPreferences,
+      addDebugLog: () => undefined,
+    });
+  }, [
+    questionnaireRef,
+    loadQuestionnaireInProgressRef,
+    loadQuestionnaireAttemptedRef,
+    redirectInProgressRef,
+    initCompletedRef,
+    setInitCompleted,
+    questionnaire,
+    loading,
+    error,
+    isRetakingQuiz,
+    showRetakeScreen,
+    savedProgress,
+    currentQuestionIndex,
+    hasResumed,
+    setQuestionnaire,
+    setLoading,
+    setError,
+    setCurrentQuestionIndex,
+    setUserPreferencesData,
+    setIsRetakingQuiz,
+    setShowRetakeScreen,
+    setHasRetakingPayment,
+    setHasFullRetakePayment,
+    isDev,
+  ]);
 
   // Create handlers
   const onAnswer = useCallback(async (questionId: number, value: string | string[]) => {
