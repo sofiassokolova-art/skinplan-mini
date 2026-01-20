@@ -3,6 +3,7 @@
 // Верстка из коммита bd0914d
 
 import React from 'react';
+import { FixedContinueButton } from '../buttons/FixedContinueButton';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 
 export interface WelcomeScreenProps {
@@ -77,43 +78,14 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
           {screen.title}
         </h1>
 
-        {/* Continue Button */}
-        <button
+        <FixedContinueButton
+          ctaText={isHandlingNext ? 'Загрузка...' : screen.ctaText}
           onClick={() => {
             if (!isHandlingNext) {
               onContinue();
             }
           }}
-          disabled={isHandlingNext}
-          style={{
-            width: '100%',
-            maxWidth: 'clamp(224px, 60vw, 320px)',
-            height: 'clamp(56px, 8vh, 64px)',
-            borderRadius: '20px',
-            background: '#D5FE61',
-            color: '#000000',
-            border: 'none',
-            fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 600,
-            fontSize: 'clamp(14px, 4vw, 16px)',
-            cursor: isHandlingNext ? 'not-allowed' : 'pointer',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-            transition: 'transform 0.2s, box-shadow 0.2s',
-            opacity: isHandlingNext ? 0.7 : 1,
-            marginTop: '40px',
-          }}
-          onMouseDown={(e) => {
-            if (!isHandlingNext) e.currentTarget.style.transform = 'scale(0.98)';
-          }}
-          onMouseUp={(e) => {
-            if (!isHandlingNext) e.currentTarget.style.transform = 'scale(1)';
-          }}
-          onMouseLeave={(e) => {
-            if (!isHandlingNext) e.currentTarget.style.transform = 'scale(1)';
-          }}
-        >
-          {isHandlingNext ? 'Загрузка...' : (screen.ctaText || 'Продолжить')}
-        </button>
+        />
       </div>
     </div>
   );
