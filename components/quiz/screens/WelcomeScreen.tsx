@@ -87,15 +87,15 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
           disabled={isHandlingNext}
           style={{
             width: '100%',
-            maxWidth: '320px',
-            height: '56px',
+            maxWidth: 'clamp(224px, 60vw, 320px)',
+            height: 'clamp(56px, 8vh, 64px)',
             borderRadius: '20px',
             background: '#D5FE61',
             color: '#000000',
             border: 'none',
             fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 600,
-            fontSize: '16px',
+            fontSize: 'clamp(14px, 4vw, 16px)',
             cursor: isHandlingNext ? 'not-allowed' : 'pointer',
             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
             transition: 'transform 0.2s, box-shadow 0.2s',
