@@ -55,19 +55,22 @@ export function useQuestionnaireSync({
     setQuestionnaireInStateMachineRef.current = quizStateMachine.setQuestionnaire;
   }, [quizStateMachine.setQuestionnaire]);
 
-  // Синхронизация из React Query - ОДНОРАЗОВАЯ, без зависимостей
-  const hasSyncedRef = useRef(false);
+  // Синхронизация из React Query при появлении данных или смене анкеты
+  const lastSyncedQuestionnaireIdRef = useRef<string | number | null>(null);
 
   useEffect(() => {
-    // Синхронизируем только один раз при первой загрузке данных
-    if (hasSyncedRef.current || !questionnaireFromQuery) {
+    if (!questionnaireFromQuery?.id) {
       return;
     }
 
-    hasSyncedRef.current = true;
+    if (lastSyncedQuestionnaireIdRef.current === questionnaireFromQuery.id) {
+      return;
+    }
+
+    lastSyncedQuestionnaireIdRef.current = questionnaireFromQuery.id;
 
     // УБРАНО: Логирование вызывает бесконечные циклы в продакшене
-    // clientLogger.log('🔄 ONE-TIME Syncing questionnaire from React Query', {...});
+    // clientLogger.log('🔄 Syncing questionnaire from React Query', {...});
 
     // ИСПРАВЛЕНО: Используем ref для setQuestionnaire, чтобы избежать включения функции в зависимости
     setQuestionnaireRef.current(questionnaireFromQuery);
@@ -75,7 +78,7 @@ export function useQuestionnaireSync({
     if (setQuestionnaireInStateMachineRef.current) {
       setQuestionnaireInStateMachineRef.current(questionnaireFromQuery);
     }
-  }, []); // ПУСТЫЕ ЗАВИСИМОСТИ - синхронизация происходит только один раз
+  }, [questionnaireFromQuery]);
 
   // Обертка для setQuestionnaire с синхронизацией State Machine
   // КРИТИЧНО: Используем ref для quizStateMachine, чтобы избежать пересоздания useCallback
