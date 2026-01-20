@@ -47,7 +47,7 @@ export const INFO_SCREENS: InfoScreen[] = [
   {
     id: 'welcome',
     title: 'Подбери уход для своей кожи со SkinIQ',
-    image: '/quiz_welcome_image.png.png',
+    image: '/quiz_welcome_image.png',
     ctaText: 'Продолжить',
   },
   
@@ -64,7 +64,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'personal_analysis',
     title: 'SkinIQ — ваш персональный анализ кожи',
     subtitle: '92% пользователей SkinIQ отмечают улучшение состояния кожи за 1 месяц',
-    image: '/personal_analysis.jpg',
+    image: '/skin-model.jpg',
     ctaText: 'Продолжить',
   },
   
