@@ -564,11 +564,24 @@ export function useQuizComputed(params: UseQuizComputedParams) {
   const currentInitialInfoScreen = useMemo(() => {
     // ИСПРАВЛЕНИЕ: currentInitialInfoScreen должен быть независимым от isShowingInitialInfoScreen
     // Он просто возвращает экран по индексу, если индекс валиден
-    return currentInfoScreenIndex >= 0 &&
-           currentInfoScreenIndex < initialInfoScreens.length
-            ? initialInfoScreens[currentInfoScreenIndex]
-            : null;
-  }, [currentInfoScreenIndex, initialInfoScreens.length]); // ФИКС: Убрали isDev из зависимостей
+    if (initialInfoScreens.length === 0) {
+      return null;
+    }
+
+    if (currentInfoScreenIndex >= 0 && currentInfoScreenIndex < initialInfoScreens.length) {
+      return initialInfoScreens[currentInfoScreenIndex];
+    }
+
+    if (viewMode === 'INITIAL_INFO') {
+      console.warn('⚠️ [useQuizComputed] currentInitialInfoScreen: invalid index, falling back to first screen', {
+        currentInfoScreenIndex,
+        initialInfoScreensLength: initialInfoScreens.length,
+      });
+      return initialInfoScreens[0] ?? null;
+    }
+
+    return null;
+  }, [currentInfoScreenIndex, initialInfoScreens, viewMode]); // ФИКС: Убрали isDev из зависимостей
 
   // ============================================
   // ГРУППА 9: Вычисление currentQuestion
