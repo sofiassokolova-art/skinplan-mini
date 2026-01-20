@@ -32,7 +32,19 @@ function GoalsIntroScreenComponent({
 
       {/* Кнопка "Назад" */}
       {currentInfoScreenIndex > 0 && (
-        <BackButton onClick={onBack} />
+        <div style={{
+          position: 'fixed',
+          top: 'clamp(20px, 4vh, 40px)',
+          left: 'clamp(19px, 5vw, 24px)',
+          zIndex: 1000,
+          width: '44px',
+          height: '44px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <BackButton onClick={onBack} />
+        </div>
       )}
 
       {/* Контент с абсолютным позиционированием */}
