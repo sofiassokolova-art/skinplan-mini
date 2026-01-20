@@ -644,13 +644,24 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
       // Если ID совпадает и анкета уже установлена, не создаем новый объект
       // Это предотвращает лишние пересчеты useMemo
       if (prevQuestionnaire?.id === questionnaireToSet.id && prevQuestionnaire) {
-        // Данные не изменились - возвращаем предыдущий объект, чтобы не вызывать лишние пересчеты
-        if (isDev) {
-          clientLogger.log('✅ setQuestionnaire: same ID, returning prev (no re-render)', {
-            questionnaireId: questionnaireToSet.id,
-          });
+        const prevQuestionsCount = prevQuestionnaire.questions?.length ?? 0;
+        const nextQuestionsCount = questionnaireToSet.questions?.length ?? 0;
+        const prevGroupsCount = prevQuestionnaire.groups?.length ?? 0;
+        const nextGroupsCount = questionnaireToSet.groups?.length ?? 0;
+
+        if (prevQuestionsCount === nextQuestionsCount && prevGroupsCount === nextGroupsCount) {
+          // Данные не изменились - возвращаем предыдущий объект, чтобы не вызывать лишние пересчеты
+          if (isDev) {
+            clientLogger.log('✅ setQuestionnaire: same ID/counts, returning prev (no re-render)', {
+              questionnaireId: questionnaireToSet.id,
+              prevQuestionsCount,
+              nextQuestionsCount,
+              prevGroupsCount,
+              nextGroupsCount,
+            });
+          }
+          return prevQuestionnaire;
         }
-        return prevQuestionnaire;
       }
       
       // Данные изменились или анкета еще не установлена - обновляем
