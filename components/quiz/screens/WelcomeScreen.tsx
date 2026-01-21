@@ -20,12 +20,14 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
     <div style={{
       padding: 0,
       margin: 0,
+      marginTop: 0,
+      marginLeft: 0,
+      marginRight: 0,
       minHeight: '100vh',
       background: '#FFFFFF',
       display: 'flex',
       flexDirection: 'column',
       position: 'relative',
-      overflow: 'hidden',
       width: '100%',
       maxWidth: '100vw',
     }}>
@@ -38,6 +40,10 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
           maxHeight: '500px',
           position: 'relative',
           margin: 0,
+          padding: 0,
+          marginTop: 0,
+          marginLeft: 0,
+          marginRight: 0,
           borderBottomRightRadius: '40px',
           borderBottomLeftRadius: '40px',
           overflow: 'hidden',
@@ -50,6 +56,8 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
               height: '100%',
               objectFit: 'cover',
               display: 'block', // ФИКС: Предотвращает "пиксельную полоску" из-за baseline
+              margin: 0,
+              padding: 0,
             }}
           />
         </div>
