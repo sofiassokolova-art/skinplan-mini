@@ -64,7 +64,10 @@ export interface HandleNextParams {
 // Вспомогательная функция для подсчета общего количества вопросов в анкете
 // Теперь вопросы всегда нормализованы в questionnaire.questions
 const getTotalQuestionsCount = (questionnaire: Questionnaire | null): number => {
-  return questionnaire?.questions?.length ?? 0;
+  // ИСПРАВЛЕНО: Используем extractQuestionsFromQuestionnaire для получения вопросов из groups
+  if (!questionnaire) return 0;
+  const questions = extractQuestionsFromQuestionnaire(questionnaire);
+  return questions.length;
 };
 
 // Вспомогательная функция для обеспечения готовности вопросов
@@ -392,8 +395,9 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       });
 
       const newInfoIndex = initialInfoScreens.length;
-      // Получаем плоский массив вопросов (теперь всегда нормализован в questionnaire.questions)
-      const questions = questionnaireRef.current?.questions ?? [];
+      // ИСПРАВЛЕНО: Используем extractQuestionsFromQuestionnaire для получения вопросов из groups
+      // Вопросы могут быть в questionnaire.groups[].questions, а не в questionnaire.questions
+      const questions = extractQuestionsFromQuestionnaire(questionnaireRef.current);
       const totalQuestionsCount = questions.length;
 
       // ФИКС: Логируем переход к вопросам после последнего инфо-экрана
