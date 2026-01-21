@@ -132,8 +132,12 @@ export function useQuizData() {
       return [];
     }
     
-    return filterQuestions(allQuestionsRaw, answers, questionnaire);
-  }, [allQuestionsRaw, answers, questionnaire]);
+    return filterQuestions({
+      questions: allQuestionsRaw,
+      answers,
+      savedProgressAnswers: savedProgress?.answers,
+    });
+  }, [allQuestionsRaw, answers, savedProgress?.answers]);
   
   // Effective answers (current + saved)
   const effectiveAnswers = useMemo(() => 
@@ -170,4 +174,3 @@ export function useQuizData() {
     setAnswers,
   };
 }
-
