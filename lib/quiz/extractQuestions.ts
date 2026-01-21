@@ -16,7 +16,7 @@ export function extractQuestionsFromQuestionnaire(questionnaire: Questionnaire |
     return [];
   }
 
-  const groups = questionnaire.groups || [];
+  const groups = questionnaire.groups || questionnaire.questionGroups || [];
   const questions = questionnaire.questions || [];
 
   if (!Array.isArray(groups) || !Array.isArray(questions)) {
@@ -91,4 +91,3 @@ export function normalizeQuestion(question: Question): Question {
     answerOptions: question.answerOptions || question.options || [],
   };
 }
-
