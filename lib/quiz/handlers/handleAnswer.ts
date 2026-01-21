@@ -4,6 +4,7 @@
 import { clientLogger } from '@/lib/client-logger';
 import { safeSessionStorageSet } from '@/lib/storage-utils';
 import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
+import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
 import type { Question, Questionnaire } from '@/lib/quiz/types';
 
 export interface HandleAnswerParams {
@@ -96,11 +97,10 @@ export async function handleAnswer({
   }
 
   // ИСПРАВЛЕНО: Проверяем, что вопрос существует в анкете (не только в allQuestions)
+  // ИСПРАВЛЕНО: Используем extractQuestionsFromQuestionnaire для консистентности
   const questionExistsInAllQuestions = allQuestions.some((q: Question) => q.id === actualQuestionId);
-  const questionExistsInQuestionnaire = questionnaire?.questions?.some((q: Question) => q.id === actualQuestionId) ||
-                                       questionnaire?.groups?.some((g: any) => 
-                                         g?.questions?.some((q: Question) => q.id === actualQuestionId)
-                                       );
+  const questionnaireQuestions = extractQuestionsFromQuestionnaire(questionnaire);
+  const questionExistsInQuestionnaire = questionnaireQuestions.some((q: Question) => q.id === actualQuestionId);
   
   // ВАЖНО: Если вопрос не найден в анкете, все равно сохраняем ответ в state
   if (!questionExistsInAllQuestions && !questionExistsInQuestionnaire && allQuestions.length > 0) {

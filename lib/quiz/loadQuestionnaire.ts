@@ -3,6 +3,7 @@
 
 import { api } from '@/lib/api';
 import { clientLogger } from '@/lib/client-logger';
+import { extractQuestionsFromQuestionnaire } from './extractQuestions';
 
 import type { Questionnaire } from './types';
 
@@ -103,7 +104,9 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
   }
   // ИСПРАВЛЕНО: Проверяем ref вместо state, чтобы избежать race conditions
   // Это предотвращает повторные вызовы даже если state еще не обновился
-  const refQuestionsCount = questionnaireRef.current?.questions?.length ?? 0;
+  // ИСПРАВЛЕНО: Используем extractQuestionsFromQuestionnaire для получения вопросов из groups
+  const refQuestions = extractQuestionsFromQuestionnaire(questionnaireRef.current);
+  const refQuestionsCount = refQuestions.length;
   if (loadQuestionnaireAttemptedRef.current && questionnaireRef.current && refQuestionsCount > 0) {
     clientLogger.log('⛔ loadQuestionnaire() skipped: already attempted and questionnaire exists in ref', {
       questionnaireId: questionnaireRef.current?.id,
@@ -644,8 +647,11 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
       // Если ID совпадает и анкета уже установлена, не создаем новый объект
       // Это предотвращает лишние пересчеты useMemo
       if (prevQuestionnaire?.id === questionnaireToSet.id && prevQuestionnaire) {
-        const prevQuestionsCount = prevQuestionnaire.questions?.length ?? 0;
-        const nextQuestionsCount = questionnaireToSet.questions?.length ?? 0;
+        // ИСПРАВЛЕНО: Используем extractQuestionsFromQuestionnaire для консистентного подсчета вопросов
+        const prevQuestions = extractQuestionsFromQuestionnaire(prevQuestionnaire);
+        const nextQuestions = extractQuestionsFromQuestionnaire(questionnaireToSet);
+        const prevQuestionsCount = prevQuestions.length;
+        const nextQuestionsCount = nextQuestions.length;
         const prevGroupsCount = prevQuestionnaire.groups?.length ?? 0;
         const nextGroupsCount = questionnaireToSet.groups?.length ?? 0;
 

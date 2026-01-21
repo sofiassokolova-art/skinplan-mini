@@ -357,12 +357,14 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     }
 
     if (currentInfoScreenIndex === initialInfoScreens.length - 1) {
+      // ИСПРАВЛЕНО: Используем extractQuestionsFromQuestionnaire для логирования правильного количества вопросов
+      const questionsForLog = extractQuestionsFromQuestionnaire(questionnaireRef.current);
       clientLogger.warn('🔄 handleNext: последний начальный экран, переходим к вопросам', {
         currentInfoScreenIndex,
         initialInfoScreensLength: initialInfoScreens.length,
         hasQuestionnaire: !!questionnaire,
         hasQuestionnaireRef: !!questionnaireRef.current,
-        questionnaireQuestionsLength: questionnaireRef.current?.questions?.length,
+        questionnaireQuestionsLength: questionsForLog.length,
         loading,
         initCompleted: initCompletedRef.current,
       });
@@ -377,20 +379,24 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       );
 
       if (!ok) {
+        // ИСПРАВЛЕНО: Используем extractQuestionsFromQuestionnaire для логирования
+        const questionsForLog = extractQuestionsFromQuestionnaire(questionnaireRef.current);
         clientLogger.warn('❌ Не удалось загрузить вопросы для перехода к вопросам', {
           hasQuestionnaire: !!questionnaire,
           hasQuestionnaireRef: !!questionnaireRef.current,
           loading,
           initCompleted: initCompletedRef.current,
-          questionnaireQuestionsLength: questionnaireRef.current?.questions?.length,
+          questionnaireQuestionsLength: questionsForLog.length,
         });
         // Показываем ошибку пользователю
         setError('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
         return;
       }
 
+      // ИСПРАВЛЕНО: Используем extractQuestionsFromQuestionnaire для логирования
+      const questionsForLogReady = extractQuestionsFromQuestionnaire(questionnaireRef.current);
       clientLogger.warn('✅ handleNext: вопросы готовы, устанавливаем currentInfoScreenIndex', {
-        questionnaireQuestionsLength: questionnaireRef.current?.questions?.length,
+        questionnaireQuestionsLength: questionsForLogReady.length,
         newInfoIndex: initialInfoScreens.length,
       });
 
@@ -475,12 +481,13 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       }
 
       // КРИТИЧНО: Финальная проверка перед установкой индекса
+      // ИСПРАВЛЕНО: Исправлена логика - если индекс некорректный, устанавливаем 0 или последний валидный индекс
       if (nextQuestionIndex < 0 || nextQuestionIndex >= questions.length) {
         clientLogger.warn('⚠️ handleNext: некорректный nextQuestionIndex, исправляем', {
           nextQuestionIndex,
           questionsLength: questions.length,
         });
-        nextQuestionIndex = Math.max(0, Math.min(questions.length - 1, 0));
+        nextQuestionIndex = questions.length > 0 ? Math.max(0, Math.min(questions.length - 1, nextQuestionIndex)) : 0;
       }
 
       updateQuestionIndex(nextQuestionIndex, currentQuestionIndexRef, setCurrentQuestionIndex);
@@ -512,8 +519,10 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
 
     // ИСПРАВЛЕНО: Проверяем готовность вопросов с помощью questionnaireRef
     // Если мы на вопросах и вопросов нет в questionnaireRef, ждем их загрузки
+    // ИСПРАВЛЕНО: Используем extractQuestionsFromQuestionnaire для проверки вопросов из groups
     const isOnQuestions = currentInfoScreenIndex >= initialInfoScreens.length;
-    if (isOnQuestions && (!questionnaireRef.current || (questionnaireRef.current.questions?.length ?? 0) === 0)) {
+    const questionsFromRef = extractQuestionsFromQuestionnaire(questionnaireRef.current);
+    if (isOnQuestions && (!questionnaireRef.current || questionsFromRef.length === 0)) {
       // Используем ensureQuestionsReady для ожидания загрузки вопросов
       const ok = await ensureQuestionsReady(
         questionnaireRef,
@@ -526,7 +535,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         clientLogger.warn('⏸️ handleNext: вопросы не загружены и не удалось их загрузить - ждем...', {
           hasQuestionnaire: !!questionnaire,
           hasQuestionnaireRef: !!questionnaireRef.current,
-          questionsLength: questionnaireRef.current?.questions?.length ?? 0,
+          questionsLength: questionsFromRef.length,
           currentInfoScreenIndex,
           initialInfoScreensLength: initialInfoScreens.length,
         });

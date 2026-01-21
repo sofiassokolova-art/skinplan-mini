@@ -423,8 +423,10 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     }
 
     // Приоритет 3: Начальные инфо-экраны (показываем независимо от загрузки анкеты)
+    // ИСПРАВЛЕНО: Проверяем только state, так как ref обновляется синхронно через updateInfoScreenIndex
+    // Если currentInfoScreenIndex >= initialLen, значит мы прошли все начальные экраны и должны показывать вопросы
     const initialLen = initialInfoScreens.length;
-    const onInitial = currentInfoScreenIndex < initialLen && currentInfoScreenIndexRef.current < initialLen;
+    const onInitial = currentInfoScreenIndex < initialLen;
     if (onInitial) {
       console.log('📺 [useQuizComputed] viewMode: INITIAL_INFO (showing initial screens)', {
         currentInfoScreenIndex,
