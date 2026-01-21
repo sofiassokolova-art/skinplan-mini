@@ -42,7 +42,11 @@ export function validateAndGetPendingInfoScreen(params: ValidationParams): InfoS
 
   // ФИКС: Защита от множественных кликов
   if (handleNextInProgressRef.current) {
-    clientLogger.warn('⏸️ handleNext: уже выполняется, пропускаем повторный вызов');
+    clientLogger.warn('⏸️ handleNext: уже выполняется, пропускаем повторный вызов', {
+      handleNextInProgressRef: handleNextInProgressRef.current,
+      currentInfoScreenIndex,
+      isOnInitialInfoScreens,
+    });
     return null;
   }
 

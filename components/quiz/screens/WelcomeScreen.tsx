@@ -23,13 +23,18 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
       marginTop: 0,
       marginLeft: 0,
       marginRight: 0,
+      marginBottom: 0,
       minHeight: '100vh',
       background: '#FFFFFF',
       display: 'flex',
       flexDirection: 'column',
       position: 'relative',
       width: '100%',
-      maxWidth: '100vw',
+      maxWidth: '100%',
+      boxSizing: 'border-box',
+      overflowX: 'hidden',
+      left: 0,
+      right: 0,
     }}>
       {/* Картинка */}
       {screen.image && (
@@ -44,9 +49,11 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
           marginTop: 0,
           marginLeft: 0,
           marginRight: 0,
+          marginBottom: 0,
           borderBottomRightRadius: '40px',
           borderBottomLeftRadius: '40px',
           overflow: 'hidden',
+          boxSizing: 'border-box',
         }}>
           <img
             src={screen.image}
@@ -58,6 +65,7 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
               display: 'block', // ФИКС: Предотвращает "пиксельную полоску" из-за baseline
               margin: 0,
               padding: 0,
+              boxSizing: 'border-box',
             }}
           />
         </div>

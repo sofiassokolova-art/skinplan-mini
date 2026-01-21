@@ -199,7 +199,31 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     isDev,
   });
 
-  if (currentPendingInfoScreen === null && handleNextInProgressRef.current) {
+  // ИСПРАВЛЕНО: Проверяем валидацию более точно
+  // Если handleNextInProgressRef.current === true, значит предыдущий вызов еще не завершился
+  // В этом случае validateAndGetPendingInfoScreen вернет null, и мы должны вернуться
+  if (handleNextInProgressRef.current) {
+    console.log('⏸️ [handleNext] уже выполняется, пропускаем', {
+      handleNextInProgressRef: handleNextInProgressRef.current,
+      currentPendingInfoScreen: currentPendingInfoScreen?.id || null,
+    });
+    return; // Уже выполняется
+  }
+
+  // ИСПРАВЛЕНО: Для начальных экранов pendingInfoScreen может быть null - это нормально
+  // Проверяем только если мы НЕ на начальных экранах
+  const initialInfoScreens = getInitialInfoScreens();
+  const isOnInitialInfoScreens = currentInfoScreenIndex < initialInfoScreens.length;
+  
+  // Если валидация не прошла по другим причинам (не из-за handleNextInProgressRef)
+  // И мы не на начальных экранах (где pendingInfoScreen может быть null)
+  if (currentPendingInfoScreen === null && !handleNextInProgressRef.current && !isOnInitialInfoScreens) {
+    console.log('⏸️ [handleNext] валидация не прошла', {
+      handleNextInProgressRef: handleNextInProgressRef.current,
+      currentPendingInfoScreen: null,
+      isOnInitialInfoScreens,
+      currentInfoScreenIndex,
+    });
     return; // Валидация не прошла
   }
 
