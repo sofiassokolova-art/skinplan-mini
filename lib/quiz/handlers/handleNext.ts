@@ -1181,7 +1181,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     }
     
     // ИСПРАВЛЕНО: Проверяем инфо-экран для текущего вопроса, используя валидный индекс
-    if (!shouldSkipToNextQuestion && currentQuestion && !isRetakingQuiz && !currentPendingInfoScreen && hasAnsweredCurrentQuestion && !shouldBlockInfoScreen) {
+    if (!shouldSkipToNextQuestion && currentQuestion && !isRetakingQuiz && !currentPendingInfoScreen && hasAnsweredCurrentQuestion) {
       // ФИКС: Проверяем, что у вопроса есть код перед вызовом getInfoScreenAfterQuestion
       // Это предотвращает возврат info screen для вопросов без кода
       if (!currentQuestion.code) {
