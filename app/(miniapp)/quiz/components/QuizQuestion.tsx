@@ -1231,7 +1231,15 @@ export function QuizQuestion({
     <>
       {backButton}
 
-      <div className="animate-fade-in">
+      <div
+        className="animate-fade-in"
+        style={{
+          maxWidth: useLimeStyle ? '100%' : '640px',
+          margin: useLimeStyle ? '0' : '0 auto',
+          padding: useLimeStyle ? '0' : '0 20px',
+          boxSizing: 'border-box',
+        }}
+      >
         {/* Прогресс-бар (вне лайм-контейнера) */}
         {!useLimeStyle && <ProgressBar useLimeOffsets={false} />}
 

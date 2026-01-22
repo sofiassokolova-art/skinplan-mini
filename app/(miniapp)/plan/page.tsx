@@ -14,10 +14,13 @@ import type { GeneratedPlan, ProfileResponse } from '@/lib/api-types';
 import { clientLogger } from '@/lib/client-logger';
 // ОПТИМИЗАЦИЯ: Динамический импорт DotLottieReact для code splitting
 import dynamic from 'next/dynamic';
-const DotLottieReact = dynamic(() => import('@lottiefiles/dotlottie-react').then(mod => mod.DotLottieReact), { 
-  ssr: false,
-  loading: () => <div style={{ width: '200px', height: '200px' }} /> // Placeholder во время загрузки
-});
+const DotLottieReact = dynamic(
+  () => import('@lottiefiles/dotlottie-react').then(mod => mod.DotLottieReact),
+  {
+    ssr: false,
+    loading: () => null,
+  }
+);
 import { PLAN_TIMEOUTS } from '@/lib/config/timeouts';
 
 // РЕФАКТОРИНГ P2: Локальный тип данных для страницы плана
@@ -83,6 +86,32 @@ interface PlanData {
   products?: Map<number, unknown>; // РЕФАКТОРИНГ: any -> unknown
   scores?: unknown[]; // РЕФАКТОРИНГ: any[] -> unknown[]
 }
+
+const PlanLoadingView = ({ message }: { message: string }) => (
+  <div style={{
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '100vh',
+    background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+  }}>
+    <DotLottieReact
+      src="https://lottie.host/3c0e0e0e-0e0e-0e0e-0e0e-0e0e0e0e0e0e.json"
+      loop
+      autoplay
+      style={{ width: '200px', height: '200px' }}
+    />
+    <p style={{
+      marginTop: '20px',
+      fontSize: '18px',
+      color: '#0A5F59',
+      fontWeight: 600,
+    }}>
+      {message}
+    </p>
+  </div>
+);
 
 export default function PlanPage() {
   const router = useRouter();
@@ -1477,59 +1506,11 @@ export default function PlanPage() {
   if (loading || !planData) {
     // Показываем лоадер генерации, если план генерируется
     if (generatingState === 'generating') {
-      return (
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '100vh',
-          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-        }}>
-          <DotLottieReact
-            src="https://lottie.host/3c0e0e0e-0e0e-0e0e-0e0e-0e0e0e0e0e0e.json"
-            loop
-            autoplay
-            style={{ width: '200px', height: '200px' }}
-          />
-          <p style={{
-            marginTop: '20px',
-            fontSize: '18px',
-            color: '#0A5F59',
-            fontWeight: 600,
-          }}>
-            Генерируем ваш план...
-          </p>
-        </div>
-      );
+      return <PlanLoadingView message="Генерируем ваш план..." />;
     }
 
     // Обычный лоадер
-    return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-      }}>
-        <div style={{
-          width: '50px',
-          height: '50px',
-          border: '4px solid #E8FBF7',
-          borderTop: '4px solid #0A5F59',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
-        }} />
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
-      </div>
-    );
+    return <PlanLoadingView message="Загружаем план..." />;
   }
 
   // Если ошибка, показываем сообщение об ошибке
@@ -1579,23 +1560,7 @@ export default function PlanPage() {
   // Используем новый компонент, если есть plan28
   if (planData.plan28) {
     return (
-      <Suspense fallback={
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '100vh',
-        }}>
-          <div style={{
-            width: '50px',
-            height: '50px',
-            border: '4px solid #E8FBF7',
-            borderTop: '4px solid #0A5F59',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-          }} />
-        </div>
-      }>
+      <Suspense fallback={<PlanLoadingView message="Загружаем план..." />}>
         <PlanPageClientNew
           plan28={planData.plan28}
           products={planData.productsMap || planData.products || new Map()}
@@ -1611,23 +1576,7 @@ export default function PlanPage() {
   // Используем старый компонент для обратной совместимости
   if (planData.user && planData.profile && planData.plan) {
     return (
-      <Suspense fallback={
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '100vh',
-        }}>
-          <div style={{
-            width: '50px',
-            height: '50px',
-            border: '4px solid #E8FBF7',
-            borderTop: '4px solid #0A5F59',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-          }} />
-        </div>
-      }>
+      <Suspense fallback={<PlanLoadingView message="Загружаем план..." />}>
         <PlanPageClient
           user={planData.user}
           profile={planData.profile}

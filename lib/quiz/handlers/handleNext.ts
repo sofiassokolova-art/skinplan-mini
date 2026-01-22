@@ -1039,10 +1039,19 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     // ИСПРАВЛЕНО: БАГ #4 - используем ref вместо sessionStorage для justClosedInfoScreen
     // Проверяем флаг через ref - он очищается в finally блоке после перехода к следующему вопросу
     const justClosedInfoScreen = justClosedInfoScreenRef?.current || false;
-    
+
     // Фикс: блокируем показ инфо-экрана после того, как он был только что закрыт
     // Это предотвращает повторное появление инфо-экрана в обычном потоке викторины
-    const shouldBlockInfoScreen = justClosedInfoScreen;
+    // НО: не блокируем, если пользователь уже ответил на текущий вопрос (иначе инфо-экраны пропускаются)
+    const shouldBlockInfoScreen = justClosedInfoScreen && !hasAnsweredCurrentQuestion;
+
+    if (justClosedInfoScreen && hasAnsweredCurrentQuestion && justClosedInfoScreenRef) {
+      justClosedInfoScreenRef.current = false;
+      clientLogger.warn('🧹 ИНФО-СКРИН: Сбрасываем justClosedInfoScreenRef, чтобы показать инфо-экран после ответа', {
+        questionIndex: currentQuestionIndex,
+        questionCode: currentQuestion?.code,
+      });
+    }
     
     // ФИКС: Логирование для диагностики проблемы с застреванием на втором вопросе
     // КРИТИЧНО: Логируем всегда (не только в dev), чтобы понять, почему инфо-экран не показывается при первом проходе
