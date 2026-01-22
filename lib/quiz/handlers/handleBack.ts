@@ -30,6 +30,8 @@ export interface HandleBackParams {
 
   // refs
   currentInfoScreenIndexRef: React.MutableRefObject<number>;
+  currentQuestionIndexRef?: React.MutableRefObject<number>;
+  pendingInfoScreenRef?: React.MutableRefObject<InfoScreen | null>;
   handleBackInProgressRef: React.MutableRefObject<boolean>;
 
   // setters
@@ -77,6 +79,8 @@ export async function handleBack(params: HandleBackParams): Promise<void> {
     questionnaireRef,
     pendingInfoScreen,
     currentInfoScreenIndexRef,
+    currentQuestionIndexRef,
+    pendingInfoScreenRef,
     allQuestions,
     answers,
 
@@ -122,6 +126,47 @@ export async function handleBack(params: HandleBackParams): Promise<void> {
       return;
     }
 
+    // ИСПРАВЛЕНО: Нормализуем currentQuestionIndex в начале, если он выходит за границы
+    // Это предотвращает ошибки, когда индекс был установлен на неотфильтрованный список
+    let normalizedCurrentIndex = currentQuestionIndex;
+    if (normalizedCurrentIndex >= allQuestions.length && allQuestions.length > 0) {
+      // Если индекс выходит за границы, находим последний вопрос, на который есть ответ
+      // или устанавливаем на последний валидный индекс
+      const answeredQuestionIds = Object.keys(answers).map(id => Number(id)).filter(id => !isNaN(id));
+      const lastAnsweredQuestion = allQuestions
+        .map((q, idx) => ({ q, idx }))
+        .reverse()
+        .find(({ q }) => answeredQuestionIds.includes(q.id));
+      
+      if (lastAnsweredQuestion) {
+        normalizedCurrentIndex = lastAnsweredQuestion.idx;
+        clientLogger.log('🔧 [handleBack] нормализован индекс по последнему отвеченному вопросу', {
+          oldIndex: currentQuestionIndex,
+          newIndex: normalizedCurrentIndex,
+          allQuestionsLength: allQuestions.length,
+          questionCode: lastAnsweredQuestion.q.code,
+        });
+      } else {
+        normalizedCurrentIndex = Math.max(0, allQuestions.length - 1);
+        clientLogger.log('🔧 [handleBack] нормализован индекс на последний валидный', {
+          oldIndex: currentQuestionIndex,
+          newIndex: normalizedCurrentIndex,
+          allQuestionsLength: allQuestions.length,
+        });
+      }
+      
+      // ИСПРАВЛЕНО: Обновляем currentQuestionIndex, если он был нормализован
+      // Это предотвращает ошибки, когда компонент перерисовывается с невалидным индексом
+      if (normalizedCurrentIndex !== currentQuestionIndex) {
+        updateQuestionIndex(normalizedCurrentIndex, currentQuestionIndexRef, setCurrentQuestionIndex);
+        safeSessionStorageSet(scopedStorageKeys.CURRENT_QUESTION, String(normalizedCurrentIndex));
+        clientLogger.log('🔧 [handleBack] обновлен currentQuestionIndex после нормализации', {
+          oldIndex: currentQuestionIndex,
+          newIndex: normalizedCurrentIndex,
+        });
+      }
+    }
+
     // ===============================
     // 1) BACK внутри pendingInfoScreen
     // ===============================
@@ -130,35 +175,133 @@ export async function handleBack(params: HandleBackParams): Promise<void> {
       if (pendingInfoScreen.showAfterInfoScreenId) {
         const prev = INFO_SCREENS.find(s => s.id === pendingInfoScreen.showAfterInfoScreenId);
         if (prev) {
+          // ИСПРАВЛЕНО: Синхронно обновляем ref перед установкой state
+          if (pendingInfoScreenRef) {
+            pendingInfoScreenRef.current = prev;
+          }
           setPendingInfoScreen(prev);
-          // индексы не меняем, только сохраняем
-          void saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
+          // ИСПРАВЛЕНО: Используем нормализованный индекс
+          void saveProgressSafely(saveProgress, answers, normalizedCurrentIndex, currentInfoScreenIndex);
           return;
         }
       }
 
       // 1.2 иначе закрываем pending и возвращаемся к вопросу “после которого он был”
+      // ИСПРАВЛЕНО: Сохраняем showAfterQuestionCode перед очисткой pendingInfoScreen
+      const showAfterQuestionCode = pendingInfoScreen.showAfterQuestionCode;
+      // ИСПРАВЛЕНО: Синхронно очищаем ref перед установкой state в null
+      // Это предотвращает бесконечный лоадер, когда useQuizComputed проверяет effectivePending
+      if (pendingInfoScreenRef) {
+        pendingInfoScreenRef.current = null;
+        clientLogger.log('🔧 [handleBack] синхронно очищен pendingInfoScreenRef', {
+          showAfterQuestionCode,
+        });
+      }
       setPendingInfoScreen(null);
 
       let targetQuestionIndex = -1;
-      if (pendingInfoScreen.showAfterQuestionCode && allQuestions.length > 0) {
-        targetQuestionIndex = allQuestions.findIndex(q => q.code === pendingInfoScreen.showAfterQuestionCode);
+      if (showAfterQuestionCode && allQuestions.length > 0) {
+        targetQuestionIndex = allQuestions.findIndex(q => q.code === showAfterQuestionCode);
       }
       if (targetQuestionIndex === -1) {
-        if (currentQuestionIndex > 0) targetQuestionIndex = currentQuestionIndex - 1;
-        else return;
+        // ИСПРАВЛЕНО: Используем нормализованный индекс вместо текущего
+        if (normalizedCurrentIndex > 0) {
+          targetQuestionIndex = normalizedCurrentIndex - 1;
+        } else {
+          // ИСПРАВЛЕНО: Если нет предыдущего вопроса, возвращаемся к текущему
+          clientLogger.warn('⚠️ handleBack: нет предыдущего вопроса, остаемся на текущем', {
+            currentQuestionIndex,
+            normalizedCurrentIndex,
+            showAfterQuestionCode,
+            allQuestionsLength: allQuestions.length,
+          });
+          handleBackInProgressRef.current = false;
+          return;
+        }
       }
 
-      const currentQ = allQuestions[currentQuestionIndex] ?? null;
-      const nextAnswers = dropAnswer(answers, currentQ);
+      // ИСПРАВЛЕНО: Проверяем, что targetQuestionIndex валиден
+      // Если индекс выходит за границы (например, 22 в неотфильтрованном массиве),
+      // устанавливаем его на последний валидный индекс
+      let validTargetIndex = targetQuestionIndex;
+      if (targetQuestionIndex < 0) {
+        // Если вопрос не найден, используем нормализованный индекс
+        validTargetIndex = normalizedCurrentIndex > 0 ? normalizedCurrentIndex - 1 : 0;
+        clientLogger.warn('⚠️ handleBack: вопрос не найден по коду, используем предыдущий индекс', {
+          showAfterQuestionCode,
+          targetQuestionIndex,
+          validTargetIndex,
+          normalizedCurrentIndex,
+        });
+      } else if (targetQuestionIndex >= allQuestions.length) {
+        // ИСПРАВЛЕНО: Если индекс выходит за границы (например, 22 в неотфильтрованном массиве),
+        // находим вопрос по коду и устанавливаем индекс на его позицию, но ограничиваем максимальным валидным индексом
+        const questionByCode = allQuestions.find(q => q.code === showAfterQuestionCode);
+        if (questionByCode) {
+          const foundIndex = allQuestions.findIndex(q => q.code === showAfterQuestionCode);
+          validTargetIndex = foundIndex >= 0 ? Math.min(foundIndex, allQuestions.length - 1) : Math.min(normalizedCurrentIndex, allQuestions.length - 1);
+          clientLogger.warn('⚠️ handleBack: индекс выходит за границы, исправляем', {
+            showAfterQuestionCode,
+            targetQuestionIndex,
+            foundIndex,
+            validTargetIndex,
+            allQuestionsLength: allQuestions.length,
+          });
+        } else {
+          validTargetIndex = Math.min(normalizedCurrentIndex, allQuestions.length - 1);
+          clientLogger.error('❌ handleBack: невалидный targetQuestionIndex и вопрос не найден', {
+            targetQuestionIndex,
+            allQuestionsLength: allQuestions.length,
+            showAfterQuestionCode,
+            validTargetIndex,
+          });
+        }
+      }
+      
+      // ИСПРАВЛЕНО: Финальная проверка - убеждаемся, что validTargetIndex всегда валиден
+      if (validTargetIndex < 0 || validTargetIndex >= allQuestions.length) {
+        // Если индекс все еще невалиден, устанавливаем на последний валидный
+        validTargetIndex = Math.max(0, Math.min(allQuestions.length - 1, normalizedCurrentIndex));
+        clientLogger.error('❌ handleBack: validTargetIndex все еще невалиден, устанавливаем на последний валидный', {
+          previousValidTargetIndex: validTargetIndex,
+          newValidTargetIndex: validTargetIndex,
+          allQuestionsLength: allQuestions.length,
+          normalizedCurrentIndex,
+        });
+      }
+
+      // ИСПРАВЛЕНО: Когда мы возвращаемся к вопросу после инфо-экрана,
+      // мы НЕ должны удалять ответ на этот вопрос, потому что мы уже ответили на него
+      // Удаляем ответ только если мы переходим к другому вопросу (не к тому, после которого был инфо-экран)
+      let nextAnswers = answers;
+      const targetQ = allQuestions[validTargetIndex] ?? null;
+      
+      // Если мы возвращаемся к вопросу, после которого был показан инфо-экран,
+      // не удаляем ответ на него. Удаляем ответ только если validTargetIndex отличается
+      // от индекса вопроса, после которого был показан инфо-экран
+      if (targetQ && showAfterQuestionCode && targetQ.code !== showAfterQuestionCode) {
+        // Мы переходим к другому вопросу, удаляем ответ на текущий вопрос
+        const currentQ = allQuestions[normalizedCurrentIndex] ?? null;
+        if (currentQ) {
+          nextAnswers = dropAnswer(answers, currentQ);
+        }
+      } else if (!targetQ || (showAfterQuestionCode && targetQ.code === showAfterQuestionCode)) {
+        // Мы возвращаемся к вопросу, после которого был показан инфо-экран
+        // НЕ удаляем ответ на него
+        clientLogger.log('🔙 [handleBack] возвращаемся к вопросу после инфо-экрана, не удаляем ответ', {
+          showAfterQuestionCode,
+          targetQuestionIndex: validTargetIndex,
+          targetQuestionCode: targetQ?.code,
+        });
+      }
 
       // сначала обновляем UI
       setAnswers(nextAnswers);
-      updateQuestionIndex(targetQuestionIndex, undefined, setCurrentQuestionIndex);
+      updateQuestionIndex(validTargetIndex, undefined, setCurrentQuestionIndex);
 
       // потом сохраняем
-      safeSessionStorageSet(scopedStorageKeys.CURRENT_QUESTION, String(targetQuestionIndex));
-      void saveProgressSafely(saveProgress, nextAnswers, targetQuestionIndex, currentInfoScreenIndex);
+      safeSessionStorageSet(scopedStorageKeys.CURRENT_QUESTION, String(validTargetIndex));
+      void saveProgressSafely(saveProgress, nextAnswers, validTargetIndex, currentInfoScreenIndex);
       return;
     }
 
@@ -166,26 +309,49 @@ export async function handleBack(params: HandleBackParams): Promise<void> {
     // 2) На первом вопросе: назад в инфо-экраны
     // =========================================
     if (currentQuestionIndex === 0 && allQuestions.length > 0) {
-      // Check if we're in initial info flow - if so, step back instead of jumping to last
-      const isInInitialInfoFlow = isShowingInitialInfoScreen && currentInfoScreenIndex < initialInfoScreensLength;
+      // ИСПРАВЛЕНО: Всегда позволяем вернуться к начальным экранам с первого вопроса
+      // Проверяем, находимся ли мы в потоке начальных экранов
+      const isInInitialInfoFlow = currentInfoScreenIndex < initialInfoScreensLength;
 
       if (isInInitialInfoFlow && currentInfoScreenIndex > 0) {
-        // Step back through initial info screens
+        // Шаг назад по начальным экранам
         const newInfoScreenIndex = currentInfoScreenIndex - 1;
+        clientLogger.log('🔙 handleBack: шаг назад по начальным экранам', {
+          currentInfoScreenIndex,
+          newInfoScreenIndex,
+          initialInfoScreensLength,
+        });
         updateInfoScreenIndex(newInfoScreenIndex, currentInfoScreenIndexRef, setCurrentInfoScreenIndex);
+        // ИСПРАВЛЕНО: Синхронно очищаем ref перед установкой state в null
+        if (pendingInfoScreenRef) {
+          pendingInfoScreenRef.current = null;
+        }
         setPendingInfoScreen(null);
 
         safeSessionStorageSet(scopedStorageKeys.CURRENT_INFO_SCREEN, String(newInfoScreenIndex));
-        void saveProgressSafely(saveProgress, answers, currentQuestionIndex, newInfoScreenIndex);
+        // ИСПРАВЛЕНО: Используем нормализованный индекс
+        void saveProgressSafely(saveProgress, answers, normalizedCurrentIndex, newInfoScreenIndex);
         return;
       } else {
-        // Jump to last initial info screen (existing behavior)
+        // Переход к последнему начальному экрану (если мы после резюм-экрана или на первом вопросе)
         const newInfoScreenIndex = Math.max(0, initialInfoScreens.length - 1);
+        clientLogger.log('🔙 handleBack: переход к последнему начальному экрану с первого вопроса', {
+          currentQuestionIndex,
+          normalizedCurrentIndex,
+          currentInfoScreenIndex,
+          newInfoScreenIndex,
+          initialInfoScreensLength,
+        });
         updateInfoScreenIndex(newInfoScreenIndex, currentInfoScreenIndexRef, setCurrentInfoScreenIndex);
+        // ИСПРАВЛЕНО: Синхронно очищаем ref перед установкой state в null
+        if (pendingInfoScreenRef) {
+          pendingInfoScreenRef.current = null;
+        }
         setPendingInfoScreen(null);
 
         safeSessionStorageSet(scopedStorageKeys.CURRENT_INFO_SCREEN, String(newInfoScreenIndex));
-        void saveProgressSafely(saveProgress, answers, currentQuestionIndex, newInfoScreenIndex);
+        // ИСПРАВЛЕНО: Используем нормализованный индекс
+        void saveProgressSafely(saveProgress, answers, normalizedCurrentIndex, newInfoScreenIndex);
         return;
       }
     }
@@ -193,9 +359,10 @@ export async function handleBack(params: HandleBackParams): Promise<void> {
     // ======================
     // 3) Назад по вопросам
     // ======================
-    if (isOnQuestionsValue && currentQuestionIndex > 0) {
-      const currentQ = allQuestions[currentQuestionIndex] ?? null;
-      const prevIndex = currentQuestionIndex - 1;
+    if (isOnQuestionsValue && normalizedCurrentIndex > 0) {
+      // ИСПРАВЛЕНО: Используем нормализованный индекс
+      const currentQ = allQuestions[normalizedCurrentIndex] ?? null;
+      const prevIndex = normalizedCurrentIndex - 1;
       const prevQ = allQuestions[prevIndex];
 
       const nextAnswers = dropAnswer(answers, currentQ);
@@ -212,6 +379,10 @@ export async function handleBack(params: HandleBackParams): Promise<void> {
             next = getNextInfoScreenAfterScreen(last.id);
           }
 
+          // ИСПРАВЛЕНО: Синхронно обновляем ref перед установкой state
+          if (pendingInfoScreenRef) {
+            pendingInfoScreenRef.current = last;
+          }
           setPendingInfoScreen(last);
           updateQuestionIndex(prevIndex, undefined, setCurrentQuestionIndex);
 
@@ -242,7 +413,8 @@ export async function handleBack(params: HandleBackParams): Promise<void> {
       updateInfoScreenIndex(newInfoScreenIndex, currentInfoScreenIndexRef, setCurrentInfoScreenIndex);
 
       safeSessionStorageSet(scopedStorageKeys.CURRENT_INFO_SCREEN, String(newInfoScreenIndex));
-      void saveProgressSafely(saveProgress, answers, currentQuestionIndex, newInfoScreenIndex);
+      // ИСПРАВЛЕНО: Используем нормализованный индекс
+      void saveProgressSafely(saveProgress, answers, normalizedCurrentIndex, newInfoScreenIndex);
       return;
     }
 

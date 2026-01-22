@@ -20,6 +20,7 @@ export interface StartOverParams {
   setCurrentQuestionIndex: React.Dispatch<React.SetStateAction<number>>;
   setCurrentInfoScreenIndex: React.Dispatch<React.SetStateAction<number>>;
   currentInfoScreenIndexRef: React.MutableRefObject<number>;
+  currentQuestionIndexRef: React.MutableRefObject<number>;
   setShowResumeScreen: React.Dispatch<React.SetStateAction<boolean>>;
   hasResumedRef: React.MutableRefObject<boolean>;
   setHasResumed: React.Dispatch<React.SetStateAction<boolean>>;
@@ -83,9 +84,12 @@ export async function startOver(params: StartOverParams): Promise<void> {
     params.answersRef.current = {};
     params.answersCountRef.current = 0;
     params.lastRestoredAnswersIdRef.current = null;
+    
+    // ИСПРАВЛЕНО: Сбрасываем индексы и в state, и в ref, чтобы гарантировать полный сброс
     params.setCurrentQuestionIndex(0);
     params.setCurrentInfoScreenIndex(0);
     params.currentInfoScreenIndexRef.current = 0;
+    params.currentQuestionIndexRef.current = 0; // ИСПРАВЛЕНО: Сбрасываем currentQuestionIndexRef
 
     // ФИКС: Очищаем sessionStorage при очистке прогресса (scoped ключи)
     if (typeof window !== 'undefined') {
@@ -93,14 +97,44 @@ export async function startOver(params: StartOverParams): Promise<void> {
         // Очищаем скоупленные ключи
         sessionStorage.removeItem(QUIZ_CONFIG.getScopedKey('quiz_answers_backup', scope));
         sessionStorage.removeItem(QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN, scope));
+        sessionStorage.removeItem(QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION, scope)); // ИСПРАВЛЕНО: Добавлено
         sessionStorage.removeItem(QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE, scope));
         sessionStorage.removeItem(QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.QUIZ_COMPLETED, scope));
         sessionStorage.removeItem(QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED, scope));
         sessionStorage.removeItem(QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.INIT_CALLED, scope));
+        
+        // ИСПРАВЛЕНО: Также очищаем нескоупленные ключи для обратной совместимости
+        sessionStorage.removeItem('quiz_answers_backup');
+        sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
+        sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
+        sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE);
+        
+        // ИСПРАВЛЕНО: Очищаем все возможные scoped ключи currentQuestionCode
+        // Это необходимо, чтобы при переходе к вопросам не восстанавливался старый индекс
+        const allStorageKeys = Object.keys(sessionStorage);
+        for (const key of allStorageKeys) {
+          if (key.includes('currentQuestionCode') || key.includes('CURRENT_QUESTION_CODE')) {
+            sessionStorage.removeItem(key);
+            clientLogger.log('🧹 Удален ключ currentQuestionCode при startOver', { key });
+          }
+        }
 
-        // Устанавливаем железный флаг блокировки восстановления
+        // ИСПРАВЛЕНО: Устанавливаем флаг quiz_progress_cleared при "Начать заново" на резюм-экране
+        // Флаг блокирует восстановление прогресса из sessionStorage (локальный прогресс)
+        // НО НЕ блокирует установку savedProgress из серверного прогресса, если на сервере есть >= 2 ответов
+        // Флаг будет сброшен после ответа на первый вопрос в новой сессии
         sessionStorage.setItem(QUIZ_CONFIG.getScopedKey('quiz_progress_cleared', scope), 'true');
         params.setIsProgressCleared(true); // ФИКС: Обновляем локальное состояние
+        
+        clientLogger.log('✅ Все ключи sessionStorage очищены при startOver', {
+          scope,
+          clearedKeys: [
+            'quiz_answers_backup',
+            QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN,
+            QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION,
+            QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE,
+          ],
+        });
       } catch (err) {
         clientLogger.warn('⚠️ Не удалось очистить quiz данные из sessionStorage', err);
       }

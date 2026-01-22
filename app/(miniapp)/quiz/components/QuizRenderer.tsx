@@ -163,10 +163,11 @@ export const QuizRenderer = memo(function QuizRenderer({
   });
 
   // Функция для сохранения прогресса - мемоизируем чтобы избежать перерендеринга
+  // ИСПРАВЛЕНО: Используем -1 для метаданных вместо 0, чтобы избежать ошибки валидации
   const saveProgress = useCallback(async (answers: Record<number, string | string[]>, questionIndex: number, infoScreenIndex: number) => {
     return await saveProgressMutation.mutateAsync({
       questionnaireId: questionnaire?.id || 0,
-      questionId: 0, // Not used for progress saving
+      questionId: -1, // -1 используется для метаданных (сохранение прогресса без ответа на конкретный вопрос)
       answerValue: undefined,
       answerValues: undefined,
       questionIndex,
@@ -287,6 +288,7 @@ export const QuizRenderer = memo(function QuizRenderer({
       setCurrentQuestionIndex,
       setCurrentInfoScreenIndex,
       currentInfoScreenIndexRef: quizState.currentInfoScreenIndexRef,
+      currentQuestionIndexRef: quizState.currentQuestionIndexRef, // ИСПРАВЛЕНО: Добавлено
       setShowResumeScreen,
       hasResumedRef,
       setHasResumed,
@@ -471,6 +473,17 @@ export const QuizRenderer = memo(function QuizRenderer({
 
   // Create handlers
   const onAnswer = useCallback(async (questionId: number, value: string | string[]) => {
+    // ИСПРАВЛЕНО: Валидация questionId перед вызовом handleAnswer
+    if (!questionId || questionId <= 0) {
+      console.error('❌ [QuizRenderer] Invalid questionId in onAnswer:', {
+        questionId,
+        currentQuestionId: currentQuestion?.id,
+        currentQuestionCode: currentQuestion?.code,
+      });
+      setError('Ошибка: невалидный ID вопроса');
+      return;
+    }
+
     try {
       await handleAnswer({
         questionId,
@@ -641,6 +654,8 @@ export const QuizRenderer = memo(function QuizRenderer({
         saveProgress,
         questionnaireRef,
         currentInfoScreenIndexRef: quizState.currentInfoScreenIndexRef,
+        currentQuestionIndexRef: quizState.currentQuestionIndexRef,
+        pendingInfoScreenRef: quizState.pendingInfoScreenRef,
         pendingInfoScreen,
         handleBackInProgressRef: { current: false }, // Will be passed from parent
         isShowingInitialInfoScreen: screen === 'INITIAL_INFO',
@@ -734,7 +749,7 @@ export const QuizRenderer = memo(function QuizRenderer({
   if (screen === 'RETAKE') {
     return (
       <ScreenErrorBoundary componentName="RetakeScreen">
-        <Suspense fallback={<div>Loading retake screen...</div>}>
+        <Suspense fallback={<QuizInitialLoader />}>
           <ScreenErrorBoundary componentName="QuizRetakeScreen">
             <QuizRetakeScreen
               questionnaire={questionnaireFromQuery || questionnaireRef.current || questionnaire}
@@ -765,7 +780,7 @@ export const QuizRenderer = memo(function QuizRenderer({
   if (screen === 'RESUME' && savedProgress) {
     return (
       <ScreenErrorBoundary componentName="ResumeScreen">
-        <Suspense fallback={<div>Loading resume screen...</div>}>
+        <Suspense fallback={<QuizInitialLoader />}>
           <ScreenErrorBoundary componentName="QuizResumeScreen">
             <QuizResumeScreen
               savedProgress={savedProgress}
@@ -792,6 +807,13 @@ export const QuizRenderer = memo(function QuizRenderer({
       isSubmitting
     });
 
+    // ИСПРАВЛЕНО: Если pendingInfoScreen равен null, не рендерим QuizInfoScreen
+    // Это предотвращает ошибку при возврате назад после резюм-экрана
+    if (!pendingInfoScreen) {
+      console.warn('⚠️ [QuizRenderer] INFO screen but pendingInfoScreen is null, showing loader');
+      return <QuizInitialLoader />;
+    }
+
     const initialInfoScreens = getInitialInfoScreens();
     const isPendingInitialScreen = pendingInfoScreen
       ? initialInfoScreens.some((screen) => screen.id === pendingInfoScreen.id)
@@ -799,10 +821,10 @@ export const QuizRenderer = memo(function QuizRenderer({
 
     return (
       <ScreenErrorBoundary componentName="InfoScreen">
-        <Suspense fallback={<div>Loading info screen...</div>}>
+        <Suspense fallback={<QuizInitialLoader />}>
           <ScreenErrorBoundary componentName="QuizInfoScreen">
             <QuizInfoScreen
-            screen={pendingInfoScreen!}
+            screen={pendingInfoScreen}
             currentInfoScreenIndex={currentInfoScreenIndex}
             questionnaire={questionnaireFromQuery || questionnaireRef.current || questionnaire}
             questionnaireRef={questionnaireRef}
@@ -846,7 +868,7 @@ export const QuizRenderer = memo(function QuizRenderer({
 
     return (
       <ScreenErrorBoundary componentName="InitialInfoScreen">
-        <Suspense fallback={<div>Loading initial info screen...</div>}>
+        <Suspense fallback={<QuizInitialLoader />}>
           <ScreenErrorBoundary componentName="QuizInfoScreen">
             <QuizInfoScreen
             screen={currentInitialInfoScreen}
@@ -891,12 +913,77 @@ export const QuizRenderer = memo(function QuizRenderer({
   });
 
   // ФИКС: Проверяем что currentQuestion существует перед рендерингом
-  if (!currentQuestion) {
+  // ИСПРАВЛЕНО: Если currentQuestionIndex >= allQuestionsLength, значит все вопросы пройдены
+  // В этом случае нужно запустить финализацию, а не показывать ошибку
+  // ИСПРАВЛЕНО: Если screen === 'INFO' или есть pendingInfoScreen, не проверяем currentQuestion, так как мы на инфо-экране
+  if (!currentQuestion && screen === 'QUESTION') {
+    const isAllQuestionsCompleted = currentQuestionIndex >= allQuestionsLength && allQuestionsLength > 0;
+    
+    // ИСПРАВЛЕНО: Если currentQuestionIndex выходит за границы, но есть pendingInfoScreen,
+    // это означает, что мы показываем инфо-экран после последнего вопроса
+    // В этом случае не показываем ошибку, а позволяем показать инфо-экран
+    // Это предотвращает показ ошибки на секунду перед переключением на INFO screen
+    if (pendingInfoScreen) {
+      console.log('ℹ️ [QuizRenderer] currentQuestion null, но есть pendingInfoScreen, пропускаем проверку', {
+        currentQuestionIndex,
+        allQuestionsLength,
+        pendingInfoScreenId: pendingInfoScreen?.id,
+        screen,
+      });
+      // Не показываем ошибку, позволяем показать инфо-экран
+      // Компонент переключится на INFO screen в следующем рендере
+      return null;
+    }
+    
+    // ИСПРАВЛЕНО: Если currentQuestionIndex выходит за границы, но мы только что вернулись с инфо-экрана,
+    // пытаемся найти вопрос 'budget' и установить валидный индекс
+    if (currentQuestionIndex >= allQuestionsLength && allQuestionsLength > 0) {
+      const budgetQuestion = allQuestions.find(q => q.code === 'budget');
+      if (budgetQuestion) {
+        const budgetIndex = allQuestions.findIndex(q => q.code === 'budget');
+        if (budgetIndex >= 0 && budgetIndex < allQuestionsLength) {
+          console.log('🔧 [QuizRenderer] Исправляем индекс после возврата с инфо-экрана', {
+            currentQuestionIndex,
+            budgetIndex,
+            allQuestionsLength,
+          });
+          // Устанавливаем индекс на валидное значение
+          setCurrentQuestionIndex(budgetIndex);
+          if (quizState.currentQuestionIndexRef) {
+            quizState.currentQuestionIndexRef.current = budgetIndex;
+          }
+          // Возвращаем null, чтобы компонент перерендерился с правильным индексом
+          return null;
+        }
+      }
+    }
+    
+    if (isAllQuestionsCompleted) {
+      console.log('✅ [QuizRenderer] Все вопросы пройдены, запускаем финализацию', {
+        currentQuestionIndex,
+        allQuestionsLength,
+      });
+      // Запускаем финализацию автоматически
+      if (onSubmit && !isSubmitting) {
+        onSubmit();
+      }
+      // Показываем лоадер финализации
+      return (
+        <QuizFinalizingLoader
+          finalizing={true}
+          finalizingStep="answers"
+          finalizeError={null}
+        />
+      );
+    }
+    
     console.warn('⚠️ [QuizRenderer] currentQuestion is null, showing error screen', {
       screen,
       currentQuestionIndex,
       allQuestionsLength,
-      currentInitialInfoScreen: currentInitialInfoScreen?.id
+      currentInitialInfoScreen: currentInitialInfoScreen?.id,
+      isAllQuestionsCompleted,
+      hasPendingInfoScreen: !!pendingInfoScreen,
     });
     return (
       <QuizErrorScreen
@@ -905,6 +992,21 @@ export const QuizRenderer = memo(function QuizRenderer({
       />
     );
   }
+
+  // ИСПРАВЛЕНО: TypeScript не понимает, что currentQuestion не null после проверки выше
+  // Добавляем явную проверку для типизации
+  if (!currentQuestion) {
+    console.warn('⚠️ [QuizRenderer] currentQuestion is null after checks, showing error screen');
+    return (
+      <QuizErrorScreen
+        title="Ошибка загрузки"
+        message="Вопрос не найден. Попробуйте обновить страницу."
+      />
+    );
+  }
+
+  // ИСПРАВЛЕНО: TypeScript guard - после проверки выше currentQuestion гарантированно не null
+  const safeCurrentQuestion: Question = currentQuestion;
 
   return (
     <QuestionErrorBoundary componentName="QuestionScreen">
@@ -916,10 +1018,10 @@ export const QuizRenderer = memo(function QuizRenderer({
           paddingBottom: '20px',
         }}
       >
-        <Suspense fallback={<div>Loading question...</div>}>
+        <Suspense fallback={<QuizInitialLoader />}>
           <QuestionErrorBoundary componentName="QuizQuestion">
             <QuizQuestion
-            question={currentQuestion}
+            question={safeCurrentQuestion}
             currentQuestionIndex={currentQuestionIndex}
             allQuestionsLength={allQuestionsLength}
             answers={answers}
@@ -929,7 +1031,7 @@ export const QuizRenderer = memo(function QuizRenderer({
             onNext={onNext}
             onSubmit={onSubmit}
             onBack={onBack}
-            showBackButton={currentQuestionIndex > 0}
+            showBackButton={currentQuestionIndex > 0 || currentInfoScreenIndex > 0}
           />
           </QuestionErrorBoundary>
         </Suspense>

@@ -52,14 +52,37 @@ function ImageWithLoading({
         alignItems: 'center',
         justifyContent: 'center',
       }}>
-        <div style={{
-          fontSize: '14px',
-          color: '#999',
-          textAlign: 'center',
-          padding: '20px'
-        }}>
-          {imageError ? 'Изображение недоступно' : 'Загрузка...'}
-        </div>
+        {imageError ? (
+          <div style={{
+            fontSize: '14px',
+            color: '#999',
+            textAlign: 'center',
+            padding: '20px'
+          }}>
+            Изображение недоступно
+          </div>
+        ) : (
+          <>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              border: '3px solid rgba(0, 0, 0, 0.1)',
+              borderTop: '3px solid #000000',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+            }}></div>
+            <style jsx>{`
+              @keyframes spin {
+                0% {
+                  transform: rotate(0deg);
+                }
+                100% {
+                  transform: rotate(360deg);
+                }
+              }
+            `}</style>
+          </>
+        )}
       </div>
     );
   }
@@ -424,7 +447,7 @@ export function QuizInfoScreen({
               boxShadow: '0 4px 12px rgba(213, 254, 97, 0.3)',
             }}
           >
-            {screen.ctaText || 'Продолжить'}
+            Продолжить
           </button>
         </div>
       </div>
@@ -474,7 +497,7 @@ export function QuizInfoScreen({
             boxSizing: 'border-box',
           }}
         >
-          {/* Картинка с абсолютным позиционированием */}
+          {/* Картинка с абсолютным позиционированием - без контейнера для skin_features_intro */}
           {screen.image && (
             <div style={{
               position: 'absolute',
@@ -484,10 +507,15 @@ export function QuizInfoScreen({
               left: '60px',
               zIndex: 10,
             }}>
-              <ImageWithLoading
+              <img
                 src={screen.image}
                 alt={screen.title}
-                maxWidth="200px"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain',
+                  display: 'block',
+                }}
               />
             </div>
           )}
@@ -564,7 +592,7 @@ export function QuizInfoScreen({
               boxShadow: '0 4px 12px rgba(213, 254, 97, 0.3)',
             }}
           >
-            {screen.ctaText || 'Продолжить'}
+            Продолжить
           </button>
         </div>
       </div>
@@ -608,10 +636,15 @@ export function QuizInfoScreen({
               left: '60px',
               zIndex: 10,
             }}>
-              <ImageWithLoading
+              <img
                 src={screen.image}
                 alt={screen.title}
-                maxWidth="200px"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain',
+                  display: 'block',
+                }}
               />
             </div>
           )}
@@ -688,7 +721,7 @@ export function QuizInfoScreen({
               boxShadow: '0 4px 12px rgba(213, 254, 97, 0.3)',
             }}
           >
-            {screen.ctaText || 'Продолжить'}
+            Продолжить
           </button>
         </div>
       </div>
@@ -722,7 +755,7 @@ export function QuizInfoScreen({
             boxSizing: 'border-box',
           }}
         >
-          {/* Картинка с абсолютным позиционированием */}
+          {/* Картинка с абсолютным позиционированием - без контейнера для skin_features_intro */}
           {screen.image && (
             <div style={{
               position: 'absolute',
@@ -732,10 +765,15 @@ export function QuizInfoScreen({
               left: '60px',
               zIndex: 10,
             }}>
-              <ImageWithLoading
+              <img
                 src={screen.image}
                 alt={screen.title}
-                maxWidth="200px"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain',
+                  display: 'block',
+                }}
               />
             </div>
           )}
@@ -812,7 +850,7 @@ export function QuizInfoScreen({
               boxShadow: '0 4px 12px rgba(213, 254, 97, 0.3)',
             }}
           >
-            {screen.ctaText || 'Продолжить'}
+            Продолжить
           </button>
         </div>
       </div>
@@ -846,7 +884,7 @@ export function QuizInfoScreen({
             boxSizing: 'border-box',
           }}
         >
-          {/* Картинка с абсолютным позиционированием */}
+          {/* Картинка с абсолютным позиционированием - без контейнера для skin_features_intro */}
           {screen.image && (
             <div style={{
               position: 'absolute',
@@ -856,10 +894,15 @@ export function QuizInfoScreen({
               left: '60px',
               zIndex: 10,
             }}>
-              <ImageWithLoading
+              <img
                 src={screen.image}
                 alt={screen.title}
-                maxWidth="200px"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain',
+                  display: 'block',
+                }}
               />
             </div>
           )}
@@ -936,7 +979,7 @@ export function QuizInfoScreen({
               boxShadow: '0 4px 12px rgba(213, 254, 97, 0.3)',
             }}
           >
-            {screen.ctaText || 'Продолжить'}
+            Продолжить
           </button>
         </div>
       </div>
@@ -1220,7 +1263,7 @@ export function QuizInfoScreen({
           }
         }}
         disabled={isHandlingNext}
-        loadingText="Загрузка..."
+        loadingText="Продолжить"
       />
       </div>
     </>

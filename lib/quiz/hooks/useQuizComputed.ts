@@ -353,6 +353,10 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       !!quizStateMachine.questionnaire;
     const isLoadingAnyQuestionnaire = isLoadingQuestionnaire || isQuestionnaireLoading;
 
+    // ИСПРАВЛЕНО: Используем уже вычисленный savedProgressAnswersCount вместо пересчета
+    // const savedProgressAnswersCount уже вычислен выше как useMemo
+    const currentAnswersCount = Object.keys(answers || {}).length;
+
     console.log('🔍 [useQuizComputed] viewMode: computing', {
       isLoadingProgress,
       isLoadingQuestionnaire,
@@ -361,6 +365,12 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       progressError: !!progressError,
       hasQuestionnaire,
       savedProgressAnswersCount,
+      savedProgress: savedProgress ? {
+        answersCount: savedProgressAnswersCount,
+        questionIndex: savedProgress.questionIndex,
+        infoScreenIndex: savedProgress.infoScreenIndex,
+      } : null,
+      currentAnswersCount,
       isStartingOver,
       hasResumed,
       isRetakingQuiz,
@@ -376,7 +386,46 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       !!window.Telegram?.WebApp?.initData;
     const isTelegramInitDataMissing = !hasTelegramInitData;
 
-    // Приоритет 0: Ошибки загрузки (высший приоритет)
+    // ИСПРАВЛЕНО: Проверяем резюм-экран ДО проверки ошибок, чтобы он показывался сразу
+    // Это предотвращает показ первого экрана на секунду перед резюм-экраном
+    // ИСПРАВЛЕНО: Используем уже вычисленный savedProgressAnswersCount
+    const savedCount = savedProgressAnswersCount;
+    
+    // ИСПРАВЛЕНО: Добавлено подробное логирование для диагностики
+    console.log('🔍 [useQuizComputed] проверка резюм-экрана (самый высокий приоритет)', {
+      showResumeScreen,
+      savedCount,
+      currentAnswersCount,
+      hasResumed,
+      isStartingOver,
+      minRequired: QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN,
+      hasSavedProgress: !!savedProgress,
+      savedProgressAnswers: savedProgress?.answers ? Object.keys(savedProgress.answers) : [],
+      answersKeys: Object.keys(answers || {}),
+      shouldShowResume: !isStartingOver && 
+                        !hasResumed && 
+                        savedCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN &&
+                        currentAnswersCount === 0,
+    });
+    
+    const shouldShowResumeImmediately = !isStartingOver && 
+                                       !hasResumed && 
+                                       savedCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN &&
+                                       currentAnswersCount === 0;
+    
+    if (showResumeScreen || shouldShowResumeImmediately) {
+      console.log('📺 [useQuizComputed] viewMode: RESUME (highest priority - before errors)', {
+        showResumeScreen,
+        savedCount,
+        currentAnswersCount,
+        hasResumed,
+        isStartingOver,
+        shouldShowResumeImmediately
+      });
+      return 'RESUME';
+    }
+
+    // Приоритет 0: Ошибки загрузки (высший приоритет, но после резюм-экрана)
     if (questionnaireError || progressError) {
       console.log('📺 [useQuizComputed] viewMode: ERROR (data loading error)', {
         questionnaireError: questionnaireError?.message,
@@ -404,17 +453,18 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       return 'ERROR';
     }
 
-    // Приоритет 1: Резюм-экран
-    const savedCount = Object.keys(savedProgress?.answers ?? {}).length;
-    if (!isStartingOver && savedCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN && !hasResumed) {
-      console.log('📺 [useQuizComputed] viewMode: RESUME (saved progress available)', {
-        savedCount,
-        minRequired: QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN,
-        hasResumed,
-        isStartingOver
-      });
-      return 'RESUME';
-    }
+    // Приоритет 1: Резюм-экран (уже проверен выше, но оставляем для логирования)
+    console.log('🔍 [useQuizComputed] проверка резюм-экрана (после проверки ошибок)', {
+      showResumeScreen,
+      savedCount,
+      minRequired: QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN,
+      hasResumed,
+      isStartingOver,
+      shouldShowResumeImmediately,
+      currentAnswersCount,
+      hasSavedProgress: !!savedProgress,
+      savedProgressAnswers: savedProgress?.answers ? Object.keys(savedProgress.answers) : [],
+    });
 
     // Приоритет 3: Экран выбора тем при перепрохождении
     if (isRetakingQuiz && showRetakeScreen) {
@@ -423,15 +473,21 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     }
 
     // Приоритет 3: Начальные инфо-экраны (показываем независимо от загрузки анкеты)
-    // ИСПРАВЛЕНО: Проверяем только state, так как ref обновляется синхронно через updateInfoScreenIndex
-    // Если currentInfoScreenIndex >= initialLen, значит мы прошли все начальные экраны и должны показывать вопросы
+    // ИСПРАВЛЕНО: НЕ показываем начальные экраны, если должен показываться резюм-экран
+    // Это гарантирует, что резюм-экран показывается ВМЕСТО первого экрана анкеты
     const initialLen = initialInfoScreens.length;
     const onInitial = currentInfoScreenIndex < initialLen;
-    if (onInitial) {
+    const shouldShowResumeInstead = !isStartingOver && 
+                                     !hasResumed && 
+                                     savedCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN &&
+                                     currentAnswersCount === 0; // НЕ активно отвечает
+    
+    if (onInitial && !shouldShowResumeInstead) {
       console.log('📺 [useQuizComputed] viewMode: INITIAL_INFO (showing initial screens)', {
         currentInfoScreenIndex,
         currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
-        initialLen
+        initialLen,
+        shouldShowResumeInstead
       });
       return 'INITIAL_INFO';
     }
@@ -456,7 +512,9 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     }
 
     // Приоритет 6: Загрузка внутреннего состояния (loading из quizState)
-    if (isQuestionnaireLoading) {
+    // ИСПРАВЛЕНО: Не показываем LOADER, если анкета уже загружена в ref
+    // Это предотвращает застревание в LOADER после успешной загрузки анкеты
+    if (isQuestionnaireLoading && !hasQuestionnaire) {
       console.log('📺 [useQuizComputed] viewMode: LOADING_PROGRESS (waiting for internal state)', {
         isQuestionnaireLoading,
         hasQuestionnaire
@@ -494,8 +552,11 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     }
 
     // Приоритет 9: Pending инфо-экран между вопросами
+    // ИСПРАВЛЕНО: Проверяем pendingInfoScreen ПЕРЕД вопросами, чтобы не показывать ERROR
+    // когда currentQuestion становится null перед показом инфо-экрана
+    // ИСПРАВЛЕНО: Проверяем, что pendingInfoScreen не null, чтобы не показывать INFO экран без данных
     const effectivePending = pendingInfoScreenRef?.current ?? pendingInfoScreen;
-    if (effectivePending && !isRetakingQuiz) {
+    if (effectivePending && !isRetakingQuiz && effectivePending !== null) {
       console.log('📺 [useQuizComputed] viewMode: PENDING_INFO (pending info screen)', {
         effectivePending,
         pendingInfoScreenRef: pendingInfoScreenRef?.current,
@@ -506,7 +567,8 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     }
 
     // Приоритет 10: Вопросы
-    if (allQuestions.length > 0) {
+    // ИСПРАВЛЕНО: Не показываем ERROR если есть pendingInfoScreen, даже если currentQuestion null
+    if (allQuestions.length > 0 && !effectivePending) {
       console.log('📺 [useQuizComputed] viewMode: QUESTION (questions available)', {
         allQuestionsLength: allQuestions.length,
         firstQuestionId: allQuestions[0]?.id,
@@ -519,6 +581,16 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     }
 
     // Приоритет 11: Ошибка (нет вопросов)
+    // ИСПРАВЛЕНО: Не показываем ERROR если есть pendingInfoScreen - это нормальное состояние при переходе к инфо-экрану
+    // ИСПРАВЛЕНО: Проверяем, что effectivePending не null
+    if (effectivePending && effectivePending !== null) {
+      console.log('📺 [useQuizComputed] viewMode: PENDING_INFO (fallback check)', {
+        effectivePending,
+        allQuestionsLength: allQuestions.length,
+      });
+      return 'PENDING_INFO';
+    }
+    
     console.log('❌ [useQuizComputed] viewMode: ERROR (no questions, no screens, no progress)', {
       allQuestionsLength: allQuestions.length,
       allQuestionsRawLength: allQuestionsRaw.length,
@@ -528,7 +600,8 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       isOnInitial: currentInfoScreenIndex < initialInfoScreens.length,
       isLoadingProgress,
       isLoadingQuestionnaire,
-      isQuestionnaireLoading
+      isQuestionnaireLoading,
+      hasPendingInfoScreen: !!effectivePending
     });
     return 'ERROR';
   }, [
@@ -538,6 +611,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     questionnaireError,
     progressError,
     savedProgressAnswersCount,
+    showResumeScreen, // ИСПРАВЛЕНО: Добавлено, используется в строке 415
     isStartingOver,
     hasResumed,
     isRetakingQuiz,
@@ -547,6 +621,8 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     pendingInfoScreen,
     allQuestionsHash, // ФИКС: Используем хеш вместо length
     allQuestions.length, // Добавлено для логирования
+    answersRevision, // ИСПРАВЛЕНО: Добавлено для отслеживания изменений answers (используется в строке 358)
+    savedProgressRevision, // ИСПРАВЛЕНО: Добавлено для отслеживания изменений savedProgress (используется в строке 357)
   ]);
   
   // ФИКС: isShowingInitialInfoScreen теперь просто проверяет viewMode
@@ -621,20 +697,48 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       ? allQuestions
       : (allQuestionsPrevRef.current.length > 0 ? allQuestionsPrevRef.current : []);
 
+    // ИСПРАВЛЕНО: Проверяем, что индекс валиден и не выходит за границы
+    // Если индекс >= length, значит все вопросы пройдены - нужно перейти к финализации
     const isValidIndex = currentQuestionIndex >= 0 && currentQuestionIndex < questionsToUse.length;
+    const isOutOfBounds = currentQuestionIndex >= questionsToUse.length;
 
     console.log('🔍 [useQuizComputed] currentQuestion: validation', {
       currentQuestionIndex,
       questionsToUseLength: questionsToUse.length,
       isValidIndex,
+      isOutOfBounds,
       questionsToUseIds: questionsToUse.slice(0, 5).map(q => q?.id)
     });
 
+    // ИСПРАВЛЕНО: Если индекс выходит за границы, проверяем, не вернулись ли мы с инфо-экрана после вопроса 'budget'
+    // В этом случае возвращаем вопрос 'budget' вместо null
     if (!isValidIndex) {
-      console.log('❌ [useQuizComputed] currentQuestion: invalid index, returning null', {
-        currentQuestionIndex,
-        questionsToUseLength: questionsToUse.length
-      });
+      if (isOutOfBounds) {
+        // ИСПРАВЛЕНО: Если индекс выходит за границы, но есть ответ на вопрос 'budget',
+        // это означает, что мы вернулись с инфо-экрана после вопроса 'budget'
+        // В этом случае возвращаем вопрос 'budget' вместо null
+        const budgetQuestion = questionsToUse.find(q => q.code === 'budget');
+        const hasAnsweredBudget = budgetQuestion && effectiveAnswers[budgetQuestion.id] !== undefined;
+        
+        if (hasAnsweredBudget && budgetQuestion) {
+          console.log('🔧 [useQuizComputed] currentQuestion: индекс выходит за границы, но есть ответ на budget, возвращаем budget', {
+            currentQuestionIndex,
+            questionsToUseLength: questionsToUse.length,
+            budgetQuestionId: budgetQuestion.id,
+          });
+          return budgetQuestion;
+        }
+        
+        console.log('✅ [useQuizComputed] currentQuestion: все вопросы пройдены, возвращаем null для финализации', {
+          currentQuestionIndex,
+          questionsToUseLength: questionsToUse.length
+        });
+      } else {
+        console.log('❌ [useQuizComputed] currentQuestion: invalid index, returning null', {
+          currentQuestionIndex,
+          questionsToUseLength: questionsToUse.length
+        });
+      }
       return null;
     }
 

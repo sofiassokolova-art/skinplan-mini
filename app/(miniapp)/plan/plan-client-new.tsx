@@ -470,41 +470,6 @@ export function PlanPageClientNew({
       padding: '20px',
       paddingBottom: '100px',
     }}>
-      {/* Логотип */}
-      <div style={{
-        padding: '20px',
-        textAlign: 'center',
-        marginBottom: '20px',
-      }}>
-        <button
-          onClick={() => router.push('/home')}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: 0,
-            display: 'inline-block',
-          }}
-        >
-          <img
-            src="/skiniq-logo.png"
-            alt="SkinIQ"
-            style={{
-              height: '140px',
-              marginTop: '8px',
-              marginBottom: '8px',
-              transition: 'transform 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'scale(1.05)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'scale(1)';
-            }}
-          />
-        </button>
-      </div>
-
       {/* Header с целями */}
       <PlanHeader 
         mainGoals={plan28.mainGoals || []}

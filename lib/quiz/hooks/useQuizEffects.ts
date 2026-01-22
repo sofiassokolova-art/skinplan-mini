@@ -605,7 +605,59 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
       const answersId = JSON.stringify(progressAnswers);
       const progressAnswersCount = Object.keys(progressAnswers).length;
       
+      // ИСПРАВЛЕНО: НЕ восстанавливаем answers из React Query, если должен показываться резюм-экран
+      // Это необходимо, чтобы currentAnswersCount оставался 0, что позволит показать резюм-экран
+      const shouldShowResume = progressAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN;
+      
+      if (shouldShowResume && answersCountRef.current === 0) {
+        // Если должен показываться резюм-экран и answers пустые, НЕ восстанавливаем answers
+        // Вместо этого только устанавливаем savedProgress для показа резюм-экрана
+        // ИСПРАВЛЕНО: Удаляем флаг quiz_progress_cleared, если на сервере есть прогресс >= 2 ответов
+        // Это необходимо, чтобы показать резюм-экран даже после "Начать заново"
+        if (typeof window !== 'undefined') {
+          const scope = questionnaire?.id?.toString() || 'default';
+          const progressClearedKey = QUIZ_CONFIG.getScopedKey('quiz_progress_cleared', scope);
+          const isCleared = sessionStorage.getItem(progressClearedKey) === 'true' ||
+                          sessionStorage.getItem('quiz_progress_cleared') === 'true' ||
+                          sessionStorage.getItem('default:quiz_progress_cleared') === 'true';
+          
+          if (isCleared) {
+            try {
+              sessionStorage.removeItem(progressClearedKey);
+              sessionStorage.removeItem('quiz_progress_cleared');
+              sessionStorage.removeItem('default:quiz_progress_cleared');
+              // Также удаляем scoped ключи
+              const storageKeys = Object.keys(sessionStorage);
+              for (const key of storageKeys) {
+                if (key.includes(':quiz_progress_cleared') || key.endsWith(':quiz_progress_cleared')) {
+                  sessionStorage.removeItem(key);
+                }
+              }
+              if (isDev) {
+                clientLogger.log('🔧 [useQuizEffects] Удален флаг quiz_progress_cleared - на сервере есть прогресс >= 2 ответов', {
+                  progressAnswersCount,
+                  scope,
+                });
+              }
+            } catch (err) {
+              if (isDev) {
+                clientLogger.warn('⚠️ [useQuizEffects] Ошибка при удалении quiz_progress_cleared', err);
+              }
+            }
+          }
+        }
+        
+        setSavedProgress({
+          answers: progressAnswers,
+          questionIndex: quizProgressFromQuery.progress.questionIndex || 0,
+          infoScreenIndex: quizProgressFromQuery.progress.infoScreenIndex || 0,
+        });
+        // НЕ восстанавливаем answers - они останутся пустыми, что позволит показать резюм-экран
+        return;
+      }
+      
       // КРИТИЧНО: Восстанавливаем если answers пустые (после перемонтирования) или если количество увеличилось
+      // НО только если НЕ должен показываться резюм-экран
       if (answersId !== lastRestoredAnswersIdRef.current || progressAnswersCount > answersCountRef.current || answersCountRef.current === 0) {
         const currentAnswersId = JSON.stringify(answersRef.current);
         if (answersId !== currentAnswersId) {
@@ -698,6 +750,8 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
   // КРИТИЧНО: НЕ восстанавливаем индекс, если прогресс еще загружается
   // Это предотвращает восстановление индекса до загрузки savedProgress из React Query,
   // что может скрыть резюм-экран
+  // ИСПРАВЛЕНО: НЕ восстанавливаем индекс, если есть сохраненный прогресс с >= 2 ответами
+  // Это позволяет резюм-экрану показаться перед восстановлением индекса
   useEffect(() => {
     if (allQuestions.length === 0 || loading || !initCompletedRef.current) {
       return;
@@ -706,6 +760,26 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
     // КРИТИЧНО: НЕ восстанавливаем индекс, если прогресс еще загружается
     // Это предотвращает восстановление индекса до загрузки savedProgress из React Query
     if (isLoadingProgress) {
+      return;
+    }
+    
+    // ИСПРАВЛЕНО: НЕ восстанавливаем индекс, если есть сохраненный прогресс с >= 2 ответами
+    // Это позволяет резюм-экрану показаться перед восстановлением индекса
+    const savedProgressAnswersCount = savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0;
+    const currentAnswersCount = answersCountRef.current || Object.keys(answers || {}).length;
+    const shouldShowResume = savedProgressAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN && 
+                             currentAnswersCount === 0 && 
+                             !hasResumed && 
+                             !isStartingOver;
+    
+    if (shouldShowResume) {
+      clientLogger.log('⏸️ useQuizEffects: пропускаем восстановление currentQuestionIndex - должен показываться резюм-экран', {
+        savedProgressAnswersCount,
+        currentAnswersCount,
+        minRequired: QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN,
+        hasResumed,
+        isStartingOver
+      });
       return;
     }
     

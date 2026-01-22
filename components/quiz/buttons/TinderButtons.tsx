@@ -49,6 +49,13 @@ export function TinderButtons({
   // Для последнего tinder-экрана (want_improve) показываем кнопку "Получить план ухода"
   if (isLastInfoScreen && isTinderScreen && screenId === 'want_improve') {
     const handleGetPlanClick = async () => {
+      // ИСПРАВЛЕНО: Проверяем isSubmittingRef.current перед вызовом handleGetPlan
+      // Это предотвращает множественные вызовы submitAnswers
+      if (isSubmittingRef.current || isSubmitting) {
+        console.warn('⚠️ [TinderButtons] handleGetPlanClick: уже отправляется, пропускаем');
+        return;
+      }
+      
       await handleGetPlan({
         isSubmitting,
         questionnaire,
@@ -63,15 +70,23 @@ export function TinderButtons({
     
     const hasInitData = typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
     
+    // ИСПРАВЛЕНО: Используем isSubmittingRef.current для более надежной блокировки
+    const isCurrentlySubmitting = isSubmitting || isSubmittingRef.current;
+    
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px' }}>
         <button
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
+            // ИСПРАВЛЕНО: Дополнительная проверка перед вызовом
+            if (isSubmittingRef.current || isSubmitting) {
+              console.warn('⚠️ [TinderButtons] Кнопка заблокирована, пропускаем клик');
+              return;
+            }
             handleGetPlanClick();
           }}
-          disabled={isSubmitting}
+          disabled={isCurrentlySubmitting}
           style={{
             width: '100%',
             height: '64px',
@@ -82,36 +97,12 @@ export function TinderButtons({
             fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 600,
             fontSize: '18px',
-            cursor: isSubmitting ? 'not-allowed' : 'pointer',
+            cursor: isCurrentlySubmitting ? 'not-allowed' : 'pointer',
             boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
-            opacity: isSubmitting ? 0.7 : 1,
+            opacity: isCurrentlySubmitting ? 0.7 : 1,
           }}
         >
-          {isSubmitting ? 'Отправка...' : 'Получить план ухода'}
-        </button>
-        {/* Fallback кнопка для случаев, когда основная кнопка не работает */}
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleGetPlanClick();
-          }}
-          disabled={isSubmitting}
-          style={{
-            width: '100%',
-            padding: '12px 24px',
-            background: 'transparent',
-            color: '#0A5F59',
-            border: '1px solid #0A5F59',
-            borderRadius: '16px',
-            fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 500,
-            fontSize: '14px',
-            cursor: isSubmitting ? 'not-allowed' : 'pointer',
-            opacity: isSubmitting ? 0.5 : 1,
-          }}
-        >
-          Пропустить и получить план
+          {isCurrentlySubmitting ? 'Отправка...' : 'Получить план ухода'}
         </button>
         {!hasInitData && !isDev && (
           <p style={{

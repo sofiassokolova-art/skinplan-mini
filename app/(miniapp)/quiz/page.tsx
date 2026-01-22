@@ -53,6 +53,11 @@ function QuizPageContent() {
   // ФИКС: Используем ревизии вместо stringify для оптимизации
   const { answersRevision, savedProgressRevision } = useQuizContext();
 
+  // ИСПРАВЛЕНО: Стабилизируем isQuestionnaireLoading - используем только questionnaireQuery.isLoading
+  // loading из quizState может меняться часто и вызывать лишние ре-рендеры
+  // Объединяем оба источника загрузки в один стабильный флаг
+  const isQuestionnaireLoadingStable = questionnaireQuery.isLoading || loading;
+
   const quizComputedResult = useQuizComputed({
     questionnaire,
     answers,
@@ -68,8 +73,8 @@ function QuizPageContent() {
     isStartingOver,
     pendingInfoScreen,
     isLoadingProgress: progressQuery.isLoading,
-    isLoadingQuestionnaire: questionnaireQuery.isLoading,
-    isQuestionnaireLoading: loading, // Добавляем состояние loading из quizState
+    isLoadingQuestionnaire: isQuestionnaireLoadingStable, // ИСПРАВЛЕНО: Используем стабильное значение
+    isQuestionnaireLoading: isQuestionnaireLoadingStable, // ИСПРАВЛЕНО: Используем стабильное значение
     questionnaireError: questionnaireQuery.error,
     progressError: progressQuery.error,
     questionnaireRef,

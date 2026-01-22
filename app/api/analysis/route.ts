@@ -32,19 +32,36 @@ export function calculateSkinIssues(
   const answersMap: Record<string, any> = {};
   for (const answer of userAnswers) {
     const questionCode = answer.question?.code || '';
-    const value = answer.answerValue || 
-      (Array.isArray(answer.answerValues) ? answer.answerValues[0] : null);
-    answersMap[questionCode] = value;
+
+    // Для multi-choice вопросов берем лейблы опций, для single-choice - лейбл опции
+    if (answer.answerValues && Array.isArray(answer.answerValues) && answer.answerValues.length > 0) {
+      // Для multi-choice - массив лейблов опций
+      const labels: string[] = [];
+      for (const value of answer.answerValues) {
+        const option = answer.question?.answerOptions?.find(opt => opt.value === value);
+        if (option?.label) {
+          labels.push(option.label);
+        } else {
+          // Fallback на value, если лейбл не найден
+          labels.push(String(value));
+        }
+      }
+      answersMap[questionCode] = labels;
+    } else if (answer.answerValue) {
+      // Для single-choice - лейбл опции или само значение
+      const option = answer.question?.answerOptions?.find(opt => opt.value === answer.answerValue);
+      answersMap[questionCode] = option?.label || answer.answerValue;
+    }
   }
 
   // 1. Акне / высыпания (согласно ТЗ)
-  const acneConcern = answersMap.skin_concerns?.includes('acne') || 
-                      answersMap.skin_concerns?.includes('акне') ||
-                      answersMap.skin_concerns?.includes('высыпания');
-  const acneDiagnosis = answersMap.diagnoses?.includes('acne') || 
-                        answersMap.diagnoses?.includes('акне');
-  const hasIsotretinoin = answersMap.current_medications?.includes('isotretinoin') ||
-                         answersMap.current_medications?.includes('изотретиноин');
+  const acneConcern = answersMap.skin_concerns?.some((c: string) =>
+    c.includes('Акне') || c.includes('высыпания') || c.includes('acne') || c.includes('акне')
+  );
+  const acneDiagnosis = answersMap.medical_diagnoses?.includes('acne') ||
+                        answersMap.medical_diagnoses?.includes('акне');
+  const hasIsotretinoin = answersMap.oral_medications?.includes('isotretinoin') ||
+                         answersMap.oral_medications?.includes('изотретиноин');
   const acneLevel = profile.acneLevel || 0;
   const hasActiveInflammations = acneLevel >= 4;
   
@@ -87,7 +104,8 @@ export function calculateSkinIssues(
 
   // 2. Жирность и блеск кожи (согласно ТЗ)
   const oilinessScore = skinScores.find(s => s.axis === 'oiliness')?.value || 50;
-  const shineTime = answersMap.skin_shine_time;
+  // Нет прямого вопроса о времени блеска, используем тип кожи
+  const shineTime = answersMap.skin_type === 'oily' || answersMap.skin_type === 'combination_oily' ? '2-3_hours' : null;
   
   if (oilinessScore >= 60) {
     let severityLabel: string;
@@ -114,10 +132,11 @@ export function calculateSkinIssues(
   // 3. Сухость/стянутость
   const hydrationScore = skinScores.find(s => s.axis === 'hydration')?.value || 100;
   if (hydrationScore <= 60) {
-    const hasAtopic = answersMap.diagnoses?.includes('atopic_dermatitis') ||
-                     answersMap.diagnoses?.includes('атопический дерматит');
-    const hasTightness = answersMap.skin_concerns?.includes('tightness') ||
-                        answersMap.skin_concerns?.includes('стянутость');
+    const hasAtopic = answersMap.medical_diagnoses?.includes('atopic_dermatitis') ||
+                     answersMap.medical_diagnoses?.includes('атопический дерматит');
+    const hasTightness = answersMap.skin_concerns?.some((c: string) =>
+      c.includes('Сухость') || c.includes('стянутость') || c.includes('dehydration') || c.includes('обезвоженность')
+    ) || answersMap.skin_type === 'dry' || answersMap.skin_type === 'combination_dry';
     
     issues.push({
       id: 'dryness',
@@ -150,8 +169,9 @@ export function calculateSkinIssues(
   // 5. Морщины (согласно ТЗ: возраст + жалоба)
   const ageGroup = profile.ageGroup || '';
   const photoagingScore = skinScores.find(s => s.axis === 'photoaging')?.value || 0;
-  const hasWrinkleConcern = answersMap.skin_concerns?.includes('wrinkles') ||
-                           answersMap.skin_concerns?.includes('морщины');
+  const hasWrinkleConcern = answersMap.skin_concerns?.some((c: string) =>
+    c.includes('Морщины') || c.includes('wrinkles') || c.includes('морщины')
+  );
   
   // Добавляем проблему морщин, если есть возраст + жалоба (согласно ТЗ)
   if (hasWrinkleConcern) {
@@ -171,10 +191,10 @@ export function calculateSkinIssues(
   // 6. Краснота, раздражение, чувствительность
   const sensitivityLevel = profile.sensitivityLevel || 'low';
   const rednessScore = skinScores.find(s => s.axis === 'redness')?.value || 50;
-  const hasRosacea = answersMap.diagnoses?.includes('rosacea') ||
-                    answersMap.diagnoses?.includes('розацеа');
-  const hasDermatitis = answersMap.diagnoses?.includes('dermatitis') ||
-                       answersMap.diagnoses?.includes('дерматит');
+  const hasRosacea = answersMap.medical_diagnoses?.includes('rosacea') ||
+                    answersMap.medical_diagnoses?.includes('розацеа');
+  const hasDermatitis = answersMap.medical_diagnoses?.includes('dermatitis') ||
+                       answersMap.medical_diagnoses?.includes('дерматит');
   
   if (sensitivityLevel === 'high' || sensitivityLevel === 'very_high' || 
       rednessScore >= 50 || hasRosacea || hasDermatitis) {
@@ -202,11 +222,12 @@ export function calculateSkinIssues(
   }
 
   // 8. Зона под глазами
-  const sleepHabits = answersMap.habits || [];
+  const sleepHabits = answersMap.lifestyle_habits || [];
   const hasSleepIssue = Array.isArray(sleepHabits) && 
                        sleepHabits.some((h: string) => h.includes('недосып') || h.includes('мало сплю'));
-  const hasDarkCircles = answersMap.skin_concerns?.includes('dark_circles') ||
-                        answersMap.skin_concerns?.includes('темные круги');
+  const hasDarkCircles = answersMap.skin_concerns?.some((c: string) =>
+    c.includes('темные круги') || c.includes('dark_circles') || c.includes('круги под глазами')
+  );
   
   if (hasSleepIssue || hasDarkCircles) {
     issues.push({

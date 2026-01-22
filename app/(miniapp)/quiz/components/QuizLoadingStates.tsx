@@ -5,29 +5,20 @@
 'use client';
 
 import React from 'react';
+import { QuizInitialLoader } from './QuizInitialLoader';
 
 /**
  * Экран загрузки вопросов
  */
 export function LoadingQuestions(): React.ReactElement {
-  return (
-    <div className="page-container center-content">
-      <div className="text-primary text-lg text-center">
-        Загрузка вопросов...
-      </div>
-    </div>
-  );
+  return <QuizInitialLoader />;
 }
 
 /**
  * Экран загрузки вопроса (после resume)
  */
 export function LoadingQuestion(): React.ReactElement {
-  return (
-    <div className="page-padding text-center">
-      <div className="text-muted">Загрузка вопроса...</div>
-    </div>
-  );
+  return <QuizInitialLoader />;
 }
 
 /**

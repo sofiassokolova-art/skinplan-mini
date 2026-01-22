@@ -201,6 +201,30 @@ export async function generate28DayPlan(
     } else if (answer.answerValues) {
       answers[code] = JSON.parse(JSON.stringify(answer.answerValues));
     }
+
+    // ИСПРАВЛЕНО: Для skin_concerns также сохраняем лейблы опций для calculateSkinAxes
+    if (code === 'skin_concerns' && answer.answerValues && Array.isArray(answer.answerValues)) {
+      const concernLabels: string[] = [];
+      for (const value of answer.answerValues) {
+        const option = answer.question.answerOptions?.find(opt => opt.value === value);
+        if (option?.label) {
+          concernLabels.push(option.label);
+        }
+      }
+      answers['skin_concerns_labels'] = concernLabels;
+    }
+
+    // ИСПРАВЛЕНО: Для medical_diagnoses также сохраняем лейблы опций
+    if (code === 'medical_diagnoses' && answer.answerValues && Array.isArray(answer.answerValues)) {
+      const diagnosisLabels: string[] = [];
+      for (const value of answer.answerValues) {
+        const option = answer.question.answerOptions?.find(opt => opt.value === value);
+        if (option?.label) {
+          diagnosisLabels.push(option.label);
+        }
+      }
+      answers['medical_diagnoses_labels'] = diagnosisLabels;
+    }
   });
 
   // Дерматологический анализ - рассчитываем 6 осей кожи
@@ -210,16 +234,16 @@ export async function generate28DayPlan(
   const questionnaireAnswers: QuestionnaireAnswers = {
     skinType: answers.skin_type || answers.skinType || 'normal', // ИСПРАВЛЕНО: из answers, не из profile
     age: answers.age || answers.age_group || answers.ageGroup || '25-34', // ИСПРАВЛЕНО: из answers
-    concerns: Array.isArray(answers.skin_concerns) ? answers.skin_concerns : [],
-    diagnoses: Array.isArray(answers.diagnoses) ? answers.diagnoses : [],
+    concerns: Array.isArray(answers.skin_concerns_labels) ? answers.skin_concerns_labels : (Array.isArray(answers.skin_concerns) ? answers.skin_concerns : []),
+    diagnoses: Array.isArray(answers.medical_diagnoses_labels) ? answers.medical_diagnoses_labels : (Array.isArray(answers.medical_diagnoses) ? answers.medical_diagnoses : []),
     allergies: Array.isArray(answers.allergies) ? answers.allergies : [],
-    seasonChange: answers.season_change || answers.seasonChange,
-    habits: Array.isArray(answers.habits) ? answers.habits : [],
-    retinolReaction: answers.retinol_reaction || answers.retinolReaction,
-    pregnant: answers.pregnant || answers.has_pregnancy || false, // ИСПРАВЛЕНО: из answers
+    seasonChange: answers.seasonal_changes || answers.season_change || answers.seasonChange,
+    habits: Array.isArray(answers.lifestyle_habits) ? answers.lifestyle_habits : [],
+    retinolReaction: answers.retinoid_reaction || answers.retinolReaction,
+    pregnant: answers.pregnancy_breastfeeding || answers.pregnant || answers.has_pregnancy || false, // ИСПРАВЛЕНО: из answers
     spfFrequency: answers.spf_frequency || answers.spfFrequency,
     sunExposure: answers.sun_exposure || answers.sunExposure,
-    sensitivityLevel: answers.sensitivity_level || answers.sensitivityLevel || 'low', // ИСПРАВЛЕНО: из answers
+    sensitivityLevel: answers.skin_sensitivity || answers.sensitivity_level || answers.sensitivityLevel || 'low', // ИСПРАВЛЕНО: из answers
     acneLevel: answers.acne_level || (typeof answers.acneLevel === 'number' ? answers.acneLevel : 0), // ИСПРАВЛЕНО: из answers
     ...answers, // дополнительные поля
   };
@@ -287,8 +311,30 @@ export async function generate28DayPlan(
     ? medicalMarkers.diagnoses
     : (Array.isArray(answers.diagnoses) ? answers.diagnoses : []);
   
+  // ИСПРАВЛЕНО: Маппинг значений бюджета из БД (budget_1, budget_2, budget_3) на читаемые
+  // Также поддерживаем старые значения для обратной совместимости
+  const budgetMapping: Record<string, 'бюджетный' | 'средний' | 'премиум' | 'любой'> = {
+    // Новые значения из БД
+    'budget_1': 'бюджетный',
+    'budget_2': 'средний',
+    'budget_3': 'премиум',
+    'budget_4': 'любой',
+    // Старые значения (для обратной совместимости)
+    'бюджетный': 'бюджетный',
+    'средний': 'средний',
+    'премиум': 'премиум',
+    'любой': 'любой',
+    'budget': 'бюджетный',
+    'medium': 'средний',
+    'premium': 'премиум',
+    'any': 'любой',
+  };
+
+  const rawBudget = answers.budget || 'средний';
+  const normalizedBudget = budgetMapping[rawBudget] || rawBudget;
+
   const profileClassification: ProfileClassification = {
-    focus: goals.filter((g: string) => 
+    focus: goals.filter((g: string) =>
       ['Акне и высыпания', 'Сократить видимость пор', 'Выровнять пигментацию', 'Морщины и мелкие линии'].includes(g)
     )[0] || 'general', // Берем первую цель как основной фокус
     skinType: profile.skinType || 'normal',
@@ -296,7 +342,7 @@ export async function generate28DayPlan(
     diagnoses: normalizedDiagnoses, // ИСПРАВЛЕНО: Используем нормализованные diagnoses
     ageGroup: profile.ageGroup || '25-34',
     exclude: Array.isArray(answers.exclude_ingredients) ? answers.exclude_ingredients : [],
-    budget: answers.budget || 'средний',
+    budget: normalizedBudget,
     pregnant: profile.hasPregnancy || false,
     stepsPreference: answers.care_steps || 'средний',
     allergies: Array.isArray(answers.allergies) ? answers.allergies : [],
@@ -704,17 +750,48 @@ export async function generate28DayPlan(
     });
   }
 
-  // ВАЖНО: Если используем продукты из RecommendationSession, используем их ВСЕ без фильтрации
-  // Это гарантирует синхронизацию с главной страницей
-  // Продукты из RecommendationSession уже прошли все проверки и фильтрацию
+  // ИСПРАВЛЕНО: Применяем дополнительную фильтрацию продуктов из RecommendationSession
+  // на основе текущего профиля пользователя для гарантии персонализации
+  // Это важно, если RecommendationSession был создан для другого профиля (например, при retake)
   let filteredProducts: any[];
   
   if (recommendationProducts.length > 0) {
-    // Используем все продукты из RecommendationSession - они уже отфильтрованы и синхронизированы с главной
-    filteredProducts = recommendationProducts;
-    logger.info('Using all products from RecommendationSession (no additional filtering)', {
+    // ИСПРАВЛЕНО: Применяем фильтрацию на основе текущего профиля для персонализации
+    // Это гарантирует, что продукты соответствуют текущему профилю пользователя
+    const { filterProductsBasic } = await import('./unified-product-filter');
+    
+    // Нормализуем продукты к ProductWithBrand перед фильтрацией
+    const normalizedProducts = recommendationProducts.map((product: any) => {
+      const productBrand = product.brand as any;
+      return {
+        id: product.id,
+        name: product.name,
+        brand: {
+          id: productBrand?.id || 0,
+          name: productBrand?.name || '',
+          isActive: productBrand?.isActive ?? true,
+        },
+        step: product.step || '',
+        category: product.category || null,
+        price: product.price ?? null,
+        imageUrl: product.imageUrl || null,
+        isHero: product.isHero ?? false,
+        priority: product.priority ?? 0,
+        skinTypes: product.skinTypes || [],
+        published: product.published ?? true,
+        activeIngredients: product.activeIngredients || [],
+      } as ProductWithBrand;
+    });
+    
+    // Применяем фильтрацию на основе текущего профиля
+    filteredProducts = await filterProductsBasic(normalizedProducts, profileClassification, 'soft');
+    
+    logger.info('Products from RecommendationSession filtered by current profile', {
       count: filteredProducts.length,
-      userId
+      originalCount: recommendationProducts.length,
+      userId,
+      profileSkinType: profileClassification.skinType,
+      profileBudget: profileClassification.budget,
     });
   } else {
     // ИСПРАВЛЕНО: Используем единый фильтр продуктов вместо дублирующейся логики

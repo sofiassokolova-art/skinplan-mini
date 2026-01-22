@@ -36,8 +36,13 @@ export async function handleGetPlan(params: HandleGetPlanParams): Promise<void> 
 
   clientLogger.log('🔘 handleGetPlan вызван');
   
-  if (isSubmitting) {
-    clientLogger.warn('⚠️ Уже отправляется');
+  // ИСПРАВЛЕНО: Проверяем isSubmittingRef.current как источник истины
+  // Это предотвращает множественные вызовы submitAnswers
+  if (isSubmittingRef.current || isSubmitting) {
+    clientLogger.warn('⚠️ Уже отправляется', {
+      isSubmittingRef: isSubmittingRef.current,
+      isSubmitting,
+    });
     return;
   }
   
@@ -65,9 +70,8 @@ export async function handleGetPlan(params: HandleGetPlanParams): Promise<void> 
   }
   
   clientLogger.log('🚀 Запуск submitAnswers...');
-  // ИСПРАВЛЕНО: Устанавливаем isSubmitting СИНХРОННО перед вызовом submitAnswers
-  // Это гарантирует, что лоадер покажется сразу после нажатия кнопки
-  isSubmittingRef.current = true;
+  // ИСПРАВЛЕНО: НЕ устанавливаем isSubmittingRef здесь, так как submitAnswers сам это делает
+  // Устанавливаем только состояние для UI, чтобы показать лоадер
   setIsSubmitting(true);
   setError(null);
   setLoading(false); // Убираем лоадер "Загрузка анкеты..." если он показывался
@@ -93,8 +97,9 @@ export async function handleGetPlan(params: HandleGetPlanParams): Promise<void> 
     // Убеждаемся, что errorMessage всегда строка
     const safeErrorMessage = String(errorMessage || 'Ошибка отправки ответов. Попробуйте еще раз.');
     setError(safeErrorMessage);
-    // ИСПРАВЛЕНО: Устанавливаем state, ref синхронизируется автоматически через useEffect
+    // ИСПРАВЛЕНО: Сбрасываем состояние и ref при ошибке
     setIsSubmitting(false);
+    isSubmittingRef.current = false;
   }
 }
 

@@ -15,7 +15,7 @@ export function FixedContinueButton({
   ctaText,
   onClick,
   disabled = false,
-  loadingText = 'Загрузка...',
+  loadingText = 'Продолжить',
 }: FixedContinueButtonProps) {
   if (!ctaText) return null;
 

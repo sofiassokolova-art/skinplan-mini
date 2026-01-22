@@ -496,6 +496,39 @@ export async function loadSavedProgressFromServer({
         return;
       }
       
+      // ИСПРАВЛЕНО: Если на сервере есть прогресс >= 2 ответов, удаляем флаг quiz_progress_cleared
+      // Это необходимо, чтобы показать резюм-экран даже после "Начать заново"
+      // Флаг должен блокировать только восстановление из sessionStorage, но не установку из серверного прогресса
+      if (hasEnoughAnswers && typeof window !== 'undefined') {
+        try {
+          // Пробуем найти scope из questionnaire или используем дефолтный
+          const scope = (response as any)?.scope || 'default';
+          const progressClearedKey = QUIZ_CONFIG.getScopedKey('quiz_progress_cleared', scope);
+          const isCleared = sessionStorage.getItem(progressClearedKey) === 'true' ||
+                          sessionStorage.getItem('quiz_progress_cleared') === 'true' ||
+                          sessionStorage.getItem('default:quiz_progress_cleared') === 'true';
+          
+          if (isCleared) {
+            sessionStorage.removeItem(progressClearedKey);
+            sessionStorage.removeItem('quiz_progress_cleared');
+            sessionStorage.removeItem('default:quiz_progress_cleared');
+            // Также удаляем все scoped ключи
+            const storageKeys = Object.keys(sessionStorage);
+            for (const key of storageKeys) {
+              if (key.includes(':quiz_progress_cleared') || key.endsWith(':quiz_progress_cleared')) {
+                sessionStorage.removeItem(key);
+              }
+            }
+            clientLogger.log('🔧 [loadSavedProgressFromServer] Удален флаг quiz_progress_cleared - на сервере есть прогресс >= 2 ответов', {
+              answersCount,
+              scope,
+            });
+          }
+        } catch (err) {
+          clientLogger.warn('⚠️ [loadSavedProgressFromServer] Ошибка при удалении quiz_progress_cleared', err);
+        }
+      }
+      
       // ИСПРАВЛЕНО: Финальная проверка ПЕРЕД установкой savedProgress
       // Пропускаем, если hasEnoughAnswers = true - пользователь с >= 2 ответами должен видеть экран резюме
       const finalCheckBeforeSet = currentInfoScreenIndexRef.current >= initialInfoScreens.length && !hasEnoughAnswers;

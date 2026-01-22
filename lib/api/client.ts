@@ -28,6 +28,66 @@ const DEFAULT_PREFERENCES_RESPONSE = {
  * Ждет готовности initData, если он еще не доступен
  */
 async function getInitData(): Promise<string | null> {
+  // ИСПРАВЛЕНО: В development режиме используем тестовый initData, если реальный недоступен
+  if (process.env.NODE_ENV === 'development') {
+    // Тестовый Telegram ID: 987654321 (можно заменить на любой другой)
+    const TEST_TELEGRAM_ID = '987654321';
+    const TEST_INIT_DATA = `user=%7B%22id%22%3A${TEST_TELEGRAM_ID}%2C%22first_name%22%3A%22Test%22%2C%22last_name%22%3A%22User%22%2C%22username%22%3A%22testuser%22%2C%22language_code%22%3A%22ru%22%7D&auth_date=${Math.floor(Date.now() / 1000)}&hash=test_hash_for_development_only`;
+    
+    if (typeof window === 'undefined') {
+      return TEST_INIT_DATA;
+    }
+    
+    // Инициализируем window.Telegram.WebApp, если его нет
+    if (!window.Telegram) {
+      (window as any).Telegram = {
+        WebApp: {
+          initData: TEST_INIT_DATA,
+          ready: () => {},
+          expand: () => {},
+        },
+      };
+      return TEST_INIT_DATA;
+    }
+    
+    if (!window.Telegram.WebApp) {
+      (window as any).Telegram.WebApp = {
+        initData: TEST_INIT_DATA,
+        ready: () => {},
+        expand: () => {},
+      };
+      return TEST_INIT_DATA;
+    }
+    
+    // Если реальный initData есть, используем его
+    const existingInitData = window.Telegram.WebApp.initData;
+    if (existingInitData) {
+      return existingInitData;
+    }
+    
+    // ИСПРАВЛЕНО: Безопасная установка тестового initData (может быть read-only)
+    try {
+      // Пробуем установить через Object.defineProperty, если обычная установка не работает
+      const descriptor = Object.getOwnPropertyDescriptor(window.Telegram.WebApp, 'initData');
+      if (descriptor && !descriptor.writable && !descriptor.set) {
+        // Свойство read-only, используем defineProperty для переопределения
+        Object.defineProperty(window.Telegram.WebApp, 'initData', {
+          value: TEST_INIT_DATA,
+          writable: true,
+          configurable: true,
+        });
+      } else {
+        // Обычная установка
+        (window.Telegram.WebApp as any).initData = TEST_INIT_DATA;
+      }
+      return TEST_INIT_DATA;
+    } catch (err) {
+      // Если не удалось установить, возвращаем тестовый initData напрямую
+      // (не устанавливаем в объект, но используем для запросов)
+      return TEST_INIT_DATA;
+    }
+  }
+  
   if (typeof window === 'undefined' || !window.Telegram?.WebApp) {
     return null;
   }

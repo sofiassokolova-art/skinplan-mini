@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
         },
       select: { id: true, version: true },
     });
-      
+
       if (profile) {
         logger.info('Profile found via profileId parameter (read-your-write)', {
           userId,
@@ -123,13 +123,34 @@ export async function GET(request: NextRequest) {
       }
       
       if (!profile) {
-        // Если после всех retry профиль все еще не найден - возвращаем no_profile
+        // Если после всех retry профиль все еще не найден
         const duration = Date.now() - startTime;
-        logger.warn('No skin profile found for user after all retries', { 
-          userId, 
+        logger.warn('No skin profile found for user after all retries', {
+          userId,
           profileIdParam,
           retries: maxRetries,
         });
+
+        // ИСПРАВЛЕНО: Если был передан profileId, но профиль не найден - вернуть ошибку
+        // Это предотвращает network error и дает четкое сообщение
+        if (profileIdParam) {
+          logger.error('Profile not found for provided profileId', {
+            userId,
+            profileIdParam,
+          });
+          logApiError(method, path, new Error('Profile not found'), userId);
+          return ApiResponse.error(
+            'Профиль не найден. Попробуйте пройти анкету заново.',
+            404,
+            {
+              userId,
+              profileIdParam,
+              reason: 'profile_not_found',
+            }
+          );
+        }
+
+        // Для обычных случаев без profileId возвращаем no_profile
         logApiRequest(method, path, 200, duration, userId);
         return ApiResponse.success({
           plan28: null,

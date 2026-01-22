@@ -196,6 +196,13 @@ export default function PlanPage() {
           );
           return null;
         }
+
+        // ИСПРАВЛЕНО: Обработка 404 ошибки (профиль не найден)
+        if (err?.status === 404) {
+          clientLogger.warn(`${logPrefix}⚠️ Profile not found (404), cannot generate plan`);
+          return null; // Возвращаем null вместо ошибки
+        }
+
         throw err;
       }
     })();
@@ -1445,4 +1452,236 @@ export default function PlanPage() {
     }
   };
 
+  // ИСПРАВЛЕНО: Добавлен return statement для рендеринга компонента
+  // Если редиректим на /quiz, не рендерим ничего
+  if (shouldRedirectToQuiz) {
+    return null;
+  }
+
+  // ДИАГНОСТИКА: Логируем состояние для отладки
+  if (isDev) {
+    console.log('🔍 [PlanPage] Render state:', {
+      loading,
+      hasPlanData: !!planData,
+      hasPlan28: !!planData?.plan28,
+      hasUser: !!planData?.user,
+      hasProfile: !!planData?.profile,
+      hasPlan: !!planData?.plan,
+      generatingState,
+      error,
+      shouldRedirectToQuiz,
+    });
+  }
+
+  // Если загрузка, показываем лоадер
+  if (loading || !planData) {
+    // Показываем лоадер генерации, если план генерируется
+    if (generatingState === 'generating') {
+      return (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        }}>
+          <DotLottieReact
+            src="https://lottie.host/3c0e0e0e-0e0e-0e0e-0e0e-0e0e0e0e0e0e.json"
+            loop
+            autoplay
+            style={{ width: '200px', height: '200px' }}
+          />
+          <p style={{
+            marginTop: '20px',
+            fontSize: '18px',
+            color: '#0A5F59',
+            fontWeight: 600,
+          }}>
+            Генерируем ваш план...
+          </p>
+        </div>
+      );
+    }
+
+    // Обычный лоадер
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+      }}>
+        <div style={{
+          width: '50px',
+          height: '50px',
+          border: '4px solid #E8FBF7',
+          borderTop: '4px solid #0A5F59',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+        }} />
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  // Если ошибка, показываем сообщение об ошибке
+  if (error && error !== 'no_profile') {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        padding: '20px',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+      }}>
+        <p style={{
+          fontSize: '18px',
+          color: '#D32F2F',
+          marginBottom: '20px',
+          textAlign: 'center',
+        }}>
+          {error}
+        </p>
+        <button
+          onClick={() => {
+            setError(null);
+            setLoading(true);
+            loadPlan(0);
+          }}
+          style={{
+            padding: '12px 24px',
+            background: '#0A5F59',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          Попробовать снова
+        </button>
+      </div>
+    );
+  }
+
+  // Рендерим план
+  // Используем новый компонент, если есть plan28
+  if (planData.plan28) {
+    return (
+      <Suspense fallback={
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+        }}>
+          <div style={{
+            width: '50px',
+            height: '50px',
+            border: '4px solid #E8FBF7',
+            borderTop: '4px solid #0A5F59',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+          }} />
+        </div>
+      }>
+        <PlanPageClientNew
+          plan28={planData.plan28}
+          products={planData.productsMap || planData.products || new Map()}
+          wishlist={planData.wishlist || []}
+          currentDay={planData.currentDay || 1}
+          completedDays={planData.progress?.completedDays || []}
+          planExpired={planData.planExpired || false}
+        />
+      </Suspense>
+    );
+  }
+
+  // Используем старый компонент для обратной совместимости
+  if (planData.user && planData.profile && planData.plan) {
+    return (
+      <Suspense fallback={
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+        }}>
+          <div style={{
+            width: '50px',
+            height: '50px',
+            border: '4px solid #E8FBF7',
+            borderTop: '4px solid #0A5F59',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+          }} />
+        </div>
+      }>
+        <PlanPageClient
+          user={planData.user}
+          profile={planData.profile}
+          plan={planData.plan}
+          progress={planData.progress || { currentDay: 1, completedDays: [] }}
+          wishlist={planData.wishlist || []}
+          currentDay={planData.currentDay || 1}
+          currentWeek={planData.currentWeek || 1}
+          todayProducts={planData.todayProducts || []}
+          todayMorning={planData.todayMorning || []}
+          todayEvening={planData.todayEvening || []}
+        />
+      </Suspense>
+    );
+  }
+
+  // Если данные плана неполные, показываем ошибку
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '100vh',
+      padding: '20px',
+      background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+    }}>
+      <p style={{
+        fontSize: '18px',
+        color: '#D32F2F',
+        marginBottom: '20px',
+        textAlign: 'center',
+      }}>
+        Не удалось загрузить план. Пожалуйста, попробуйте обновить страницу.
+      </p>
+      <button
+        onClick={() => {
+          setError(null);
+          setLoading(true);
+          loadPlan(0);
+        }}
+        style={{
+          padding: '12px 24px',
+          background: '#0A5F59',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          fontSize: '16px',
+          fontWeight: 600,
+          cursor: 'pointer',
+        }}
+      >
+        Обновить
+      </button>
+    </div>
+  );
 }

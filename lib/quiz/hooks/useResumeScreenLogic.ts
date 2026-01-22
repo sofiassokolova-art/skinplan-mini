@@ -38,10 +38,12 @@ export function useResumeScreenLogic({
       return;
     }
     
-    // КРИТИЧНО: Если прогресс еще загружается, не принимаем решение о резюм-экране
-    // Это предотвращает скрытие резюм-экрана из-за восстановления состояния из sessionStorage
-    // до того, как savedProgress загрузится из React Query
-    if (isLoadingProgress) {
+    // ИСПРАВЛЕНО: НЕ ждем загрузки прогресса из React Query, если есть savedProgress из sessionStorage
+    // Это позволяет показать резюм-экран сразу, даже если React Query еще загружается
+    // Проверяем только если savedProgress пустой И прогресс еще загружается
+    // НО: если answers уже восстановлены из sessionStorage, значит savedProgress тоже должен быть восстановлен
+    const hasAnswersFromStorage = Object.keys(answers).length > 0;
+    if (isLoadingProgress && (!savedProgress || !savedProgress.answers || Object.keys(savedProgress.answers).length === 0) && !hasAnswersFromStorage) {
       return;
     }
     
@@ -51,11 +53,12 @@ export function useResumeScreenLogic({
     const savedAnswersCount = savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0;
     const hasSavedProgress = savedProgress && savedProgress.answers && Object.keys(savedProgress.answers).length >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN;
     
-    // КРИТИЧНО ИСПРАВЛЕНО: Пользователь активно отвечает, если:
-    // 1. Есть ответы в текущей сессии (answers не пустые) ИЛИ currentQuestionIndex > 0
-    // 2. И текущие ответы совпадают с сохраненными (пользователь продолжает текущую сессию)
-    // 3. ИЛИ текущих ответов больше или равно сохраненным (пользователь добавил новые ответы)
-    const isActivelyAnswering = (currentAnswersCount > 0 || currentQuestionIndex > 0);
+    // ИСПРАВЛЕНО: Пользователь активно отвечает ТОЛЬКО если:
+    // 1. Есть ответы в текущей сессии (answers не пустые) И
+    // 2. Текущие ответы совпадают с сохраненными (пользователь продолжает текущую сессию)
+    // НЕ используем currentQuestionIndex > 0, так как он может быть восстановлен из sessionStorage
+    // даже если пользователь не активно отвечает (например, после перезагрузки страницы)
+    const isActivelyAnswering = currentAnswersCount > 0;
     
     // Проверяем, совпадают ли текущие ответы с сохраненными
     // Если совпадают, это означает, что пользователь продолжает текущую сессию

@@ -102,7 +102,11 @@ export default function RootLayout({
   const isDev = process.env.NODE_ENV === 'development';
 
   return (
-    <html lang="ru" className={`${unbounded.variable} ${inter.variable}`}>
+    <html 
+      lang="ru" 
+      className={`${unbounded.variable} ${inter.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         {/* Telegram WebApp Script - должен быть загружен до инициализации приложения */}
         <Script

@@ -96,6 +96,17 @@ export async function handleAnswer({
     actualQuestionId = currentQuestion.id;
   }
 
+  // ИСПРАВЛЕНО: Валидация questionId - не должен быть 0 или отрицательным (кроме -1 для метаданных)
+  if (actualQuestionId <= 0 && actualQuestionId !== -1) {
+    console.error('❌ Invalid questionId:', {
+      actualQuestionId,
+      providedQuestionId: questionId,
+      currentQuestionId: currentQuestion?.id,
+      currentQuestionCode: currentQuestion?.code,
+    });
+    throw new Error(`Invalid questionId: ${actualQuestionId} (must be a positive number or -1 for metadata)`);
+  }
+
   // ИСПРАВЛЕНО: Проверяем, что вопрос существует в анкете (не только в allQuestions)
   // ИСПРАВЛЕНО: Используем extractQuestionsFromQuestionnaire для консистентности
   const questionExistsInAllQuestions = allQuestions.some((q: Question) => q.id === actualQuestionId);
@@ -134,6 +145,40 @@ export async function handleAnswer({
   
   // Всегда обновляем состояние (даже если не изменилось, для консистентности)
   const newAnswers = { ...answers, [actualQuestionId]: value };
+  const isFirstAnswer = Object.keys(answers).length === 0;
+  
+  // ИСПРАВЛЕНО: Удаляем флаг quiz_progress_cleared после первого ответа в новой сессии
+  // Это позволяет восстановить savedProgress при следующей загрузке страницы
+  // Флаг должен сбрасываться после ответа на первый вопрос, как указано в требованиях
+  if (isFirstAnswer && typeof window !== 'undefined') {
+    try {
+      const currentScope = questionnaire?.id?.toString() || 'default';
+      
+      // Удаляем scoped ключ для текущего scope
+      sessionStorage.removeItem(QUIZ_CONFIG.getScopedKey('quiz_progress_cleared', currentScope));
+      
+      // Удаляем unscoped ключи для обратной совместимости
+      sessionStorage.removeItem('quiz_progress_cleared');
+      sessionStorage.removeItem('default:quiz_progress_cleared');
+      
+      // Также удаляем все scoped ключи (на случай, если scope изменился)
+      const storageKeys = Object.keys(sessionStorage);
+      for (const key of storageKeys) {
+        if (key.includes(':quiz_progress_cleared') || key.endsWith(':quiz_progress_cleared')) {
+          sessionStorage.removeItem(key);
+        }
+      }
+      
+      clientLogger.log('✅ Флаг quiz_progress_cleared удален после первого ответа в новой сессии', {
+        questionId: actualQuestionId,
+        scope: currentScope,
+      });
+    } catch (err) {
+      // Игнорируем ошибки sessionStorage
+      clientLogger.warn('⚠️ Ошибка при удалении quiz_progress_cleared после первого ответа', err);
+    }
+  }
+  
   setAnswers(newAnswers);
   
   // ИСПРАВЛЕНО: Обновляем ref синхронно для немедленного использования в handleNext (особенно важно для single_choice)
@@ -143,14 +188,30 @@ export async function handleAnswer({
   
   // КРИТИЧНО: Сохраняем answers в sessionStorage для восстановления после перемонтирования
   // Это необходимо, так как без initData ответы не сохраняются в БД и не попадают в React Query кэш
-  const saved = safeSessionStorageSet('quiz_answers_backup', JSON.stringify(newAnswers));
-  if (saved) {
+  // ИСПРАВЛЕНО: Используем scoped ключ для согласованности с другими частями кода
+  const currentScope = questionnaire?.id?.toString() || scope || 'default';
+  const answersBackupKey = QUIZ_CONFIG.getScopedKey('quiz_answers_backup', currentScope);
+  
+  // Сохраняем в scoped ключ
+  const saved = safeSessionStorageSet(answersBackupKey, JSON.stringify(newAnswers));
+  
+  // ИСПРАВЛЕНО: Также сохраняем в unscoped ключ для обратной совместимости
+  const savedUnscoped = safeSessionStorageSet('quiz_answers_backup', JSON.stringify(newAnswers));
+  
+  if (saved || savedUnscoped) {
     clientLogger.log('💾 Сохранены answers в sessionStorage для восстановления', {
       questionId: actualQuestionId,
       answersCount: Object.keys(newAnswers).length,
+      scopedKey: answersBackupKey,
+      scope: currentScope,
+      savedScoped: saved,
+      savedUnscoped: savedUnscoped,
     });
   } else {
-    clientLogger.warn('⚠️ Не удалось сохранить answers в sessionStorage');
+    clientLogger.warn('⚠️ Не удалось сохранить answers в sessionStorage', {
+      scopedKey: answersBackupKey,
+      scope: currentScope,
+    });
   }
   
   // ИСПРАВЛЕНО: Ответы сохраняются только на сервер через API, не в localStorage
@@ -177,6 +238,16 @@ export async function handleAnswer({
           isArray,
         });
       }
+      // ИСПРАВЛЕНО: Дополнительная валидация перед отправкой на сервер
+      if (actualQuestionId <= 0 && actualQuestionId !== -1) {
+        clientLogger.error('❌ Пропуск сохранения: невалидный questionId', {
+          actualQuestionId,
+          currentQuestionId: currentQuestion?.id,
+          currentQuestionCode: currentQuestion?.code,
+        });
+        return; // Не сохраняем, если questionId невалидный
+      }
+
       // ФИКС: Используем React Query мутацию для сохранения прогресса
       // КРИТИЧНО: Логируем перед сохранением для диагностики
       clientLogger.log('💾 Сохранение ответа в БД', {
@@ -257,7 +328,8 @@ export async function handleAnswer({
     // Находим новый индекс вопроса по коду (вопрос мог переместиться после пересчета allQuestions)
     const newQuestionIndex = allQuestions.findIndex(q => q.code === currentQuestionCode);
     
-    if (newQuestionIndex >= 0 && newQuestionIndex !== currentQuestionIndex) {
+    // ИСПРАВЛЕНО: Проверяем, что новый индекс валиден и не выходит за границы массива
+    if (newQuestionIndex >= 0 && newQuestionIndex < allQuestions.length && newQuestionIndex !== currentQuestionIndex) {
       clientLogger.log('🔧 [Нормализация] Пересчитываем индекс после изменения фильтрующего вопроса', {
         questionCode: currentQuestionCode,
         oldIndex: currentQuestionIndex,
@@ -270,6 +342,14 @@ export async function handleAnswer({
       if (currentQuestionIndexRef) {
         currentQuestionIndexRef.current = newQuestionIndex;
       }
+    } else if (newQuestionIndex < 0 || newQuestionIndex >= allQuestions.length) {
+      // ИСПРАВЛЕНО: Если вопрос не найден или индекс выходит за границы, не обновляем индекс
+      clientLogger.warn('⚠️ [Нормализация] Вопрос не найден или индекс выходит за границы, не обновляем', {
+        questionCode: currentQuestionCode,
+        oldIndex: currentQuestionIndex,
+        newIndex: newQuestionIndex,
+        allQuestionsLength: allQuestions.length,
+      });
     }
     
     // ВАЖНО: Очищаем сохраненный CURRENT_QUESTION_CODE, чтобы не восстанавливать старый индекс
@@ -292,14 +372,23 @@ export async function handleAnswer({
 
   // ФИКС P1: Нормализация после любого изменения ответа - если currentQuestion.code исчез из allQuestions
   // Это может происходить после изменения фильтрующих ответов или других условий фильтрации
-  if (currentQuestionCode && setCurrentQuestionIndex && allQuestions.length > 0) {
+  // ИСПРАВЛЕНО: Выполняем нормализацию ТОЛЬКО для фильтрующих вопросов (age, gender, budget)
+  // Вопросы типа user_name (имя) НЕ должны вызывать нормализацию индекса, чтобы не пропускать вопрос
+  const isFilteringQuestion = currentQuestionCode && filteringQuestionCodes.includes(currentQuestionCode);
+  const isNameQuestion = currentQuestionCode === 'user_name';
+  
+  // ИСПРАВЛЕНО: Нормализация выполняется ТОЛЬКО для фильтрующих вопросов
+  // Это предотвращает обнуление или изменение индекса для вопроса с именем
+  if (isFilteringQuestion && currentQuestionCode && setCurrentQuestionIndex && allQuestions.length > 0) {
     // Проверяем, существует ли текущий вопрос в новом списке allQuestions
     const currentQuestionStillExists = allQuestions.some(q => q.code === currentQuestionCode);
 
     if (!currentQuestionStillExists) {
       // Текущий вопрос исчез из списка - переходим к ближайшему действительному вопросу
       // Находим вопрос с ближайшим индексом, который еще существует
-      const closestValidIndex = Math.min(currentQuestionIndex, allQuestions.length - 1);
+      const closestValidIndex = currentQuestionIndex < allQuestions.length 
+        ? currentQuestionIndex 
+        : Math.max(0, Math.min(currentQuestionIndex, allQuestions.length - 1));
 
       clientLogger.log('🔧 [Нормализация] currentQuestion.code исчез из allQuestions, переходим к ближайшему', {
         disappearedQuestionCode: currentQuestionCode,
@@ -307,12 +396,15 @@ export async function handleAnswer({
         newIndex: closestValidIndex,
         allQuestionsLength: allQuestions.length,
         allQuestionCodes: allQuestions.map(q => q.code).slice(0, 5),
+        isFilteringQuestion,
       });
 
-      // Устанавливаем новый индекс
-      setCurrentQuestionIndex(closestValidIndex);
-      if (currentQuestionIndexRef) {
-        currentQuestionIndexRef.current = closestValidIndex;
+      // Устанавливаем новый индекс только если он действительно изменился
+      if (closestValidIndex !== currentQuestionIndex) {
+        setCurrentQuestionIndex(closestValidIndex);
+        if (currentQuestionIndexRef) {
+          currentQuestionIndexRef.current = closestValidIndex;
+        }
       }
 
       // Очищаем сохраненный CURRENT_QUESTION_CODE, так как вопрос больше не существует
@@ -330,6 +422,36 @@ export async function handleAnswer({
         } catch (err) {
           clientLogger.warn('⚠️ Не удалось очистить CURRENT_QUESTION_CODE', err);
         }
+      }
+    } else {
+      // Для фильтрующих вопросов выполняем нормализацию индекса, даже если вопрос все еще существует
+      // (вопрос мог переместиться в списке после пересчета)
+      const newQuestionIndex = allQuestions.findIndex(q => q.code === currentQuestionCode);
+      
+      // ИСПРАВЛЕНО: Не устанавливаем индекс, если он выходит за границы массива
+      // Это важно, потому что allQuestions может быть неотфильтрованным, а useQuizComputed использует отфильтрованный
+      // Если newQuestionIndex >= allQuestions.length, значит вопрос был отфильтрован или индекс невалиден
+      if (newQuestionIndex >= 0 && newQuestionIndex < allQuestions.length && newQuestionIndex !== currentQuestionIndex) {
+        clientLogger.log('🔧 [Нормализация] Пересчитываем индекс для фильтрующего вопроса', {
+          questionCode: currentQuestionCode,
+          oldIndex: currentQuestionIndex,
+          newQuestionIndex,
+          allQuestionsLength: allQuestions.length,
+        });
+        
+        setCurrentQuestionIndex(newQuestionIndex);
+        if (currentQuestionIndexRef) {
+          currentQuestionIndexRef.current = newQuestionIndex;
+        }
+      } else if (newQuestionIndex >= allQuestions.length) {
+        // ИСПРАВЛЕНО: Если новый индекс выходит за границы, не обновляем индекс
+        // Это может произойти, если allQuestions неотфильтрован, а useQuizComputed использует отфильтрованный массив
+        clientLogger.warn('⚠️ [Нормализация] Новый индекс выходит за границы массива, не обновляем', {
+          questionCode: currentQuestionCode,
+          oldIndex: currentQuestionIndex,
+          newQuestionIndex,
+          allQuestionsLength: allQuestions.length,
+        });
       }
     }
   }

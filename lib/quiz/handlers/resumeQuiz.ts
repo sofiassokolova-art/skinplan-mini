@@ -4,6 +4,7 @@
 import { clientLogger } from '@/lib/client-logger';
 import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
+import { filterQuestions } from '@/lib/quiz/filterQuestions';
 import type { SavedProgress, Questionnaire } from '@/lib/quiz/types';
 
 export interface ResumeQuizParams {
@@ -125,40 +126,134 @@ export function resumeQuiz(params: ResumeQuizParams): void {
   const answeredQuestionIds = Object.keys(progressToRestore.answers).map(id => Number(id));
   let nextQuestionIndex = 0;
   
-  // ИСПРАВЛЕНО: Проверяем, что allQuestions загружен перед определением следующего вопроса
-  if (!params.allQuestions || params.allQuestions.length === 0) {
-    clientLogger.warn('⚠️ resumeQuiz: allQuestions пустой, используем сохраненный индекс', {
-      allQuestionsLength: params.allQuestions?.length || 0,
+  // ИСПРАВЛЕНО: Фильтруем вопросы так же, как в useQuizComputed, чтобы использовать тот же массив
+  // Это критично, так как неотфильтрованный массив может иметь другую длину
+  let filteredQuestions = params.allQuestions || [];
+  if (params.allQuestions && params.allQuestions.length > 0 && params.questionnaire) {
+    try {
+      filteredQuestions = filterQuestions({
+        questions: params.allQuestions,
+        answers: progressToRestore.answers, // Используем ответы из сохраненного прогресса
+        savedProgressAnswers: progressToRestore.answers,
+        isRetakingQuiz: false, // При resume не используем retake
+        showRetakeScreen: false,
+        logger: {
+          log: (message: string, data?: any) => clientLogger.log(`🔍 [resumeQuiz filterQuestions] ${message}`, data),
+          warn: (message: string, data?: any) => clientLogger.warn(`⚠️ [resumeQuiz filterQuestions] ${message}`, data),
+          error: (message: string, data?: any) => clientLogger.error(`❌ [resumeQuiz filterQuestions] ${message}`, data),
+        },
+      });
+      clientLogger.log('✅ resumeQuiz: Вопросы отфильтрованы', {
+        originalLength: params.allQuestions.length,
+        filteredLength: filteredQuestions.length,
+      });
+    } catch (filterError) {
+      clientLogger.error('❌ resumeQuiz: Ошибка при фильтрации вопросов, используем неотфильтрованный массив', filterError);
+      // В случае ошибки используем неотфильтрованный массив
+      filteredQuestions = params.allQuestions;
+    }
+  }
+  
+  // ИСПРАВЛЕНО: Проверяем, что filteredQuestions загружен перед определением следующего вопроса
+  if (!filteredQuestions || filteredQuestions.length === 0) {
+    clientLogger.warn('⚠️ resumeQuiz: filteredQuestions пустой, используем сохраненный индекс', {
+      filteredQuestionsLength: filteredQuestions?.length || 0,
+      originalAllQuestionsLength: params.allQuestions?.length || 0,
       savedQuestionIndex: progressToRestore.questionIndex,
     });
-    // Если allQuestions еще не загружен, используем сохраненный индекс
+    // Если filteredQuestions еще не загружен, используем сохраненный индекс
     nextQuestionIndex = progressToRestore.questionIndex;
   } else {
-    // Находим индекс первого вопроса, на который еще не ответили
-    const nextUnansweredQuestion = params.allQuestions.find((q, index) => {
-      return !answeredQuestionIds.includes(q.id) && index >= progressToRestore.questionIndex;
+    const lastQuestionIndex = filteredQuestions.length - 1;
+    const savedQuestionIndex = progressToRestore.questionIndex;
+    const answeredCount = answeredQuestionIds.length;
+    const totalQuestions = filteredQuestions.length;
+    
+    // ДИАГНОСТИКА: Логируем все параметры для отладки
+    clientLogger.warn('🔍 resumeQuiz: Определение следующего вопроса', {
+      savedQuestionIndex,
+      answeredCount,
+      totalQuestions,
+      lastQuestionIndex,
+      answeredQuestionIds: answeredQuestionIds.slice(0, 10), // Первые 10 для лога
+      allQuestionsIds: params.allQuestions.slice(0, 5).map(q => q.id), // Первые 5 для лога
     });
     
-    if (nextUnansweredQuestion) {
-      nextQuestionIndex = params.allQuestions.findIndex(q => q.id === nextUnansweredQuestion.id);
-    } else {
-      // Если все вопросы после сохраненного индекса отвечены, ищем первый неотвеченный с начала
-      const firstUnansweredQuestion = params.allQuestions.find((q, index) => {
-        return !answeredQuestionIds.includes(q.id);
+    // ИСПРАВЛЕНО: Если пользователь ответил на большинство вопросов (все или все кроме одного),
+    // ВСЕГДА переходим к последнему вопросу, независимо от savedQuestionIndex
+    // Это соответствует тому, что резюм-экран показывает "Продолжить с вопроса 22" (последний)
+    const hasAnsweredMostQuestions = answeredCount >= totalQuestions - 1; // Ответили на все или все кроме одного
+    
+    clientLogger.warn('🔍 resumeQuiz: Проверка hasAnsweredMostQuestions', {
+      hasAnsweredMostQuestions,
+      answeredCount,
+      totalQuestions,
+      condition: `${answeredCount} >= ${totalQuestions - 1}`,
+    });
+    
+    if (hasAnsweredMostQuestions) {
+      // Всегда переходим к последнему вопросу, если пользователь ответил на большинство вопросов
+      nextQuestionIndex = lastQuestionIndex;
+      clientLogger.log('✅ resumeQuiz: Пользователь ответил на большинство вопросов, переходим к последнему', {
+        savedQuestionIndex,
+        answeredCount,
+        totalQuestions,
+        lastQuestionIndex,
+        nextQuestionIndex,
+        filteredQuestionsLength: filteredQuestions.length,
+        originalAllQuestionsLength: params.allQuestions.length,
       });
-      if (firstUnansweredQuestion) {
-        nextQuestionIndex = params.allQuestions.findIndex(q => q.id === firstUnansweredQuestion.id);
+    } else if (savedQuestionIndex >= lastQuestionIndex - 1) {
+      // Пользователь был на последнем или предпоследнем вопросе - переходим к последнему
+      nextQuestionIndex = lastQuestionIndex;
+      clientLogger.log('✅ resumeQuiz: Пользователь был на последнем вопросе, переходим к последнему', {
+        savedQuestionIndex,
+        lastQuestionIndex,
+        nextQuestionIndex,
+        filteredQuestionsLength: filteredQuestions.length,
+        originalAllQuestionsLength: params.allQuestions.length,
+      });
+    } else {
+      // Пользователь не был на последнем вопросе - ищем следующий неотвеченный вопрос
+      // ИСПРАВЛЕНО: Используем filteredQuestions вместо params.allQuestions
+      const nextUnansweredQuestion = filteredQuestions.find((q, index) => {
+        return !answeredQuestionIds.includes(q.id) && index >= progressToRestore.questionIndex;
+      });
+      
+      if (nextUnansweredQuestion) {
+        nextQuestionIndex = filteredQuestions.findIndex(q => q.id === nextUnansweredQuestion.id);
       } else {
-        // Если все вопросы отвечены, переходим к последнему
-        nextQuestionIndex = params.allQuestions.length - 1;
+        // Если все вопросы после сохраненного индекса отвечены, проверяем, все ли вопросы отвечены
+        // ИСПРАВЛЕНО: Используем filteredQuestions вместо params.allQuestions
+        const allQuestionsAnswered = filteredQuestions.every(q => answeredQuestionIds.includes(q.id));
+        
+        if (allQuestionsAnswered) {
+          // Все вопросы отвечены - переходим к последнему
+          nextQuestionIndex = lastQuestionIndex;
+        } else {
+          // Есть неотвеченные вопросы раньше - ищем первый неотвеченный с начала
+          // ИСПРАВЛЕНО: Используем filteredQuestions вместо params.allQuestions
+          const firstUnansweredQuestion = filteredQuestions.find((q) => {
+            return !answeredQuestionIds.includes(q.id);
+          });
+          if (firstUnansweredQuestion) {
+            nextQuestionIndex = filteredQuestions.findIndex(q => q.id === firstUnansweredQuestion.id);
+          } else {
+            // Если все вопросы отвечены, переходим к последнему
+            nextQuestionIndex = lastQuestionIndex;
+          }
+        }
       }
     }
     
-    // Если nextQuestionIndex получился -1 (не найден), используем сохраненный индекс + 1
+    // Если nextQuestionIndex получился -1 (не найден), используем сохраненный индекс или последний
     if (nextQuestionIndex === -1) {
-        nextQuestionIndex = Math.min(progressToRestore.questionIndex + 1, params.allQuestions.length - 1);
-      }
+      nextQuestionIndex = Math.min(
+        Math.max(progressToRestore.questionIndex, 0), 
+        lastQuestionIndex
+      );
     }
+  }
   
   // КРИТИЧНО: Проверяем, что nextQuestionIndex валиден перед восстановлением
   // Это предотвращает ошибку "Вопрос не найден" при повторном заходе

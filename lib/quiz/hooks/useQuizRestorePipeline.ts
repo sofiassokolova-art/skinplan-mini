@@ -129,42 +129,127 @@ export function useQuizRestorePipeline(params: UseQuizRestorePipelineParams) {
   
   // Шаг 1: Восстановление answers из sessionStorage (быстро и синхронно)
   // Выполняется в useLayoutEffect для синхронного выполнения ДО рендера
+  // ИСПРАВЛЕНО: НЕ пропускаем восстановление из sessionStorage, даже если isLoadingProgress = true
+  // Это необходимо для показа резюм-экрана сразу, даже если React Query еще загружается
   useLayoutEffect(() => {
     // Пропускаем если:
     // - Пользователь начал заново
-    // - Прогресс загружается
-    // - Есть сохраненный прогресс с >= 2 ответами (ждем загрузки из React Query)
+    // - Есть сохраненный прогресс с >= 2 ответами (уже восстановлен)
     const hasSavedProgress = savedProgress && savedProgress.answers && 
       Object.keys(savedProgress.answers).length >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN;
+    
+    if (isDev) {
+      clientLogger.log('🔍 [Restore Pipeline Step 1] Проверка условий', {
+        hasSavedProgress,
+        savedProgressAnswersCount: savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0,
+        answersCountRef: answersCountRef.current,
+        isStartingOver,
+        isProgressCleared: isProgressCleared(),
+      });
+    }
     
     if (typeof window === 'undefined' ||
         answersCountRef.current > 0 ||
         isStartingOver ||
         isStartingOverRef.current ||
-        isLoadingProgress ||
         hasSavedProgress ||
         isProgressCleared()) {
+      if (isDev && hasSavedProgress) {
+        clientLogger.log('⏸️ [Restore Pipeline Step 1] Пропускаем - savedProgress уже восстановлен', {
+          savedProgressAnswersCount: savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0,
+        });
+      }
       return;
     }
     
     try {
       const answersBackupKey = QUIZ_CONFIG.getScopedKey('quiz_answers_backup', scope);
       const savedAnswersStr = sessionStorage.getItem(answersBackupKey);
+      
+      if (isDev) {
+        clientLogger.log('🔍 [Restore Pipeline Step 1] Проверка sessionStorage', {
+          hasSavedAnswersStr: !!savedAnswersStr,
+          answersBackupKey,
+          answersCountRef: answersCountRef.current,
+          isLoadingProgress,
+          hasSavedProgress,
+        });
+      }
+      
       if (savedAnswersStr) {
         const savedAnswers = JSON.parse(savedAnswersStr);
         if (savedAnswers && Object.keys(savedAnswers).length > 0) {
           const savedAnswersCount = Object.keys(savedAnswers).length;
-          if (answersCountRef.current === 0 || savedAnswersCount > answersCountRef.current) {
+          // ИСПРАВЛЕНО: НЕ восстанавливаем answers из sessionStorage, если должен показываться резюм-экран
+          // Это необходимо, чтобы currentAnswersCount оставался 0, что позволит показать резюм-экран
+          // answers будут восстановлены только после того, как пользователь нажмет "Продолжить" на резюм-экране
+          const shouldShowResume = savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN;
+          
+          if (shouldShowResume) {
+            // ИСПРАВЛЕНО: НЕ перезаписываем savedProgress, если он уже установлен из useQuizStateExtended
+            // Это предотвращает перезапись savedProgress, который был установлен синхронно при инициализации
+            if (hasSavedProgress) {
+              if (isDev) {
+                clientLogger.log('⏸️ [Restore Pipeline Step 1] Пропускаем установку savedProgress - уже установлен из useQuizStateExtended', {
+                  savedProgressAnswersCount: savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0,
+                  newAnswersCount: savedAnswersCount,
+                });
+              }
+              return; // Не перезаписываем уже установленный savedProgress
+            }
+            
+            // Если должен показываться резюм-экран, НЕ восстанавливаем answers
+            // Вместо этого только устанавливаем savedProgress для показа резюм-экрана
+            const savedQuestionIndex = sessionStorage.getItem(QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION, scope));
+            const savedInfoScreenIndex = sessionStorage.getItem(QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN, scope));
+            const questionIndex = savedQuestionIndex ? parseInt(savedQuestionIndex, 10) : 0;
+            const infoScreenIndex = savedInfoScreenIndex ? parseInt(savedInfoScreenIndex, 10) : 0;
+            
             if (isDev) {
-              clientLogger.log('🔄 [Restore Pipeline Step 1] Восстанавливаем answers из sessionStorage', {
+              clientLogger.log('🔄 [Restore Pipeline Step 1] Устанавливаем savedProgress для резюм-экрана (answers НЕ восстанавливаем)', {
                 answersCount: savedAnswersCount,
+                questionIndex,
+                infoScreenIndex,
+                minRequired: QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN,
+                shouldShowResume: true,
+                currentAnswersCount: answersCountRef.current,
+              });
+            }
+            setSavedProgress({
+              answers: savedAnswers,
+              questionIndex: !isNaN(questionIndex) && questionIndex >= 0 ? questionIndex : 0,
+              infoScreenIndex: !isNaN(infoScreenIndex) && infoScreenIndex >= 0 ? infoScreenIndex : 0,
+            });
+            // НЕ восстанавливаем answers - они останутся пустыми, что позволит показать резюм-экран
+          } else if (answersCountRef.current === 0 || savedAnswersCount > answersCountRef.current) {
+            // Для пользователей с < 2 ответов восстанавливаем answers как обычно
+            if (isDev) {
+              clientLogger.log('🔄 [Restore Pipeline Step 1] Восстанавливаем answers из sessionStorage (нет резюм-экрана)', {
+                answersCount: savedAnswersCount,
+                isLoadingProgress,
               });
             }
             setAnswers(savedAnswers);
             answersRef.current = savedAnswers;
             answersCountRef.current = savedAnswersCount;
+            
+            // Также устанавливаем savedProgress для полноты
+            const savedQuestionIndex = sessionStorage.getItem(QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION, scope));
+            const savedInfoScreenIndex = sessionStorage.getItem(QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN, scope));
+            const questionIndex = savedQuestionIndex ? parseInt(savedQuestionIndex, 10) : 0;
+            const infoScreenIndex = savedInfoScreenIndex ? parseInt(savedInfoScreenIndex, 10) : 0;
+            
+            setSavedProgress({
+              answers: savedAnswers,
+              questionIndex: !isNaN(questionIndex) && questionIndex >= 0 ? questionIndex : 0,
+              infoScreenIndex: !isNaN(infoScreenIndex) && infoScreenIndex >= 0 ? infoScreenIndex : 0,
+            });
           }
         }
+      } else if (isDev) {
+        clientLogger.log('⚠️ [Restore Pipeline Step 1] Нет сохраненных ответов в sessionStorage', {
+          answersBackupKey,
+        });
       }
     } catch (err) {
       clientLogger.warn('⚠️ Ошибка при восстановлении answers из sessionStorage', err);
@@ -182,8 +267,7 @@ export function useQuizRestorePipeline(params: UseQuizRestorePipelineParams) {
     // Пропускаем если:
     // - Прогресс загружается
     // - Пользователь начал заново
-    // - Прогресс был очищен
-    if (isLoadingProgress || isStartingOver || isStartingOverRef.current || isProgressCleared()) {
+    if (isLoadingProgress || isStartingOver || isStartingOverRef.current) {
       return;
     }
     
@@ -191,6 +275,68 @@ export function useQuizRestorePipeline(params: UseQuizRestorePipelineParams) {
     if (progressAnswers && Object.keys(progressAnswers).length > 0) {
       const answersId = JSON.stringify(progressAnswers);
       const progressAnswersCount = Object.keys(progressAnswers).length;
+      
+      // ИСПРАВЛЕНО: Если на сервере есть прогресс >= 2 ответов, устанавливаем savedProgress
+      // даже если флаг quiz_progress_cleared установлен (он блокирует только локальное восстановление)
+      // Это необходимо для показа резюм-экрана, когда пользователь вернулся после "Начать заново"
+      const shouldShowResume = progressAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN;
+      
+      if (shouldShowResume && answersCountRef.current === 0 && !savedProgress) {
+        // Если должен показываться резюм-экран и answers пустые, устанавливаем savedProgress
+        // НЕ восстанавливаем answers - они останутся пустыми, что позволит показать резюм-экран
+        // ИСПРАВЛЕНО: Удаляем флаг quiz_progress_cleared, если на сервере есть прогресс >= 2 ответов
+        // Это означает, что пользователь вернулся после "Начать заново", но на сервере есть старый прогресс
+        if (isProgressCleared() && typeof window !== 'undefined') {
+          try {
+            sessionStorage.removeItem(QUIZ_CONFIG.getScopedKey('quiz_progress_cleared', scope));
+            sessionStorage.removeItem('quiz_progress_cleared');
+            sessionStorage.removeItem('default:quiz_progress_cleared');
+            // Также удаляем scoped ключи
+            const storageKeys = Object.keys(sessionStorage);
+            for (const key of storageKeys) {
+              if (key.includes(':quiz_progress_cleared') || key.endsWith(':quiz_progress_cleared')) {
+                sessionStorage.removeItem(key);
+              }
+            }
+            if (isDev) {
+              clientLogger.log('🔧 [Restore Pipeline Step 2] Удален флаг quiz_progress_cleared - на сервере есть прогресс >= 2 ответов', {
+                progressAnswersCount,
+                scope,
+              });
+            }
+          } catch (err) {
+            if (isDev) {
+              clientLogger.warn('⚠️ [Restore Pipeline Step 2] Ошибка при удалении quiz_progress_cleared', err);
+            }
+          }
+        }
+        
+        if (isDev) {
+          clientLogger.log('🔄 [Restore Pipeline Step 2] Устанавливаем savedProgress из серверного прогресса для резюм-экрана', {
+            answersCount: progressAnswersCount,
+            wasProgressCleared: isProgressCleared(),
+          });
+        }
+        setSavedProgress({
+          answers: progressAnswers,
+          questionIndex: quizProgressFromQuery.progress?.questionIndex || 0,
+          infoScreenIndex: quizProgressFromQuery.progress?.infoScreenIndex || 0,
+        });
+        // НЕ восстанавливаем answers - они останутся пустыми, что позволит показать резюм-экран
+        return;
+      }
+      
+      // ИСПРАВЛЕНО: Если флаг quiz_progress_cleared установлен и нет >= 2 ответов на сервере,
+      // блокируем восстановление из серверного прогресса (локальный прогресс был очищен)
+      if (isProgressCleared() && progressAnswersCount < QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN) {
+        if (isDev) {
+          clientLogger.log('⏸️ [Restore Pipeline Step 2] Пропускаем восстановление - флаг quiz_progress_cleared установлен и на сервере < 2 ответов', {
+            progressAnswersCount,
+            minRequired: QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN,
+          });
+        }
+        return;
+      }
       
       // Восстанавливаем если answers пустые или количество увеличилось
       if (answersId !== lastRestoredAnswersIdRef.current || 
@@ -222,6 +368,7 @@ export function useQuizRestorePipeline(params: UseQuizRestorePipelineParams) {
     isLoadingProgress,
     isStartingOver,
     quizProgressFromQuery, // ФИКС: Используем сам объект вместо вычисления количества ключей
+    savedProgress, // Добавляем для проверки, установлен ли уже savedProgress
   ]);
   
   // Шаг 3: Восстановление индексов из sessionStorage или progress

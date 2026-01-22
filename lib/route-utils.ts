@@ -5,19 +5,17 @@
 /**
  * Проверяет, находится ли пользователь на странице /quiz
  * Используется для блокировки лишних API-запросов во время прохождения анкеты
+ * ИСПРАВЛЕНО: Проверяем ТОЛЬКО текущий путь, а не referrer или href
+ * referrer может содержать /quiz даже когда мы уже на другой странице (например, /plan)
  */
 export function isQuizContext(): boolean {
   if (typeof window === 'undefined') return false;
   
   const pathname = window.location.pathname;
-  const href = window.location.href;
-  const referrer = document.referrer;
   
-  const isOnQuizPage = pathname === '/quiz' || pathname.startsWith('/quiz/');
-  const isNavigatingToQuiz = referrer && (referrer.includes('/quiz') || referrer.endsWith('/quiz'));
-  const isQuizInHref = href.includes('/quiz');
-  
-  return isOnQuizPage || isNavigatingToQuiz || isQuizInHref;
+  // ИСПРАВЛЕНО: Проверяем только текущий путь, не referrer или href
+  // Это предотвращает блокировку на странице /plan после перехода с /quiz
+  return pathname === '/quiz' || pathname.startsWith('/quiz/');
 }
 
 /**

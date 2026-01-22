@@ -28,9 +28,34 @@ export function useQuizNavigation(): UseQuizNavigationReturn {
   
   // Навигация - используем функцию-инициализатор для стабильности
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(() => {
-    // Восстанавливаем индекс из sessionStorage при инициализации
+    // ИСПРАВЛЕНО: НЕ восстанавливаем индекс из sessionStorage при инициализации,
+    // если есть сохраненные ответы >= 2 (может быть резюм-экран)
+    // Восстановление индекса должно происходить ПОСЛЕ проверки резюм-экрана
     if (typeof window !== 'undefined') {
       try {
+        // Проверяем, есть ли сохраненные ответы
+        const savedAnswersStr = sessionStorage.getItem('quiz_answers_backup');
+        let savedAnswersCount = 0;
+        if (savedAnswersStr && savedAnswersStr !== '{}' && savedAnswersStr !== 'null') {
+          try {
+            const parsed = JSON.parse(savedAnswersStr);
+            savedAnswersCount = Object.keys(parsed || {}).length;
+          } catch (e) {
+            // Игнорируем ошибки парсинга
+          }
+        }
+        
+        // ИСПРАВЛЕНО: Если есть >= 2 сохраненных ответов, НЕ восстанавливаем индекс
+        // Это позволит резюм-экрану показаться перед восстановлением индекса
+        if (savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN) {
+          clientLogger.log('⏸️ useQuizNavigation: пропускаем восстановление currentQuestionIndex - может быть резюм-экран', {
+            savedAnswersCount,
+            minRequired: QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN
+          });
+          return 0; // Начинаем с 0, резюм-экран покажет правильный индекс
+        }
+        
+        // Для пользователей с < 2 ответов восстанавливаем индекс
         const saved = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
         if (saved !== null) {
           const savedIndex = parseInt(saved, 10);

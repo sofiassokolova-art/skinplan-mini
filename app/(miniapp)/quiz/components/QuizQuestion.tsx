@@ -37,6 +37,26 @@ export function QuizQuestion({
   onBack,
   showBackButton,
 }: QuizQuestionProps) {
+  // ИСПРАВЛЕНО: Валидация question.id - не должен быть 0 или undefined
+  // НО: не блокируем рендеринг, если вопрос существует, но id может быть временно 0
+  // Вместо этого логируем предупреждение и продолжаем работу
+  if (!question) {
+    console.error('❌ [QuizQuestion] Question is null or undefined');
+    return (
+      <div style={{ padding: '20px', textAlign: 'center' }}>
+        <p>Ошибка: вопрос не найден</p>
+      </div>
+    );
+  }
+  
+  if (question.id <= 0) {
+    console.warn('⚠️ [QuizQuestion] Question ID is invalid (<= 0), but continuing:', {
+      questionId: question.id,
+      questionCode: question.code,
+      questionType: question.type,
+    });
+    // НЕ блокируем рендеринг - продолжаем, но не будем сохранять ответ с невалидным ID
+  }
   console.log('❓ [QuizQuestion] rendering question', {
     questionId: question?.id,
     questionCode: question?.code,
@@ -52,7 +72,9 @@ export function QuizQuestion({
   });
 
   const isLastQuestion = currentQuestionIndex === allQuestionsLength - 1;
-  const showSubmitButton = isLastQuestion; // Always show submit button on last question
+  // ИСПРАВЛЕНО: Не показываем кнопку "Получить план" для вопроса budget
+  // После budget показывается инфо-экран, а не отправка ответов
+  const showSubmitButton = isLastQuestion && question?.code !== 'budget';
 
   // Первый вопрос (user_name) - специальный стиль (без прогресс-бара)
   const isNameQuestion = question?.code === 'user_name' || question?.type === 'free_text';
@@ -220,8 +242,12 @@ export function QuizQuestion({
     return String(v).trim().length > 0;
   };
 
-  const renderSubmitOrContinueDisclaimer = () => (
-    !isRetakingQuiz ? (
+  const renderSubmitOrContinueDisclaimer = () => {
+    // Не показываем disclaimer для вопроса budget
+    if (question?.code === 'budget') {
+      return null;
+    }
+    return !isRetakingQuiz ? (
       <p
         style={{
           marginTop: '12px',
@@ -236,8 +262,8 @@ export function QuizQuestion({
           пользовательским соглашением
         </Link>
       </p>
-    ) : null
-  );
+    ) : null;
+  };
 
   const SingleChoiceDefault = () => {
     if (question?.type !== 'single_choice' || !question?.options || isSkinTypeQuestion) return null;
@@ -256,6 +282,15 @@ export function QuizQuestion({
                   optionValue: option.value,
                   optionLabel: option.label
                 });
+                // ИСПРАВЛЕНО: Валидация question.id перед вызовом onAnswer
+                if (!question.id || question.id <= 0) {
+                  console.error('❌ [QuizQuestion] Invalid question.id:', {
+                    questionId: question.id,
+                    questionCode: question.code,
+                    questionText: question.text?.substring(0, 50),
+                  });
+                  return;
+                }
                 await onAnswer(question.id, option.value);
                 console.log('➡️ [QuizQuestion] SingleChoice: calling onNext after delay');
                 setTimeout(() => onNext(), 300);
@@ -335,31 +370,92 @@ export function QuizQuestion({
     if (question?.type !== 'free_text') return null;
 
     // Use local state to prevent keyboard reset
+    // ИСПРАВЛЕНО: Используем questionIdRef для стабильного доступа к question.id
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    const [localValue, setLocalValue] = useState((answers[question.id] as string) || '');
+    const questionIdRef = useRef<number>(question.id);
+    
+    // Обновляем ref при изменении question.id
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useEffect(() => {
+      if (question?.id && question.id > 0) {
+        questionIdRef.current = question.id;
+      }
+    }, [question?.id]);
+    
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const initialValue = (answers[questionIdRef.current] as string) || '';
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const [localValue, setLocalValue] = useState(initialValue);
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const inputRef = useRef<HTMLInputElement>(null);
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    const lastSyncedValueRef = useRef<string>('');
+    const lastSyncedValueRef = useRef<string>(initialValue);
 
     // Sync local value with answers when answers change (e.g., from saved progress)
+    // ИСПРАВЛЕНО: Используем questionIdRef для стабильного доступа к question.id
     // Use ref to prevent unnecessary re-renders
-    const currentAnswerValue = (answers[question.id] as string) || '';
+    const currentAnswerValue = (answers[questionIdRef.current] as string) || '';
+    // ИСПРАВЛЕНО: Ref для отслеживания, когда мы сами обновляем answers (чтобы не сбрасывать localValue)
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const isUpdatingFromLocalRef = useRef<boolean>(false);
+    // ИСПРАВЛЕНО: Флаг для отслеживания активного ввода (включая удаление символов)
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const isTypingRef = useRef<boolean>(false);
+    
+    // ИСПРАВЛЕНО: Инициализируем lastSyncedValueRef при первом рендере
     // eslint-disable-next-line react-hooks/rules-of-hooks
     useEffect(() => {
-      if (currentAnswerValue !== lastSyncedValueRef.current) {
+      if (lastSyncedValueRef.current === '' && initialValue !== '') {
+        lastSyncedValueRef.current = initialValue;
+      }
+    }, []);
+    
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useEffect(() => {
+      // ИСПРАВЛЕНО: Не обновляем localValue из answers, если мы сами только что обновили answers
+      // Это предотвращает сброс ввода при каждом сохранении ответа
+      // Обновляем только если значение изменилось извне (например, из сохраненного прогресса)
+      if (isUpdatingFromLocalRef.current) {
+        // Мы сами обновили answers, не синхронизируем обратно
+        isUpdatingFromLocalRef.current = false;
+        lastSyncedValueRef.current = currentAnswerValue;
+        return;
+      }
+      
+      // ИСПРАВЛЕНО: Не синхронизируем, если пользователь активно вводит текст (включая удаление)
+      if (isTypingRef.current) {
+        console.log('🔄 [QuizQuestion] FreeText: пропускаем синхронизацию - пользователь активно вводит', {
+          currentAnswerValue,
+          localValue,
+          lastSynced: lastSyncedValueRef.current
+        });
+        return;
+      }
+      
+      // ИСПРАВЛЕНО: Обновляем localValue только если значение действительно изменилось извне
+      // И только если новое значение отличается от текущего localValue
+      // Это предотвращает сброс ввода при ре-рендере с тем же значением
+      if (currentAnswerValue !== lastSyncedValueRef.current && currentAnswerValue !== localValue) {
+        // Значение изменилось извне, и пользователь не вводит - синхронизируем
+        console.log('🔄 [QuizQuestion] FreeText: синхронизация localValue с answers (извне)', {
+          currentAnswerValue,
+          localValue,
+          lastSynced: lastSyncedValueRef.current
+        });
         lastSyncedValueRef.current = currentAnswerValue;
         setLocalValue(currentAnswerValue);
       }
-    }, [currentAnswerValue]);
+    }, [currentAnswerValue, localValue]);
 
     // Debounced sync to answers state (300ms)
+    // ИСПРАВЛЕНО: Используем questionIdRef для стабильного значения в debounced callback
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const syncToAnswers = useCallback((value: string) => {
+      const stableQuestionId = questionIdRef.current;
       console.log('📝 [QuizQuestion] FreeText: debounced sync', {
-        questionId: question.id,
+        questionId: stableQuestionId,
         valueLength: value.length,
         valuePreview: value.substring(0, 50)
       });
@@ -367,40 +463,77 @@ export function QuizQuestion({
         clearTimeout(debounceTimeoutRef.current);
       }
       debounceTimeoutRef.current = setTimeout(() => {
-        console.log('📝 [QuizQuestion] FreeText: executing debounced onAnswer');
-        onAnswer(question.id, value);
+        console.log('📝 [QuizQuestion] FreeText: executing debounced onAnswer', {
+          questionId: stableQuestionId,
+          valueLength: value.length
+        });
+        // ИСПРАВЛЕНО: Используем стабильное значение из ref и валидируем перед вызовом
+        if (stableQuestionId > 0) {
+          // ИСПРАВЛЕНО: Устанавливаем флаг, чтобы не сбрасывать localValue при обновлении answers
+          isUpdatingFromLocalRef.current = true;
+          // ИСПРАВЛЕНО: Обновляем lastSyncedValueRef после сохранения
+          lastSyncedValueRef.current = value;
+          // ИСПРАВЛЕНО: Сбрасываем флаг активного ввода после сохранения
+          isTypingRef.current = false;
+          onAnswer(stableQuestionId, value);
+        } else {
+          console.error('❌ [QuizQuestion] FreeText: Invalid questionId in debounced callback', {
+            questionId: stableQuestionId,
+            currentQuestionId: question?.id
+          });
+        }
       }, 300);
-    }, [question?.id]);
+    }, [onAnswer]);
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
       const newValue = e.target.value;
+      // ИСПРАВЛЕНО: Устанавливаем флаг активного ввода (включая удаление символов)
+      isTypingRef.current = true;
+      // ИСПРАВЛЕНО: Устанавливаем флаг перед обновлением localValue, чтобы предотвратить сброс при ре-рендере
+      isUpdatingFromLocalRef.current = true;
       setLocalValue(newValue);
-      lastSyncedValueRef.current = newValue; // Update ref immediately
       syncToAnswers(newValue);
     }, [syncToAnswers]);
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const handleBlur = useCallback(() => {
+      const stableQuestionId = questionIdRef.current;
       console.log('📝 [QuizQuestion] FreeText: handleBlur called', {
-        questionId: question.id,
+        questionId: stableQuestionId,
         localValueLength: localValue.length,
         hasPendingDebounce: !!debounceTimeoutRef.current
       });
+      // ИСПРАВЛЕНО: Сбрасываем флаг активного ввода при потере фокуса
+      isTypingRef.current = false;
       // Immediate sync on blur - only if there's pending debounced update
       if (debounceTimeoutRef.current) {
         clearTimeout(debounceTimeoutRef.current);
         debounceTimeoutRef.current = null;
         // Sync immediately only if there's unsaved changes
-        const currentAnswer = (answers[question.id] as string) || '';
+        const currentAnswer = (answers[stableQuestionId] as string) || '';
         if (currentAnswer !== localValue) {
-          console.log('📝 [QuizQuestion] FreeText: syncing unsaved changes on blur');
-          onAnswer(question.id, localValue);
+          console.log('📝 [QuizQuestion] FreeText: syncing unsaved changes on blur', {
+            questionId: stableQuestionId
+          });
+          // ИСПРАВЛЕНО: Используем стабильное значение из ref и валидируем перед вызовом
+          if (stableQuestionId > 0) {
+            // ИСПРАВЛЕНО: Устанавливаем флаг, чтобы не сбрасывать localValue при обновлении answers
+            isUpdatingFromLocalRef.current = true;
+            // ИСПРАВЛЕНО: Обновляем lastSyncedValueRef после сохранения
+            lastSyncedValueRef.current = localValue;
+            onAnswer(stableQuestionId, localValue);
+          } else {
+            console.error('❌ [QuizQuestion] FreeText: Invalid questionId in handleBlur', {
+              questionId: stableQuestionId,
+              currentQuestionId: question?.id
+            });
+          }
         } else {
           console.log('📝 [QuizQuestion] FreeText: no unsaved changes on blur');
         }
       }
-    }, [localValue, question?.id, answers]);
+    }, [localValue, answers, onAnswer]);
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const inputStyle = useMemo(() => ({
@@ -735,10 +868,22 @@ export function QuizQuestion({
                       newAnswers,
                       action: isSelected ? 'removed' : 'added'
                     });
-                    await onAnswer(question.id, newAnswers);
+                    // ИСПРАВЛЕНО: Валидация уже выполнена в начале компонента
+                    if (question.id > 0) {
+                      await onAnswer(question.id, newAnswers);
+                    }
                   } else {
                     console.log('📝 [QuizQuestion] LimeStyle: single-choice answer');
-                    await onAnswer(question.id, option.value);
+                    // ИСПРАВЛЕНО: Валидация question.id перед вызовом onAnswer
+                if (!question.id || question.id <= 0) {
+                  console.error('❌ [QuizQuestion] Invalid question.id:', {
+                    questionId: question.id,
+                    questionCode: question.code,
+                    questionText: question.text?.substring(0, 50),
+                  });
+                  return;
+                }
+                await onAnswer(question.id, option.value);
                     console.log('➡️ [QuizQuestion] LimeStyle: calling onNext after single choice');
                     setTimeout(() => onNext(), 300);
                   }

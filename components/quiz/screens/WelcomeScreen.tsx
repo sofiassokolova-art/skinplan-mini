@@ -28,13 +28,16 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
       background: '#FFFFFF',
       display: 'flex',
       flexDirection: 'column',
-      position: 'relative',
-      width: '100%',
-      maxWidth: '100%',
-      boxSizing: 'border-box',
-      overflowX: 'hidden',
+      position: 'fixed',
+      top: 0,
       left: 0,
       right: 0,
+      bottom: 0,
+      width: '100vw',
+      maxWidth: '100vw',
+      boxSizing: 'border-box',
+      overflowX: 'hidden',
+      zIndex: 1,
     }}>
       {/* Картинка */}
       {screen.image && (
