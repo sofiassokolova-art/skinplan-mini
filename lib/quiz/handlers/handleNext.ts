@@ -954,28 +954,36 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       ? answersRef.current
       : answers;
 
-    // ИСПРАВЛЕНО: Если currentQuestion не найден по индексу или не совпадает с последним ответом,
-    // находим вопрос по последнему ответу в effectiveAnswers
-    // Это предотвращает показ неправильного инфо-экрана после ответа на вопрос
-    if (!currentQuestion || (effectiveAnswers && Object.keys(effectiveAnswers).length > 0)) {
-      const answeredQuestionIds = Object.keys(effectiveAnswers).map(id => Number(id)).filter(id => !isNaN(id));
-      if (answeredQuestionIds.length > 0) {
-        // Находим последний отвеченный вопрос
-        const lastAnsweredQuestionId = answeredQuestionIds[answeredQuestionIds.length - 1];
-        const lastAnsweredQuestion = allQuestions.find(q => q.id === lastAnsweredQuestionId);
-        
-        // Если найденный вопрос по индексу не совпадает с последним отвеченным, используем последний отвеченный
-        if (lastAnsweredQuestion && (!currentQuestion || currentQuestion.id !== lastAnsweredQuestionId)) {
-          currentQuestion = lastAnsweredQuestion;
-          clientLogger.log('🔧 [handleNext] Используем последний отвеченный вопрос вместо вопроса по индексу', {
-            questionIndex: currentQuestionIndex,
-            questionByIndex: currentQuestion?.code || null,
-            lastAnsweredQuestionId,
-            lastAnsweredQuestionCode: lastAnsweredQuestion.code,
-            allQuestionsLength: allQuestions.length,
-          });
-        }
-      }
+    // ИСПРАВЛЕНО: Используем порядок вопросов, чтобы корректно найти последний отвеченный вопрос.
+    // Object.keys для числовых id сортируется по возрастанию, что приводит к неверному "последнему" ответу.
+    const questionByIndexCode = currentQuestion?.code;
+    const lastAnsweredQuestion = allQuestions
+      .slice()
+      .reverse()
+      .find(q => effectiveAnswers[q.id] !== undefined);
+
+    if (!currentQuestion && lastAnsweredQuestion) {
+      currentQuestion = lastAnsweredQuestion;
+      clientLogger.log('🔧 [handleNext] Используем последний отвеченный вопрос (fallback вместо null)', {
+        questionIndex: currentQuestionIndex,
+        lastAnsweredQuestionId: lastAnsweredQuestion.id,
+        lastAnsweredQuestionCode: lastAnsweredQuestion.code,
+        allQuestionsLength: allQuestions.length,
+      });
+    } else if (
+      currentQuestion &&
+      effectiveAnswers[currentQuestion.id] === undefined &&
+      lastAnsweredQuestion &&
+      lastAnsweredQuestion.id !== currentQuestion.id
+    ) {
+      currentQuestion = lastAnsweredQuestion;
+      clientLogger.log('🔧 [handleNext] Используем последний отвеченный вопрос вместо неотвеченного по индексу', {
+        questionIndex: currentQuestionIndex,
+        questionByIndex: questionByIndexCode || null,
+        lastAnsweredQuestionId: lastAnsweredQuestion.id,
+        lastAnsweredQuestionCode: lastAnsweredQuestion.code,
+        allQuestionsLength: allQuestions.length,
+      });
     }
 
     // ФИКС B: Хард-fallback - если currentQuestion валиден, но hasAnsweredCurrentQuestion false,
