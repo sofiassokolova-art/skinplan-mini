@@ -42,11 +42,13 @@ export function getTelegramInitDataFromHeaders(request: NextRequest): string | n
   );
 }
 
-export function tryGetTelegramIdentityFromRequest(
+export async function tryGetTelegramIdentityFromRequest(
   request: NextRequest
 ):
-  | { ok: true; telegramId: string; user: TelegramAuthContext['user'] }
-  | { ok: false; code: TelegramAuthErrorCode; message: string } {
+  Promise<
+    | { ok: true; telegramId: string; user: TelegramAuthContext['user'] }
+    | { ok: false; code: TelegramAuthErrorCode; message: string }
+  > {
   const initData = getTelegramInitDataFromHeaders(request);
   if (!initData) {
     return { ok: false, code: 'AUTH_MISSING_INITDATA', message: 'Missing Telegram initData' };
@@ -55,11 +57,11 @@ export function tryGetTelegramIdentityFromRequest(
   if (!botToken) {
     return { ok: false, code: 'AUTH_BOT_TOKEN_MISSING', message: 'Bot token not configured' };
   }
-  const validation = validateTelegramInitData(initData, botToken);
-  if (!validation.valid || !validation.data?.user) {
+  const validation = await validateTelegramInitDataUnified(initData);
+  if (!validation.valid || !validation.payload?.user) {
     return { ok: false, code: 'AUTH_INVALID_INITDATA', message: validation.error || 'Invalid initData' };
   }
-  const telegramUser = validation.data.user;
+  const telegramUser = validation.payload.user;
   return { ok: true, telegramId: telegramUser.id.toString(), user: telegramUser };
 }
 

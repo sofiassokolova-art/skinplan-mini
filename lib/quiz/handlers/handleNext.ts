@@ -818,7 +818,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       
       // Проходим по цепочке назад, пока не найдем инфо-экран с showAfterQuestionCode
       while (firstInfoScreenInChain && !showAfterQuestionCode && firstInfoScreenInChain.showAfterInfoScreenId) {
-        const prevScreen = INFO_SCREENS.find(s => s.id === firstInfoScreenInChain.showAfterInfoScreenId);
+        const prevScreen = INFO_SCREENS.find(s => s.id === firstInfoScreenInChain!.showAfterInfoScreenId);
         if (prevScreen) {
           firstInfoScreenInChain = prevScreen;
           showAfterQuestionCode = prevScreen.showAfterQuestionCode;

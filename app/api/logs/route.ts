@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
   try {
     // ИСПРАВЛЕНО: initData не обязателен - можем логировать даже без него
     let userId: string | null = null;
-    const identity = tryGetTelegramIdentityFromRequest(request);
+    const identity = await tryGetTelegramIdentityFromRequest(request);
     if (identity.ok) {
       try {
         const existing = await prisma.user.findUnique({

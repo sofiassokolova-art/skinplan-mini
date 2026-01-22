@@ -7,6 +7,7 @@ import { calculateSkinAxes } from '@/lib/skin-analysis-engine';
 import type { QuestionnaireAnswers } from '@/lib/skin-analysis-engine';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
+import type { AnswerOption } from '@/lib/quiz/types';
 
 interface SkinIssue {
   id: string;
@@ -38,7 +39,7 @@ export function calculateSkinIssues(
       // Для multi-choice - массив лейблов опций
       const labels: string[] = [];
       for (const value of answer.answerValues) {
-        const option = answer.question?.answerOptions?.find(opt => opt.value === value);
+        const option = answer.question?.answerOptions?.find((opt: AnswerOption) => opt.value === value);
         if (option?.label) {
           labels.push(option.label);
         } else {
@@ -49,7 +50,7 @@ export function calculateSkinIssues(
       answersMap[questionCode] = labels;
     } else if (answer.answerValue) {
       // Для single-choice - лейбл опции или само значение
-      const option = answer.question?.answerOptions?.find(opt => opt.value === answer.answerValue);
+      const option = answer.question?.answerOptions?.find((opt: AnswerOption) => opt.value === answer.answerValue);
       answersMap[questionCode] = option?.label || answer.answerValue;
     }
   }
