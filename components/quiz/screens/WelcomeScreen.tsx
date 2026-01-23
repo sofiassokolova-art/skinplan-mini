@@ -76,7 +76,20 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
 
       {/* Кнопка "Назад" - НИКОГДА не показывается на welcome экране */}
       {currentInfoScreenIndex > 0 && onBack && screen.id !== 'welcome' && currentInfoScreenIndex !== 0 && (
-        <BackButton onClick={onBack} />
+        <div style={{
+          position: 'fixed',
+          top: 'clamp(20px, 4vh, 40px)',
+          left: 'clamp(19px, 5vw, 24px)',
+          zIndex: 1000,
+          width: '44px',
+          height: '44px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          pointerEvents: 'auto',
+        }}>
+          <BackButton onClick={onBack} />
+        </div>
       )}
 
       {/* Контент (текст) с анимацией */}

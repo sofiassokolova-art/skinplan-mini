@@ -660,8 +660,8 @@ export default function HomePage() {
       // Проверяем тип ошибки
       if (error?.message?.includes('Unauthorized') || error?.message?.includes('401') || error?.message?.includes('initData')) {
         // Ошибка идентификации - перенаправляем на анкету
-        setLoading(false); // ИСПРАВЛЕНО: Устанавливаем loading в false перед редиректом
-        router.push('/quiz');
+        setError('Не удалось загрузить данные. Пройдите анкету, чтобы получить план.');
+        setLoading(false);
         return;
       }
       
@@ -689,11 +689,9 @@ export default function HomePage() {
           return;
         }
 
-        // Плана нет — это действительно новый пользователь → отправляем на анкету
-        clientLogger.log('Рекомендации не найдены (профиль ещё не создан, плана нет) — редирект на /quiz');
-        if (typeof window !== 'undefined') {
-          router.replace('/quiz');
-        }
+        // Плана нет — это действительно новый пользователь → показываем CTA на анкету
+        clientLogger.log('Рекомендации не найдены (профиль ещё не создан, плана нет) — показываем CTA на анкету');
+        setError(null);
         return;
       }
       
@@ -849,10 +847,9 @@ export default function HomePage() {
     );
   }
 
-  // Совсем новый пользователь (нет рутины и нет сохранённого плана) → сразу отправляем на анкету
+  // Совсем новый пользователь (нет рутины и нет сохранённого плана) → показываем CTA на анкету
   if (routineItems.length === 0 && !hasPlan) {
-    // ИСПРАВЛЕНО: Детальное логирование редиректа на /quiz для диагностики
-    clientLogger.log('🔄 Redirecting to /quiz: no routine items and no plan', {
+    clientLogger.log('ℹ️ No routine items and no plan — showing CTA to start questionnaire', {
       routineItemsCount: routineItems.length,
       hasPlan,
       morningItemsCount: morningItems.length,
@@ -862,10 +859,38 @@ export default function HomePage() {
       hasSteps: !!recommendations?.steps,
       stepsKeys: recommendations?.steps ? Object.keys(recommendations.steps) : [],
     });
-    if (typeof window !== 'undefined') {
-      router.replace('/quiz');
-    }
-    return null;
+    return (
+      <div style={{
+        padding: '20px',
+        textAlign: 'center',
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+      }}>
+        <h1 style={{ color: '#0A5F59', marginBottom: '16px' }}>Начните с анкеты</h1>
+        <p style={{ color: '#475467', marginBottom: '24px' }}>
+          Мы подберём персональный уход после короткой анкеты.
+        </p>
+        <button
+          onClick={() => router.push('/quiz')}
+          style={{
+            padding: '12px 24px',
+            borderRadius: '12px',
+            backgroundColor: '#0A5F59',
+            color: 'white',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '16px',
+            fontWeight: 'bold',
+          }}
+        >
+          Пройти анкету
+        </button>
+      </div>
+    );
   }
 
   const completedCount = routineItems.filter((item) => item.done).length;
@@ -1233,4 +1258,3 @@ export default function HomePage() {
     </PaymentGate>
   );
 }
-

@@ -247,6 +247,22 @@ export async function generateRecommendationsForProfile(
 
     // ИСПРАВЛЕНО: budgetSegment не в RuleContext, получаем из профиля или используем null
     const budgetSegment = (profile as any).budgetSegment || null;
+    const budgetMappings: Record<string, { label: 'бюджетный' | 'средний' | 'премиум' | 'любой'; priceSegment?: 'mass' | 'mid' | 'premium' }> = {
+      budget: { label: 'бюджетный', priceSegment: 'mass' },
+      budget_1: { label: 'бюджетный', priceSegment: 'mass' },
+      low: { label: 'бюджетный', priceSegment: 'mass' },
+      medium: { label: 'средний', priceSegment: 'mid' },
+      budget_2: { label: 'средний', priceSegment: 'mid' },
+      premium: { label: 'премиум', priceSegment: 'premium' },
+      budget_3: { label: 'премиум', priceSegment: 'premium' },
+      any: { label: 'любой' },
+      budget_4: { label: 'любой' },
+      'бюджетный': { label: 'бюджетный', priceSegment: 'mass' },
+      'средний': { label: 'средний', priceSegment: 'mid' },
+      'премиум': { label: 'премиум', priceSegment: 'premium' },
+      'любой': { label: 'любой' },
+    };
+    const normalizedBudget = budgetSegment ? budgetMappings[budgetSegment] : undefined;
 
     // ИСПРАВЛЕНО: Строим ProfileClassification для unified-product-filter
     const profileClassification: ProfileClassification = {
@@ -257,7 +273,7 @@ export async function generateRecommendationsForProfile(
       mainGoals: (profile as any).mainGoals || [],
       secondaryGoals: (profile as any).secondaryGoals || [],
       sensitivityLevel: profile.sensitivityLevel || 'low',
-      budget: budgetSegment || 'средний',
+      budget: normalizedBudget?.label || 'средний',
       exclude: (profile as any).exclude || [],
       allergies: (profile as any).allergies || [],
       ageGroup: profile.ageGroup || null,
@@ -266,12 +282,12 @@ export async function generateRecommendationsForProfile(
     // ИСПРАВЛЕНО: stepsJson в БД обычно объект { stepName: RuleStep }, но поддерживаем и массив для обратной совместимости
     if (Array.isArray(stepsJson)) {
       for (const step of stepsJson) {
-        const products = await getProductsForStep(step, budgetSegment, profileClassification);
+        const products = await getProductsForStep(step, normalizedBudget?.priceSegment, profileClassification);
         allProductIds.push(...products.map((p: any) => p.id));
       }
     } else if (stepsJson && typeof stepsJson === 'object') {
       for (const stepConfig of Object.values(stepsJson)) {
-        const products = await getProductsForStep(stepConfig as any, budgetSegment, profileClassification);
+        const products = await getProductsForStep(stepConfig as any, normalizedBudget?.priceSegment, profileClassification);
         allProductIds.push(...products.map((p: any) => p.id));
       }
     } else {
@@ -333,4 +349,3 @@ export async function generateRecommendationsForProfile(
     return { ok: false, reason: 'unknown_error' };
   }
 }
-
