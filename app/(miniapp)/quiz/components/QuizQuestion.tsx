@@ -554,6 +554,9 @@ export const QuizQuestion = memo(function QuizQuestion({
       const optionText = option.label || '';
       const optionParts = optionText.split('\n');
       const optionTitle = optionParts[0] || '';
+      const displayTitle = isSkinTypeQuestion
+        ? optionTitle.replace(/^тип\s*\d+\s*[-–—]\s*/i, '')
+        : optionTitle;
       const optionDescription = optionParts.slice(1).join('\n') || '';
 
       return (
@@ -623,7 +626,7 @@ export const QuizQuestion = memo(function QuizQuestion({
                     "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                 }}
               >
-                {optionTitle}
+                {displayTitle}
               </span>
 
               {/* чекбокс убираем для skin_type */}
