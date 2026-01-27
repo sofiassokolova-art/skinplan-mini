@@ -203,12 +203,25 @@ export function useQuizStateExtended(): UseQuizStateExtendedReturn {
         // и флаг можно удалить, чтобы разрешить восстановление при следующей загрузке
         let progressCleared = sessionStorage.getItem('quiz_progress_cleared') || 
                              sessionStorage.getItem('default:quiz_progress_cleared');
+        const storageKeys = Object.keys(sessionStorage);
+
+        // Также проверяем scoped ключи для progressCleared
+        if (!progressCleared) {
+          for (const key of storageKeys) {
+            if (key.includes(':quiz_progress_cleared') || key.endsWith(':quiz_progress_cleared')) {
+              const value = sessionStorage.getItem(key);
+              if (value === 'true') {
+                progressCleared = value;
+                break;
+              }
+            }
+          }
+        }
         
         // ИСПРАВЛЕНО: Проверяем, есть ли сохраненные ответы ПЕРЕД проверкой флага
         // Если есть ответы, но флаг установлен - это означает, что пользователь начал новую сессию
         // и флаг можно удалить
         let hasSavedAnswers = false;
-        const storageKeys = Object.keys(sessionStorage);
         for (const key of storageKeys) {
           if (key.includes(':quiz_answers_backup') || key.endsWith(':quiz_answers_backup') || key === 'quiz_answers_backup') {
             const savedAnswersStr = sessionStorage.getItem(key);
