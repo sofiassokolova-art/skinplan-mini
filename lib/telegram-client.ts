@@ -3,6 +3,8 @@
 
 'use client';
 
+import { useCallback } from 'react';
+
 export interface TelegramWebApp {
   ready: () => void;
   expand: () => void;
@@ -71,7 +73,7 @@ export function useTelegram() {
     console.warn('⚠️ Error accessing Telegram WebApp:', err);
   }
 
-  const initialize = () => {
+  const initialize = useCallback(() => {
     try {
       if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
         window.Telegram.WebApp.ready();
@@ -80,11 +82,9 @@ export function useTelegram() {
     } catch (err) {
       console.warn('⚠️ Error initializing Telegram WebApp:', err);
     }
-  };
+  }, []);
 
-  const sendData = (data: unknown) => {
-    return sendToTG(data);
-  };
+  const sendData = useCallback((data: unknown) => sendToTG(data), []);
 
   return {
     tg,
