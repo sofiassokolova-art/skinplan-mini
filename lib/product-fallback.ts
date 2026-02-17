@@ -34,9 +34,18 @@ export interface ProductWithBrand {
  * Ищет fallback продукт для базового шага
  * ВАЖНО: Всегда пытается найти продукт, даже если нужно игнорировать тип кожи
  */
+function simpleHash(str: string): number {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) - h) + str.charCodeAt(i) | 0;
+  }
+  return Math.abs(h);
+}
+
 export async function findFallbackProduct(
   baseStep: string,
-  profileClassification: ProfileClassification
+  profileClassification: ProfileClassification,
+  options?: { userId?: string }
 ): Promise<ProductWithBrand | null> {
   // Маппинг категорий из правил в категории БД (как в getProductsForStep)
   const categoryMapping: Record<string, string[]> = {
@@ -48,6 +57,8 @@ export async function findFallbackProduct(
     'treatment': ['treatment'],
     'spf': ['spf'],
     'mask': ['mask'],
+    'lip_care': ['lip_care'], // Бальзам для губ
+    'eye_cream_dark_circles': ['eye_cream', 'eye_serum'], // Крем для глаз
   };
 
   // Первая попытка: с учетом типа кожи
@@ -101,17 +112,35 @@ export async function findFallbackProduct(
 
   try {
     // Пробуем найти с учетом типа кожи
-    let product = await prisma.product.findFirst({
-      where: whereClauseWithSkinType,
-      include: {
-        brand: true,
-      },
-      orderBy: [
-        { isHero: 'desc' },
-        { priority: 'desc' },
-        { createdAt: 'desc' },
-      ],
-    });
+    // ИСПРАВЛЕНО: При userId — findMany для разнообразия, иначе findFirst
+    const orderBy = [
+      { isHero: 'desc' as const },
+      { priority: 'desc' as const },
+      { createdAt: 'desc' as const },
+    ];
+    let product: ProductWithBrand | null;
+    if (options?.userId) {
+      const products = await prisma.product.findMany({
+        where: whereClauseWithSkinType,
+        include: { brand: true },
+        orderBy,
+        take: 10,
+      });
+      if (products.length === 0) {
+        product = null;
+      } else if (products.length === 1) {
+        product = products[0] as ProductWithBrand;
+      } else {
+        const idx = simpleHash(`${options.userId}|${baseStep}`) % products.length;
+        product = products[idx] as ProductWithBrand;
+      }
+    } else {
+      product = await prisma.product.findFirst({
+        where: whereClauseWithSkinType,
+        include: { brand: true },
+        orderBy,
+      }) as ProductWithBrand | null;
+    }
 
     // Если не найдено с учетом типа кожи, пробуем без учета типа кожи
     if (!product && profileClassification.skinType && baseStep !== 'spf') {

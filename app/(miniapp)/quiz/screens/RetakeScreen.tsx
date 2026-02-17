@@ -3,7 +3,6 @@
 
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { PaymentGate } from '@/components/PaymentGate';
 import { api } from '@/lib/api';
 import { clientLogger } from '@/lib/client-logger';
@@ -24,8 +23,6 @@ export function RetakeScreen({
   onFullRetake,
   onCancel,
 }: RetakeScreenProps) {
-  const router = useRouter();
-
   return (
     <div style={{
       minHeight: '100vh',
@@ -54,90 +51,73 @@ export function RetakeScreen({
         </p>
       </div>
 
-      {/* Список тем */}
+      {/* Список тем — без PaymentGate: оплата показывается только после выбора темы на /quiz/update/[topicId] */}
       <div style={{
         display: 'flex',
         flexDirection: 'column',
         gap: '16px',
         marginBottom: '24px',
       }}>
-        {topics.map((topic) => {
-          const topicButton = (
-            <button
-              key={topic.id}
-              onClick={() => onTopicSelect(topic)}
-              style={{
-                padding: '20px',
-                borderRadius: '16px',
-                backgroundColor: 'white',
-                border: '1px solid #E5E7EB',
-                textAlign: 'left',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
-                width: '100%',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#0A5F59';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(10, 95, 89, 0.15)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#E5E7EB';
-                e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.05)';
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        {topics.map((topic) => (
+          <button
+            key={topic.id}
+            onClick={() => onTopicSelect(topic)}
+            style={{
+              padding: '20px',
+              borderRadius: '16px',
+              backgroundColor: 'white',
+              border: '1px solid #E5E7EB',
+              textAlign: 'left',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+              width: '100%',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = '#0A5F59';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(10, 95, 89, 0.15)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = '#E5E7EB';
+              e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.05)';
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{
+                fontSize: '32px',
+                width: '48px',
+                height: '48px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                {topic.icon || '📝'}
+              </div>
+              <div style={{ flex: 1 }}>
                 <div style={{
-                  fontSize: '32px',
-                  width: '48px',
-                  height: '48px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  color: '#111827',
+                  marginBottom: '4px',
                 }}>
-                  {topic.icon || '📝'}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    color: '#111827',
-                    marginBottom: '4px',
-                  }}>
-                    {topic.title}
-                  </div>
-                  <div style={{
-                    fontSize: '14px',
-                    color: '#6B7280',
-                  }}>
-                    {topic.description}
-                  </div>
+                  {topic.title}
                 </div>
                 <div style={{
-                  fontSize: '24px',
-                  color: '#9CA3AF',
+                  fontSize: '14px',
+                  color: '#6B7280',
                 }}>
-                  →
+                  {topic.description}
                 </div>
               </div>
-            </button>
-          );
-          
-          return (
-            <PaymentGate
-              key={topic.id}
-              price={49}
-              productCode="retake_topic"
-              isRetaking={true}
-              onPaymentComplete={() => {
-                clientLogger.log('✅ Retake topic payment completed, navigating to topic', { topicId: topic.id });
-                router.push(`/quiz/update/${topic.id}`);
-              }}
-            >
-              {topicButton}
-            </PaymentGate>
-          );
-        })}
+              <div style={{
+                fontSize: '24px',
+                color: '#9CA3AF',
+              }}>
+                →
+              </div>
+            </div>
+          </button>
+        ))}
       </div>
 
       {/* Кнопка полного перепрохождения */}

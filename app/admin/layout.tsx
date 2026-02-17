@@ -4,7 +4,7 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { 
   LayoutDashboard, 
@@ -34,6 +34,7 @@ export default function AdminLayout({
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [userOpenedSidebar, setUserOpenedSidebar] = useState(false); // ИСПРАВЛЕНО (P1): Храним пользовательское намерение
+  const authCheckInProgressRef = useRef(false);
 
   // Проверяем размер экрана и адаптируем сайдбар
   useEffect(() => {
@@ -63,14 +64,16 @@ export default function AdminLayout({
       return;
     }
 
+    // Критично: включаем лоадер и ref до завершения проверки, иначе редирект срабатывает
+    // до ответа API и получается цикл: /admin → редирект на логин → логин редиректит на /admin → ...
+    setLoading(true);
+    authCheckInProgressRef.current = true;
     let mounted = true;
 
     const checkAuth = async () => {
       try {
-        // ИСПРАВЛЕНО (P0): Используем только cookie, убрали localStorage токен
-        // ИСПРАВЛЕНО (P1): Убрали credentials: 'include' + Authorization одновременно
         const response = await fetch('/api/admin/auth', {
-          credentials: 'include', // Используем только cookie для авторизации
+          credentials: 'include',
         });
 
         if (!mounted) return;
@@ -92,6 +95,7 @@ export default function AdminLayout({
         }
       } finally {
         if (mounted) {
+          authCheckInProgressRef.current = false;
           setLoading(false);
         }
       }
@@ -101,14 +105,16 @@ export default function AdminLayout({
 
     return () => {
       mounted = false;
+      authCheckInProgressRef.current = false;
     };
   }, [pathname, isLoginPage]);
 
   // ИСПРАВЛЕНО: Все хуки должны быть вызваны ДО любых условных return'ов
   // Это критично для соблюдения правил React Hooks (React error #310)
   
-  // Хук 2: Редирект при отсутствии авторизации
+  // Хук 2: Редирект при отсутствии авторизации (только после завершения проверки, чтобы не было цикла)
   useEffect(() => {
+    if (authCheckInProgressRef.current) return;
     if (!loading && !isAuthenticated && !isLoginPage) {
       console.log('[AdminLayout] Not authenticated, redirecting to login', { pathname, loading, isAuthenticated });
       router.push('/admin/login');

@@ -87,6 +87,13 @@ export async function loadSavedProgressFromServer({
     clientLogger.log('✅ Анкета завершена (isCompleted: true из quizProgressFromQuery), не показываем резюм-экран');
     return;
   }
+
+  // КРИТИЧНО: Перепрохождение с главной (retakeFromHome в URL) — не показываем "Вы не завершили анкету"
+  const retakeFromHome = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('retakeFromHome') === '1';
+  if (retakeFromHome) {
+    clientLogger.log('✅ retakeFromHome в URL — не устанавливаем showResumeScreen, покажем экран выбора тем');
+    return;
+  }
   
   // ИСПРАВЛЕНО: Проверяем наличие прогресса в quizProgressFromQuery ИЛИ savedProgress ПЕРЕД проверкой isAlreadyOnQuestions
   // Если есть прогресс с >= 2 ответами, не блокируем вызов, чтобы показать экран резюме

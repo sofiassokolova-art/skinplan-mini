@@ -3,6 +3,7 @@
 
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { PaymentGate } from '@/components/PaymentGate';
 import { api } from '@/lib/api';
@@ -56,6 +57,13 @@ export function QuizRetakeScreen({
 }: QuizRetakeScreenProps) {
   const router = useRouter();
   const retakeTopics = getAllTopics();
+  const [mounted, setMounted] = useState(false);
+  const [showFullRetakePaymentGate, setShowFullRetakePaymentGate] = useState(false);
+
+  // Избегаем hydration mismatch: рендерим реальный контент только после монтирования
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleTopicSelect = (topic: QuizTopic) => {
     router.push(`/quiz/update/${topic.id}`);
@@ -110,12 +118,13 @@ export function QuizRetakeScreen({
       clientLogger.warn('Failed to clear retake flags:', err);
     }
 
-    // Начинаем анкету с самого начала
+    // Начинаем анкету сразу с вопросов — без инфо-экранов
     if (questionnaire) {
-      setCurrentInfoScreenIndex(0);
+      const initialInfoScreens = getInitialInfoScreens();
+      setCurrentInfoScreenIndex(initialInfoScreens.length);
       setCurrentQuestionIndex(0);
       setPendingInfoScreen(null);
-      clientLogger.log('✅ Full retake: answers and progress cleared, starting from first info screen');
+      clientLogger.log('✅ Full retake: answers and progress cleared, skipping info screens, starting from first question');
     }
     } catch (error) {
       // Логируем ошибку и показываем пользователю
@@ -127,6 +136,38 @@ export function QuizRetakeScreen({
       setError('Не удалось начать полное перепрохождение анкеты. Попробуйте ещё раз.');
     }
   };
+
+  // До монтирования — лоадер (совпадает с сервером, устраняет hydration mismatch)
+  if (!mounted) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        padding: '20px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        gap: '24px',
+      }}>
+        <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка…</div>
+        <button
+          onClick={() => router.back()}
+          style={{
+            padding: '12px 24px',
+            borderRadius: '12px',
+            backgroundColor: 'transparent',
+            border: '1px solid #D1D5DB',
+            color: '#6B7280',
+            fontSize: '14px',
+            cursor: 'pointer',
+          }}
+        >
+          Назад
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -156,100 +197,83 @@ export function QuizRetakeScreen({
         </p>
       </div>
 
-      {/* Список тем */}
+      {/* Список тем — без PaymentGate: оплата показывается только после выбора темы на /quiz/update/[topicId] */}
       <div style={{
         display: 'flex',
         flexDirection: 'column',
         gap: '16px',
         marginBottom: '24px',
       }}>
-        {retakeTopics.map((topic) => {
-          const topicButton = (
-            <button
-              key={topic.id}
-              onClick={() => handleTopicSelect(topic)}
-              style={{
-                padding: '20px',
-                borderRadius: '16px',
-                backgroundColor: 'white',
-                border: '1px solid #E5E7EB',
-                textAlign: 'left',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
-                width: '100%',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#0A5F59';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(10, 95, 89, 0.15)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#E5E7EB';
-                e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.05)';
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        {retakeTopics.map((topic) => (
+          <button
+            key={topic.id}
+            onClick={() => handleTopicSelect(topic)}
+            style={{
+              padding: '20px',
+              borderRadius: '16px',
+              backgroundColor: 'white',
+              border: '1px solid #E5E7EB',
+              textAlign: 'left',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+              width: '100%',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = '#0A5F59';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(10, 95, 89, 0.15)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = '#E5E7EB';
+              e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.05)';
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{
+                fontSize: '32px',
+                width: '48px',
+                height: '48px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                {topic.icon || '📝'}
+              </div>
+              <div style={{ flex: 1 }}>
                 <div style={{
-                  fontSize: '32px',
-                  width: '48px',
-                  height: '48px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  color: '#111827',
+                  marginBottom: '4px',
                 }}>
-                  {topic.icon || '📝'}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    color: '#111827',
-                    marginBottom: '4px',
-                  }}>
-                    {topic.title}
-                  </div>
-                  <div style={{
-                    fontSize: '14px',
-                    color: '#6B7280',
-                  }}>
-                    {topic.description}
-                  </div>
+                  {topic.title}
                 </div>
                 <div style={{
-                  fontSize: '24px',
-                  color: '#9CA3AF',
+                  fontSize: '14px',
+                  color: '#6B7280',
                 }}>
-                  →
+                  {topic.description}
                 </div>
               </div>
-            </button>
-          );
-          
-          return (
-            <PaymentGate
-              key={topic.id}
-              price={49}
-              productCode="retake_topic"
-              isRetaking={true}
-              onPaymentComplete={() => {
-                clientLogger.log('✅ Retake topic payment completed, navigating to topic', { topicId: topic.id });
-                router.push(`/quiz/update/${topic.id}`);
-              }}
-            >
-              {topicButton}
-            </PaymentGate>
-          );
-        })}
+              <div style={{
+                fontSize: '24px',
+                color: '#9CA3AF',
+              }}>
+                →
+              </div>
+            </div>
+          </button>
+        ))}
       </div>
 
-      {/* Кнопка полного перепрохождения */}
-      {!hasFullRetakePayment ? (
+      {/* Кнопка полного перепрохождения — PaymentGate только после нажатия */}
+      {showFullRetakePaymentGate && !hasFullRetakePayment ? (
         <PaymentGate
           price={99}
           productCode="retake_full"
           isRetaking={true}
+          cancelCta={{ text: '← Назад к выбору тем', onClick: () => setShowFullRetakePaymentGate(false) }}
           onPaymentComplete={async () => {
-            // Обновляем состояние оплаты из API
             try {
               const entitlements = await api.getEntitlements();
               const hasRetakeFull = entitlements?.entitlements?.some(
@@ -266,8 +290,7 @@ export function QuizRetakeScreen({
                 clientLogger.warn('Failed to save full retake payment flag:', err);
               }
             }
-            
-            // После оплаты разрешаем полное перепрохождение
+            setShowFullRetakePaymentGate(false);
             setShowRetakeScreen(false);
             setIsRetakingQuiz(true);
             if (questionnaire) {
@@ -279,34 +302,9 @@ export function QuizRetakeScreen({
             }
           }}
         >
-          <div style={{ width: '100%', marginTop: '8px' }}>
-            <button
-              style={{
-                width: '100%',
-                padding: '16px',
-                borderRadius: '16px',
-                backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                border: '2px solid #0A5F59',
-                color: '#0A5F59',
-                fontSize: '16px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#0A5F59';
-                e.currentTarget.style.color = 'white';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
-                e.currentTarget.style.color = '#0A5F59';
-              }}
-            >
-              Пройти всю анкету заново (99 ₽)
-            </button>
-          </div>
+          <div style={{ width: '100%', marginTop: '8px' }} />
         </PaymentGate>
-      ) : (
+      ) : hasFullRetakePayment ? (
         <button
           onClick={handleFullRetake}
           style={{
@@ -333,12 +331,38 @@ export function QuizRetakeScreen({
         >
           Пройти всю анкету заново
         </button>
+      ) : (
+        <button
+          onClick={() => setShowFullRetakePaymentGate(true)}
+          style={{
+            width: '100%',
+            padding: '16px',
+            borderRadius: '16px',
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            border: '2px solid #0A5F59',
+            color: '#0A5F59',
+            fontSize: '16px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            marginTop: '8px',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = '#0A5F59';
+            e.currentTarget.style.color = 'white';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+            e.currentTarget.style.color = '#0A5F59';
+          }}
+        >
+          Пройти всю анкету заново (99 ₽)
+        </button>
       )}
 
-      {/* Кнопка отмены */}
+      {/* Кнопка назад */}
       <div style={{ textAlign: 'center', marginTop: '24px' }}>
         <button
-          onClick={() => router.push('/plan')}
+          onClick={() => router.back()}
           style={{
             padding: '12px 24px',
             borderRadius: '12px',
@@ -358,7 +382,7 @@ export function QuizRetakeScreen({
             e.currentTarget.style.color = '#6B7280';
           }}
         >
-          Отмена
+          Назад
         </button>
       </div>
     </div>

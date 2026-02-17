@@ -6,6 +6,7 @@ import type { ProductWithBrand } from './product-fallback';
 import type { StepCategory } from './step-category-rules';
 import type { ProfileClassification } from './plan-generation-helpers';
 import type { DermatologyProtocol } from './dermatology-protocols';
+import { determineProtocol } from './dermatology-protocols';
 import {
   filterByProtocol,
   checkCompatibilityWithSelected,
@@ -525,17 +526,36 @@ export async function filterProductsWithReasons(
 }
 
 /**
- * Фильтрует продукты по базовым критериям (без дерматологической логики)
- * ИСПРАВЛЕНО: Используется для быстрой фильтрации в правилах
+ * Фильтрует продукты по базовым критериям.
+ * ИСПРАВЛЕНО: При наличии diagnoses или rosaceaRisk применяет дерматологический протокол
+ * (исключает Vitamin C, AHA, BHA при розацеа и т.д.).
  */
 export async function filterProductsBasic(
   products: ProductWithBrand[],
   profileClassification: ProfileClassification,
-  strictness: FilterStrictness = 'soft'
+  strictness: FilterStrictness = 'soft',
+  options?: { stepCategory?: StepCategory }
 ): Promise<ProductWithBrand[]> {
+  const hasDiagnoses = Array.isArray(profileClassification.diagnoses) && profileClassification.diagnoses.length > 0;
+  const hasRosaceaRisk = profileClassification.rosaceaRisk &&
+    ['medium', 'high', 'critical'].includes((profileClassification.rosaceaRisk || '').toLowerCase());
+
+  const protocol: DermatologyProtocol | undefined =
+    hasDiagnoses || hasRosaceaRisk
+      ? determineProtocol({
+          diagnoses: profileClassification.diagnoses || [],
+          concerns: profileClassification.concerns || [],
+          skinType: profileClassification.skinType || undefined,
+          sensitivityLevel: profileClassification.sensitivityLevel || undefined,
+          rosaceaRisk: profileClassification.rosaceaRisk || undefined,
+        })
+      : undefined;
+
   const results = await filterProducts(products, {
     profileClassification,
     strictness,
+    protocol,
+    stepCategory: options?.stepCategory,
   });
 
   return results

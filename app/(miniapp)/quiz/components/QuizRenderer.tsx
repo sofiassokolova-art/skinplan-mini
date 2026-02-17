@@ -724,18 +724,8 @@ export const QuizRenderer = memo(function QuizRenderer({
     );
   }
 
-  // TODO: Implement initial loader logic
-  // if (shouldShowInitialLoader({...})) {
-  //   return <QuizInitialLoader />;
-  // }
-
-  // Loader screen - показывается когда данные еще загружаются
-  if (screen === 'LOADER') {
-    console.log('⏳ [QuizRenderer] rendering LOADER screen');
-    return <QuizInitialLoader />;
-  }
-
-  // Finalizing loader
+  // Finalizing loader — ОДИН лоадер перед отправкой ответов и планом
+  // Проверяем ПЕРЕД LOADER, чтобы никогда не показывать два лоадера
   if (finalizing) {
     return (
       <QuizFinalizingLoader
@@ -744,6 +734,12 @@ export const QuizRenderer = memo(function QuizRenderer({
         finalizeError={finalizeError}
       />
     );
+  }
+
+  // Loader screen - показывается когда данные еще загружаются
+  if (screen === 'LOADER') {
+    console.log('⏳ [QuizRenderer] rendering LOADER screen');
+    return <QuizInitialLoader />;
   }
 
   if (screen === 'RETAKE') {

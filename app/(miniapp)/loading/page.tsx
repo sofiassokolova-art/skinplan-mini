@@ -41,43 +41,55 @@ export default function LoadingPage() {
 
   useEffect(() => {
     let cancelled = false;
+    const profileIdParam = searchParams.get('profileId');
     const sid = searchParams.get('sid');
     const questionnaireId = searchParams.get('questionnaireId');
     const answersJson = searchParams.get('answers');
 
-    if (!sid || !questionnaireId || !answersJson) {
-      setError('Отсутствуют необходимые параметры');
-      setStep('error');
-      return;
-    }
+    // Два потока:
+    // 1) profileId — из quiz/submitAnswers (единый поток): пропускаем submitAnswers
+    // 2) sid + questionnaireId + answers — внешний вход (deep link): полный цикл
+    const hasProfileIdOnly = profileIdParam && !sid && !questionnaireId && !answersJson;
+    const hasFullParams = sid && questionnaireId && answersJson;
 
-    let answers: any[];
-    try {
-      answers = JSON.parse(decodeURIComponent(answersJson));
-    } catch (e) {
-      setError('Неверный формат ответов');
+    if (!hasProfileIdOnly && !hasFullParams) {
+      setError('Отсутствуют необходимые параметры (profileId или sid+questionnaireId+answers)');
       setStep('error');
       return;
     }
 
     (async () => {
+      let resolvedProfileId: string;
+
       try {
-        // Шаг 1: Сохранение ответов
-        if (cancelled) return;
-        setStep('saving_answers');
+        if (hasProfileIdOnly) {
+          resolvedProfileId = profileIdParam!;
+        } else {
+          // Полный цикл: сохранение ответов
+          if (cancelled) return;
+          setStep('saving_answers');
 
-        const answersRes = await api.submitAnswers({
-          questionnaireId: parseInt(questionnaireId),
-          answers,
-          clientSubmissionId: sid,
-        });
+          let answers: any[];
+          try {
+            answers = JSON.parse(decodeURIComponent(answersJson!));
+          } catch (e) {
+            setError('Неверный формат ответов');
+            setStep('error');
+            return;
+          }
 
-        const profile = answersRes?.profile;
-        if (!profile?.id || !profile?.version) {
-          throw new Error('Профиль не был создан');
+          const answersRes = await api.submitAnswers({
+            questionnaireId: parseInt(questionnaireId!),
+            answers,
+            clientSubmissionId: sid!,
+          });
+
+          const profile = answersRes?.profile;
+          if (!profile?.id || !profile?.version) {
+            throw new Error('Профиль не был создан');
+          }
+          resolvedProfileId = profile.id;
         }
-
-        const resolvedProfileId = profile.id;
 
         if (cancelled) return;
 

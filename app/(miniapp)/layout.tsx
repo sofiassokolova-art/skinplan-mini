@@ -4,6 +4,7 @@
 'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import BottomNavigation from '@/components/BottomNavigation';
 import PageTransition from '@/components/PageTransition';
@@ -12,7 +13,7 @@ import { QueryProvider } from '@/providers/QueryProvider';
 import { ServiceFeedbackPopup } from '@/components/ServiceFeedbackPopup';
 import { useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
-import { BackButton } from '@/components/quiz/buttons';
+import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
 
 function LayoutContent({
   children,
@@ -322,33 +323,45 @@ function LayoutContent({
     <>
       <NetworkStatus />
 
-      {/* ФИКС: Кнопка "назад" фиксированная относительно viewport (выше PageTransition) */}
-      {/* Это предотвращает проблемы с transform в PageTransition, которые ломают position: fixed */}
-      {isOnQuizPage && (() => {
-        // ФИКС: Скрываем кнопку "назад" на welcome screen (currentInfoScreenIndex === 0)
-        const currentInfoScreenIndex = typeof window !== 'undefined' ?
-          parseInt(sessionStorage.getItem('currentInfoScreenIndex') || '0', 10) : 0;
-        const shouldShowBackButton = currentInfoScreenIndex > 0;
-        return shouldShowBackButton;
-      })() && (
-        <div style={{
-          position: 'fixed',
-          top: 'clamp(20px, 4vh, 40px)',
-          left: 'clamp(19px, 5vw, 24px)',
-          zIndex: 10000,
-          pointerEvents: 'none', // Фикс-слой не блокирует скролл
-        }}>
-          <div style={{ pointerEvents: 'auto' }}> {/* Только кнопка кликабельна */}
-            <BackButton onClick={() => {
-              if (window.history.length > 1) {
+      {/* ФИКС: Кнопка "назад" через портал в body — только на инфо-экранах; на вопросах кнопку рендерит QuizQuestion */}
+      {isOnQuizPage && typeof window !== 'undefined' && (() => {
+        const currentInfoScreenIndex = parseInt(sessionStorage.getItem('currentInfoScreenIndex') || '0', 10);
+        const initialLen = getInitialInfoScreens().length;
+        return currentInfoScreenIndex > 0 && currentInfoScreenIndex < initialLen;
+      })() &&
+        createPortal(
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof window !== 'undefined' && window.history.length > 1) {
                 window.history.back();
               } else {
                 router.push('/home');
               }
-            }} />
-          </div>
-        </div>
-      )}
+            }}
+            style={{
+              position: 'fixed',
+              top: 'clamp(20px, 4vh, 40px)',
+              left: 'clamp(19px, 5vw, 24px)',
+              zIndex: 99999,
+              width: '44px',
+              height: '44px',
+              background: 'transparent',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              padding: 0,
+              pointerEvents: 'auto',
+            }}
+          >
+            <svg width="12" height="20" viewBox="0 0 12 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10 2L2 10L10 18" stroke="#1A1A1A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>,
+          document.body
+        )}
 
       {/* Логотип наверху всех экранов (кроме главной) - как на главной странице */}
       {showLogo && (

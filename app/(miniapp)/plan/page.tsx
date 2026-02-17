@@ -22,6 +22,7 @@ const DotLottieReact = dynamic(
   }
 );
 import { PLAN_TIMEOUTS } from '@/lib/config/timeouts';
+import { safeSessionStorageRemove } from '@/lib/storage-utils';
 
 // РЕФАКТОРИНГ P2: Локальный тип данных для страницы плана
 // TODO: В будущем полностью унифицировать с PlanPageData из lib/plan-types.ts
@@ -1386,6 +1387,10 @@ export default function PlanPage() {
       } catch (error) {
         clientLogger.warn('⚠️ Ошибка при установке hasPlanProgress (некритично):', error);
       }
+
+      // ИСПРАВЛЕНО: Очищаем quiz_just_submitted при успешной загрузке плана
+      // Иначе при заходе на /home будет редирект обратно на /plan
+      safeSessionStorageRemove('quiz_just_submitted');
       
       safeSetPlanData({
         plan28: plan28 || undefined,

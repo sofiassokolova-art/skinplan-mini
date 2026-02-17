@@ -12,6 +12,7 @@ interface PaymentGateProps {
   isRetaking: boolean;
   onPaymentComplete: () => void;
   retakeCta?: { text: string; href: string };
+  cancelCta?: { text: string; onClick: () => void };
   children: React.ReactNode;
 }
 
@@ -80,6 +81,7 @@ export function PaymentGate({
   isRetaking,
   onPaymentComplete,
   retakeCta,
+  cancelCta,
   children,
 }: PaymentGateProps) {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -519,9 +521,11 @@ export function PaymentGate({
           }}>
             {productCode === 'retake_topic'
               ? 'Перепройдите тему'
-              : isRetaking
-                ? 'Обновите доступ к плану'
-                : 'Получите полный доступ к плану'}
+              : productCode === 'retake_full'
+                ? 'Пройдите всю анкету заново'
+                : isRetaking
+                  ? 'Обновите доступ к плану'
+                  : 'Получите полный доступ к плану'}
           </h2>
           
           <p style={{
@@ -533,7 +537,7 @@ export function PaymentGate({
             {productCode === 'retake_topic'
               ? 'Выберите тему, оплатите 49 ₽ и обновите только затронутые части рекомендаций.'
               : productCode === 'retake_full'
-                ? 'Оплатите 99 ₽ и пройдите всю анкету заново. Счет 28 дней начнется заново.'
+                ? 'Оплатите 99 ₽ и пройдите всю анкету заново. Счёт 28 дней начнётся заново.'
                 : isRetaking 
                   ? 'Обновите свой план ухода и получите персональные рекомендации на основе новых данных'
                   : 'Оплатите доступ, чтобы увидеть полный план ухода на 28 дней с персональными рекомендациями'}
@@ -656,6 +660,23 @@ export function PaymentGate({
             Платеж обрабатывается безопасно через сервер
           </p>
 
+          {cancelCta && (
+            <button
+              type="button"
+              onClick={cancelCta.onClick}
+              style={{
+                marginTop: '16px',
+                background: 'transparent',
+                border: 'none',
+                color: '#6B7280',
+                textDecoration: 'underline',
+                cursor: 'pointer',
+                fontSize: '14px',
+              }}
+            >
+              {cancelCta.text}
+            </button>
+          )}
           {retakeCta && (
             <button
               type="button"

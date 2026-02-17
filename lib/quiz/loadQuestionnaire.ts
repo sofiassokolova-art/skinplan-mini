@@ -697,20 +697,12 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
         setUserPreferencesData(prefs);
         
         // Устанавливаем флаги перепрохождения из метаданных
+        // ВАЖНО: showRetakeScreen только от retakeFromHome в URL (useQuizRetake)
+        // Перепрохождение с главной и с резюм-экрана разведены: главная — URL, резюм — startOver
         if (prefs.isRetakingQuiz !== undefined) {
           setIsRetakingQuiz(prefs.isRetakingQuiz);
         }
-        if (prefs.fullRetakeFromHome !== undefined) {
-          if (prefs.fullRetakeFromHome) {
-            setShowRetakeScreen(true);
-            setIsRetakingQuiz(true);
-            // Очищаем флаг после использования
-            // ИСПРАВЛЕНО: Обрабатываем ошибку очистки флага, чтобы она не прерывала загрузку
-            userPreferences.setFullRetakeFromHome(false).catch((err: any) => {
-              clientLogger.warn('⚠️ Failed to clear fullRetakeFromHome flag (non-critical)', err);
-            });
-          }
-        }
+        // НЕ устанавливаем setShowRetakeScreen из API — только из URL (retakeFromHome=1)
         if (prefs.paymentRetakingCompleted !== undefined) {
           setHasRetakingPayment(prefs.paymentRetakingCompleted);
         }

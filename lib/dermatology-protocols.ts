@@ -283,20 +283,24 @@ export function determineProtocol(profile: {
   concerns?: string[];
   skinType?: string;
   sensitivityLevel?: string;
+  rosaceaRisk?: string | null;
 }): DermatologyProtocol {
   const diagnoses = profile.diagnoses || [];
   const concerns = profile.concerns || [];
   const sensitivity = profile.sensitivityLevel || 'medium';
+  const rosaceaRisk = (profile.rosaceaRisk || '').toLowerCase();
 
   // ИСПРАВЛЕНО (P1): Расширен список вариантов диагнозов для лучшего определения
-  // Приоритет: диагнозы > проблемы > тип кожи
+  // Приоритет: диагнозы > rosaceaRisk > проблемы > тип кожи
   
-  // Розацеа (высший приоритет по безопасности)
-  if (diagnoses.some(d => {
+  // Розацеа (высший приоритет по безопасности) — диагноз или риск
+  const hasRosaceaDiagnosis = diagnoses.some(d => {
     const dLower = d.toLowerCase();
     return dLower.includes('розацеа') || dLower.includes('rosacea') || 
            dLower.includes('розаце') || dLower.includes('купероз');
-  })) {
+  });
+  const hasRosaceaRisk = ['medium', 'high', 'critical'].includes(rosaceaRisk);
+  if (hasRosaceaDiagnosis || hasRosaceaRisk) {
     return DERMATOLOGY_PROTOCOLS.rosacea;
   }
 

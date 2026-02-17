@@ -8,6 +8,7 @@ import type { Questionnaire } from '@/lib/quiz/types';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 import { useQuizNavigation } from './useQuizNavigation';
 import { useQuizUI } from './useQuizUI';
+import { useQuizRetake } from './useQuizRetake';
 import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 
 export interface UseQuizStateExtendedReturn {
@@ -675,9 +676,9 @@ export function useQuizStateExtended(): UseQuizStateExtendedReturn {
     }
   }, [savedProgress]); // Зависимость от savedProgress, чтобы не выполнять повторно, если уже восстановлен
   
-  // Retake состояния
-  const [isRetakingQuiz, setIsRetakingQuiz] = useState(false);
-  const [showRetakeScreen, setShowRetakeScreen] = useState(false);
+  // Retake состояния — КРИТИЧНО: useQuizRetake проверяет retakeFromHome в URL и показывает экран выбора тем
+  const retakeHook = useQuizRetake();
+  const { isRetakingQuiz, setIsRetakingQuiz, showRetakeScreen, setShowRetakeScreen } = retakeHook;
   const [hasRetakingPayment, setHasRetakingPayment] = useState(false);
   const [hasFullRetakePayment, setHasFullRetakePayment] = useState(false);
   

@@ -37,6 +37,11 @@ export function useResumeScreenLogic({
     if (loading || isStartingOver || hasResumed) {
       return;
     }
+
+    // КРИТИЧНО: При retakeFromHome в URL не показываем RESUME — покажем экран выбора тем
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('retakeFromHome') === '1') {
+      return;
+    }
     
     // ИСПРАВЛЕНО: НЕ ждем загрузки прогресса из React Query, если есть savedProgress из sessionStorage
     // Это позволяет показать резюм-экран сразу, даже если React Query еще загружается

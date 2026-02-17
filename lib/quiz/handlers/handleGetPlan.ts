@@ -70,11 +70,8 @@ export async function handleGetPlan(params: HandleGetPlanParams): Promise<void> 
   }
   
   clientLogger.log('🚀 Запуск submitAnswers...');
-  // ИСПРАВЛЕНО: НЕ устанавливаем isSubmittingRef здесь, так как submitAnswers сам это делает
-  // Устанавливаем только состояние для UI, чтобы показать лоадер
-  setIsSubmitting(true);
-  setError(null);
-  setLoading(false); // Убираем лоадер "Загрузка анкеты..." если он показывался
+  // НЕ устанавливаем setIsSubmitting(true) здесь — submitAnswers сам ставит finalizing
+  // и один лоадер QuizFinalizingLoader. Иначе был бы лишний рендер с "Отправка..." на кнопке.
   
   try {
     await submitAnswers();

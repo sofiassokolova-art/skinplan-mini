@@ -412,8 +412,19 @@ export function useQuizComputed(params: UseQuizComputedParams) {
                                        !hasResumed && 
                                        savedCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN &&
                                        currentAnswersCount === 0;
+
+    // При isRetakingQuiz не показываем RESUME — приоритет у RETAKE_SELECT (без чтения window → без hydration mismatch)
+    const shouldSuppressResumeForRetake = isRetakingQuiz;
+
+    if (isRetakingQuiz && showRetakeScreen) {
+      console.log('📺 [useQuizComputed] viewMode: RETAKE_SELECT (retake from home — higher priority than RESUME)', {
+        isRetakingQuiz,
+        showRetakeScreen,
+      });
+      return 'RETAKE_SELECT';
+    }
     
-    if (showResumeScreen || shouldShowResumeImmediately) {
+    if ((showResumeScreen || shouldShowResumeImmediately) && !shouldSuppressResumeForRetake) {
       console.log('📺 [useQuizComputed] viewMode: RESUME (highest priority - before errors)', {
         showResumeScreen,
         savedCount,

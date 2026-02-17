@@ -10,6 +10,7 @@ import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { logger } from '@/lib/logger';
 import { clientLogger } from '@/lib/client-logger';
+import { PaymentGate } from '@/components/PaymentGate';
 
 export default function QuizTopicPage() {
   const router = useRouter();
@@ -300,6 +301,14 @@ export default function QuizTopicPage() {
   }
 
   return (
+    <PaymentGate
+      price={49}
+      productCode="retake_topic"
+      isRetaking={true}
+      onPaymentComplete={() => {
+        clientLogger.log('✅ Retake topic payment completed, showing content');
+      }}
+    >
     <div style={{
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
@@ -440,6 +449,7 @@ export default function QuizTopicPage() {
         {submitting ? 'Сохранение...' : 'Готово'}
       </button>
     </div>
+    </PaymentGate>
   );
 }
 

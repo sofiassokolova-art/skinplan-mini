@@ -269,6 +269,7 @@ export async function generateRecommendationsForProfile(
       skinType: profile.skinType || 'normal',
       concerns: (profile as any).concerns || [],
       diagnoses: (profile as any).diagnoses || [],
+      rosaceaRisk: (profile as any).rosaceaRisk ?? null,
       pregnant: profile.hasPregnancy || false,
       mainGoals: (profile as any).mainGoals || [],
       secondaryGoals: (profile as any).secondaryGoals || [],

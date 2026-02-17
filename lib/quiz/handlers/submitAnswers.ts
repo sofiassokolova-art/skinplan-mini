@@ -213,11 +213,12 @@ export async function submitAnswers(params: SubmitAnswersParams): Promise<void> 
     // 8) редирект (и ставим guard)
     params.redirectInProgressRef.current = true;
 
-    const planUrl = `/plan?state=generating&profileId=${encodeURIComponent(profileId)}`;
-    clientLogger.log('🔄 redirect to plan', { planUrl, profileId });
+    // Единый поток: quiz → /loading → /plan (buildRecs + generatePlan в одном месте)
+    const loadingUrl = `/loading?profileId=${encodeURIComponent(profileId)}`;
+    clientLogger.log('🔄 redirect to loading', { loadingUrl, profileId });
 
     if (typeof window !== 'undefined') {
-      window.location.replace(planUrl);
+      window.location.replace(loadingUrl);
     }
   } catch (err: any) {
     clientLogger.error('❌ submitAnswers failed', {

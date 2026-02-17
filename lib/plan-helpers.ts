@@ -269,6 +269,34 @@ export function analyzePlanBalance(plan: Plan28): {
 }
 
 /**
+ * Вычисляет простой числовой хеш строки для детерминированного выбора
+ */
+function simpleHash(str: string): number {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) - h) + str.charCodeAt(i) | 0;
+  }
+  return Math.abs(h);
+}
+
+/**
+ * Выбирает продукт с учётом профиля для разнообразия — разные пользователи получают
+ * разные продукты при одинаковых кандидатах, ограничивая повторяемость «дефолтов» (Lip Balm, Vitamin C).
+ */
+export function pickProductForProfileDiversity<T extends { id: number }>(
+  products: T[],
+  userId: string,
+  stepCategory: string,
+  phase?: string
+): T | undefined {
+  if (products.length === 0) return undefined;
+  if (products.length === 1) return products[0];
+  const seed = `${userId}|${stepCategory}|${phase || ''}`;
+  const idx = simpleHash(seed) % products.length;
+  return products[idx];
+}
+
+/**
  * ИСПРАВЛЕНО (P2): Проверяет последовательность шагов в дне
  * Возвращает true, если последовательность правильная
  */

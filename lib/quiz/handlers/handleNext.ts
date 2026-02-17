@@ -259,11 +259,26 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       isOnInitialInfoScreens,
     });
     
-    // ИСПРАВЛЕНО: Очищаем pendingInfoScreen только если мы НЕ на начальных инфо-экранах
-    // На начальных инфо-экранах pendingInfoScreen не должен быть установлен, поэтому очистка не нужна
-    // Если мы на вопросах и есть pendingInfoScreen, это означает, что пользователь закрывает инфо-экран между вопросами
-    // КРИТИЧНО: После очистки pendingInfoScreen нужно перейти к следующему вопросу, а не обрабатывать текущий
+    // ИСПРАВЛЕНО: Не очищаем pendingInfoScreen сразу — сначала проверяем цепочку (showAfterInfoScreenId)
+    // Если есть следующий инфо-экран в цепочке (например habits_matter после ai_showcase),
+    // устанавливаем его вместо очистки — иначе пользователь при прямом прохождении пропустит экран
     let shouldSkipToNextQuestion = false;
+    if (currentPendingInfoScreen && !isOnInitialInfoScreens && !isRetakingQuiz) {
+      const nextInChain = getNextInfoScreenAfterScreen(currentPendingInfoScreen.id);
+      if (nextInChain) {
+        // Есть следующий инфо-экран в цепочке — показываем его, не очищаем
+        clientLogger.warn('➡️ ИНФО-СКРИН: переход к следующему в цепочке', {
+          from: currentPendingInfoScreen.id,
+          to: nextInChain.id,
+        });
+        if (pendingInfoScreenRef) {
+          pendingInfoScreenRef.current = nextInChain;
+        }
+        setPendingInfoScreen(nextInChain);
+        await saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
+        return;
+      }
+    }
     if (currentPendingInfoScreen && !isOnInitialInfoScreens) {
       clientLogger.warn('🧹 ИНФО-СКРИН: Закрываем pendingInfoScreen при вызове handleNext (мы на вопросах)', {
         pendingInfoScreenId: currentPendingInfoScreen.id,

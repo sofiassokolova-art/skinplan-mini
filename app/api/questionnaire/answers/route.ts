@@ -1194,45 +1194,9 @@ export async function POST(request: NextRequest) {
       profileFoundAfterCreate: !!profileAfterCreate,
     });
 
-    // ИСПРАВЛЕНО: Запускаем генерацию плана асинхронно с таймаутом и обработкой ошибок
-    // В serverless окружениях "fire-and-forget" может обрываться, поэтому используем короткий таймаут
-    const initData = request.headers.get('X-Telegram-Init-Data') || request.headers.get('x-telegram-init-data');
-    if (initData) {
-      // ИСПРАВЛЕНО: Используем Promise.race с таймаутом для надежности
-      const baseUrl = process.env.VERCEL_URL 
-        ? `https://${process.env.VERCEL_URL}` 
-        : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-      
-      // Запускаем генерацию плана в фоне с коротким таймаутом (5 секунд)
-      // Если запрос не завершится за это время - не критично, клиент будет polling
-      Promise.race([
-        fetch(`${baseUrl}/api/plan/generate?profileId=${profile.id}`, {
-          method: 'GET',
-          headers: {
-            'X-Telegram-Init-Data': initData,
-          },
-          signal: AbortSignal.timeout(5000), // 5 секунд таймаут
-        }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000)),
-      ]).catch(err => {
-        // Не критично, если не удалось запустить - клиент будет polling /api/plan/status
-        if (DEBUG_QUESTIONNAIRE) {
-          logger.debug('Plan generation trigger failed (non-critical)', {
-            userId, 
-            profileId: profile.id,
-            error: err?.message,
-          });
-        }
-      });
-      
-      if (DEBUG_QUESTIONNAIRE) {
-        logger.debug('Plan generation started in background', {
-          userId,
-          profileId: profile.id,
-          profileVersion: profile.version,
-        });
-      }
-    }
+    // ИСПРАВЛЕНО: Генерация плана — единый источник — страница /plan при state=generating.
+    // Не вызываем plan/generate отсюда, чтобы избежать дублирования с api.generatePlan()
+    // на странице плана (race, 429, двойная нагрузка).
 
     return ApiResponse.success({
       success: true,

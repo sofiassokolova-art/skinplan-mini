@@ -188,6 +188,51 @@ export const CARE_PLAN_TEMPLATES: CarePlanTemplate[] = [
     evening: ['cleanser_gentle', 'moisturizer_barrier'],
     weekly: ['mask_hydrating'],
   },
+  // ДОБАВЛЕНО: Частые комбинации для лучшего покрытия
+  {
+    id: 'acne_normal',
+    conditions: {
+      skinTypes: ['normal'],
+      mainGoals: ['acne'],
+      routineComplexity: ['medium', 'maximal'],
+    },
+    morning: ['cleanser_gentle', 'serum_niacinamide', 'moisturizer_light', 'spf_50_face'],
+    evening: ['cleanser_gentle', 'treatment_acne_azelaic', 'moisturizer_light'],
+    weekly: ['mask_clay'],
+  },
+  {
+    id: 'antiage_oily',
+    conditions: {
+      skinTypes: ['oily', 'combination_oily'],
+      mainGoals: ['antiage', 'wrinkles'],
+      routineComplexity: ['medium', 'maximal'],
+    },
+    morning: ['cleanser_balancing', 'serum_vitc', 'serum_niacinamide', 'moisturizer_balancing', 'spf_50_oily'],
+    evening: ['cleanser_balancing', 'treatment_antiage', 'moisturizer_balancing'],
+    weekly: ['mask_hydrating'],
+  },
+  {
+    id: 'pigmentation_dry',
+    conditions: {
+      skinTypes: ['dry', 'combination_dry'],
+      mainGoals: ['pigmentation'],
+      routineComplexity: ['medium', 'maximal'],
+    },
+    morning: ['cleanser_gentle', 'serum_vitc', 'moisturizer_barrier', 'spf_50_face'],
+    evening: ['cleanser_gentle', 'treatment_pigmentation', 'moisturizer_barrier'],
+    weekly: ['mask_hydrating', 'mask_soothing'],
+  },
+  {
+    id: 'acne_combination_dry',
+    conditions: {
+      skinTypes: ['combination_dry'],
+      mainGoals: ['acne'],
+      routineComplexity: ['medium', 'maximal'],
+    },
+    morning: ['cleanser_gentle', 'serum_niacinamide', 'moisturizer_light', 'spf_50_face'],
+    evening: ['cleanser_gentle', 'treatment_acne_azelaic', 'moisturizer_light'],
+    weekly: ['mask_hydrating'],
+  },
 ];
 
 export function selectCarePlanTemplate(

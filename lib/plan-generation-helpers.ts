@@ -15,6 +15,7 @@ export interface ProfileClassification {
   skinType?: string | null;
   concerns?: string[];
   diagnoses?: string[];
+  rosaceaRisk?: 'low' | 'medium' | 'high' | 'critical' | string | null;
   hasPregnancy?: boolean;
   pregnant?: boolean;
   mainGoals?: string[];

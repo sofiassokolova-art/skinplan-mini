@@ -20,6 +20,7 @@ import {
   type ProductWithBrand
 } from '@/lib/product-fallback';
 import { mapStepToStepCategory } from '@/lib/step-matching';
+import { pickProductForProfileDiversity } from '@/lib/plan-helpers';
 import type { ProfileClassification } from '@/lib/plan-generation-helpers';
 import {
   determineProtocol,
@@ -340,6 +341,7 @@ export async function generate28DayPlan(
     skinType: profile.skinType || 'normal',
     concerns: concerns,
     diagnoses: normalizedDiagnoses, // ИСПРАВЛЕНО: Используем нормализованные diagnoses
+    rosaceaRisk: (profile.rosaceaRisk as string) ?? null,
     ageGroup: profile.ageGroup || '25-34',
     exclude: Array.isArray(answers.exclude_ingredients) ? answers.exclude_ingredients : [],
     budget: normalizedBudget,
@@ -495,20 +497,27 @@ export async function generate28DayPlan(
   
   const adjustTemplateSteps = (steps: StepCategory[]): StepCategory[] => {
     return steps.flatMap((step) => {
-      // Если это treatment_antiage, но нет проблем с морщинами - заменяем на подходящее лечение
+      // УСИЛЕНО default_balanced: treatment_antiage заменяем на лечение по mainGoals
       if (step === 'treatment_antiage' && !hasWrinklesGoal) {
-        // Ищем другие проблемы, для которых нужны treatments
-        // ИСПРАВЛЕНО: Используем finalMainGoals вместо mainGoals
+        // Приоритет: acne > pigmentation > pores > barrier/dehydration (без активного лечения)
         if (finalMainGoals.includes('acne')) {
           return ['treatment_acne_azelaic'];
-        } else if (finalMainGoals.includes('pigmentation')) {
+        }
+        if (finalMainGoals.includes('pigmentation')) {
           return ['treatment_pigmentation'];
-        } else if (finalMainGoals.includes('pores')) {
+        }
+        if (finalMainGoals.includes('pores')) {
           return ['treatment_exfoliant_mild'];
-        } else {
-          // Если нет специфических проблем - просто убираем treatment
+        }
+        if (finalMainGoals.includes('barrier') || finalMainGoals.includes('dehydration')) {
+          // Барьер/обезвоженность — без агрессивного treatment, фокус на увлажнении
           return [];
         }
+        if (finalMainGoals.includes('dark_circles')) {
+          // Тёмные круги — мягкий эксфолиант или ничего вечером
+          return ['treatment_exfoliant_mild'];
+        }
+        return [];
       }
       
       // ИСПРАВЛЕНО: Для dry кожи заменяем moisturizer_light на moisturizer_barrier
@@ -553,15 +562,23 @@ export async function generate28DayPlan(
     userId,
   });
   
-  // КРИТИЧНО: Проверяем, что шаблон выбран правильно
+  // Мониторинг: метрики генерации плана (для аналитики и алертов)
+  const planGenMetrics = {
+    templateId: carePlanTemplate.id,
+    usedDefaultBalanced: carePlanTemplate.id === 'default_balanced',
+    skinType: carePlanProfileInput.skinType,
+    mainGoals: carePlanProfileInput.mainGoals,
+    routineComplexity: carePlanProfileInput.routineComplexity,
+  };
+
   if (carePlanTemplate.id === 'default_balanced') {
-    logger.warn('Using default_balanced template - may indicate no specific template matched', {
+    logger.warn('plan_gen_template_default_balanced', {
+      ...planGenMetrics,
       userId,
-      skinType: carePlanProfileInput.skinType,
-      mainGoals: carePlanProfileInput.mainGoals,
-      sensitivityLevel: carePlanProfileInput.sensitivityLevel,
-      routineComplexity: carePlanProfileInput.routineComplexity,
-  });
+      message: 'Using default_balanced template - no specific template matched',
+    }, { saveToDb: true, userId });
+  } else {
+    logger.info('plan_gen_template_selected', { ...planGenMetrics, userId });
   }
 
   // Шаг 2: Фильтрация продуктов
@@ -1215,7 +1232,7 @@ export async function generate28DayPlan(
           step: stepStr,
           category: categoryStr,
           userId,
-        });
+        }, { saveToDb: true, userId });
         // Последний fallback - пробуем использовать как есть
         if (stepStr) {
           categories.push(stepStr as StepCategory);
@@ -1226,7 +1243,7 @@ export async function generate28DayPlan(
           category: categoryStr,
           fallbackCategories: categories,
           userId,
-        });
+        }, { saveToDb: true, userId });
       }
     }
     
@@ -1333,7 +1350,7 @@ export async function generate28DayPlan(
         step: product.step,
         category: product.category,
         userId,
-      });
+      }, { saveToDb: true, userId });
       
       // Пробуем все возможные варианты на основе step/category
       const stepStr = (product.step || '').toLowerCase();
@@ -1398,7 +1415,7 @@ export async function generate28DayPlan(
           productName: product.name,
           fallbackCategory: category,
           userId,
-        });
+        }, { saveToDb: true, userId });
       });
     }
   });
@@ -1836,7 +1853,7 @@ export async function generate28DayPlan(
     const existingCleanser = cleanserSteps.some(step => getProductsForStep(step).length > 0);
     if (!existingCleanser) {
       logger.info('No cleanser products found, searching for fallback', { userId });
-      const fallbackCleanser = await findFallbackProduct('cleanser', profileClassification);
+      const fallbackCleanser = await findFallbackProduct('cleanser', profileClassification, { userId });
       if (fallbackCleanser) {
         for (const step of cleanserSteps) {
           registerProductForStep(step, fallbackCleanser);
@@ -1848,7 +1865,7 @@ export async function generate28DayPlan(
           productId: fallbackCleanser.id, 
           productName: fallbackCleanser.name,
           userId 
-        });
+        }, { saveToDb: true, userId });
       }
     }
   }
@@ -1859,7 +1876,7 @@ export async function generate28DayPlan(
     const existingSPF = spfSteps.some(step => getProductsForStep(step).length > 0);
     if (!existingSPF) {
       logger.info('No SPF products found, searching for fallback', { userId });
-      const fallbackSPF = await findFallbackProduct('spf', profileClassification);
+      const fallbackSPF = await findFallbackProduct('spf', profileClassification, { userId });
       if (fallbackSPF) {
         for (const step of spfSteps) {
           registerProductForStep(step, fallbackSPF);
@@ -1871,7 +1888,7 @@ export async function generate28DayPlan(
           productId: fallbackSPF.id, 
           productName: fallbackSPF.name,
           userId 
-        });
+        }, { saveToDb: true, userId });
       }
     }
   }
@@ -1885,7 +1902,7 @@ export async function generate28DayPlan(
     const existingMoisturizer = moisturizerSteps.some(step => getProductsForStep(step).length > 0);
     if (!existingMoisturizer) {
       logger.warn('No moisturizer products found, searching for fallback', { userId, moisturizerSteps });
-      const fallbackMoisturizer = await findFallbackProduct('moisturizer', profileClassification);
+      const fallbackMoisturizer = await findFallbackProduct('moisturizer', profileClassification, { userId });
       if (fallbackMoisturizer) {
         for (const step of moisturizerSteps) {
           registerProductForStep(step, fallbackMoisturizer);
@@ -1897,7 +1914,7 @@ export async function generate28DayPlan(
           productId: fallbackMoisturizer.id, 
           productName: fallbackMoisturizer.name,
           userId 
-        });
+        }, { saveToDb: true, userId });
       } else {
         logger.error('CRITICAL: Could not find fallback moisturizer!', { userId });
       }
@@ -1906,7 +1923,7 @@ export async function generate28DayPlan(
     // Если в шаблоне вообще нет moisturizer - добавляем его в requiredStepCategories
     logger.warn('No moisturizer step in template, adding moisturizer_light as required', { userId });
     requiredStepCategories.add('moisturizer_light');
-    const fallbackMoisturizer = await findFallbackProduct('moisturizer', profileClassification);
+    const fallbackMoisturizer = await findFallbackProduct('moisturizer', profileClassification, { userId });
     if (fallbackMoisturizer) {
       registerProductForStep('moisturizer_light', fallbackMoisturizer);
       if (!selectedProducts.some((p: any) => p.id === fallbackMoisturizer.id)) {
@@ -1916,7 +1933,7 @@ export async function generate28DayPlan(
         productId: fallbackMoisturizer.id, 
         productName: fallbackMoisturizer.name,
         userId 
-      });
+      }, { saveToDb: true, userId });
     }
   }
 
@@ -1930,7 +1947,7 @@ export async function generate28DayPlan(
     const existingToner = tonerSteps.some(step => getProductsForStep(step).length > 0);
     if (!existingToner) {
       logger.warn('No toner products found, searching for fallback', { userId, tonerSteps });
-      const fallbackToner = await findFallbackProduct('toner', profileClassification);
+      const fallbackToner = await findFallbackProduct('toner', profileClassification, { userId });
       if (fallbackToner) {
         for (const step of tonerSteps) {
           registerProductForStep(step, fallbackToner);
@@ -1942,7 +1959,7 @@ export async function generate28DayPlan(
           productId: fallbackToner.id, 
           productName: fallbackToner.name,
           userId 
-        });
+        }, { saveToDb: true, userId });
       }
     }
   }
@@ -2064,7 +2081,7 @@ export async function generate28DayPlan(
         }
       }
 
-      const fallbackSerum = await findFallbackProduct('serum', profileClassification);
+      const fallbackSerum = await findFallbackProduct('serum', profileClassification, { userId });
       if (fallbackSerum) {
         // ИСПРАВЛЕНО: это не ошибка, если мы успешно нашли fallback.
         // Логируем как info, чтобы не засорять WARN-логи в проде.
@@ -2073,7 +2090,7 @@ export async function generate28DayPlan(
           serumSteps,
           productId: fallbackSerum.id,
           productName: fallbackSerum.name,
-        });
+        }, { saveToDb: true, userId });
         for (const step of serumSteps) {
           registerProductForStep(step, fallbackSerum);
         }
@@ -2098,7 +2115,7 @@ export async function generate28DayPlan(
     const existingTreatment = treatmentSteps.some(step => getProductsForStep(step).length > 0);
     if (!existingTreatment) {
       logger.warn('No treatment products found, searching for fallback', { userId, treatmentSteps });
-      const fallbackTreatment = await findFallbackProduct('treatment', profileClassification);
+      const fallbackTreatment = await findFallbackProduct('treatment', profileClassification, { userId });
       if (fallbackTreatment) {
         for (const step of treatmentSteps) {
           registerProductForStep(step, fallbackTreatment);
@@ -2110,7 +2127,7 @@ export async function generate28DayPlan(
           productId: fallbackTreatment.id, 
           productName: fallbackTreatment.name,
           userId 
-        });
+        }, { saveToDb: true, userId });
       }
     }
   }
@@ -2124,7 +2141,7 @@ export async function generate28DayPlan(
     if (!existingMask) {
       // ИСПРАВЛЕНО: Изменено с WARN на INFO, так как это нормальное поведение - поиск fallback
       logger.info('No mask products found for specific steps, searching for fallback', { userId, maskSteps });
-      const fallbackMask = await findFallbackProduct('mask', profileClassification);
+      const fallbackMask = await findFallbackProduct('mask', profileClassification, { userId });
       if (fallbackMask) {
         for (const step of maskSteps) {
           registerProductForStep(step, fallbackMask);
@@ -2136,7 +2153,7 @@ export async function generate28DayPlan(
           productId: fallbackMask.id, 
           productName: fallbackMask.name,
           userId 
-        });
+        }, { saveToDb: true, userId });
       } else {
         logger.warn('No fallback mask found', { userId, maskSteps });
       }
@@ -2208,7 +2225,7 @@ export async function generate28DayPlan(
         });
         
         for (const fallbackCategory of moisturizerFallbackHierarchy) {
-          const fallbackProduct = await findFallbackProduct(fallbackCategory, profileClassification);
+          const fallbackProduct = await findFallbackProduct(fallbackCategory, profileClassification, { userId });
           if (fallbackProduct) {
             // Регистрируем fallback продукт для missing step
             registerProductForStep(missingStep, fallbackProduct);
@@ -2223,7 +2240,7 @@ export async function generate28DayPlan(
         }
       } else {
         // Для других шагов пробуем базовый fallback
-        const fallbackProduct = await findFallbackProduct(baseStep, profileClassification);
+        const fallbackProduct = await findFallbackProduct(baseStep, profileClassification, { userId });
         if (fallbackProduct) {
           registerProductForStep(missingStep, fallbackProduct);
           logger.info('Found fallback product for missing step', {
@@ -2246,7 +2263,7 @@ export async function generate28DayPlan(
       logger.warn('Still missing products after fallback hierarchy attempts, trying last resort fallback', {
         userId,
         stillMissingSteps,
-      });
+      }, { saveToDb: true, userId });
       
       // ИСПРАВЛЕНО: Последняя попытка - находим ЛЮБОЙ продукт для каждого missing step
       for (const missingStep of stillMissingSteps) {
@@ -2297,7 +2314,7 @@ export async function generate28DayPlan(
               productId: anyProduct.id,
               productName: anyProduct.name,
               userId,
-            });
+            }, { saveToDb: true, userId });
           } else {
             logger.error('CRITICAL: Could not find ANY product in DB for missing step', {
               missingStep,
@@ -2332,7 +2349,7 @@ export async function generate28DayPlan(
         logger.info('All missing steps resolved with last resort fallback', {
           userId,
           resolvedSteps: stillMissingSteps,
-        });
+        }, { saveToDb: true, userId });
       }
     }
   }
@@ -2549,7 +2566,7 @@ export async function generate28DayPlan(
           });
           
           const baseStep = getBaseStepFromStepCategory(step);
-          const fallbackProduct = await findFallbackProduct(baseStep, profileClassification);
+          const fallbackProduct = await findFallbackProduct(baseStep, profileClassification, { userId });
           
           if (fallbackProduct) {
             // Регистрируем fallback продукт для этого шага
@@ -2754,7 +2771,7 @@ export async function generate28DayPlan(
           });
           
           const baseStep = getBaseStepFromStepCategory(step);
-          const fallbackProduct = await findFallbackProduct(baseStep, profileClassification);
+          const fallbackProduct = await findFallbackProduct(baseStep, profileClassification, { userId });
           
           if (fallbackProduct) {
             // Регистрируем fallback продукт для этого шага
@@ -3248,7 +3265,7 @@ export async function generate28DayPlan(
             
             // Последняя попытка: ищем через findFallbackProduct в БД
             try {
-              const fallbackProduct = await findFallbackProduct(baseStep, profileClassification);
+              const fallbackProduct = await findFallbackProduct(baseStep, profileClassification, { userId });
               if (fallbackProduct) {
                 registerProductForStep(stepCategory, fallbackProduct);
                 stepProducts = [fallbackProduct];
@@ -3298,22 +3315,19 @@ export async function generate28DayPlan(
         continue; // Пропускаем шаг без продуктов
       }
       
-      // ИСПРАВЛЕНО: Выбираем разные продукты для разных фаз для разнообразия
-      let selectedProductIndex = 0;
-      if (stepProducts.length > 1 && (baseStep === 'toner' || baseStep === 'moisturizer')) {
-        if (phase === 'adaptation') {
-          selectedProductIndex = 0;
-        } else if (phase === 'active') {
-          selectedProductIndex = Math.min(1, stepProducts.length - 1);
-        } else {
-          selectedProductIndex = Math.min(2, stepProducts.length - 1);
-        }
-        selectedProductIndex = selectedProductIndex % stepProducts.length;
-      }
-      
-      const selectedProduct = stepProducts[selectedProductIndex];
+      // ИСПРАВЛЕНО: Разнообразие подбора — разные пользователи получают разные продукты
+      // (ограничиваем повторяемость Lip Balm, Vitamin C и т.д.)
+      const selectedProduct = pickProductForProfileDiversity(
+        stepProducts,
+        userId ?? '',
+        stepCategory,
+        phase
+      );
+      const selectedProductIndex = selectedProduct
+        ? stepProducts.findIndex((p) => p.id === selectedProduct.id)
+        : 0;
       const alternatives = stepProducts
-        .filter((_, idx) => idx !== selectedProductIndex)
+        .filter((p) => p.id !== selectedProduct?.id)
         .slice(0, 3)
         .map(p => String(p.id));
       
@@ -3354,7 +3368,7 @@ export async function generate28DayPlan(
     if (lipBalmProducts.length === 0) {
       // Пробуем найти через fallback в БД
       try {
-        const fallbackLipBalm = await findFallbackProduct('lip_care', profileClassification);
+        const fallbackLipBalm = await findFallbackProduct('lip_care', profileClassification, { userId });
         if (fallbackLipBalm) {
           registerProductForStep(lipBalmStep, fallbackLipBalm);
           lipBalmProducts = [fallbackLipBalm];
@@ -3366,16 +3380,25 @@ export async function generate28DayPlan(
     
     // Добавляем бальзам для губ только если есть продукт
     if (lipBalmProducts.length > 0) {
-      const alternatives = lipBalmProducts.slice(1, 4).map(p => String(p.id));
+      const selectedLipBalm = pickProductForProfileDiversity(
+        lipBalmProducts,
+        userId ?? '',
+        lipBalmStep,
+        phase
+      ) ?? lipBalmProducts[0];
+      const alternatives = lipBalmProducts
+        .filter((p) => p.id !== selectedLipBalm.id)
+        .slice(0, 3)
+        .map(p => String(p.id));
       morningSteps.push({
         stepCategory: lipBalmStep,
-        productId: String(lipBalmProducts[0].id),
+        productId: String(selectedLipBalm.id),
         alternatives,
       });
       logger.debug('Added lip balm to morning routine', {
         userId,
         dayIndex,
-        productId: lipBalmProducts[0].id,
+        productId: selectedLipBalm.id,
       });
     }
     
@@ -3390,7 +3413,7 @@ export async function generate28DayPlan(
       if (eyeCreamProducts.length === 0) {
         // Пробуем найти через fallback в БД
         try {
-          const fallbackEyeCream = await findFallbackProduct('eye_cream_dark_circles', profileClassification);
+          const fallbackEyeCream = await findFallbackProduct('eye_cream_dark_circles', profileClassification, { userId });
           if (fallbackEyeCream) {
             registerProductForStep(eyeCreamStep, fallbackEyeCream);
             eyeCreamProducts = [fallbackEyeCream];
@@ -3402,16 +3425,25 @@ export async function generate28DayPlan(
       
       // Добавляем крем для глаз только если есть продукт
       if (eyeCreamProducts.length > 0) {
-        const alternatives = eyeCreamProducts.slice(1, 4).map(p => String(p.id));
+        const selectedEyeCream = pickProductForProfileDiversity(
+          eyeCreamProducts,
+          userId ?? '',
+          eyeCreamStep,
+          phase
+        ) ?? eyeCreamProducts[0];
+        const alternatives = eyeCreamProducts
+          .filter((p) => p.id !== selectedEyeCream.id)
+          .slice(0, 3)
+          .map(p => String(p.id));
         morningSteps.push({
           stepCategory: eyeCreamStep,
-          productId: String(eyeCreamProducts[0].id),
+          productId: String(selectedEyeCream.id),
           alternatives,
         });
         logger.debug('Added eye cream for dark circles to morning routine', {
           userId,
           dayIndex,
-          productId: eyeCreamProducts[0].id,
+          productId: selectedEyeCream.id,
         });
       }
     }
@@ -3504,7 +3536,7 @@ export async function generate28DayPlan(
             
             // Последняя попытка: ищем через findFallbackProduct в БД
             try {
-              const fallbackProduct = await findFallbackProduct(baseStep, profileClassification);
+              const fallbackProduct = await findFallbackProduct(baseStep, profileClassification, { userId });
               if (fallbackProduct) {
                 registerProductForStep(stepCategory, fallbackProduct);
                 stepProducts = [fallbackProduct];
@@ -3595,22 +3627,18 @@ export async function generate28DayPlan(
         }
       }
       
-      // ИСПРАВЛЕНО: Выбираем разные продукты для разных фаз для разнообразия
-      let selectedProductIndexEvening = 0;
-      if (filteredStepProducts.length > 1 && (baseStepEvening === 'toner' || baseStepEvening === 'moisturizer')) {
-        if (phase === 'adaptation') {
-          selectedProductIndexEvening = 0;
-        } else if (phase === 'active') {
-          selectedProductIndexEvening = Math.min(1, filteredStepProducts.length - 1);
-        } else {
-          selectedProductIndexEvening = Math.min(2, filteredStepProducts.length - 1);
-        }
-        selectedProductIndexEvening = selectedProductIndexEvening % filteredStepProducts.length;
-      }
-      
-      const selectedProductEvening = filteredStepProducts[selectedProductIndexEvening];
+      // ИСПРАВЛЕНО: Разнообразие подбора — разные пользователи получают разные продукты
+      const selectedProductEvening = pickProductForProfileDiversity(
+        filteredStepProducts,
+        userId ?? '',
+        stepCategory,
+        phase
+      ) ?? filteredStepProducts[0];
+      const selectedProductIndexEvening = selectedProductEvening
+        ? filteredStepProducts.findIndex((p) => p.id === selectedProductEvening.id)
+        : 0;
       const alternativesEvening = filteredStepProducts
-        .filter((_, idx) => idx !== selectedProductIndexEvening)
+        .filter((p) => p.id !== selectedProductEvening?.id)
         .slice(0, 3)
         .map(p => String(p.id));
       
@@ -3658,13 +3686,20 @@ export async function generate28DayPlan(
           continue;
         }
         
+        const selectedWeeklyProduct = pickProductForProfileDiversity(
+          stepProducts,
+          userId ?? '',
+          stepCategory,
+          phase
+        ) ?? stepProducts[0];
         const alternatives = stepProducts
-          .slice(1, 4)
+          .filter((p) => p.id !== selectedWeeklyProduct.id)
+          .slice(0, 3)
           .map(p => String(p.id));
         
         weeklyDaySteps.push({
           stepCategory: stepCategory,
-          productId: String(stepProducts[0].id),
+          productId: String(selectedWeeklyProduct.id),
           alternatives,
         });
       }
@@ -4106,6 +4141,15 @@ export async function generate28DayPlan(
       plan28 = markIncompatibleDaysAsRecovery(plan28, validationResult.incompatibleDays);
     }
   }
+
+  // Мониторинг: финальный лог успешной генерации (для подсчёта default_balanced и аналитики)
+  logger.info('plan_gen_complete', {
+    templateId: planGenMetrics.templateId,
+    usedDefaultBalanced: planGenMetrics.usedDefaultBalanced,
+    daysCount: plan28.days.length,
+    productsCount: formattedProducts.length,
+    userId,
+  });
 
   return {
     profile: {

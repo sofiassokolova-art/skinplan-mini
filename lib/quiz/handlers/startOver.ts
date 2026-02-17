@@ -1,5 +1,7 @@
 // lib/quiz/handlers/startOver.ts
-// Функция для начала анкеты заново
+// ПЕРЕПРОХОЖДЕНИЕ С РЕЗЮМ-ЭКРАНА: "Начать заново"
+// Поток: резюм "Вы не завершили анкету" → "Начать заново" → первый инфо-экран → полная анкета
+// Отдельно от перепрохождения с главной (retakeFromHome=1 — экран выбора тем, payment, вопросы без инфо)
 
 import { clientLogger } from '@/lib/client-logger';
 import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';

@@ -5,6 +5,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
 import { clientLogger } from '@/lib/client-logger';
@@ -51,6 +52,7 @@ const ICONS: Record<string, string> = {
 
 export default function HomePage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { initialize } = useTelegram();
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -991,14 +993,15 @@ export default function HomePage() {
           type="button"
           onClick={async () => {
             try {
-              // ИСПРАВЛЕНО: Устанавливаем флаг полного перепрохождения с главной страницы в БД
               const { setFullRetakeFromHome, setIsRetakingQuiz } = await import('@/lib/user-preferences');
               await setFullRetakeFromHome(true);
               await setIsRetakingQuiz(true);
             } catch (error) {
               clientLogger.warn('Failed to set retake flags:', error);
             }
-            router.push('/quiz');
+            queryClient.invalidateQueries({ queryKey: ['quiz', 'active'] });
+            // window.location гарантирует URL с query — на localhost router.push может терять параметры
+            window.location.href = '/quiz?retakeFromHome=1';
           }}
           style={{
             width: '100%',

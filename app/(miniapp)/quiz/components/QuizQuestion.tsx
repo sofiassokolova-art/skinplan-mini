@@ -213,12 +213,6 @@ export const QuizQuestion = memo(function QuizQuestion({
               cursor: 'pointer',
               padding: 0,
               pointerEvents: 'auto',
-              transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
-              backfaceVisibility: 'hidden', // Оптимизация рендеринга
-              WebkitTransform: 'translateZ(0)', // Для Safari
-              isolation: 'isolate', // Создаем новый контекст стекирования
-              willChange: 'transform', // Оптимизация для браузера
-              contain: 'layout style paint', // Изолируем кнопку от остального контента
             }}
           >
             <svg width="12" height="20" viewBox="0 0 12 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -269,7 +263,14 @@ export const QuizQuestion = memo(function QuizQuestion({
     if (question?.type !== 'single_choice' || !question?.options || isSkinTypeQuestion) return null;
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+        maxWidth: '600px',
+        margin: '0 auto',
+        width: '100%'
+      }}>
         {question.options.map((option) => {
           const isSelected = answers[question.id] === option.value;
 

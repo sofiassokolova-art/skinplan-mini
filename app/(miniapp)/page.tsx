@@ -62,9 +62,11 @@ export default function RootPage() {
       };
     }
 
-    // 2) Если Telegram недоступен — всё равно в /quiz
-    if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
-      clientLogger.log('Telegram WebApp не доступен, перенаправляем на /quiz');
+    // 2) Если Telegram недоступен: в production → /quiz; в development проверяем кэш/профиль (тестовый initData)
+    const hasTelegram = typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
+    const isDev = typeof window !== 'undefined' && process.env.NODE_ENV === 'development';
+    if (!hasTelegram && !isDev) {
+      clientLogger.log('Telegram WebApp не доступен (production), перенаправляем на /quiz');
       safeReplace('/quiz');
       return () => {
         if (cleanupTimerRef.current) {
@@ -72,6 +74,9 @@ export default function RootPage() {
           cleanupTimerRef.current = null;
         }
       };
+    }
+    if (!hasTelegram && isDev) {
+      clientLogger.log('Telegram WebApp не доступен (localhost) — проверяем кэш и hasPlanProgress для тестового пользователя');
     }
 
     // 3) Авторизация (не блокирующая) + проверка hasPlanProgress
