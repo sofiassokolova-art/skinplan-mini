@@ -1,5 +1,5 @@
 // app/api/payments/create/route.ts
-// Создание платежа через платежный провайдер
+// Создание платежа через ЮKassa (реальная оплата) или тестовый flow в dev
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db';
@@ -9,6 +9,63 @@ import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { randomBytes } from 'crypto';
 
 export const runtime = 'nodejs';
+
+const YOOKASSA_API = 'https://api.yookassa.ru/v3/payments';
+
+/** Создание платежа в ЮKassa, возвращает { id, confirmationUrl } или ошибку */
+async function createYooKassaPayment(params: {
+  shopId: string;
+  secretKey: string;
+  amountKopecks: number;
+  currency: string;
+  description: string;
+  idempotencyKey: string;
+  returnUrl: string;
+  metadata?: Record<string, string>;
+}): Promise<{ id: string; confirmationUrl: string | null; status: string; raw: unknown } | { error: string }> {
+  const auth = Buffer.from(`${params.shopId}:${params.secretKey}`).toString('base64');
+  const body = {
+    amount: {
+      value: (params.amountKopecks / 100).toFixed(2),
+      currency: params.currency,
+    },
+    confirmation: {
+      type: 'redirect' as const,
+      return_url: params.returnUrl,
+    },
+    description: params.description,
+    metadata: params.metadata ?? {},
+  };
+  try {
+    const res = await fetch(YOOKASSA_API, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Idempotence-Key': params.idempotencyKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    const data = (await res.json()) as {
+      id?: string;
+      status?: string;
+      confirmation?: { confirmation_url?: string };
+      code?: string;
+      description?: string;
+    };
+    if (!res.ok) {
+      logger.warn('YooKassa API error', { status: res.status, data });
+      return { error: data?.description || data?.code || `HTTP ${res.status}` };
+    }
+    const id = typeof data.id === 'string' ? data.id : '';
+    const confirmationUrl = data.confirmation?.confirmation_url ?? null;
+    const status = typeof data.status === 'string' ? data.status : 'pending';
+    return { id, confirmationUrl, status, raw: data };
+  } catch (e) {
+    logger.error('YooKassa request failed', { error: e });
+    return { error: e instanceof Error ? e.message : 'YooKassa request failed' };
+  }
+}
 
 // Конфигурация продуктов
 const PRODUCTS: Record<string, { amount: number; currency: string }> = {
@@ -54,12 +111,15 @@ export async function POST(request: NextRequest) {
     const isProductionDeployment =
       vercelEnv === 'production' || (!vercelEnv && process.env.NODE_ENV === 'production');
 
-    // В production нельзя отдавать "test" paymentUrl и симулировать провайдера.
-    // Если реальная интеграция не настроена — возвращаем понятную ошибку, чтобы пользователь не застревал в pending.
-    if (isProductionDeployment) {
+    const shopId = process.env.YOOKASSA_SHOP_ID?.trim() || '';
+    const secretKey = process.env.YOOKASSA_SECRET_KEY?.trim() || '';
+    const useRealYooKassa = Boolean(shopId && secretKey);
+
+    // В production обязательна реальная ЮKassa (env переменные).
+    if (isProductionDeployment && !useRealYooKassa) {
       const duration = Date.now() - startTime;
       logApiRequest(method, path, 501, duration);
-      return ApiResponse.error('Payments are not configured in production yet', 501);
+      return ApiResponse.error('Payments are not configured in production (set YOOKASSA_SHOP_ID and YOOKASSA_SECRET_KEY)', 501);
     }
 
     const auth = await requireTelegramAuth(request, { ensureUser: true });
@@ -88,11 +148,10 @@ export async function POST(request: NextRequest) {
     // Проверяем, не создан ли уже платеж с таким ключом
     const existingPayment = await prisma.payment.findUnique({
       where: { idempotencyKey: finalIdempotencyKey },
-      select: { id: true, status: true, providerPaymentId: true },
+      select: { id: true, status: true, providerPaymentId: true, providerPayload: true },
     });
 
     if (existingPayment) {
-      // Идемпотентность: возвращаем существующий платеж
       logger.info('Payment already exists with idempotencyKey', {
         userId,
         paymentId: existingPayment.id,
@@ -102,7 +161,6 @@ export async function POST(request: NextRequest) {
       const duration = Date.now() - startTime;
       logApiRequest(method, path, 200, duration, userId);
 
-      // Если платеж уже успешен - возвращаем информацию о доступе
       if (existingPayment.status === 'succeeded') {
         const entitlementCode = entitlementCodeForProduct(productCode);
         const entitlement = await prisma.entitlement.findUnique({
@@ -117,14 +175,17 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      let existingPaymentUrl: string | null = null;
+      if (useRealYooKassa && existingPayment.providerPayload && typeof existingPayment.providerPayload === 'object') {
+        const conf = (existingPayment.providerPayload as { confirmation?: { confirmation_url?: string } }).confirmation;
+        existingPaymentUrl = conf?.confirmation_url ?? null;
+      } else if (existingPayment.providerPaymentId) {
+        existingPaymentUrl = `${origin}/payments/test?payment_id=${existingPayment.providerPaymentId}`;
+      }
       return ApiResponse.success({
         paymentId: existingPayment.id,
         status: existingPayment.status,
-        // ИСПРАВЛЕНО: в preview/dev мы используем тестовый checkout (/payments/test).
-        // Возвращаем его и для идемпотентных платежей, иначе PaymentGate не сможет симулировать вебхук.
-        paymentUrl: existingPayment.providerPaymentId
-          ? `${origin}/payments/test?payment_id=${existingPayment.providerPaymentId}`
-          : null,
+        paymentUrl: existingPaymentUrl,
       });
     }
 
@@ -135,7 +196,7 @@ export async function POST(request: NextRequest) {
         productCode,
         amount: product.amount,
         currency: product.currency,
-        provider: 'yookassa', // ЮKassa
+        provider: 'yookassa',
         status: 'pending',
         idempotencyKey: finalIdempotencyKey,
       },
@@ -148,65 +209,63 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    logger.info('Payment created', {
-      userId,
-      paymentId: payment.id,
-      productCode,
-      amount: payment.amount,
-      idempotencyKey: finalIdempotencyKey,
-      provider: 'yookassa',
-    });
+    const returnUrl = `${origin}/plan`;
+    let providerPaymentId: string;
+    let paymentUrl: string | null;
+    let providerPayload: Record<string, unknown>;
 
-    // ИМИТАЦИЯ ЮKassa для тестовой среды
-    // В реальной среде здесь будет вызов API ЮKassa:
-    // const yooKassaResponse = await fetch('https://api.yookassa.ru/v3/payments', {
-    //   method: 'POST',
-    //   headers: {
-    //     'Authorization': `Basic ${Buffer.from(`${shopId}:${secretKey}`).toString('base64')}`,
-    //     'Idempotence-Key': finalIdempotencyKey,
-    //     'Content-Type': 'application/json',
-    //   },
-    //   body: JSON.stringify({
-    //     amount: { value: (product.amount / 100).toFixed(2), currency: product.currency },
-    //     confirmation: { type: 'redirect', return_url: `${process.env.NEXT_PUBLIC_APP_URL}/plan` },
-    //     description: `Оплата ${productCode}`,
-    //   }),
-    // });
+    if (useRealYooKassa) {
+      const yoo = await createYooKassaPayment({
+        shopId,
+        secretKey,
+        amountKopecks: product.amount,
+        currency: product.currency,
+        description: `Оплата ${productCode}`,
+        idempotencyKey: finalIdempotencyKey,
+        returnUrl,
+        metadata: { paymentId: payment.id, userId: userId ?? '' },
+      });
 
-    // Генерируем тестовый providerPaymentId в формате ЮKassa (UUID)
-    const crypto = await import('crypto');
-    const providerPaymentId = crypto.randomUUID();
-    
-    // Тестовая ссылка на оплату (в реальности это будет confirmation.confirmation_url от ЮKassa)
-    // ИСПРАВЛЕНО: используем origin текущего deployment (preview тоже будет корректным)
-    const paymentUrl = `${origin}/payments/test?payment_id=${providerPaymentId}`;
+      if ('error' in yoo) {
+        logger.error('YooKassa create failed', { paymentId: payment.id, error: yoo.error });
+        const duration = Date.now() - startTime;
+        logApiRequest(method, path, 502, duration, userId);
+        return ApiResponse.error('Не удалось создать платёж. Попробуйте позже.', 502);
+      }
 
-    // Обновляем платеж с providerPaymentId и данными от ЮKassa
+      providerPaymentId = yoo.id;
+      paymentUrl = yoo.confirmationUrl;
+      providerPayload = (yoo.raw as Record<string, unknown>) ?? {};
+    } else {
+      const crypto = await import('crypto');
+      providerPaymentId = crypto.randomUUID();
+      paymentUrl = `${origin}/payments/test?payment_id=${providerPaymentId}`;
+      providerPayload = {
+        id: providerPaymentId,
+        status: 'pending',
+        amount: { value: (product.amount / 100).toFixed(2), currency: product.currency },
+        confirmation: { type: 'redirect', confirmation_url: paymentUrl },
+        created_at: new Date().toISOString(),
+        description: `Оплата ${productCode}`,
+        metadata: { paymentId: payment.id, userId: userId ?? '' },
+      };
+    }
+
     await prisma.payment.update({
       where: { id: payment.id },
       data: {
         providerPaymentId,
-        providerPayload: {
-          // Имитация структуры ответа от ЮKassa
-          id: providerPaymentId,
-          status: 'pending',
-          amount: {
-            value: (product.amount / 100).toFixed(2),
-            currency: product.currency,
-          },
-          confirmation: {
-            type: 'redirect',
-            confirmation_url: paymentUrl,
-          },
-          created_at: new Date().toISOString(),
-          description: `Оплата ${productCode}`,
-          metadata: {
-            paymentId: payment.id,
-            userId,
-          },
-        },
+        providerPayload,
       },
       select: { id: true },
+    });
+
+    logger.info('Payment created', {
+      userId,
+      paymentId: payment.id,
+      productCode,
+      provider: 'yookassa',
+      useRealYooKassa,
     });
 
     const duration = Date.now() - startTime;

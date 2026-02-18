@@ -349,23 +349,22 @@ function LayoutContent({
 // ИСПРАВЛЕНО: usePathname() не вызывает suspend, но для консистентности используем его безопасно
 // В fallback показываем базовую структуру без зависимостей от конкретного пути
 function LayoutFallback() {
-  // usePathname() не вызывает suspend, только useSearchParams() вызывает
-  // Но для fallback лучше показать универсальную структуру
   const pathname = usePathname();
-  
-  // ИСПРАВЛЕНО: Проверяем pathname синхронно через window.location для надежности
-  // ТЗ: Скрываем навигацию на /quiz для чистого UX
+  const [slowLoad, setSlowLoad] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setSlowLoad(true), 12000);
+    return () => clearTimeout(t);
+  }, []);
+
   const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
   const isOnQuizPage = currentPath === '/quiz' || currentPath.startsWith('/quiz/');
   const isOnRootPage = pathname === '/' || currentPath === '/';
-  
-  // Определяем, нужно ли скрывать навигацию (та же логика, что и в LayoutContent)
-  // КРИТИЧНО: Скрываем навигацию на главной странице ВСЕГДА, так как это только редирект
   const hideNav = isOnQuizPage ||
                  pathname === '/loading' ||
                  pathname.startsWith('/loading/') ||
-                 isOnRootPage; // Скрываем навигацию на главной странице всегда
-  
+                 isOnRootPage;
+
   return (
     <>
       <NetworkStatus />
@@ -373,16 +372,40 @@ function LayoutFallback() {
         <div style={{
           minHeight: 'calc(100vh - 200px)',
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
           background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+          padding: 24,
         }}>
-          <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка...</div>
+          {!slowLoad ? (
+            <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка...</div>
+          ) : (
+            <div style={{ textAlign: 'center', color: '#0A5F59', maxWidth: 320 }}>
+              <p style={{ fontSize: 16, marginBottom: 16 }}>
+                Страница загружается дольше обычного. Проверьте интернет или обновите страницу.
+              </p>
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                style={{
+                  padding: '12px 24px',
+                  borderRadius: 12,
+                  border: 'none',
+                  backgroundColor: '#0A5F59',
+                  color: 'white',
+                  fontSize: 16,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Обновить страницу
+              </button>
+            </div>
+          )}
         </div>
       </PageTransition>
-      {/* ТЗ: НЕ монтируем BottomNavigation на /quiz для чистого UX без элементов корзины */}
       {!hideNav && !isOnQuizPage && <BottomNavigation />}
-      {/* Сервисный попап для отзывов (НЕ на странице анкеты) */}
       {!isOnQuizPage && <ServiceFeedbackPopup />}
     </>
   );

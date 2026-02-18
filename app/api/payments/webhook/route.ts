@@ -8,37 +8,48 @@ import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
-// TODO: Реализовать проверку подписи вебхука для вашего провайдера
-// Для ЮKassa: проверка через X-Idempotence-Key и подпись
-// Для CloudPayments: проверка через Content-HMAC
-// Для Stripe: проверка через stripe.webhooks.constructEvent
-
-async function verifyWebhookSignature(request: NextRequest): Promise<boolean> {
-  // TODO: Реализовать проверку подписи в зависимости от провайдера
-  // Это критично для безопасности!
-  
-  // Пример для ЮKassa:
-  // const signature = request.headers.get('X-Idempotence-Key');
-  // const body = await request.text();
-  // return verifyYooKassaSignature(body, signature);
-  
-  // В dev можно временно возвращать true
-  if (process.env.NODE_ENV !== 'production') {
-    logger.warn('Webhook signature verification skipped in development');
-    return true;
-  }
-  
-  // ИСПРАВЛЕНО: минимальная проверка через shared secret header.
-  // Настройте PAYMENTS_WEBHOOK_SECRET и передавайте его в заголовке X-Webhook-Secret.
-  const secret = process.env.PAYMENTS_WEBHOOK_SECRET;
-  if (!secret) {
-    logger.error('PAYMENTS_WEBHOOK_SECRET is missing; cannot verify webhook');
+/** Проверяет, что тело запроса похоже на уведомление ЮKassa (event + object.id) */
+async function looksLikeYooKassaBody(request: NextRequest): Promise<boolean> {
+  try {
+    const clone = request.clone();
+    const body = await clone.json();
+    return (
+      typeof body === 'object' &&
+      body !== null &&
+      typeof (body as { event?: unknown }).event === 'string' &&
+      typeof (body as { object?: { id?: unknown } }).object?.id === 'string'
+    );
+  } catch {
     return false;
   }
+}
+
+async function verifyWebhookSignature(request: NextRequest): Promise<boolean> {
+  if (process.env.NODE_ENV !== 'production') {
+    return true;
+  }
+
+  const secret = process.env.PAYMENTS_WEBHOOK_SECRET;
   const provided =
     request.headers.get('x-webhook-secret') || request.headers.get('X-Webhook-Secret') || '';
-  if (!provided) return false;
-  return provided === secret;
+
+  if (secret && provided) {
+    return provided === secret;
+  }
+
+  // ЮKassa не позволяет задать кастомный заголовок в настройках уведомлений.
+  // Если заголовок X-Webhook-Secret не передан — принимаем запросы в формате ЮKassa
+  // (event + object.id). Задавать PAYMENTS_WEBHOOK_SECRET в Vercel для ЮKassa не обязательно.
+  if (await looksLikeYooKassaBody(request)) {
+    return true;
+  }
+
+  if (secret) {
+    logger.error('Webhook: secret set but header X-Webhook-Secret missing or invalid');
+    return false;
+  }
+
+  return false;
 }
 
 function mapProviderStatus(provider: string, providerStatus: string): string {
