@@ -142,7 +142,15 @@ export default function RootPage() {
 
     checkAndRedirect();
 
+    // Если API на проде зависает — через 12 с принудительно редирект на /home
+    const fallbackTimer = setTimeout(() => {
+      if (redirectInProgressRef.current) return;
+      clientLogger.warn('⚠️ Root redirect timeout, forcing /home');
+      safeReplace('/home');
+    }, 12000);
+
     return () => {
+      clearTimeout(fallbackTimer);
       if (cleanupTimerRef.current) {
         clearTimeout(cleanupTimerRef.current);
         cleanupTimerRef.current = null;
