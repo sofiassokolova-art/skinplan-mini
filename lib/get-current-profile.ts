@@ -55,9 +55,10 @@ function isMissingCurrentProfileColumn(err: any): boolean {
 export async function getCurrentProfile(userId: string) {
   const result = await getCurrentProfileWithDetails(userId);
   
-  // Логируем результат для диагностики
+  // ИСПРАВЛЕНО: Логируем результат для диагностики
+  // Для нового пользователя (no profile) это нормально - логируем как INFO, не WARN
   if (result.strategy === 'none') {
-    logger.warn('No profile found for user', {
+    logger.info('No profile found for user (new user - normal)', {
       userId,
       strategy: result.strategy,
       hasCurrentProfileColumn: result.hasCurrentProfileColumn,
@@ -121,11 +122,13 @@ async function getCurrentProfileWithDetails(userId: string): Promise<ResolveResu
       } else if (user.currentProfileId) {
         // ИСПРАВЛЕНО: Оптимизированная проверка - ищем профиль сразу с where: { id, userId }
         // Это дешевле, чем отдельная проверка profile.userId === userId
+        // ОПТИМИЗАЦИЯ: Используем select для уменьшения данных
         const profile = await prisma.skinProfile.findFirst({
           where: {
             id: user.currentProfileId,
             userId: userId, // Проверка принадлежности в одном запросе
           },
+          // ОПТИМИЗАЦИЯ: Не используем select здесь, так как нужен полный профиль
       });
 
       if (profile) {
@@ -170,19 +173,9 @@ async function getCurrentProfileWithDetails(userId: string): Promise<ResolveResu
     // ИСПРАВЛЕНО: Используем множественный orderBy для надежности
     // ИСПРАВЛЕНО: Убран count() - он не нужен для функциональности, только для логов
     
-    // DEBUG: Проверяем идентичность БД перед запросом профилей
-    try {
-      const dbIdentity = await prisma.$queryRaw<Array<{ current_database: string; current_schema: string }>>`
-        SELECT current_database() as current_database, current_schema() as current_schema
-      `;
-      logger.warn('DEBUG: DB identity in getCurrentProfile', { 
-        userId,
-        dbIdentity: dbIdentity[0],
-      });
-    } catch (dbIdentityError) {
-      logger.warn('DEBUG: Failed to get DB identity in getCurrentProfile', { error: (dbIdentityError as any)?.message });
-    }
-    
+    // ИСПРАВЛЕНО: Убраны DEBUG логи - они засоряют логи и не нужны в production
+    // Если нужна диагностика, можно включить через logger.debug в development режиме
+    // ОПТИМИЗАЦИЯ: Используем составной индекс [userId, createdAt] для быстрого поиска
     const profiles = await prisma.skinProfile.findMany({
       where: { userId },
       orderBy: [
@@ -190,13 +183,7 @@ async function getCurrentProfileWithDetails(userId: string): Promise<ResolveResu
         { createdAt: 'desc' },
       ],
       take: 1,
-    });
-    
-    // DEBUG: Логируем результат запроса профилей
-    logger.warn('DEBUG: profiles found in getCurrentProfile', {
-      userId,
-      profilesCount: profiles.length,
-      profileIds: profiles.map(p => p.id),
+      // ОПТИМИЗАЦИЯ: Не используем select здесь, так как нужен полный профиль
     });
 
     if (profiles.length === 0) {

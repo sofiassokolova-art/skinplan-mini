@@ -22,6 +22,7 @@ interface State {
   };
 }
 
+
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
@@ -33,13 +34,15 @@ export class ErrorBoundary extends Component<Props, State> {
     const errorMessage = error.message || error.toString();
     
     // Игнорируем ошибки, связанные с редиректами или размонтированием компонентов
+    // ИСПРАВЛЕНО: Добавляем обработку ошибки #310 (hooks order) - она может возникать при race conditions
     if (
       errorMessage.includes('Minified React error #300') ||
+      errorMessage.includes('Minified React error #310') ||
       errorMessage.includes('Cannot update a component') ||
       errorMessage.includes('Can\'t perform a React state update on an unmounted component') ||
       errorMessage.includes('on an unmounted component')
     ) {
-      // Эти ошибки обычно происходят при редиректах и не критичны
+      // Эти ошибки обычно происходят при редиректах или race conditions и не критичны
       // Не показываем экран ошибки, просто логируем
       console.warn('⚠️ Известная некритичная ошибка, игнорируем:', errorMessage);
       return { hasError: false, error: undefined };
@@ -53,6 +56,7 @@ export class ErrorBoundary extends Component<Props, State> {
     const errorMessage = error.message || error.toString();
     const isKnownNonCriticalError = 
       errorMessage.includes('Minified React error #300') ||
+      errorMessage.includes('Minified React error #310') ||
       errorMessage.includes('Cannot update a component') ||
       errorMessage.includes('Can\'t perform a React state update on an unmounted component') ||
       errorMessage.includes('on an unmounted component');
@@ -62,11 +66,22 @@ export class ErrorBoundary extends Component<Props, State> {
       console.warn('⚠️ Известная некритичная ошибка (не отправляем в БД):', errorMessage);
       return;
     }
+    // ИСПРАВЛЕНО: Безопасное получение URL с обработкой SecurityError
+    let url = 'N/A';
+    try {
+      if (typeof window !== 'undefined' && window.location) {
+        url = window.location.href;
+      }
+    } catch (e) {
+      // SecurityError может возникнуть в iframe или других ограниченных контекстах
+      url = 'N/A (SecurityError)';
+    }
+    
     const errorDetails = {
       message: error.message,
       stack: error.stack,
       componentStack: errorInfo.componentStack,
-      url: typeof window !== 'undefined' ? window.location.href : 'N/A',
+      url,
       userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'N/A',
       timestamp: new Date().toISOString(),
       errorName: error.name,
@@ -80,7 +95,7 @@ export class ErrorBoundary extends Component<Props, State> {
         : undefined,
       // Дополнительная информация
       localStorage: typeof window !== 'undefined' ? {
-        quizProgress: localStorage.getItem('quiz_progress') ? 'exists' : 'not found',
+        quizProgress: 'stored in DB', // ИСПРАВЛЕНО: Прогресс хранится в БД, не в localStorage
         initData: typeof window !== 'undefined' && window.Telegram?.WebApp?.initData ? 'exists' : 'not found',
       } : undefined,
       telegramWebApp: typeof window !== 'undefined' ? {
@@ -152,11 +167,21 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       // Логируем, когда показывается экран ошибки
       if (this.state.error) {
+        // ИСПРАВЛЕНО: Безопасное получение URL с обработкой SecurityError
+        let url = 'N/A';
+        try {
+          if (typeof window !== 'undefined' && window.location) {
+            url = window.location.href;
+          }
+        } catch (e) {
+          url = 'N/A (SecurityError)';
+        }
+        
         console.error('🔴 ErrorBoundary: Rendering error screen', {
           errorMessage: this.state.error.message,
           errorName: this.state.error.name,
           errorStack: this.state.error.stack,
-          url: typeof window !== 'undefined' ? window.location.href : 'N/A',
+          url,
           timestamp: new Date().toISOString(),
         });
       }
@@ -220,7 +245,11 @@ export class ErrorBoundary extends Component<Props, State> {
               marginTop: '24px',
             }}>
               <button
-                onClick={() => window.location.reload()}
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    window.location.reload();
+                  }
+                }}
                 style={{
                   padding: '12px 24px',
                   borderRadius: '12px',

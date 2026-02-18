@@ -518,14 +518,14 @@
       "key": "habits",
       "type": "multi_choice",
       "options": [
-        { "label": "Курю 🚬", "actions": [ { "op": "addToArray", "path": "lifestyleFactors", "value": "smoking" } ] },
-        { "label": "Употребляю алкоголь 🍷", "actions": [ { "op": "addToArray", "path": "lifestyleFactors", "value": "alcohol" } ] },
-        { "label": "Часто не высыпаюсь 😴", "actions": [ { "op": "addToArray", "path": "lifestyleFactors", "value": "poor_sleep" } ] },
-        { "label": "Испытываю стресс ⚡", "actions": [ { "op": "addToArray", "path": "lifestyleFactors", "value": "stress" } ] },
-        { "label": "Ем много сладкого 🍩", "actions": [ { "op": "addToArray", "path": "lifestyleFactors", "value": "sugar" } ] },
-        { "label": "Ем много фастфуда 🍔", "actions": [ { "op": "addToArray", "path": "lifestyleFactors", "value": "fastfood" } ] },
-        { "label": "Часто бываю на солнце без SPF ☀️", "actions": [ { "op": "addToArray", "path": "lifestyleFactors", "value": "sun_no_spf" } ] },
-        { "label": "Нет, у меня нет таких привычек ✅", "actions": [] }
+        { "label": "Курю", "actions": [ { "op": "addToArray", "path": "lifestyleFactors", "value": "smoking" } ] },
+        { "label": "Употребляю алкоголь", "actions": [ { "op": "addToArray", "path": "lifestyleFactors", "value": "alcohol" } ] },
+        { "label": "Часто не высыпаюсь", "actions": [ { "op": "addToArray", "path": "lifestyleFactors", "value": "poor_sleep" } ] },
+        { "label": "Испытываю стресс", "actions": [ { "op": "addToArray", "path": "lifestyleFactors", "value": "stress" } ] },
+        { "label": "Ем много сладкого", "actions": [ { "op": "addToArray", "path": "lifestyleFactors", "value": "sugar" } ] },
+        { "label": "Ем много фастфуда", "actions": [ { "op": "addToArray", "path": "lifestyleFactors", "value": "fastfood" } ] },
+        { "label": "Часто бываю на солнце без SPF", "actions": [ { "op": "addToArray", "path": "lifestyleFactors", "value": "sun_no_spf" } ] },
+        { "label": "Нет, у меня нет таких привычек", "actions": [] }
       ]
     },
     {

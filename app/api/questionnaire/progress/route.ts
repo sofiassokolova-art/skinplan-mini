@@ -3,8 +3,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { logApiRequest, logApiError } from '@/lib/logger';
+import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
+import { getRedis } from '@/lib/redis';
 
 // GET - загрузка прогресса
 export async function GET(request: NextRequest) {
@@ -90,6 +91,38 @@ export async function GET(request: NextRequest) {
     const activeQuestionnaire = await prisma.questionnaire.findFirst({
       where: { isActive: true },
     });
+    
+    // ВОССТАНОВЛЕНО: Проверяем кеш в KV для новых пользователей
+    // Это позволяет новым пользователям вернуться к анкете после выхода
+    const redis = getRedis();
+    const kvProgressKey = activeQuestionnaire ? `questionnaire:progress:${userId}:${activeQuestionnaire.id}` : null;
+    let kvProgress: any = null;
+    
+    if (redis && !existingProfile && kvProgressKey) {
+      try {
+        const cached = await redis.get(kvProgressKey);
+        if (cached) {
+          try {
+            kvProgress = typeof cached === 'string' ? JSON.parse(cached) : cached;
+            if (process.env.NODE_ENV === 'development' && activeQuestionnaire) {
+              console.log('✅ Questionnaire progress loaded from KV cache for new user', {
+                userId,
+                questionnaireId: activeQuestionnaire.id,
+                hasAnswers: !!kvProgress?.answers && Object.keys(kvProgress.answers).length > 0,
+                questionIndex: kvProgress?.questionIndex,
+              });
+            }
+          } catch (parseError) {
+            console.warn('⚠️ Failed to parse KV progress cache:', parseError);
+          }
+        }
+      } catch (kvError) {
+        // Ошибка KV не критична - продолжаем с загрузкой из БД
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('⚠️ Failed to load progress from KV:', kvError);
+        }
+      }
+    }
 
     if (!activeQuestionnaire) {
       const duration = Date.now() - startTime;
@@ -113,7 +146,71 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // ИСПРАВЛЕНО: Если ответов в БД нет, проверяем KV и QuestionnaireProgress
+    // Если есть infoScreenIndex > 0, возвращаем прогресс даже без ответов
     if (userAnswers.length === 0) {
+      // Проверяем QuestionnaireProgress, даже если нет ответов
+      let savedProgress = null;
+      try {
+        savedProgress = await prisma.questionnaireProgress.findUnique({
+          where: {
+            userId_questionnaireId: {
+              userId,
+              questionnaireId: activeQuestionnaire.id,
+            },
+          },
+        });
+      } catch (error: any) {
+        if (error?.code !== 'P2021' && !error?.message?.includes('does not exist')) {
+          console.error('Error loading questionnaire progress:', error);
+        }
+      }
+
+      // Если есть прогресс в KV с ответами - используем его
+      if (kvProgress && kvProgress.answers && Object.keys(kvProgress.answers).length > 0) {
+        const duration = Date.now() - startTime;
+        logApiRequest(method, path, 200, duration, userId);
+        return NextResponse.json({
+          progress: {
+            answers: kvProgress.answers,
+            questionIndex: kvProgress.questionIndex ?? 0,
+            infoScreenIndex: kvProgress.infoScreenIndex ?? 0,
+            timestamp: kvProgress.timestamp ?? Date.now(),
+          },
+          isCompleted: false,
+        });
+      }
+
+      // Если есть прогресс в БД с infoScreenIndex > 0 - возвращаем его даже без ответов
+      if (savedProgress && savedProgress.infoScreenIndex > 0) {
+        const duration = Date.now() - startTime;
+        logApiRequest(method, path, 200, duration, userId);
+        return NextResponse.json({
+          progress: {
+            answers: {},
+            questionIndex: savedProgress.questionIndex ?? 0,
+            infoScreenIndex: savedProgress.infoScreenIndex ?? 0,
+            timestamp: savedProgress.updatedAt?.getTime() ?? Date.now(),
+          },
+          isCompleted: false,
+        });
+      }
+      
+      // Если есть прогресс в KV с infoScreenIndex > 0 - возвращаем его даже без ответов
+      if (kvProgress && kvProgress.infoScreenIndex > 0) {
+        const duration = Date.now() - startTime;
+        logApiRequest(method, path, 200, duration, userId);
+        return NextResponse.json({
+          progress: {
+            answers: {},
+            questionIndex: kvProgress.questionIndex ?? 0,
+            infoScreenIndex: kvProgress.infoScreenIndex ?? 0,
+            timestamp: kvProgress.timestamp ?? Date.now(),
+          },
+          isCompleted: false,
+        });
+      }
+      
       const duration = Date.now() - startTime;
       logApiRequest(method, path, 200, duration, userId);
       return NextResponse.json({
@@ -179,10 +276,37 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Вычисляем позицию на основе последнего отвеченного вопроса
-    // Метаданные позиции больше не хранятся в БД, они только локально
-    const finalQuestionIndex = lastAnsweredIndex + 1; // Следующий вопрос после последнего отвеченного
-    const finalInfoScreenIndex = 0; // По умолчанию 0
+    // ИСПРАВЛЕНО: Загружаем метаданные позиции из БД для синхронизации между устройствами
+    // ИСПРАВЛЕНО: Обрабатываем случай, когда таблица questionnaire_progress не существует
+    let savedProgress = null;
+    try {
+      // Use the correct Prisma model name (camelCase)
+      savedProgress = await prisma.questionnaireProgress.findUnique({
+        where: {
+          userId_questionnaireId: {
+            userId,
+            questionnaireId: activeQuestionnaire.id,
+          },
+        },
+      });
+    } catch (error: any) {
+      // Если таблица не существует (P2021) или другая ошибка БД - используем fallback
+      if (error?.code === 'P2021' || error?.message?.includes('does not exist')) {
+        // Таблица не существует - это нормально, используем вычисленный индекс
+        // Логируем только в development
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('⚠️ questionnaire_progress table does not exist, using computed index');
+        }
+      } else {
+        // Другая ошибка - логируем, но продолжаем с fallback
+        console.error('Error loading questionnaire progress:', error);
+      }
+    }
+
+    // Используем сохраненные метаданные, если они есть, иначе вычисляем на основе последнего отвеченного вопроса
+    // ВОССТАНОВЛЕНО: Приоритет: KV кеш > БД метаданные > вычисленный индекс
+    const finalQuestionIndex = kvProgress?.questionIndex ?? savedProgress?.questionIndex ?? (lastAnsweredIndex + 1);
+    const finalInfoScreenIndex = kvProgress?.infoScreenIndex ?? savedProgress?.infoScreenIndex ?? 0;
 
     // Проверяем, все ли вопросы анкеты отвечены
     const totalQuestions = allQuestions.filter(q => q.id !== -1).length;
@@ -217,13 +341,21 @@ export async function POST(request: NextRequest) {
   const method = 'POST';
   const path = '/api/questionnaire/progress';
   let userId: string | null = null;
+  // ИСПРАВЛЕНО: Объявляем переменные в начале функции для доступа в catch блоке
+  let questionnaireId: number | undefined;
+  let questionId: any;
+  let answerValue: any;
+  let answerValues: any;
+  let questionIndex: any;
+  let infoScreenIndex: any;
+  let savedAnswer: any = null;
 
   try {
     const auth = await requireTelegramAuth(request, { ensureUser: true });
     if (!auth.ok) return auth.response;
     userId = auth.ctx.userId;
 
-    let { questionnaireId, questionId, answerValue, answerValues, questionIndex, infoScreenIndex } = await request.json();
+    ({ questionnaireId, questionId, answerValue, answerValues, questionIndex, infoScreenIndex } = await request.json());
 
     // Логируем только в development режиме
     if (process.env.NODE_ENV === 'development') {
@@ -246,24 +378,75 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let savedAnswer = null;
-
     // Если questionId = -1, это только метаданные позиции
-    // НЕ сохраняем их в БД, так как это нарушает внешний ключ
-    // Метаданные позиции хранятся только локально на клиенте
+    // ИСПРАВЛЕНО: Сохраняем метаданные позиции в БД для синхронизации между устройствами
     if (questionId === -1 || questionId === '-1') {
+      // Проверяем, что активная анкета существует
+      const activeQuestionnaire = await prisma.questionnaire.findFirst({
+        where: { isActive: true },
+        select: { id: true },
+      });
+
+      if (!activeQuestionnaire) {
+        return NextResponse.json(
+          { error: 'No active questionnaire found' },
+          { status: 404 }
+        );
+      }
+
+      // Используем ID активной анкеты
+      const finalQuestionnaireId = questionnaireId || activeQuestionnaire.id;
+
+      // Сохраняем или обновляем метаданные позиции
+      // ИСПРАВЛЕНО: Обрабатываем случай, когда таблица questionnaire_progress не существует
+      try {
+        await prisma.questionnaireProgress.upsert({
+          where: {
+            userId_questionnaireId: {
+              userId,
+              questionnaireId: finalQuestionnaireId,
+            },
+          },
+          update: {
+            questionIndex: questionIndex ?? 0,
+            infoScreenIndex: infoScreenIndex ?? 0,
+          },
+          create: {
+            userId,
+            questionnaireId: finalQuestionnaireId,
+            questionIndex: questionIndex ?? 0,
+            infoScreenIndex: infoScreenIndex ?? 0,
+          },
+        });
+      } catch (error: any) {
+        // Если таблица не существует (P2021) - просто игнорируем сохранение метаданных
+        if (error?.code === 'P2021' || error?.message?.includes('does not exist')) {
+          // Таблица не существует - это нормально, метаданные не сохраняются
+          // Логируем только в development
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('⚠️ questionnaire_progress table does not exist, skipping metadata save');
+          }
+        } else {
+          // Другая ошибка - пробрасываем дальше
+          throw error;
+        }
+      }
+
       // Логируем только в development режиме
       if (process.env.NODE_ENV === 'development') {
-        console.log('ℹ️ Metadata position update (not saved to DB, stored locally only):', {
+        console.log('✅ Metadata position saved to DB:', {
+          userId,
+          questionnaireId: finalQuestionnaireId,
           questionIndex,
           infoScreenIndex,
         });
       }
+
       const duration = Date.now() - startTime;
       logApiRequest(method, path, 200, duration, userId);
       return NextResponse.json({
         success: true,
-        answer: null, // Метаданные не сохраняются в БД
+        answer: null, // Метаданные сохранены в отдельной таблице
       });
     }
 
@@ -377,18 +560,39 @@ export async function POST(request: NextRequest) {
       questionnaireId = activeQuestionnaire.id;
     }
 
-    // Удаляем старый ответ на этот вопрос (если есть)
-    await prisma.userAnswer.deleteMany({
-      where: {
-        userId,
-        questionnaireId,
-        questionId: questionIdNum,
-      },
+    // КРИТИЧНО: Логируем перед сохранением в БД для диагностики
+    // ВАЖНО: Указываем saveToDb: true, чтобы логи сохранялись в PostgreSQL
+    logger.info('💾 Сохранение ответа в БД (Prisma upsert)', {
+      userId,
+      questionnaireId,
+      questionId: questionIdNum,
+      questionIdType: typeof questionIdNum,
+      hasAnswerValue: answerValue !== undefined && answerValue !== null,
+      hasAnswerValues: answerValues !== undefined && answerValues !== null,
+      answerValue: answerValue || null,
+      answerValues: answerValues || null,
+      questionIndex,
+      infoScreenIndex,
+    }, {
+      userId: userId || undefined,
+      saveToDb: true, // КРИТИЧНО: Сохраняем в БД для диагностики
     });
 
-    // Сохраняем новый ответ
-    savedAnswer = await prisma.userAnswer.create({
-      data: {
+    // ИСПРАВЛЕНО: Используем upsert вместо delete + create для предотвращения race condition
+    // Это устраняет ошибку "Unique constraint failed" при одновременных запросах
+    savedAnswer = await prisma.userAnswer.upsert({
+      where: {
+        userId_questionnaireId_questionId: {
+          userId,
+          questionnaireId,
+          questionId: questionIdNum,
+        },
+      },
+      update: {
+        answerValue: answerValue || null,
+        answerValues: answerValues ? (answerValues as any) : null,
+      },
+      create: {
         userId,
         questionnaireId,
         questionId: questionIdNum,
@@ -396,6 +600,79 @@ export async function POST(request: NextRequest) {
         answerValues: answerValues ? (answerValues as any) : null,
       },
     });
+
+    // КРИТИЧНО: Логируем после успешного сохранения
+    // ВАЖНО: Указываем saveToDb: true, чтобы логи сохранялись в PostgreSQL
+    logger.info('✅ Ответ успешно сохранен в БД', {
+      userId,
+      questionnaireId,
+      questionId: questionIdNum,
+      savedAnswerId: savedAnswer.id,
+      answerValue: savedAnswer.answerValue,
+      answerValues: savedAnswer.answerValues,
+    }, {
+      userId: userId || undefined,
+      saveToDb: true, // КРИТИЧНО: Сохраняем в БД для диагностики
+    });
+
+    // ВОССТАНОВЛЕНО: Сохраняем прогресс в KV для новых пользователей (когда нет профиля)
+    // Это позволяет новым пользователям вернуться к анкете после выхода
+    const existingProfile = await prisma.skinProfile.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+    
+    if (!existingProfile) {
+      const redis = getRedis();
+      const kvProgressKey = `questionnaire:progress:${userId}:${questionnaireId}`;
+      
+      if (redis) {
+        try {
+          // Получаем текущий прогресс из KV или создаем новый
+          let currentProgress: any = null;
+          try {
+            const cached = await redis.get(kvProgressKey);
+            if (cached) {
+              currentProgress = typeof cached === 'string' ? JSON.parse(cached) : cached;
+            }
+          } catch (parseError) {
+            // Игнорируем ошибки парсинга
+          }
+          
+          // Обновляем ответы в прогрессе
+          const updatedAnswers = currentProgress?.answers || {};
+          if (answerValue) {
+            updatedAnswers[questionIdNum] = answerValue;
+          } else if (answerValues) {
+            updatedAnswers[questionIdNum] = answerValues;
+          }
+          
+          // Сохраняем обновленный прогресс в KV (TTL 7 дней)
+          const progressData = {
+            answers: updatedAnswers,
+            questionIndex: questionIndex ?? currentProgress?.questionIndex ?? 0,
+            infoScreenIndex: infoScreenIndex ?? currentProgress?.infoScreenIndex ?? 0,
+            timestamp: Date.now(),
+          };
+          
+          await redis.set(kvProgressKey, JSON.stringify(progressData), { ex: 7 * 24 * 60 * 60 });
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log('✅ Questionnaire progress saved to KV cache for new user', {
+              userId,
+              questionnaireId,
+              questionId: questionIdNum,
+              answersCount: Object.keys(updatedAnswers).length,
+            });
+          }
+        } catch (kvError) {
+          // Ошибка KV не критична - продолжаем работу
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('⚠️ Failed to save progress to KV:', kvError);
+          }
+        }
+      }
+    }
 
     // Метаданные позиции (questionIndex, infoScreenIndex) больше не сохраняются в БД
     // Они хранятся только локально на клиенте в localStorage
@@ -413,8 +690,86 @@ export async function POST(request: NextRequest) {
         answerValues: savedAnswer.answerValues,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     const duration = Date.now() - startTime;
+    
+    // КРИТИЧНО: Логируем все ошибки сохранения для диагностики
+    // ВАЖНО: error логи сохраняются в БД по умолчанию, но явно указываем saveToDb: true
+    logger.error('❌ Ошибка сохранения ответа в БД', error, {
+      userId,
+      questionnaireId,
+      questionId,
+      questionIdType: typeof questionId,
+      answerValue: answerValue || null,
+      answerValues: answerValues || null,
+      errorCode: error?.code,
+      errorMessage: error?.message,
+      errorMeta: error?.meta,
+      errorStack: error?.stack?.substring(0, 500),
+    }, {
+      userId: userId || undefined,
+      saveToDb: true, // КРИТИЧНО: Сохраняем в БД для диагностики
+    });
+    
+    // ИСПРАВЛЕНО: Обрабатываем ошибку уникального ограничения отдельно
+    // Это может произойти при race condition, даже с upsert
+    if (error?.code === 'P2002' && error?.meta?.target?.includes('user_id') && 
+        error?.meta?.target?.includes('questionnaire_id') && error?.meta?.target?.includes('question_id')) {
+      // Это race condition - пытаемся получить существующий ответ
+      // ВАЖНО: questionIdNum уже определен выше в try блоке, используем его
+      try {
+        // questionIdNum уже определен выше, но для безопасности проверяем еще раз
+        let retryQuestionIdNum: number;
+        if (typeof questionId === 'string') {
+          retryQuestionIdNum = parseInt(questionId, 10);
+        } else if (typeof questionId === 'number') {
+          retryQuestionIdNum = questionId;
+        } else {
+          throw new Error('Invalid questionId type');
+        }
+        
+        if (isNaN(retryQuestionIdNum) || retryQuestionIdNum <= 0) {
+          throw new Error('Invalid questionId');
+        }
+        
+        const existingAnswer = await prisma.userAnswer.findUnique({
+          where: {
+            userId_questionnaireId_questionId: {
+              userId: userId!,
+              questionnaireId: questionnaireId || 0,
+              questionId: retryQuestionIdNum,
+            },
+          },
+        });
+        
+        if (existingAnswer) {
+          // Обновляем существующий ответ
+          savedAnswer = await prisma.userAnswer.update({
+            where: { id: existingAnswer.id },
+            data: {
+              answerValue: answerValue || null,
+              answerValues: answerValues ? (answerValues as any) : null,
+            },
+          });
+          
+          const duration = Date.now() - startTime;
+          logApiRequest(method, path, 200, duration, userId);
+          return NextResponse.json({
+            success: true,
+            answer: {
+              id: savedAnswer.id,
+              questionId: savedAnswer.questionId,
+              answerValue: savedAnswer.answerValue,
+              answerValues: savedAnswer.answerValues,
+            },
+          });
+        }
+      } catch (retryError) {
+        // Если не удалось обработать, логируем и продолжаем
+        logApiError(method, path, retryError, userId);
+      }
+    }
+    
     logApiError(method, path, error, userId);
     return NextResponse.json(
       { error: 'Internal server error' },

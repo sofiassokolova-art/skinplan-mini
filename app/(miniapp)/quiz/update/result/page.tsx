@@ -24,12 +24,17 @@ function QuizUpdateResultContent() {
       const topicData = getTopicById(topicId);
       setTopic(topicData || null);
     }
-    // Устанавливаем флаг о перепрохождении анкеты
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('is_retaking_quiz', 'true');
-      // Оплата ретейка теперь проверяется на сервере через entitlement (retake_topic_access),
-      // поэтому localStorage-флаги больше не нужны.
-    }
+    // Устанавливаем флаг о перепрохождении анкеты в БД
+    const setRetakeFlag = async () => {
+      try {
+        const { setIsRetakingQuiz } = await import('@/lib/user-preferences');
+        await setIsRetakingQuiz(true);
+        // Оплата ретейка теперь проверяется на сервере через entitlement (retake_topic_access)
+      } catch (err) {
+        console.warn('Failed to set retake flag:', err);
+      }
+    };
+    setRetakeFlag();
   }, [topicId]);
 
   return (
@@ -147,7 +152,7 @@ function QuizUpdateResultContent() {
           </button>
           
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.push('/home')}
             style={{
               width: '100%',
               padding: '16px',

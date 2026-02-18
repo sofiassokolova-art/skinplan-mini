@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   let userId: string | undefined;
 
   try {
-    const identity = tryGetTelegramIdentityFromRequest(request);
+    const identity = await tryGetTelegramIdentityFromRequest(request);
 
     // Если нет initData — возвращаем пустой список (без ошибки)
     if (!identity.ok && identity.code === 'AUTH_MISSING_INITDATA') {

@@ -27,11 +27,11 @@ async function checkLogs() {
       name: user.firstName,
     });
     
-    // Получаем последние логи пользователя
+    // Получаем последние логи пользователя (увеличено до 200 для более полной картины)
     const logs = await prisma.clientLog.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: 'desc' },
-      take: 50,
+      take: 200,
     });
     
     console.log(`\n📊 Найдено логов: ${logs.length}`);

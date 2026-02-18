@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { api } from '@/lib/api';
 
 export default function ClearStoragePage() {
   const router = useRouter();
@@ -89,7 +88,7 @@ export default function ClearStoragePage() {
 
       // Автоматически перенаправляем на главную через 3 секунды
       setTimeout(() => {
-        router.push('/');
+        router.push('/home');
       }, 3000);
     } catch (error: any) {
       console.error('Ошибка при очистке:', error);

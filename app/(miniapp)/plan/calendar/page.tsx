@@ -3,11 +3,12 @@
 
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { PlanCalendar } from '@/components/PlanCalendar';
 import { DayView } from '@/components/DayView';
 import { api } from '@/lib/api';
+import { useAddToCart } from '@/hooks/useCart';
 import { clientLogger } from '@/lib/client-logger';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
 import { getPhaseForDay, getPhaseLabel } from '@/lib/plan-types';
@@ -28,12 +29,9 @@ export default function PlanCalendarPage() {
     imageUrl?: string | null;
     description?: string;
   }>>(new Map());
-  const [wishlist, setWishlist] = useState<number[]>([]);
   const [wishlistProductIds, setWishlistProductIds] = useState<Set<number>>(new Set());
   const [cartQuantities, setCartQuantities] = useState<Map<number, number>>(new Map());
 
-  // ИСПРАВЛЕНО: Защита от множественных вызовов корзины
-  const cartLoadInProgressRef = useRef(false);
   // ИСПРАВЛЕНО: Защита от множественных вызовов прогресса
   const progressLoadInProgressRef = useRef(false);
 
@@ -41,7 +39,7 @@ export default function PlanCalendarPage() {
     loadData();
   }, []);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -262,10 +260,9 @@ export default function PlanCalendarPage() {
       // Загружаем wishlist
       try {
         const wishlistData = await api.getWishlist() as any;
-        const wishlistIds = (wishlistData.items || []).map((item: any) => 
+        const wishlistIds = (wishlistData.items || []).map((item: any) =>
           item.product?.id || item.productId
         ).filter((id: any): id is number => typeof id === 'number');
-        setWishlist(wishlistIds);
         setWishlistProductIds(new Set(wishlistIds));
       } catch (err) {
         clientLogger.warn('Could not load wishlist:', err);
@@ -289,7 +286,7 @@ export default function PlanCalendarPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [setLoading]);
 
   const handleDaySelect = (day: number) => {
     setSelectedDay(day);
@@ -322,9 +319,12 @@ export default function PlanCalendarPage() {
     }
   };
 
+  // ИСПРАВЛЕНО: Используем React Query хук для автоматической инвалидации кэша
+  const addToCartMutation = useAddToCart();
+
   const handleAddToCart = async (productId: number) => {
     try {
-      await api.addToCart(productId, 1);
+      await addToCartMutation.mutateAsync({ productId, quantity: 1 });
       toast.success('Добавлено в корзину');
       
       setCartQuantities((prev) => {
@@ -426,7 +426,6 @@ export default function PlanCalendarPage() {
 
   const selectedDayPlan = plan28.days.find(d => d.dayIndex === selectedDay);
   const currentPhase = getPhaseForDay(selectedDay);
-  const phaseLabel = getPhaseLabel(currentPhase);
 
   return (
     <div style={{

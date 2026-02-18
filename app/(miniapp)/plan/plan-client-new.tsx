@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PlanHeader } from '@/components/PlanHeader';
 import { DayView } from '@/components/DayView';
@@ -16,6 +16,8 @@ import { ReplaceProductModal } from '@/components/ReplaceProductModal';
 import { AllProductsList } from '@/components/AllProductsList';
 import { SkinIssuesCarousel } from '@/components/SkinIssuesCarousel';
 import { api } from '@/lib/api';
+import { useAddToWishlist, useRemoveFromWishlist } from '@/hooks/useWishlist';
+import { useAddToCart } from '@/hooks/useCart';
 import toast from 'react-hot-toast';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
 import { getPhaseForDay, getPhaseLabel } from '@/lib/plan-types';
@@ -61,24 +63,38 @@ export function PlanPageClientNew({
   // Состояние для имени пользователя
   const [userName, setUserName] = useState<string | null>(null);
   
+  // ИСПРАВЛЕНО: Защита от setState после unmount для параллельных запросов
+  const isMountedRef = useRef(true);
+  
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   // Загружаем проблемы кожи и информацию о пользователе при монтировании
   useEffect(() => {
+    let cancelled = false; // ИСПРАВЛЕНО: Флаг отмены для предотвращения setState после unmount
+    
     const loadSkinIssues = async () => {
       try {
         const analysisData = await api.getAnalysis();
-        if (analysisData?.issues && Array.isArray(analysisData.issues)) {
+        if (!cancelled && isMountedRef.current && analysisData?.issues && Array.isArray(analysisData.issues)) {
           setSkinIssues(analysisData.issues);
         }
       } catch (err) {
         // Игнорируем ошибки - проблемы не критичны для отображения плана
-        clientLogger.warn('Could not load skin issues:', err);
+        if (!cancelled) {
+          clientLogger.warn('Could not load skin issues:', err);
+        }
       }
     };
     
     const loadUserInfo = async () => {
       try {
         const profile = await api.getCurrentProfile();
-        if (profile) {
+        if (!cancelled && isMountedRef.current && profile) {
           // ИСПРАВЛЕНО: Используем функции форматирования для единообразия
           const { formatSkinType } = await import('@/lib/format-helpers');
           
@@ -92,75 +108,67 @@ export function PlanPageClientNew({
           });
         }
       } catch (err) {
-        clientLogger.warn('Could not load user info:', err);
+        if (!cancelled) {
+          clientLogger.warn('Could not load user info:', err);
+        }
       }
     };
     
     const loadUserName = async () => {
       try {
-        // ИСПРАВЛЕНО: Приоритет загрузки имени: ответ USER_NAME > кэш ответов > кэш имени > профиль
-        // Сначала проверяем кэш ответов пользователя (быстрее, чем запрос к API)
-        const cachedAnswers = typeof window !== 'undefined' ? localStorage.getItem('user_answers_cache') : null;
-        if (cachedAnswers) {
-          try {
-            const userAnswers = JSON.parse(cachedAnswers);
-            if (Array.isArray(userAnswers)) {
-              const nameAnswer = userAnswers.find((a: any) => a.question?.code === 'USER_NAME');
-              if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
-                const userNameFromAnswer = String(nameAnswer.answerValue).trim();
-                setUserName(userNameFromAnswer);
-                localStorage.setItem('user_name', userNameFromAnswer);
-                clientLogger.log('✅ User name loaded from cached answers:', userNameFromAnswer);
-                return;
-              }
-            }
-          } catch (parseError) {
-            // Если кэш поврежден, игнорируем и продолжаем
-            clientLogger.log('⚠️ Failed to parse cached answers, will fetch from API');
-          }
-        }
-        
-        // Если кэша ответов нет, запрашиваем ответы из API
+        // ИСПРАВЛЕНО: Имя всегда берется с сервера, не из localStorage
+        // Приоритет: ответ USER_NAME > профиль
+        // Запрашиваем ответы из API (кэш больше не используется, данные в БД)
         const userAnswers = await api.getUserAnswers() as any;
-        if (userAnswers && Array.isArray(userAnswers)) {
-          // ИСПРАВЛЕНО: Сохраняем ответы в кэш для будущих запросов
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('user_answers_cache', JSON.stringify(userAnswers));
-          }
-          
+        if (!cancelled && isMountedRef.current && userAnswers && Array.isArray(userAnswers)) {
           const nameAnswer = userAnswers.find((a: any) => a.question?.code === 'USER_NAME');
           if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
             const userNameFromAnswer = String(nameAnswer.answerValue).trim();
             setUserName(userNameFromAnswer);
-            // ИСПРАВЛЕНО: Сохраняем в кэш
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('user_name', userNameFromAnswer);
-            }
             clientLogger.log('✅ User name loaded from USER_NAME answer:', userNameFromAnswer);
             return;
           }
         }
         // Если имени нет в ответах, пробуем из профиля
-        const userProfile = await api.getUserProfile();
-        if (userProfile?.firstName) {
-          setUserName(userProfile.firstName);
-          // ИСПРАВЛЕНО: Сохраняем в кэш
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('user_name', userProfile.firstName);
+        if (!cancelled && isMountedRef.current) {
+          const userProfile = await api.getUserProfile();
+          if (userProfile?.firstName) {
+            setUserName(userProfile.firstName);
+            clientLogger.log('✅ User name loaded from profile:', userProfile.firstName);
           }
-          clientLogger.log('✅ User name loaded from profile:', userProfile.firstName);
         }
       } catch (err: any) {
         // ИСПРАВЛЕНО: Не логируем 429 и 405 ошибки как warning
         // 429 - это нормально при rate limiting
         // 405 - может быть временной проблемой с endpoint
-        if (err?.status !== 429 && err?.status !== 405) {
-          clientLogger.warn('Could not load user name:', err);
-        } else if (err?.status === 405) {
-          // HTTP 405 - логируем только в development, это проблема с endpoint
-          if (process.env.NODE_ENV === 'development') {
-            clientLogger.warn('HTTP 405 when loading user name - check endpoint:', err);
+        if (!cancelled) {
+          if (err?.status !== 429 && err?.status !== 405) {
+            clientLogger.warn('Could not load user name:', err);
+          } else if (err?.status === 405) {
+            // HTTP 405 - логируем только в development, это проблема с endpoint
+            if (process.env.NODE_ENV === 'development') {
+              clientLogger.warn('HTTP 405 when loading user name - check endpoint:', err);
+            }
           }
+        }
+      }
+    };
+    
+    const loadRetakingStatus = async () => {
+      try {
+        // ИСПРАВЛЕНО: Проверяем флаги перепрохождения из БД, а не из localStorage
+        const { getIsRetakingQuiz, getFullRetakeFromHome } = await import('@/lib/user-preferences');
+        const isRetakingQuiz = await getIsRetakingQuiz();
+        const fullRetakeFromHome = await getFullRetakeFromHome();
+        // Пользователь перепроходит анкету, если установлен любой из флагов
+        if (!cancelled && isMountedRef.current) {
+          setIsRetaking(isRetakingQuiz || fullRetakeFromHome);
+        }
+      } catch (err) {
+        // Игнорируем ошибки - если не удалось загрузить, считаем что не перепроходит
+        if (!cancelled) {
+          clientLogger.warn('Could not load retaking status:', err);
+          setIsRetaking(false);
         }
       }
     };
@@ -168,6 +176,11 @@ export function PlanPageClientNew({
     loadSkinIssues();
     loadUserInfo();
     loadUserName();
+    loadRetakingStatus();
+    
+    return () => {
+      cancelled = true; // ИСПРАВЛЕНО: Отменяем все запросы при размонтировании
+    };
   }, []);
   
   // Инициализируем selectedDay без зависимости от searchParams в useState
@@ -181,6 +194,10 @@ export function PlanPageClientNew({
   // ИСПРАВЛЕНО: needsFirstPayment должен быть false по умолчанию - убираем блюр для покупки
   // Платеж не должен показываться автоматически при первой генерации плана
   const [needsFirstPayment, setNeedsFirstPayment] = useState(false);
+  
+  // ИСПРАВЛЕНО: Динамически определяем, перепроходит ли пользователь анкету
+  // Это нужно для правильного отображения текста в PaymentGate
+  const [isRetaking, setIsRetaking] = useState(false);
 
   const currentDayPlan = useMemo(() => {
     // ИСПРАВЛЕНО: Ищем день по dayIndex, с защитой от undefined
@@ -215,15 +232,44 @@ export function PlanPageClientNew({
   // ИСПРАВЛЕНО: Защита от множественных вызовов корзины
   const cartLoadInProgressRef = useRef(false);
 
-  // Загружаем данные корзине при монтировании
-  useEffect(() => {
+  // ИСПРАВЛЕНО: Определяем loadCart ПЕРЕД useEffect, который его использует
+  // Защита от множественных вызовов реализована внутри функции через cartLoadInProgressRef
+  const loadCart = useCallback(async () => {
     // ИСПРАВЛЕНО: Защита от множественных вызовов
     if (cartLoadInProgressRef.current) {
       return;
     }
     cartLoadInProgressRef.current = true;
+    try {
+      const cart = await api.getCart() as { items?: Array<{ product?: { id: number }; productId?: number; quantity: number }> };
+      const items = cart.items || [];
+      const quantitiesMap = new Map<number, number>();
+      items.forEach((item) => {
+        // ИСПРАВЛЕНО: Обрабатываем опциональный product
+        const productId = item.product?.id || item.productId;
+        if (productId) {
+          quantitiesMap.set(productId, item.quantity);
+        }
+      });
+      if (isMountedRef.current) {
+        setCartQuantities(quantitiesMap);
+      }
+    } catch (err) {
+      clientLogger.warn('Could not load cart:', err);
+    } finally {
+      // КРИТИЧНО: Сбрасываем cartLoadInProgressRef безусловно, независимо от isMountedRef
+      // Это предотвращает блокировку загрузки корзины при следующем монтировании компонента
+      // Если компонент размонтируется во время API вызова, ref должен быть сброшен,
+      // иначе при следующем монтировании loadCart() сразу вернется без загрузки
+      cartLoadInProgressRef.current = false;
+    }
+  }, []); // Пустые зависимости, так как функция не зависит от props/state
+
+  // Загружаем данные корзины при изменении plan28
+  // ИСПРАВЛЕНО: loadCart определена выше, поэтому доступна в useEffect
+  useEffect(() => {
     loadCart();
-  }, [plan28]);
+  }, [plan28, loadCart]);
 
   // ИСПРАВЛЕНО: План - это платный продукт, поэтому PaymentGate показывается ВСЕГДА до оплаты
   // PaymentGate показывается если:
@@ -231,27 +277,6 @@ export function PlanPageClientNew({
   // - Это первая генерация плана или перепрохождение - нужна оплата
   // PaymentGate сам проверяет статус оплаты через localStorage и БД
   // Мы просто всегда показываем PaymentGate - он сам решит, нужен ли блюр
-
-  const loadCart = async () => {
-    // ИСПРАВЛЕНО: Защита от множественных вызовов
-    if (cartLoadInProgressRef.current) {
-      return;
-    }
-    cartLoadInProgressRef.current = true;
-    try {
-      const cart = await api.getCart() as { items?: Array<{ product: { id: number }; quantity: number }> };
-      const items = cart.items || [];
-      const quantitiesMap = new Map<number, number>();
-      items.forEach((item) => {
-        quantitiesMap.set(item.product.id, item.quantity);
-      });
-      setCartQuantities(quantitiesMap);
-    } catch (err) {
-      clientLogger.warn('Could not load cart:', err);
-    } finally {
-      cartLoadInProgressRef.current = false;
-    }
-  };
 
 
   const handleFeedbackSubmit = async (feedback: {
@@ -271,6 +296,11 @@ export function PlanPageClientNew({
     }
   };
 
+  // ИСПРАВЛЕНО: Используем React Query хуки для автоматической инвалидации кэша
+  const addToWishlistMutation = useAddToWishlist();
+  const removeFromWishlistMutation = useRemoveFromWishlist();
+  const addToCartMutation = useAddToCart();
+
   const toggleWishlist = async (productId: number) => {
     try {
       if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
@@ -281,7 +311,7 @@ export function PlanPageClientNew({
       const isInWishlist = wishlistProductIds.has(productId);
       
       if (isInWishlist) {
-        await api.removeFromWishlist(productId);
+        await removeFromWishlistMutation.mutateAsync(productId);
         setWishlistProductIds(prev => {
           const newSet = new Set(prev);
           newSet.delete(productId);
@@ -289,7 +319,7 @@ export function PlanPageClientNew({
         });
         toast.success('Удалено из избранного');
       } else {
-        await api.addToWishlist(productId);
+        await addToWishlistMutation.mutateAsync(productId);
         setWishlistProductIds(prev => {
           const newSet = new Set(prev);
           newSet.add(productId);
@@ -310,7 +340,8 @@ export function PlanPageClientNew({
         return;
       }
 
-      await api.addToCart(productId, 1);
+      // ИСПРАВЛЕНО: Используем React Query хук для автоматической инвалидации кэша
+      await addToCartMutation.mutateAsync({ productId, quantity: 1 });
       toast.success('Добавлено в корзину');
       
       // Обновляем количество в корзине
@@ -439,41 +470,6 @@ export function PlanPageClientNew({
       padding: '20px',
       paddingBottom: '100px',
     }}>
-      {/* Логотип */}
-      <div style={{
-        padding: '20px',
-        textAlign: 'center',
-        marginBottom: '20px',
-      }}>
-        <button
-          onClick={() => router.push('/')}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: 0,
-            display: 'inline-block',
-          }}
-        >
-          <img
-            src="/skiniq-logo.png"
-            alt="SkinIQ"
-            style={{
-              height: '140px',
-              marginTop: '8px',
-              marginBottom: '8px',
-              transition: 'transform 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'scale(1.05)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'scale(1)';
-            }}
-          />
-        </button>
-      </div>
-
       {/* Header с целями */}
       <PlanHeader 
         mainGoals={plan28.mainGoals || []}
@@ -493,14 +489,16 @@ export function PlanPageClientNew({
       <PaymentGate
         price={199}
         productCode="plan_access"
-        isRetaking={typeof window !== 'undefined' ? 
-          (localStorage.getItem('is_retaking_quiz') === 'true' || 
-           localStorage.getItem('full_retake_from_home') === 'true') : false}
+        isRetaking={isRetaking}
         onPaymentComplete={() => {
           setNeedsFirstPayment(false);
           clientLogger.log('✅ Payment completed on plan page');
         }}
-        retakeCta={planExpired ? { text: 'Изменились цели? Перепройти анкету', href: '/quiz' } : undefined}
+        retakeCta={
+          planExpired
+            ? { text: 'Изменились цели? Перепройти анкету', href: '/quiz' }
+            : undefined
+        }
       >
         {/* Контент внутри PaymentGate (показывается с блюром до оплаты, без блюра после оплаты) */}
         {/* Инфографика плана */}
@@ -573,4 +571,3 @@ export function PlanPageClientNew({
     </div>
   );
 }
-

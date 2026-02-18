@@ -4,13 +4,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
+import { logApiRequest, logApiError } from '@/lib/logger';
 
 // POST - сохранение отзыва
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'POST';
+  const path = '/api/feedback';
+  let userId: string | null = null;
+  
   try {
     const auth = await requireTelegramAuth(request, { ensureUser: true });
-    if (!auth.ok) return auth.response;
-    const userId = auth.ctx.userId;
+    if (!auth.ok) {
+      logApiRequest(method, path, auth.response.status, Date.now() - startTime, null);
+      return auth.response;
+    }
+    userId = auth.ctx.userId;
 
     const body = await request.json();
     
@@ -63,7 +72,8 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({
+    const duration = Date.now() - startTime;
+    const response = NextResponse.json({
       success: true,
       feedback: {
         id: planFeedback.id,
@@ -72,8 +82,12 @@ export async function POST(request: NextRequest) {
         createdAt: planFeedback.createdAt,
       },
     });
+    logApiRequest(method, path, 200, duration, userId);
+    return response;
   } catch (error) {
+    const duration = Date.now() - startTime;
     console.error('Error saving feedback:', error);
+    logApiError(method, path, error, userId);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -83,10 +97,18 @@ export async function POST(request: NextRequest) {
 
 // GET - получение последнего отзыва (для проверки, показывать ли поп-ап)
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'GET';
+  const path = '/api/feedback';
+  let userId: string | null = null;
+  
   try {
     const auth = await requireTelegramAuth(request, { ensureUser: true });
-    if (!auth.ok) return auth.response;
-    const userId = auth.ctx.userId;
+    if (!auth.ok) {
+      logApiRequest(method, path, auth.response.status, Date.now() - startTime, null);
+      return auth.response;
+    }
+    userId = auth.ctx.userId;
 
     // Получаем последний отзыв пользователя (по умолчанию plan_recommendations)
     const { searchParams } = new URL(request.url);
@@ -99,7 +121,8 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     });
 
-    return NextResponse.json({
+    const duration = Date.now() - startTime;
+    const response = NextResponse.json({
       lastFeedback: lastFeedback ? {
         id: lastFeedback.id,
         rating: lastFeedback.rating,
@@ -107,8 +130,12 @@ export async function GET(request: NextRequest) {
         createdAt: lastFeedback.createdAt,
       } : null,
     });
+    logApiRequest(method, path, 200, duration, userId);
+    return response;
   } catch (error) {
+    const duration = Date.now() - startTime;
     console.error('Error fetching feedback:', error);
+    logApiError(method, path, error, userId);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

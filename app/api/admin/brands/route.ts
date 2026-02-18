@@ -3,35 +3,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-
-// Проверка авторизации админа
-async function verifyAdmin(request: NextRequest): Promise<boolean> {
-  try {
-    const cookieToken = request.cookies.get('admin_token')?.value;
-    const headerToken = request.headers.get('authorization')?.replace('Bearer ', '');
-    const token = cookieToken || headerToken;
-    
-    if (!token) {
-      return false;
-    }
-
-    try {
-      jwt.verify(token, JWT_SECRET);
-      return true;
-    } catch (verifyError) {
-      return false;
-    }
-  } catch (err) {
-    return false;
-  }
-}
+import { verifyAdminBoolean } from '@/lib/admin-auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const isAdmin = await verifyAdmin(request);
+    const isAdmin = await verifyAdminBoolean(request);
     if (!isAdmin) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -71,7 +47,7 @@ export async function GET(request: NextRequest) {
 // POST - создание нового бренда
 export async function POST(request: NextRequest) {
   try {
-    const isAdmin = await verifyAdmin(request);
+    const isAdmin = await verifyAdminBoolean(request);
     if (!isAdmin) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -133,7 +109,7 @@ export async function POST(request: NextRequest) {
 // PUT - обновление бренда (активность)
 export async function PUT(request: NextRequest) {
   try {
-    const isAdmin = await verifyAdmin(request);
+    const isAdmin = await verifyAdminBoolean(request);
     if (!isAdmin) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -169,7 +145,7 @@ export async function PUT(request: NextRequest) {
 // DELETE - удаление бренда (soft delete через isActive = false)
 export async function DELETE(request: NextRequest) {
   try {
-    const isAdmin = await verifyAdmin(request);
+    const isAdmin = await verifyAdminBoolean(request);
     if (!isAdmin) {
       return NextResponse.json(
         { error: 'Unauthorized' },

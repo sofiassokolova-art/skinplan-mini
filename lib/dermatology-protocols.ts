@@ -3,6 +3,7 @@
 
 import type { StepCategory } from './step-category-rules';
 import type { ActiveIngredient } from './ingredient-compatibility';
+import { extractActiveIngredients } from './ingredient-compatibility';
 
 export type SkinCondition = 'acne' | 'rosacea' | 'atopic_dermatitis' | 'pigmentation' | 'normal';
 
@@ -101,14 +102,17 @@ export const DERMATOLOGY_PROTOCOLS: Record<SkinCondition, DermatologyProtocol> =
     condition: 'rosacea',
     name: 'Протокол для розацеа',
     description: 'Щадящий уход для чувствительной кожи с розацеа',
-    allowedIngredients: ['azelaic_acid', 'niacinamide', 'ceramides', 'peptides'],
+    // ИСПРАВЛЕНО (P0): Добавлены недостающие ингредиенты
+    allowedIngredients: ['azelaic_acid', 'niacinamide', 'ceramides', 'peptides', 'hyaluronic_acid'],
     forbiddenIngredients: ['aha', 'bha', 'retinol', 'retinoid', 'vitamin_c', 'benzoyl_peroxide'],
+    // ИСПРАВЛЕНО (P0): Добавлен treatment_acne_azelaic, который есть в routineTemplate
     allowedSteps: [
       'cleanser_gentle',
       'toner_soothing',
       'toner_hydrating',
       'serum_anti_redness',
       'serum_niacinamide',
+      'treatment_acne_azelaic', // ИСПРАВЛЕНО: добавлен для консистентности с routineTemplate
       'moisturizer_barrier',
       'moisturizer_soothing',
       'spf_50_face',
@@ -151,7 +155,8 @@ export const DERMATOLOGY_PROTOCOLS: Record<SkinCondition, DermatologyProtocol> =
     condition: 'atopic_dermatitis',
     name: 'Протокол для атопического дерматита',
     description: 'Восстановительный уход для поврежденного барьера',
-    allowedIngredients: ['ceramides', 'hyaluronic_acid', 'peptides'],
+    // ИСПРАВЛЕНО (P0): Добавлен niacinamide (мягкий, помогает барьеру) и ceramides уже был
+    allowedIngredients: ['ceramides', 'hyaluronic_acid', 'peptides', 'niacinamide'],
     forbiddenIngredients: ['aha', 'bha', 'retinol', 'retinoid', 'vitamin_c', 'azelaic_acid', 'benzoyl_peroxide'],
     allowedSteps: [
       'cleanser_gentle',
@@ -234,7 +239,8 @@ export const DERMATOLOGY_PROTOCOLS: Record<SkinCondition, DermatologyProtocol> =
     condition: 'normal',
     name: 'Базовый протокол',
     description: 'Стандартный уход для нормальной кожи',
-    allowedIngredients: ['retinol', 'vitamin_c', 'niacinamide', 'aha', 'bha', 'azelaic_acid'],
+    // ИСПРАВЛЕНО (P0): Добавлен pha (если поддерживается)
+    allowedIngredients: ['retinol', 'vitamin_c', 'niacinamide', 'aha', 'bha', 'pha', 'azelaic_acid'],
     forbiddenIngredients: [],
     allowedSteps: [
       'cleanser_gentle',
@@ -277,30 +283,68 @@ export function determineProtocol(profile: {
   concerns?: string[];
   skinType?: string;
   sensitivityLevel?: string;
+  rosaceaRisk?: string | null;
 }): DermatologyProtocol {
   const diagnoses = profile.diagnoses || [];
   const concerns = profile.concerns || [];
   const sensitivity = profile.sensitivityLevel || 'medium';
+  const rosaceaRisk = (profile.rosaceaRisk || '').toLowerCase();
 
-  // Приоритет: диагнозы > проблемы > тип кожи
-  if (diagnoses.some(d => d.toLowerCase().includes('розацеа') || d.toLowerCase().includes('rosacea'))) {
+  // ИСПРАВЛЕНО (P1): Расширен список вариантов диагнозов для лучшего определения
+  // Приоритет: диагнозы > rosaceaRisk > проблемы > тип кожи
+  
+  // Розацеа (высший приоритет по безопасности) — диагноз или риск
+  const hasRosaceaDiagnosis = diagnoses.some(d => {
+    const dLower = d.toLowerCase();
+    return dLower.includes('розацеа') || dLower.includes('rosacea') || 
+           dLower.includes('розаце') || dLower.includes('купероз');
+  });
+  const hasRosaceaRisk = ['medium', 'high', 'critical'].includes(rosaceaRisk);
+  if (hasRosaceaDiagnosis || hasRosaceaRisk) {
     return DERMATOLOGY_PROTOCOLS.rosacea;
   }
 
-  if (diagnoses.some(d => d.toLowerCase().includes('атопический') || d.toLowerCase().includes('атопия') || d.toLowerCase().includes('atopic'))) {
+  // Атопический дерматит (высший приоритет по безопасности)
+  if (diagnoses.some(d => {
+    const dLower = d.toLowerCase();
+    return dLower.includes('атопический') || dLower.includes('атопия') || 
+           dLower.includes('atopic') || dLower.includes('экзема') ||
+           dLower.includes('eczema') || dLower.includes('дерматит');
+  })) {
     return DERMATOLOGY_PROTOCOLS.atopic_dermatitis;
   }
 
+  // Акне
   if (
-    concerns.some(c => c.toLowerCase().includes('акне') || c.toLowerCase().includes('acne') || c.toLowerCase().includes('высыпания')) ||
-    diagnoses.some(d => d.toLowerCase().includes('акне') || d.toLowerCase().includes('acne'))
+    concerns.some(c => {
+      const cLower = c.toLowerCase();
+      return cLower.includes('акне') || cLower.includes('acne') || 
+             cLower.includes('высыпания') || cLower.includes('прыщи');
+    }) ||
+    diagnoses.some(d => {
+      const dLower = d.toLowerCase();
+      return dLower.includes('акне') || dLower.includes('acne') || 
+             dLower.includes('угревая') || dLower.includes('комедоны');
+    })
   ) {
     return DERMATOLOGY_PROTOCOLS.acne;
   }
 
+  // Пигментация (включая мелазму, PIH, постакне)
   if (
-    concerns.some(c => c.toLowerCase().includes('пигментация') || c.toLowerCase().includes('пигмент') || c.toLowerCase().includes('пятна')) ||
-    diagnoses.some(d => d.toLowerCase().includes('мелазма') || d.toLowerCase().includes('melasma'))
+    concerns.some(c => {
+      const cLower = c.toLowerCase();
+      return cLower.includes('пигментация') || cLower.includes('пигмент') || 
+             cLower.includes('пятна') || cLower.includes('мелазма') ||
+             cLower.includes('melasma') || cLower.includes('постакне') ||
+             cLower.includes('post-inflammatory');
+    }) ||
+    diagnoses.some(d => {
+      const dLower = d.toLowerCase();
+      return dLower.includes('мелазма') || dLower.includes('melasma') ||
+             dLower.includes('пигментация') || dLower.includes('pih') ||
+             dLower.includes('post-inflammatory hyperpigmentation');
+    })
   ) {
     return DERMATOLOGY_PROTOCOLS.pigmentation;
   }
@@ -310,35 +354,100 @@ export function determineProtocol(profile: {
 
 /**
  * Проверяет, соответствует ли продукт протоколу
+ * ИСПРАВЛЕНО (P0): 
+ * - Использует нормализованные ингредиенты через extractActiveIngredients
+ * - Проверяет allowlist (allowedIngredients/allowedSteps) для безопасности
+ * - Для rosacea/atopic_dermatitis allowlist = hard, для остальных = soft (prefer)
  */
 export function isProductAllowedByProtocol(
-  product: { activeIngredients?: string[]; step?: string; category?: string },
+  product: { activeIngredients?: string[]; step?: string; category?: string; stepCategory?: StepCategory },
   protocol: DermatologyProtocol
-): { allowed: boolean; reason?: string } {
-  const ingredients = product.activeIngredients || [];
-  const step = product.step || product.category || '';
+): { allowed: boolean; reason?: string; warning?: string } {
+  // ИСПРАВЛЕНО (P0): Используем нормализованные ингредиенты вместо строкового сравнения
+  const extractedIngredients = extractActiveIngredients({
+    activeIngredients: product.activeIngredients || [],
+    composition: undefined,
+  });
+  
+  // Определяем stepCategory из product или из step/category
+  let stepCategory: StepCategory | undefined = product.stepCategory;
+  if (!stepCategory && product.step) {
+    // Пытаемся определить stepCategory из step/category (упрощенная логика)
+    const stepLower = (product.step || '').toLowerCase();
+    const categoryLower = (product.category || '').toLowerCase();
+    const stepStr = `${stepLower} ${categoryLower}`.trim();
+    
+    // Базовый маппинг (можно расширить)
+    if (stepStr.includes('treatment_acne_azelaic') || stepStr.includes('azelaic')) {
+      stepCategory = 'treatment_acne_azelaic' as StepCategory;
+    } else if (stepStr.includes('treatment_antiage') || stepStr.includes('retinol')) {
+      stepCategory = 'treatment_antiage' as StepCategory;
+    } else if (stepStr.includes('serum_vitc') || stepStr.includes('vitamin c')) {
+      stepCategory = 'serum_vitc' as StepCategory;
+    } else if (stepStr.includes('serum_niacinamide') || stepStr.includes('niacinamide')) {
+      stepCategory = 'serum_niacinamide' as StepCategory;
+    }
+  }
 
-  // Проверка запрещенных ингредиентов
-  for (const ingredient of ingredients) {
-    const ingredientLower = ingredient.toLowerCase();
-    for (const forbidden of protocol.forbiddenIngredients) {
-      if (ingredientLower.includes(forbidden.replace('_', ' ')) || ingredientLower.includes(forbidden)) {
+  // ИСПРАВЛЕНО (P0): Проверка запрещенных ингредиентов по нормализованным типам
+  for (const extractedIng of extractedIngredients) {
+    if (protocol.forbiddenIngredients.includes(extractedIng)) {
+      return {
+        allowed: false,
+        reason: `Ингредиент ${extractedIng} запрещен в протоколе ${protocol.name}`,
+      };
+    }
+  }
+
+  // ИСПРАВЛЕНО (P0): Проверка запрещенных шагов по StepCategory
+  if (stepCategory && protocol.forbiddenSteps.includes(stepCategory)) {
+    return {
+      allowed: false,
+      reason: `Шаг ${stepCategory} запрещен в протоколе ${protocol.name}`,
+    };
+  }
+
+  // ИСПРАВЛЕНО (P0): Проверка allowlist для безопасности (hard для rosacea/atopic, soft для остальных)
+  const isStrictProtocol = protocol.condition === 'rosacea' || protocol.condition === 'atopic_dermatitis';
+  
+  // Проверка allowedIngredients
+  if (protocol.allowedIngredients.length > 0) {
+    const hasAllowedIngredient = extractedIngredients.some(ing => protocol.allowedIngredients.includes(ing));
+    const hasForbiddenIngredient = extractedIngredients.some(ing => protocol.forbiddenIngredients.includes(ing));
+    
+    if (!hasAllowedIngredient && extractedIngredients.length > 0 && !hasForbiddenIngredient) {
+      // Если есть активы, но они не в allowlist
+      if (isStrictProtocol) {
         return {
           allowed: false,
-          reason: `Ингредиент ${ingredient} запрещен в протоколе ${protocol.name}`,
+          reason: `Продукт содержит ингредиенты, не разрешенные в протоколе ${protocol.name}. Разрешены: ${protocol.allowedIngredients.join(', ')}`,
+        };
+      } else {
+        // Soft: разрешаем, но предупреждаем
+        return {
+          allowed: true,
+          warning: `Продукт содержит ингредиенты, не входящие в рекомендуемый список для протокола ${protocol.name}`,
         };
       }
     }
   }
 
-  // Проверка запрещенных шагов
-  for (const forbiddenStep of protocol.forbiddenSteps) {
-    if (step.includes(forbiddenStep.replace('_', ' ')) || step === forbiddenStep) {
-      return {
-        allowed: false,
-        reason: `Шаг ${step} запрещен в протоколе ${protocol.name}`,
-      };
+  // Проверка allowedSteps
+  if (stepCategory && protocol.allowedSteps.length > 0) {
+    if (!protocol.allowedSteps.includes(stepCategory)) {
+      if (isStrictProtocol) {
+        return {
+          allowed: false,
+          reason: `Шаг ${stepCategory} не разрешен в протоколе ${protocol.name}. Разрешены: ${protocol.allowedSteps.join(', ')}`,
+        };
+      } else {
+        // Soft: разрешаем, но предупреждаем
+        return {
+          allowed: true,
+          warning: `Шаг ${stepCategory} не входит в рекомендуемый список для протокола ${protocol.name}`,
+        };
       }
+    }
   }
 
   return { allowed: true };
@@ -346,16 +455,35 @@ export function isProductAllowedByProtocol(
 
 /**
  * Получает расписание применения ингредиента для конкретной недели
+ * ИСПРАВЛЕНО (P1): Возвращает frequency: null для "нет ограничений" вместо 0
+ * ИСПРАВЛЕНО (P0): Приоритет cyclingRules.days над titrationSchedule для точных дней
  */
 export function getIngredientSchedule(
   ingredient: ActiveIngredient,
   protocol: DermatologyProtocol,
   week: number
-): { frequency: number; days?: number[] } {
+): { frequency: number | null; days?: number[] } {
+  // ИСПРАВЛЕНО (P0): Проверяем cyclingRules первым, если есть фиксированные дни
+  const cycling = protocol.cyclingRules?.find(c => c.ingredient === ingredient);
+  if (cycling && cycling.days && cycling.days.length > 0) {
+    // Если есть фиксированные дни - используем их (это приоритетнее титрации)
+    const frequencyMap: Record<string, number> = {
+      daily: 7,
+      every_other_day: 3,
+      '2x_week': 2,
+      '1x_week': 1,
+    };
+    return {
+      frequency: frequencyMap[cycling.frequency] || cycling.days.length,
+      days: cycling.days,
+    };
+  }
+  
+  // Проверяем titrationSchedule
   const schedule = protocol.titrationSchedule?.find(s => s.ingredient === ingredient);
-  if (!schedule) {
-    // Если нет расписания, проверяем циклирование
-    const cycling = protocol.cyclingRules?.find(c => c.ingredient === ingredient);
+  if (schedule) {
+    const weekFrequency = week === 1 ? schedule.week1 : week === 2 ? schedule.week2 : week === 3 ? schedule.week3 : schedule.week4;
+    // Если есть cycling без фиксированных дней, используем его frequency
     if (cycling) {
       const frequencyMap: Record<string, number> = {
         daily: 7,
@@ -364,14 +492,28 @@ export function getIngredientSchedule(
         '1x_week': 1,
       };
       return {
-        frequency: frequencyMap[cycling.frequency] || 0,
-        days: cycling.days,
+        frequency: frequencyMap[cycling.frequency] || weekFrequency,
+        days: cycling.days, // может быть undefined
       };
     }
-    return { frequency: 0 };
+    return { frequency: weekFrequency };
   }
-
-  const weekFrequency = week === 1 ? schedule.week1 : week === 2 ? schedule.week2 : week === 3 ? schedule.week3 : schedule.week4;
-  return { frequency: weekFrequency };
+  
+  // Если есть cycling без titrationSchedule
+  if (cycling) {
+    const frequencyMap: Record<string, number> = {
+      daily: 7,
+      every_other_day: 3,
+      '2x_week': 2,
+      '1x_week': 1,
+    };
+    return {
+      frequency: frequencyMap[cycling.frequency] || null,
+      days: cycling.days,
+    };
+  }
+  
+  // ИСПРАВЛЕНО (P1): Если нет ограничений - возвращаем null (нет ограничений), а не 0 (запрещено)
+  return { frequency: null };
 }
 

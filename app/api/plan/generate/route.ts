@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
         },
       select: { id: true, version: true },
     });
-      
+
       if (profile) {
         logger.info('Profile found via profileId parameter (read-your-write)', {
           userId,
@@ -85,15 +85,78 @@ export async function GET(request: NextRequest) {
     }
 
     if (!profile) {
-      // ИСПРАВЛЕНО: Правильная семантика - 200 + null для отсутствия профиля
-      // Отсутствие профиля - это не ошибка сервера, а нормальное состояние
-      const duration = Date.now() - startTime;
-      logger.warn('No skin profile found for user', { userId, profileIdParam });
-      logApiRequest(method, path, 200, duration, userId);
-      return ApiResponse.success({
-        plan28: null,
-        state: 'no_profile',
-      });
+      // ИСПРАВЛЕНО: При read-after-write проблеме пробуем подождать и повторить несколько раз
+      // Это решает проблему, когда профиль только что создан, но еще не виден в реплике
+      logger.warn('No skin profile found for user, retrying after delay (read-after-write)', { userId, profileIdParam });
+      
+      // Пробуем несколько раз с увеличивающейся задержкой
+      const maxRetries = 3;
+      let retryProfile = null;
+      
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        // Увеличиваем задержку с каждой попыткой: 500ms, 1000ms, 2000ms
+        const delay = 500 * Math.pow(2, attempt - 1);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        retryProfile = await getCurrentProfile(userId);
+        if (retryProfile) {
+          profile = {
+            id: retryProfile.id,
+            version: retryProfile.version || 1,
+          };
+          logger.info('Profile found after retry (read-after-write resolved)', {
+            userId,
+            profileId: profile.id,
+            profileVersion: profile.version,
+            attempt,
+            delay,
+          });
+          break;
+        } else {
+          logger.warn(`Profile not found after retry attempt ${attempt}/${maxRetries}`, {
+            userId,
+            profileIdParam,
+            attempt,
+            delay,
+          });
+        }
+      }
+      
+      if (!profile) {
+        // Если после всех retry профиль все еще не найден
+        const duration = Date.now() - startTime;
+        logger.warn('No skin profile found for user after all retries', {
+          userId,
+          profileIdParam,
+          retries: maxRetries,
+        });
+
+        // ИСПРАВЛЕНО: Если был передан profileId, но профиль не найден - вернуть ошибку
+        // Это предотвращает network error и дает четкое сообщение
+        if (profileIdParam) {
+          logger.error('Profile not found for provided profileId', {
+            userId,
+            profileIdParam,
+          });
+          logApiError(method, path, new Error('Profile not found'), userId);
+          return ApiResponse.error(
+            'Профиль не найден. Попробуйте пройти анкету заново.',
+            404,
+            {
+              userId,
+              profileIdParam,
+              reason: 'profile_not_found',
+            }
+          );
+        }
+
+        // Для обычных случаев без profileId возвращаем no_profile
+        logApiRequest(method, path, 200, duration, userId);
+        return ApiResponse.success({
+          plan28: null,
+          state: 'no_profile',
+        });
+      }
     }
 
     logger.info('Plan generation request', {
@@ -107,6 +170,61 @@ export async function GET(request: NextRequest) {
       profileVersion: profile.version,
       timestamp: new Date().toISOString(),
     });
+    
+    // ИСПРАВЛЕНО: Создаем RecommendationSession перед генерацией плана, если её нет
+    // Это гарантирует, что план будет использовать продукты из сессии рекомендаций
+    try {
+      const existingSession = await prisma.recommendationSession.findFirst({
+        where: {
+          userId,
+          profileId: profile.id,
+        },
+      });
+      
+      if (!existingSession) {
+        logger.info('No RecommendationSession found, creating one before plan generation', {
+          userId,
+          profileId: profile.id,
+          profileVersion: profile.version,
+        });
+        
+        const { generateRecommendationsForProfile } = await import('@/lib/recommendations-generator');
+        const recommendationResult = await generateRecommendationsForProfile(userId, profile.id);
+        
+        // ИСПРАВЛЕНО: Проверяем результат с ok: false
+        if ('ok' in recommendationResult && recommendationResult.ok === false) {
+          logger.warn('Failed to create RecommendationSession, plan will be generated without session products', {
+            userId,
+            profileId: profile.id,
+            reason: recommendationResult.reason,
+          });
+        } else if ('sessionId' in recommendationResult) {
+          // Type guard: если есть sessionId, это RecommendationGenerationResult
+          logger.info('RecommendationSession created successfully before plan generation', {
+            userId,
+            profileId: profile.id,
+            sessionId: recommendationResult.sessionId,
+            ruleId: recommendationResult.ruleId,
+            productsCount: recommendationResult.products?.length || 0,
+          });
+        }
+      } else {
+        logger.info('RecommendationSession already exists, using it for plan generation', {
+          userId,
+          profileId: profile.id,
+          sessionId: existingSession.id,
+          ruleId: existingSession.ruleId,
+          productsCount: existingSession.products ? (Array.isArray(existingSession.products) ? existingSession.products.length : 0) : 0,
+        });
+      }
+    } catch (recommendationError: any) {
+      // Ошибка создания RecommendationSession не критична - план может быть сгенерирован без неё
+      logger.warn('Failed to create RecommendationSession (non-critical, plan will continue)', {
+        userId,
+        profileId: profile.id,
+        errorMessage: recommendationError?.message,
+      });
+    }
     
     // Выполняем генерацию с таймаутом и детальной обработкой ошибок
     let plan: Awaited<ReturnType<typeof generate28DayPlan>>;
@@ -190,23 +308,62 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // ИСПРАВЛЕНО: Дополнительная проверка - план может быть сгенерирован, но с пустыми днями
-    if (hasPlan28 && plan.plan28 && plan.plan28.days.length === 0) {
-      logger.error('❌ Plan28 generated but has no days', undefined, {
-        userId,
-        profileVersion: profile.version,
-        plan28Keys: Object.keys(plan.plan28),
+    // ИСПРАВЛЕНО (P0): Строгая валидация плана через validatePlan как жёсткий гейт
+    if (hasPlan28 && plan.plan28) {
+      const { validatePlan } = await import('@/lib/plan-validation');
+      
+      // Получаем продукты из плана для валидации
+      // ИСПРАВЛЕНО: Приводим к ProductWithBrand[] для валидации
+      // plan.products уже содержит нужные поля для валидации
+      const planProducts = (plan.products || []) as any[]; // ИСПРАВЛЕНО: Временное решение для совместимости типов
+      
+      const validationResult = await validatePlan(plan.plan28, planProducts, {
+        ingredientCompatibility: true,
+        dermatologyProtocols: true,
+        strictMode: true, // ИСПРАВЛЕНО: В API используем strict режим
       });
       
-      return ApiResponse.error(
-        'Plan generation returned empty days',
-        500,
-        {
+      // ИСПРАВЛЕНО (P0): Если severity === 'error' - возвращаем 422 с деталями
+      if (validationResult.severity === 'error') {
+        logger.error('❌ Plan validation failed', undefined, {
           userId,
           profileVersion: profile.version,
-          timestamp: new Date().toISOString(),
-        }
-      );
+          errors: validationResult.errors,
+          warnings: validationResult.warnings,
+          totalDays: plan.plan28.days.length,
+        });
+        
+        return ApiResponse.error(
+          'Plan validation failed',
+          422, // ИСПРАВЛЕНО: 422 Unprocessable Entity для валидационных ошибок
+          {
+            userId,
+            profileVersion: profile.version,
+            validationErrors: validationResult.errors,
+            validationWarnings: validationResult.warnings,
+            severity: validationResult.severity,
+            timestamp: new Date().toISOString(),
+          }
+        );
+      }
+      
+      // Логируем предупреждения, но не блокируем план
+      if (validationResult.warnings.length > 0) {
+        logger.warn('Plan validation warnings', {
+          userId,
+          profileVersion: profile.version,
+          warnings: validationResult.warnings,
+          severity: validationResult.severity,
+        });
+      }
+      
+      logger.info('Plan28 validation passed', {
+        userId,
+        profileVersion: profile.version,
+        totalDays: plan.plan28.days.length,
+        severity: validationResult.severity,
+        warningsCount: validationResult.warnings.length,
+      });
     }
     
     logger.info('Plan generated - RecommendationSession should be created from recommendation rules, not from plan', {
@@ -284,24 +441,65 @@ export async function GET(request: NextRequest) {
           plan28Structure,
         });
         
-        await prisma.plan28.upsert({
-          where: {
-            userId_profileVersion: {
-              userId: userId,
+        // ИСПРАВЛЕНО: При полном перепрохождении (retake_full) обнуляем createdAt для сброса 28-дневного счетчика
+        // Проверяем наличие entitlement retake_full_access для определения полного перепрохождения
+        const retakeFullEntitlement = await prisma.entitlement.findUnique({
+          where: { userId_code: { userId, code: 'retake_full_access' } },
+          select: { active: true, validUntil: true },
+        });
+        const isFullRetake = retakeFullEntitlement?.active === true && 
+                            (!retakeFullEntitlement.validUntil || retakeFullEntitlement.validUntil > new Date());
+        
+        // При полном перепрохождении удаляем старый план и создаем новый с текущей датой
+        if (isFullRetake) {
+          logger.info('Full retake detected - deleting old plan and creating new one to reset 28-day counter', {
+            userId,
+            profileVersion: profile.version,
+          });
+          // Удаляем старый план для этой версии профиля
+          await prisma.plan28.deleteMany({
+            where: {
+              userId,
               profileVersion: profile.version,
             },
-          },
-          update: {
-            planData: plan.plan28 as any, // Сохраняем полный план28 в JSON
-            updatedAt: new Date(),
-          },
-          create: {
-            userId,
-            skinProfileId: profile.id,
-            profileVersion: profile.version,
-            planData: plan.plan28 as any, // Сохраняем полный план28 в JSON
-          },
-        });
+          });
+          // Создаем новый план с текущей датой (createdAt будет установлен автоматически)
+          await prisma.plan28.create({
+            data: {
+              userId,
+              skinProfileId: profile.id,
+              profileVersion: profile.version,
+              planData: plan.plan28 as any,
+            },
+          });
+          // "Съедаем" entitlement после использования
+          await prisma.entitlement.update({
+            where: { userId_code: { userId, code: 'retake_full_access' } },
+            data: { active: false, updatedAt: new Date() },
+          }).catch(() => {
+            // Игнорируем ошибки - entitlement может быть уже удален
+          });
+        } else {
+          // Обычное создание/обновление плана
+          await prisma.plan28.upsert({
+            where: {
+              userId_profileVersion: {
+                userId: userId,
+                profileVersion: profile.version,
+              },
+            },
+            update: {
+              planData: plan.plan28 as any, // Сохраняем полный план28 в JSON
+              updatedAt: new Date(),
+            },
+            create: {
+              userId,
+              skinProfileId: profile.id,
+              profileVersion: profile.version,
+              planData: plan.plan28 as any, // Сохраняем полный план28 в JSON
+            },
+          });
+        }
         
         // ИСПРАВЛЕНО: Проверяем, что план действительно сохранился
         const savedPlan = await prisma.plan28.findUnique({
@@ -437,18 +635,67 @@ export async function GET(request: NextRequest) {
       });
     }
     
-    // ИСПРАВЛЕНО: НЕ кэшируем из /api/plan/generate
-    // Кэширование - это ответственность /api/plan, который:
-    // 1. Читает из БД
-    // 2. Формирует PlanResponse с правильными expired и daysSinceCreation
-    // 3. Кладёт в кэш в едином формате
-    // Это гарантирует единый контракт кэша и предотвращает несоответствия форматов
-    logger.info('Plan generated and saved to DB, caching will be done by /api/plan', {
-        userId, 
+    // ИСПРАВЛЕНО: Кэшируем план сразу после генерации для быстрой загрузки
+    // Формируем PlanResponse в том же формате, что и /api/plan для консистентности
+    if (plan.plan28) {
+      try {
+        const planCreatedAt = new Date();
+        const planResponse = {
+          plan28: plan.plan28,
+          expired: false, // Только что созданный план не может быть истекшим
+          daysSinceCreation: 0,
+        };
+        
+        const { setCachedPlan } = await import('@/lib/cache');
+        await setCachedPlan(userId, profile.version, planResponse);
+        logger.info('Plan cached immediately after generation', {
+          userId,
+          profileVersion: profile.version,
+          hasPlan28: !!plan.plan28,
+          plan28DaysCount: plan.plan28.days?.length || 0,
+        });
+      } catch (cacheError: any) {
+        // Ошибка кэширования не критична, но логируем
+        logger.warn('Failed to cache plan after generation (non-critical)', {
+          userId,
+          profileVersion: profile.version,
+          errorMessage: cacheError?.message,
+        });
+      }
+    } else {
+      logger.warn('Plan generated but no plan28 to cache', {
+        userId,
         profileVersion: profile.version,
         hasPlan28: !!plan.plan28,
-        plan28DaysCount: plan?.plan28?.days?.length || 0,
-    });
+        hasWeeks: !!plan.weeks,
+      });
+    }
+    
+    // ИСПРАВЛЕНО: Устанавливаем hasPlanProgress = true после успешной генерации плана
+    // Это гарантирует, что пользователь не будет редиректиться на /quiz при следующем заходе
+    try {
+      await prisma.userPreferences.upsert({
+        where: { userId },
+        update: {
+          hasPlanProgress: true,
+        },
+        create: {
+          userId,
+          hasPlanProgress: true,
+        },
+      });
+      logger.info('hasPlanProgress set to true after plan generation', {
+        userId,
+        profileVersion: profile.version,
+      });
+    } catch (prefsError: any) {
+      // Ошибка установки hasPlanProgress не критична, но логируем
+      logger.warn('Failed to set hasPlanProgress (non-critical)', {
+        userId,
+        profileVersion: profile.version,
+        errorMessage: prefsError?.message,
+      });
+    }
     
     logger.info('Plan generated successfully', {
       userId,

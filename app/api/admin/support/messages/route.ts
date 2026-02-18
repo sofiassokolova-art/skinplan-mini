@@ -3,32 +3,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-
-async function verifyAdmin(request: NextRequest): Promise<boolean> {
-  try {
-    const cookieToken = request.cookies.get('admin_token')?.value;
-    const headerToken = request.headers.get('authorization')?.replace('Bearer ', '');
-    const token = cookieToken || headerToken;
-    
-    if (!token) return false;
-    
-    try {
-      jwt.verify(token, JWT_SECRET);
-      return true;
-    } catch {
-      return false;
-    }
-  } catch {
-    return false;
-  }
-}
+import { verifyAdminBoolean } from '@/lib/admin-auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const isAdmin = await verifyAdmin(request);
+    const isAdmin = await verifyAdminBoolean(request);
     if (!isAdmin) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -40,13 +19,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'chatId is required' }, { status: 400 });
     }
 
-    // Получаем сообщения
+    // ИСПРАВЛЕНО (P0): Добавлен лимит сообщений для производительности
+    // Без лимита через месяц будет 500+ сообщений × polling каждые 2 сек = огромная нагрузка
     const messages = await prisma.supportMessage.findMany({
       where: { chatId },
       orderBy: { createdAt: 'asc' },
+      take: 50, // ИСПРАВЛЕНО (P0): Лимит сообщений (последние 50)
+      select: {
+        // ИСПРАВЛЕНО (P1): Только нужные поля для снижения payload
+        id: true,
+        text: true,
+        isAdmin: true,
+        createdAt: true,
+      },
     });
 
-    // Отмечаем сообщения как прочитанные
+    // ИСПРАВЛЕНО (P0): Сбрасываем unread при открытии чата админом
+    // Это критично - иначе unread остаётся > 0 даже после прочтения
     await prisma.supportChat.update({
       where: { id: chatId },
       data: { unread: 0 },

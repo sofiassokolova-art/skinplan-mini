@@ -75,15 +75,17 @@ export const INGREDIENT_CONFLICTS: IngredientConflict[] = [
     ingredients: ['vitamin_c', 'niacinamide'],
     severity: 'medium',
     reason: 'Ослабление эффективности, рост чувствительности у реактивной кожи',
-    solution: 'separate_time',
-    recommendation: 'Используйте витамин C утром, ниацинамид вечером. Или используйте стабилизированные формы.',
+    // ИСПРАВЛЕНО (P0): По умолчанию warning, separate_time только при high/very_high sensitivity или ascorbic_acid
+    solution: 'warning',
+    recommendation: 'При чувствительной коже используйте раздельно. При нормальной коже можно комбинировать, особенно стабилизированные формы.',
   },
   {
     ingredients: ['ascorbic_acid', 'niacinamide'],
     severity: 'medium',
-    reason: 'Ослабление эффективности, рост чувствительности у реактивной кожи',
+    reason: 'Ослабление эффективности из-за низкого pH аскорбиновой кислоты, рост чувствительности у реактивной кожи',
+    // ИСПРАВЛЕНО (P0): ascorbic_acid (низкий pH) + niacinamide = separate_time по умолчанию
     solution: 'separate_time',
-    recommendation: 'Используйте аскорбиновую кислоту утром, ниацинамид вечером.',
+    recommendation: 'Используйте аскорбиновую кислоту утром, ниацинамид вечером. При очень чувствительной коже - через день.',
   },
   {
     ingredients: ['retinol', 'benzoyl_peroxide'],
@@ -138,58 +140,99 @@ export const INGREDIENT_GROUPS: Record<string, ActiveIngredient[]> = {
 
 /**
  * Извлекает активные ингредиенты из продукта
+ * ИСПРАВЛЕНО (P1): 
+ * - Проверяем activeIngredients как источник истины, composition - как fallback
+ * - Добавлены границы слов для более точного поиска
+ * - Добавлены дополнительные формы ингредиентов (retinal, tranexamic acid, arbutin, kojic acid, sulfur)
  */
 export function extractActiveIngredients(product: {
   activeIngredients?: string[];
   composition?: string;
 }): ActiveIngredient[] {
   const ingredients: ActiveIngredient[] = [];
-  const ingredientText = [
-    ...(product.activeIngredients || []),
-    product.composition || '',
-  ].join(' ').toLowerCase();
+  
+  // ИСПРАВЛЕНО: Сначала проверяем activeIngredients как источник истины
+  const activeIngredientsText = (product.activeIngredients || []).join(' ').toLowerCase();
+  const compositionText = (product.composition || '').toLowerCase();
+  
+  // ИСПРАВЛЕНО: Используем composition только как fallback, если activeIngredients пустой
+  const ingredientText = activeIngredientsText || compositionText;
 
-  // Маппинг текстовых названий на типы ингредиентов
-  const ingredientMap: Record<string, ActiveIngredient> = {
-    'ретинол': 'retinol',
-    'retinol': 'retinol',
-    'ретиноид': 'retinoid',
-    'retinoid': 'retinoid',
-    'адапален': 'adapalene',
-    'adapalene': 'adapalene',
-    'третиноин': 'tretinoin',
-    'tretinoin': 'tretinoin',
-    'витамин c': 'vitamin_c',
-    'витамин с': 'vitamin_c',
-    'vitamin c': 'vitamin_c',
-    'аскорбиновая кислота': 'ascorbic_acid',
-    'ascorbic acid': 'ascorbic_acid',
-    'ниацинамид': 'niacinamide',
-    'niacinamide': 'niacinamide',
-    'aha': 'aha',
-    'альфа-гидроксикислота': 'aha',
-    'bha': 'bha',
-    'бета-гидроксикислота': 'bha',
-    'салициловая кислота': 'salicylic_acid',
-    'salicylic acid': 'salicylic_acid',
-    'гликолевая кислота': 'glycolic_acid',
-    'glycolic acid': 'glycolic_acid',
-    'молочная кислота': 'lactic_acid',
-    'lactic acid': 'lactic_acid',
-    'азелаиновая кислота': 'azelaic_acid',
-    'azelaic acid': 'azelaic_acid',
-    'бензоил пероксид': 'benzoyl_peroxide',
-    'benzoyl peroxide': 'benzoyl_peroxide',
-    'пептиды': 'peptides',
-    'peptides': 'peptides',
-    'церамиды': 'ceramides',
-    'ceramides': 'ceramides',
-    'гиалуроновая кислота': 'hyaluronic_acid',
-    'hyaluronic acid': 'hyaluronic_acid',
-  };
+  // ИСПРАВЛЕНО: Маппинг с поддержкой границ слов для латиницы
+  // Используем регулярные выражения для более точного поиска
+  const ingredientPatterns: Array<{ pattern: RegExp; ingredient: ActiveIngredient }> = [
+    // Ретиноиды
+    { pattern: /\bretinol\b/i, ingredient: 'retinol' },
+    { pattern: /\bретинол\b/i, ingredient: 'retinol' },
+    { pattern: /\bretinoid\b/i, ingredient: 'retinoid' },
+    { pattern: /\bретиноид\b/i, ingredient: 'retinoid' },
+    { pattern: /\badapalene\b/i, ingredient: 'adapalene' },
+    { pattern: /\bадапален\b/i, ingredient: 'adapalene' },
+    { pattern: /\btretinoin\b/i, ingredient: 'tretinoin' },
+    { pattern: /\bтретиноин\b/i, ingredient: 'tretinoin' },
+    { pattern: /\bretinal(dehyde)?\b/i, ingredient: 'retinoid' }, // ИСПРАВЛЕНО: добавлен retinal/retinaldehyde
+    { pattern: /\bретиналь\b/i, ingredient: 'retinoid' },
+    
+    // Витамин C
+    { pattern: /\bvitamin\s+c\b/i, ingredient: 'vitamin_c' },
+    { pattern: /\bvitamin_c\d+/i, ingredient: 'vitamin_c' }, // ИСПРАВЛЕНО: vitamin_c10, vitamin_c15, vitamin_c23 и т.д.
+    { pattern: /\bvitamin_c\b/i, ingredient: 'vitamin_c' }, // ИСПРАВЛЕНО: точное совпадение vitamin_c
+    { pattern: /\bвитамин\s+[сc]\b/i, ingredient: 'vitamin_c' },
+    { pattern: /\bascorbic\s+acid\b/i, ingredient: 'ascorbic_acid' },
+    { pattern: /\bаскорбиновая\s+кислота\b/i, ingredient: 'ascorbic_acid' },
+    { pattern: /\bascorbyl\s+glucoside\b/i, ingredient: 'vitamin_c' }, // ИСПРАВЛЕНО: добавлена форма
+    { pattern: /\bascorbyl\s+palmitate\b/i, ingredient: 'vitamin_c' },
+    { pattern: /\bmap\b/i, ingredient: 'vitamin_c' }, // Magnesium Ascorbyl Phosphate
+    { pattern: /\bsap\b/i, ingredient: 'vitamin_c' }, // Sodium Ascorbyl Phosphate
+    
+    // Ниацинамид
+    { pattern: /\bniacinamide\b/i, ingredient: 'niacinamide' },
+    { pattern: /\bниацинамид\b/i, ingredient: 'niacinamide' },
+    { pattern: /\bnicotinamide\b/i, ingredient: 'niacinamide' },
+    
+    // Кислоты
+    { pattern: /\baha\b/i, ingredient: 'aha' },
+    { pattern: /\bальфа-гидроксикислота\b/i, ingredient: 'aha' },
+    { pattern: /\balpha\s+hydroxy\s+acid\b/i, ingredient: 'aha' },
+    { pattern: /\bbha\b/i, ingredient: 'bha' },
+    { pattern: /\bбета-гидроксикислота\b/i, ingredient: 'bha' },
+    { pattern: /\bbeta\s+hydroxy\s+acid\b/i, ingredient: 'bha' },
+    { pattern: /\bpha\b/i, ingredient: 'pha' },
+    { pattern: /\bpolyhydroxy\s+acid\b/i, ingredient: 'pha' },
+    { pattern: /\bsalicylic\s+acid\b/i, ingredient: 'salicylic_acid' },
+    { pattern: /\bсалициловая\s+кислота\b/i, ingredient: 'salicylic_acid' },
+    { pattern: /\bglycolic\s+acid\b/i, ingredient: 'glycolic_acid' },
+    { pattern: /\bгликолевая\s+кислота\b/i, ingredient: 'glycolic_acid' },
+    { pattern: /\blactic\s+acid\b/i, ingredient: 'lactic_acid' },
+    { pattern: /\bмолочная\s+кислота\b/i, ingredient: 'lactic_acid' },
+    { pattern: /\bazelaic\s+acid\b/i, ingredient: 'azelaic_acid' },
+    { pattern: /\bазелаиновая\s+кислота\b/i, ingredient: 'azelaic_acid' },
+    { pattern: /\btranexamic\s+acid\b/i, ingredient: 'azelaic_acid' }, // ИСПРАВЛЕНО: добавлен tranexamic acid (близок к azelaic)
+    { pattern: /\bтранэксамовая\s+кислота\b/i, ingredient: 'azelaic_acid' },
+    
+    // БПО
+    { pattern: /\bbenzoyl\s+peroxide\b/i, ingredient: 'benzoyl_peroxide' },
+    { pattern: /\bбензоил\s+пероксид\b/i, ingredient: 'benzoyl_peroxide' },
+    { pattern: /\bbpo\b/i, ingredient: 'benzoyl_peroxide' },
+    
+    // Другие активы
+    { pattern: /\bpeptides\b/i, ingredient: 'peptides' },
+    { pattern: /\bпептиды\b/i, ingredient: 'peptides' },
+    { pattern: /\bceramides\b/i, ingredient: 'ceramides' },
+    { pattern: /\bцерамиды\b/i, ingredient: 'ceramides' },
+    { pattern: /\bhyaluronic\s+acid\b/i, ingredient: 'hyaluronic_acid' },
+    { pattern: /\bгиалуроновая\s+кислота\b/i, ingredient: 'hyaluronic_acid' },
+    { pattern: /\barbutin\b/i, ingredient: 'vitamin_c' }, // ИСПРАВЛЕНО: добавлен arbutin (осветляющий)
+    { pattern: /\bарбутин\b/i, ingredient: 'vitamin_c' },
+    { pattern: /\bkojic\s+acid\b/i, ingredient: 'vitamin_c' }, // ИСПРАВЛЕНО: добавлен kojic acid
+    { pattern: /\bkojic\b/i, ingredient: 'vitamin_c' },
+    { pattern: /\bкоевая\s+кислота\b/i, ingredient: 'vitamin_c' },
+    { pattern: /\bsulfur\b/i, ingredient: 'benzoyl_peroxide' }, // ИСПРАВЛЕНО: добавлен sulfur (антибактериальный)
+    { pattern: /\bсера\b/i, ingredient: 'benzoyl_peroxide' },
+  ];
 
-  for (const [text, ingredient] of Object.entries(ingredientMap)) {
-    if (ingredientText.includes(text)) {
+  for (const { pattern, ingredient } of ingredientPatterns) {
+    if (pattern.test(ingredientText)) {
       ingredients.push(ingredient);
     }
   }
@@ -199,6 +242,8 @@ export function extractActiveIngredients(product: {
 
 /**
  * Проверяет совместимость двух продуктов
+ * ИСПРАВЛЕНО (P0): Для конфликта из 2 ингредиентов проверяем, что один продукт содержит A, другой содержит B
+ * (а не оба содержат один и тот же ингредиент из конфликта)
  */
 export function checkProductCompatibility(
   product1: { activeIngredients?: string[]; composition?: string },
@@ -208,11 +253,27 @@ export function checkProductCompatibility(
   const ingredients2 = extractActiveIngredients(product2);
 
   for (const conflict of INGREDIENT_CONFLICTS) {
-    const hasIngredient1 = conflict.ingredients.some(ing => ingredients1.includes(ing));
-    const hasIngredient2 = conflict.ingredients.some(ing => ingredients2.includes(ing));
+    // ИСПРАВЛЕНО: Для конфликта из 2 ингредиентов проверяем, что один продукт содержит A, другой содержит B
+    if (conflict.ingredients.length === 2) {
+      const [a, b] = conflict.ingredients;
+      const p1a = ingredients1.includes(a);
+      const p1b = ingredients1.includes(b);
+      const p2a = ingredients2.includes(a);
+      const p2b = ingredients2.includes(b);
 
-    if (hasIngredient1 && hasIngredient2) {
-      return conflict;
+      // Конфликт есть, если один продукт содержит A, а другой содержит B (в любом порядке)
+      if ((p1a && p2b) || (p1b && p2a)) {
+        return conflict;
+      }
+    } else {
+      // Для конфликтов с >2 ингредиентами используем старую логику (покрытие набора)
+      // Пока таких конфликтов нет, но оставляем для будущего расширения
+      const hasIngredient1 = conflict.ingredients.some(ing => ingredients1.includes(ing));
+      const hasIngredient2 = conflict.ingredients.some(ing => ingredients2.includes(ing));
+
+      if (hasIngredient1 && hasIngredient2) {
+        return conflict;
+      }
     }
   }
 
@@ -297,21 +358,51 @@ export function getOptimalTimeOfDay(
 
 /**
  * Проверяет, можно ли использовать продукт одновременно с другими
+ * ИСПРАВЛЕНО (P0): Передаем skinSensitivity в getOptimalTimeOfDay() для правильного определения времени применения
  */
 export function canUseTogether(
   product: { activeIngredients?: string[]; composition?: string },
   otherProducts: Array<{ activeIngredients?: string[]; composition?: string }>,
-  timeOfDay: 'morning' | 'evening'
+  timeOfDay: 'morning' | 'evening',
+  skinSensitivity: 'low' | 'medium' | 'high' | 'very_high' = 'medium'
 ): { compatible: boolean; conflicts: IngredientConflict[] } {
   const conflicts: IngredientConflict[] = [];
 
   for (const otherProduct of otherProducts) {
     const conflict = checkProductCompatibility(product, otherProduct);
     if (conflict) {
-      // Если конфликт требует разделения по времени, проверяем время применения
-      if (conflict.solution === 'separate_time') {
-        const productTime = getOptimalTimeOfDay(product);
-        const otherTime = getOptimalTimeOfDay(otherProduct);
+      // ИСПРАВЛЕНО (P0): Для vitamin_c + niacinamide проверяем sensitivity и форму vitC
+      if (conflict.ingredients.includes('vitamin_c') && conflict.ingredients.includes('niacinamide')) {
+        // Если sensitivity high/very_high или это ascorbic_acid - separate_time
+        const ingredients1 = extractActiveIngredients(product);
+        const ingredients2 = extractActiveIngredients(otherProduct);
+        const hasAscorbicAcid = ingredients1.includes('ascorbic_acid') || ingredients2.includes('ascorbic_acid');
+        
+        if ((skinSensitivity === 'high' || skinSensitivity === 'very_high') || hasAscorbicAcid) {
+          // Применяем логику separate_time
+          const productTime = getOptimalTimeOfDay(product, skinSensitivity);
+          const otherTime = getOptimalTimeOfDay(otherProduct, skinSensitivity);
+          
+          if (
+            (productTime === timeOfDay || productTime === 'both') &&
+            (otherTime === timeOfDay || otherTime === 'both')
+          ) {
+            conflicts.push({
+              ...conflict,
+              solution: 'separate_time',
+            });
+          }
+        } else {
+          // Для нормальной кожи - только warning
+          conflicts.push({
+            ...conflict,
+            solution: 'warning',
+          });
+        }
+      } else if (conflict.solution === 'separate_time') {
+        // ИСПРАВЛЕНО: Передаем skinSensitivity в getOptimalTimeOfDay
+        const productTime = getOptimalTimeOfDay(product, skinSensitivity);
+        const otherTime = getOptimalTimeOfDay(otherProduct, skinSensitivity);
         
         // Если оба продукта в одно время - конфликт
         if (

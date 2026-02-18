@@ -1,0 +1,108 @@
+// lib/quiz/utils/quizSync.ts
+// Утилиты для синхронизации состояния анкеты
+// Однонаправленная синхронизация: State Machine -> Ref -> State
+
+import { useEffect, useRef } from 'react';
+import { clientLogger } from '@/lib/client-logger';
+
+export interface UseQuizSyncParams {
+  stateMachineQuestionnaire: any | null;
+  setQuestionnaire: (q: any | null) => void;
+  questionnaireRef: React.MutableRefObject<any | null>;
+  isSyncingRef: React.MutableRefObject<boolean>;
+}
+
+/**
+ * Хук для однонаправленной синхронизации состояния анкеты
+ * State Machine -> Ref -> State (только при необходимости)
+ * 
+ * Это предотвращает бесконечные циклы React error #310
+ * и упрощает управление состоянием
+ */
+export function useQuizSync({
+  stateMachineQuestionnaire,
+  setQuestionnaire,
+  questionnaireRef,
+  isSyncingRef,
+}: UseQuizSyncParams) {
+  const lastSyncedIdRef = useRef<number | null>(null);
+  const stateQuestionnaireRef = useRef<any | null>(null);
+
+  useEffect(() => {
+    // Защита от рекурсивных вызовов
+    if (isSyncingRef.current) {
+      return;
+    }
+
+    const stateMachineId = stateMachineQuestionnaire?.id;
+    const currentStateId = stateQuestionnaireRef.current?.id;
+
+    // Если State Machine изменился, синхронизируем
+    if (stateMachineId && stateMachineId !== lastSyncedIdRef.current) {
+      // Проверяем, действительно ли объект изменился
+      if (stateMachineQuestionnaire !== stateQuestionnaireRef.current) {
+        isSyncingRef.current = true;
+        try {
+          clientLogger.log('🔄 useQuizSync: синхронизация из State Machine', {
+            stateMachineId,
+            currentStateId,
+            lastSyncedId: lastSyncedIdRef.current,
+          });
+
+          // Обновляем ref
+          questionnaireRef.current = stateMachineQuestionnaire;
+          stateQuestionnaireRef.current = stateMachineQuestionnaire;
+          lastSyncedIdRef.current = stateMachineId;
+
+          // ИСПРАВЛЕНО: Обновляем state только если он действительно отличается от State Machine
+          // Используем проверку через ref, чтобы избежать лишних обновлений
+          // КРИТИЧНО: Не вызываем setQuestionnaire, если это может вызвать обновление State Machine
+          // Это предотвращает бесконечные циклы
+          const shouldUpdateState = stateQuestionnaireRef.current?.id === stateMachineId;
+          if (shouldUpdateState) {
+            // Используем queueMicrotask для отложенного обновления без бесконечных циклов
+            queueMicrotask(() => {
+              if (isSyncingRef.current && stateQuestionnaireRef.current?.id === stateMachineId) {
+                setQuestionnaire(stateMachineQuestionnaire);
+                isSyncingRef.current = false;
+              }
+            });
+          } else {
+            isSyncingRef.current = false;
+          }
+        } catch (error) {
+          isSyncingRef.current = false;
+          clientLogger.error('❌ useQuizSync: ошибка синхронизации', error);
+        }
+      }
+    } else if (!stateMachineId && lastSyncedIdRef.current !== null) {
+      // Если State Machine стал null, сбрасываем lastSyncedIdRef
+      lastSyncedIdRef.current = null;
+    }
+  }, [stateMachineQuestionnaire?.id]); // ИСПРАВЛЕНО: Убрали setQuestionnaire из зависимостей, так как это стабильная функция
+}
+
+/**
+ * Утилита для проверки, нужно ли синхронизировать состояние
+ */
+export function shouldSyncQuestionnaire(
+  source: any | null,
+  target: any | null
+): boolean {
+  if (!source && !target) return false;
+  if (!source || !target) return true;
+  return source.id !== target.id || source !== target;
+}
+
+/**
+ * Утилита для безопасного обновления ref без триггера рендера
+ */
+export function updateQuestionnaireRef(
+  ref: React.MutableRefObject<any | null>,
+  newQuestionnaire: any | null
+): void {
+  if (ref.current !== newQuestionnaire) {
+    ref.current = newQuestionnaire;
+  }
+}
+

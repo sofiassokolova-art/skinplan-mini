@@ -22,13 +22,19 @@ export function useQuizProgress() {
   const saveProgressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedAnswerRef = useRef<{ questionId: number; answer: string | string[] } | null>(null);
 
-  // ИСПРАВЛЕНО: Используем getEffectiveAnswers для подсчета общего количества ответов
-  const effectiveAnswers = useMemo(() => 
-    getEffectiveAnswers(answers, savedProgress?.answers), 
-    [answers, savedProgress?.answers]
-  );
+  // КРИТИЧНО ИСПРАВЛЕНО: Используем стабильные значения для зависимостей
+  // Объекты answers и savedProgress?.answers пересоздаются каждый раз, что вызывает бесконечные циклы
+  const answersKeysCount = Object.keys(answers || {}).length;
+  const savedProgressAnswersKeysCount = Object.keys(savedProgress?.answers || {}).length;
   
-  const answersCount = useMemo(() => Object.keys(effectiveAnswers).length, [effectiveAnswers]);
+  const effectiveAnswers = useMemo(() =>
+    getEffectiveAnswers(answers, savedProgress?.answers),
+    [answersKeysCount, savedProgressAnswersKeysCount]
+  );
+
+  // ФИКС: Убираем лишний useMemo, который зависит от объекта и может вызывать бесконечные циклы
+  // answersCount вычисляется напрямую из effectiveAnswers
+  const answersCount = Object.keys(effectiveAnswers).length;
 
   // Синхронизация ref с state
   useEffect(() => {

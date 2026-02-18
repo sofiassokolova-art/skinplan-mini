@@ -3,42 +3,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import jwt from 'jsonwebtoken';
+import { verifyAdminBoolean } from '@/lib/admin-auth';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-
-// Проверка авторизации админа
-async function verifyAdmin(request: NextRequest): Promise<boolean> {
-  try {
-    const cookieToken = request.cookies.get('admin_token')?.value;
-    const headerToken = request.headers.get('authorization')?.replace('Bearer ', '');
-    const token = cookieToken || headerToken;
-    
-    if (!token) {
-      console.log('❌ No admin token found in request');
-      console.log('   Cookie token:', cookieToken ? 'present' : 'missing');
-      console.log('   Header token:', headerToken ? 'present' : 'missing');
-      return false;
-    }
-
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET);
-      console.log('✅ Admin token verified successfully:', { adminId: (decoded as any).adminId });
-      return true;
-    } catch (verifyError: any) {
-      console.log('❌ Token verification failed:', verifyError.message);
-      return false;
-    }
-  } catch (err) {
-    console.error('❌ Error in verifyAdmin:', err);
-    return false;
-  }
-}
-
-// GET - список продуктов
+// GET - список продуктов с пагинацией
 export async function GET(request: NextRequest) {
   try {
-    const isAdmin = await verifyAdmin(request);
+    const isAdmin = await verifyAdminBoolean(request);
     if (!isAdmin) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -46,20 +16,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Проверяем подключение к БД
-    try {
-      await prisma.$connect();
-      console.log('✅ Database connected for products');
-    } catch (dbError: any) {
-      console.error('❌ Database connection error:', dbError);
-      return NextResponse.json(
-        { error: 'Database connection failed', details: dbError.message },
-        { status: 500 }
-      );
-    }
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100); // Максимум 100
+    const skip = (page - 1) * limit;
 
-    console.log('📦 Fetching products...');
-    const products = await prisma.product.findMany({
+    // Получаем продукты с пагинацией
+    const [products, total] = await Promise.all([
+      prisma.product.findMany({
+        skip,
+        take: limit,
       include: {
         brand: {
           select: {
@@ -71,9 +37,9 @@ export async function GET(request: NextRequest) {
       orderBy: {
         createdAt: 'desc',
       },
-    });
-
-    console.log(`✅ Found ${products.length} products`);
+      }),
+      prisma.product.count(),
+    ]);
 
     return NextResponse.json({
       products: products.map((p: any) => ({
@@ -98,6 +64,12 @@ export async function GET(request: NextRequest) {
         priority: p.priority || 0,
         brand: p.brand,
       })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     });
   } catch (error: any) {
     console.error('Error fetching products:', error);
@@ -111,7 +83,7 @@ export async function GET(request: NextRequest) {
 // POST - создание продукта
 export async function POST(request: NextRequest) {
   try {
-    const isAdmin = await verifyAdmin(request);
+    const isAdmin = await verifyAdminBoolean(request);
     if (!isAdmin) {
       return NextResponse.json(
         { error: 'Unauthorized' },

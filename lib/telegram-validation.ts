@@ -39,6 +39,41 @@ export async function validateTelegramInitDataUnified(
     return { valid: false, error: 'No initData provided' };
   }
 
+  // ИСПРАВЛЕНО: В development режиме обходим валидацию hash для тестового initData
+  // Проверяем ДО проверки botToken, чтобы не требовать токен для тестового initData
+  if (process.env.NODE_ENV === 'development' && initData.includes('test_hash_for_development_only')) {
+    // Извлекаем telegramId из тестового initData
+    // Пробуем несколько вариантов парсинга
+    const userIdMatch = initData.match(/user=%7B%22id%22%3A(\d+)/) || 
+                        initData.match(/user=\{"id":(\d+)/) ||
+                        initData.match(/user=%7B%22id%22%3A(\d+)/) ||
+                        decodeURIComponent(initData).match(/user=\{"id":(\d+)/);
+    const telegramId = userIdMatch ? userIdMatch[1] : null;
+    
+    if (telegramId) {
+      logger.info('Using test Telegram initData in development mode', { telegramId, initDataLength: initData.length });
+      return {
+        valid: true,
+        telegramId,
+        payload: {
+          user: {
+            id: parseInt(telegramId, 10),
+            first_name: 'Test',
+            last_name: 'User',
+            username: 'testuser',
+            language_code: 'ru',
+          },
+          auth_date: Math.floor(Date.now() / 1000),
+        } as any,
+      };
+    } else {
+      logger.warn('Test initData detected but telegramId not found', { 
+        initDataLength: initData.length,
+        initDataPreview: initData.substring(0, 100) 
+      });
+    }
+  }
+
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) {
     return { valid: false, error: 'Bot token not configured' };

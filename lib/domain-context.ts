@@ -9,7 +9,9 @@ import type { Questionnaire, Question } from './questionnaire-types';
 import type { SkinProfile, SkinAxes, MedicalMarkers, Preferences } from './skinprofile-types';
 import type { Product } from './plan-types';
 
-export type AnswersMap = Record<string, string | string[]>;
+// ИСПРАВЛЕНО: Расширенный тип для ответов анкеты
+export type AnswerValue = string | number | boolean | null | string[] | number[];
+export type AnswersMap = Record<string, AnswerValue>;
 
 export type ContextMeta = {
   userId: string;

@@ -15,13 +15,7 @@ export async function getUserIdFromInitData(initData: string | null): Promise<st
     return null;
   }
 
-  const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  if (!botToken) {
-    console.error('❌ getUserIdFromInitData: Bot token not configured');
-    return null;
-  }
-
-  // ИСПРАВЛЕНО: Используем единый слой валидации
+  // ИСПРАВЛЕНО: Используем единый слой валидации (включая обработку тестового initData)
   const validation = await validateTelegramInitDataUnified(initData);
   
   if (!validation.valid || !validation.telegramId || !validation.payload?.user) {

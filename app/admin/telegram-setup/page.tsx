@@ -17,7 +17,10 @@ export default function TelegramSetupPage() {
     setSuccess('');
     
     try {
-      const response = await fetch('/api/telegram/webhook?action=check');
+      // ИСПРАВЛЕНО (P0): Добавлена админ-авторизация через cookie
+      const response = await fetch('/api/telegram/webhook?action=check', {
+        credentials: 'include', // Используем cookie для авторизации
+      });
       const data = await response.json();
       setWebhookStatus(data);
       
@@ -39,7 +42,10 @@ export default function TelegramSetupPage() {
     setSuccess('');
     
     try {
-      const response = await fetch('/api/telegram/webhook?action=set-webhook');
+      // ИСПРАВЛЕНО (P0): Добавлена админ-авторизация через cookie
+      const response = await fetch('/api/telegram/webhook?action=set-webhook', {
+        credentials: 'include', // Используем cookie для авторизации
+      });
       const data = await response.json();
       
       if (data.ok) {
@@ -73,7 +79,11 @@ export default function TelegramSetupPage() {
             <li>Отправьте команду: <code className="bg-gray-100 px-2 py-1 rounded">/mybots</code></li>
             <li>Выберите вашего бота</li>
             <li>Выберите "Bot Settings" → "Domain"</li>
-            <li>Введите домен: <code className="bg-gray-100 px-2 py-1 rounded">skinplan-mini.vercel.app</code></li>
+            <li>Введите домен: <code className="bg-gray-100 px-2 py-1 rounded">
+              {typeof window !== 'undefined' 
+                ? new URL(process.env.NEXT_PUBLIC_MINI_APP_URL || window.location.origin).hostname
+                : 'skinplan-mini.vercel.app'}
+            </code></li>
           </ol>
           <div className="bg-blue-50 border border-blue-200 rounded p-4">
             <p className="text-sm text-blue-800">

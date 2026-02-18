@@ -31,6 +31,7 @@ const publicRoutes = [
   '/api/cart', // Использует initData напрямую
   '/api/wishlist', // Использует initData напрямую
   '/api/telegram/webhook', // Webhook от Telegram
+  '/api/logs', // Публичный endpoint для логирования (использует initData для идентификации, но не требует строгой авторизации)
   '/api/admin/login', // Публичный endpoint для входа в админку (не требует JWT)
   '/api/admin/auth', // Публичный endpoint для авторизации через Telegram initData (не требует JWT)
   '/api/admin/verify', // Проверка токена админа (проверяет токен сам, не требует предварительной авторизации)
@@ -90,11 +91,10 @@ export async function middleware(request: NextRequest) {
     // Для админских роутов проверяем наличие admin_token
     // НО: /api/admin/auth (GET и POST) - публичные, они сами проверяют токен
     // ВАЖНО: Полная валидация JWT делается в API routes (Node.js runtime), здесь только проверка наличия
+    // ИСПРАВЛЕНО (P1): Только cookie, убрали поддержку Authorization header
     if (pathname.startsWith('/api/admin/') && !pathname.startsWith('/api/admin/auth')) {
-      // Проверяем наличие токена из cookies ИЛИ из Authorization header
-      const cookieToken = request.cookies.get('admin_token')?.value;
-      const headerToken = request.headers.get('authorization')?.replace('Bearer ', '');
-      const adminToken = cookieToken || headerToken;
+      // ИСПРАВЛЕНО (P1): Только cookie, убрали чтение Authorization header
+      const adminToken = request.cookies.get('admin_token')?.value;
 
       if (!adminToken) {
         // Токен отсутствует - блокируем запрос

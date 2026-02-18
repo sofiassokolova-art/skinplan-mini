@@ -2,18 +2,9 @@
 // Единая утилита для фильтрации вопросов анкеты
 // Используется в основном потоке, resume и retake экранах
 
-export interface Question {
-  id: number;
-  code: string;
-  text: string;
-  type: string;
-  isRequired: boolean;
-  options?: Array<{
-    id: number;
-    value: string;
-    label: string;
-  }>;
-}
+import type { Question } from './types';
+
+export type { Question };
 
 export interface FilterQuestionsOptions {
   questions: Question[];
@@ -21,6 +12,11 @@ export interface FilterQuestionsOptions {
   savedProgressAnswers?: Record<number, string | string[]>;
   isRetakingQuiz?: boolean;
   showRetakeScreen?: boolean;
+  logger?: {
+    log: (...args: any[]) => void;
+    warn: (...args: any[]) => void;
+    error: (...args: any[]) => void;
+  };
 }
 
 /**
@@ -192,17 +188,71 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
     savedProgressAnswers,
     isRetakingQuiz = false,
     showRetakeScreen = false,
+    logger,
   } = options;
+  
+  // Используем переданный logger или console по умолчанию
+  const log = logger?.log || console.log.bind(console);
+  const warn = logger?.warn || console.warn.bind(console);
+  const error = logger?.error || console.error.bind(console);
 
   if (!questions || questions.length === 0) {
+    warn('⚠️ filterQuestions: questions is empty', { questions });
     return [];
   }
 
   // ИСПРАВЛЕНО: Используем эффективные ответы (объединение answers и savedProgressAnswers)
   const effectiveAnswers = getEffectiveAnswers(answers, savedProgressAnswers);
 
+  // ИСПРАВЛЕНО: Проверяем, есть ли ответы вообще
+  // Если ответов нет (новый пользователь), показываем все вопросы без фильтрации
+  const hasAnyAnswers = Object.keys(effectiveAnswers).length > 0;
+  
+  // КРИТИЧНО: Логируем короткие ключевые данные отдельно для видимости в обрезанных логах
+  log(`🔍 filterQuestions: START ${questions.length} questions, ${Object.keys(effectiveAnswers).length} answers`, {
+    questions: questions.length,
+    answers: Object.keys(effectiveAnswers).length,
+    hasAnyAnswers,
+    isRetakingQuiz,
+    showRetakeScreen,
+  });
+  
+  // ДИАГНОСТИКА: Логируем полные входные данные
+  log('🔍 filterQuestions: Starting filter (full)', {
+    questionsCount: questions.length,
+    answersCount: Object.keys(answers || {}).length,
+    savedProgressAnswersCount: Object.keys(savedProgressAnswers || {}).length,
+    effectiveAnswersCount: Object.keys(effectiveAnswers).length,
+    hasAnyAnswers,
+    isRetakingQuiz,
+    showRetakeScreen,
+    questionCodes: questions.map(q => q.code).slice(0, 10),
+    hasLogger: !!logger,
+  });
+  
+  let filteredCount = 0;
+  let excludedCount = 0;
+  const excludedReasons: Record<string, number> = {};
+  
   const filteredQuestions = questions.filter((question) => {
     try {
+      // ИСПРАВЛЕНО: Если нет ответов, показываем все вопросы (кроме исключений для retake)
+      // Это предотвращает ситуацию, когда все вопросы отфильтрованы при первой загрузке
+      if (!hasAnyAnswers) {
+        // При повторном прохождении все равно исключаем вопросы про пол и возраст
+        if (isRetakingQuiz && !showRetakeScreen) {
+          const normalizedCode = question.code?.toLowerCase();
+          if (normalizedCode === 'gender' || normalizedCode === 'age') {
+            excludedCount++;
+            excludedReasons['retake_gender_age'] = (excludedReasons['retake_gender_age'] || 0) + 1;
+            return false;
+          }
+        }
+        // Для нового пользователя показываем все остальные вопросы
+        filteredCount++;
+        return true;
+      }
+      
       // ИСПРАВЛЕНО: Используем normalizedCode для всех проверок
       const normalizedCode = question.code?.toLowerCase();
       
@@ -216,12 +266,28 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
 
       // 2. Фильтрация retinoid_reaction на основе retinoid_usage
       // ИСПРАВЛЕНО: Используем только question.code для стабильности
+      // ФИКС: Вопрос retinoid_reaction должен показываться до ответа на retinoid_usage
       const isRetinoidReactionQuestion = normalizedCode === 'retinoid_reaction';
       
       if (isRetinoidReactionQuestion) {
+        // ФИКС: Если нет ответов вообще, показываем вопрос (он будет отфильтрован после ответа на retinoid_usage)
+        if (!hasAnyAnswers) {
+          filteredCount++;
+          return true;
+        }
+        
         const retinoidUsage = getAnswerByCode('retinoid_usage', questions, effectiveAnswers);
         if (!retinoidUsage.question) {
           // Вопрос о ретиноле еще не найден - показываем вопрос (он будет скрыт позже)
+          filteredCount++;
+          return true;
+        }
+
+        // ФИКС: Проверяем, есть ли ответ на retinoid_usage
+        const hasRetinoidUsageAnswer = retinoidUsage.question.id in effectiveAnswers;
+        if (!hasRetinoidUsageAnswer) {
+          // Ответа еще нет - показываем вопрос
+          filteredCount++;
           return true;
         }
 
@@ -232,7 +298,14 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
         );
 
         // Показываем только если ответили "yes" (да)
-        return normalizedValue === 'yes';
+        const shouldShow = normalizedValue === 'yes';
+        if (!shouldShow) {
+          excludedCount++;
+          excludedReasons['retinoid_reaction_no'] = (excludedReasons['retinoid_reaction_no'] || 0) + 1;
+        } else {
+          filteredCount++;
+        }
+        return shouldShow;
       }
 
       // 3. Фильтрация вопросов про макияж (только для женщин)
@@ -241,13 +314,20 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
       
       if (isMakeupQuestion) {
         const gender = getAnswerByCode('gender', questions, effectiveAnswers);
-        if (!gender.question) {
+        if (!gender.question || !gender.value) {
           // Пол еще не выбран - показываем вопрос (он будет скрыт позже)
           return true;
         }
 
         const isMale = isMaleGender(gender.value, gender.option, gender.question, effectiveAnswers);
-        return !isMale; // Показываем только если не мужчина
+        const shouldShow = !isMale; // Показываем только если не мужчина
+        if (!shouldShow) {
+          excludedCount++;
+          excludedReasons['makeup_male'] = (excludedReasons['makeup_male'] || 0) + 1;
+        } else {
+          filteredCount++;
+        }
+        return shouldShow;
       }
 
       // 4. Фильтрация вопросов про беременность (только для женщин)
@@ -257,23 +337,108 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
       
       if (isPregnancyQuestion) {
         const gender = getAnswerByCode('gender', questions, effectiveAnswers);
-        if (!gender.question) {
+        if (!gender.question || !gender.value) {
           // Пол еще не выбран - показываем вопрос (он будет скрыт позже)
+          filteredCount++;
           return true;
         }
 
         const isMale = isMaleGender(gender.value, gender.option, gender.question, effectiveAnswers);
-        return !isMale; // Показываем только если не мужчина
+        const shouldShow = !isMale; // Показываем только если не мужчина
+        if (!shouldShow) {
+          excludedCount++;
+          excludedReasons['pregnancy_male'] = (excludedReasons['pregnancy_male'] || 0) + 1;
+        } else {
+          filteredCount++;
+        }
+        return shouldShow;
       }
 
       // Все остальные вопросы показываем
+      filteredCount++;
       return true;
     } catch (err) {
-      console.error('❌ Error filtering question:', err, question);
+      error('❌ Error filtering question:', err, question);
       // В случае ошибки показываем вопрос (безопасный вариант)
       return true;
     }
   });
+  
+  // ДИАГНОСТИКА: Логируем результат фильтрации
+  // КРИТИЧНО: Логируем отдельно для лучшей видимости
+  if (filteredQuestions.length === 0 && questions.length > 0) {
+    // КРИТИЧЕСКАЯ ОШИБКА: Все вопросы отфильтрованы
+    error('❌ filterQuestions: ВСЕ ВОПРОСЫ ОТФИЛЬТРОВАНЫ!', {
+      originalCount: questions.length,
+      filteredCount: filteredQuestions.length,
+      excludedCount,
+      excludedReasons,
+      hasAnyAnswers,
+      isRetakingQuiz,
+      showRetakeScreen,
+      allQuestionCodes: questions.map(q => q.code),
+      effectiveAnswersCount: Object.keys(effectiveAnswers).length,
+      effectiveAnswers: effectiveAnswers,
+    });
+  } else {
+    // КРИТИЧНО: Логируем короткие ключевые данные отдельно для видимости в обрезанных логах
+    log(`✅ filterQuestions: ${questions.length}→${filteredQuestions.length} (excluded: ${excludedCount})`, {
+      original: questions.length,
+      filtered: filteredQuestions.length,
+      excluded: excludedCount,
+    });
+    
+    // УСПЕШНАЯ ФИЛЬТРАЦИЯ: Логируем полный результат
+    log('✅ filterQuestions: Filter completed (full)', {
+      originalCount: questions.length,
+      filteredCount: filteredQuestions.length,
+      excludedCount,
+      excludedReasons,
+      hasAnyAnswers,
+      isRetakingQuiz,
+      showRetakeScreen,
+      filteredQuestionCodes: filteredQuestions.map(q => q.code).slice(0, 20),
+      effectiveAnswersCount: Object.keys(effectiveAnswers).length,
+    });
+    
+    // ДОПОЛНИТЕЛЬНО: Если отфильтровано много вопросов, логируем предупреждение
+    if (filteredQuestions.length < questions.length && filteredQuestions.length > 0) {
+      warn(`⚠️ filterQuestions: ${excludedCount} вопросов отфильтровано`, {
+        originalCount: questions.length,
+        filteredCount: filteredQuestions.length,
+        excludedCount,
+        excludedReasons,
+      });
+    }
+  }
+  
+  // ИСПРАВЛЕНО: Если после фильтрации не осталось вопросов, возвращаем все вопросы
+  // Это предотвращает ситуацию, когда все вопросы отфильтрованы при первой загрузке
+  if (filteredQuestions.length === 0 && questions.length > 0) {
+    error('❌ CRITICAL: All questions filtered out!', {
+      originalCount: questions.length,
+      hasAnyAnswers,
+      isRetakingQuiz,
+      showRetakeScreen,
+      excludedReasons,
+      questionCodes: questions.map(q => q.code),
+    });
+    // Возвращаем все вопросы, кроме исключений для retake
+    const fallbackQuestions = questions.filter((question) => {
+      if (isRetakingQuiz && !showRetakeScreen) {
+        const normalizedCode = question.code?.toLowerCase();
+        if (normalizedCode === 'gender' || normalizedCode === 'age') {
+          return false;
+        }
+      }
+      return true;
+    });
+    log('🔄 filterQuestions: Returning fallback questions', {
+      fallbackCount: fallbackQuestions.length,
+      fallbackQuestionCodes: fallbackQuestions.map(q => q.code).slice(0, 10),
+    });
+    return fallbackQuestions;
+  }
 
   return filteredQuestions;
 }

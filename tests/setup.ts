@@ -1,26 +1,48 @@
 // tests/setup.ts
-// Настройка тестового окружения
+// Настройка окружения для тестов
 
-import { beforeAll, afterAll } from 'vitest';
-import { PrismaClient } from '@prisma/client';
+import '@testing-library/jest-dom';
+import { cleanup } from '@testing-library/react';
+import { afterEach } from 'vitest';
 
-let prisma: PrismaClient | null = null;
+// Очистка после каждого теста
+afterEach(() => {
+  cleanup();
+});
 
-beforeAll(async () => {
-  // Подключение к БД перед всеми тестами (если DATABASE_URL задан)
-  if (!process.env.DATABASE_URL) {
-    return;
-  }
-  prisma = new PrismaClient({
-    datasources: {
-      db: { url: process.env.DATABASE_URL },
+// Моки для Next.js
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+    back: vi.fn(),
+  }),
+  usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(),
+}));
+
+// Моки для window.Telegram
+Object.defineProperty(window, 'Telegram', {
+  writable: true,
+  value: {
+    WebApp: {
+      initData: 'test_init_data',
+      ready: vi.fn(),
+      expand: vi.fn(),
+      close: vi.fn(),
     },
-  });
-  await prisma.$connect();
+  },
 });
 
-afterAll(async () => {
-  // Отключение от БД после всех тестов
-  await prisma?.$disconnect();
-});
+// Моки для sessionStorage
+const sessionStorageMock = {
+  getItem: vi.fn(),
+  setItem: vi.fn(),
+  removeItem: vi.fn(),
+  clear: vi.fn(),
+};
 
+Object.defineProperty(window, 'sessionStorage', {
+  value: sessionStorageMock,
+});

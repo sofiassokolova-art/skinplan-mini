@@ -12,31 +12,87 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true); // ИСПРАВЛЕНО (P1): Состояние проверки сессии
+  const [isTelegramReady, setIsTelegramReady] = useState(false); // ИСПРАВЛЕНО (P1): Состояние готовности Telegram
 
   useEffect(() => {
     setMounted(true);
 
-    // Проверяем, есть ли уже токен
+    // ИСПРАВЛЕНО (P1): Проверяем готовность Telegram WebApp с polling
+    const checkTelegramReady = () => {
+      if (window.Telegram?.WebApp?.initData) {
+        setIsTelegramReady(true);
+        return true;
+      }
+      return false;
+    };
+
+    // Проверяем сразу
+    if (checkTelegramReady()) {
+      return;
+    }
+
+    // Polling каждые 200ms на 2 секунды
+    let attempts = 0;
+    const maxAttempts = 10;
+    const interval = setInterval(() => {
+      attempts++;
+      if (checkTelegramReady() || attempts >= maxAttempts) {
+        clearInterval(interval);
+      }
+    }, 200);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+
+    // ИСПРАВЛЕНО (P1): Проверяем, есть ли уже валидная сессия
     const checkExistingToken = async () => {
-        try {
+      setCheckingSession(true);
+      try {
         const response = await fetch('/api/admin/auth', {
-            credentials: 'include',
-          });
+          credentials: 'include',
+        });
           
-          if (response.ok) {
+        if (response.ok) {
+          const data = await response.json();
+          if (data.valid) {
+            // ИСПРАВЛЕНО: Используем replace для более быстрого редиректа
+            router.replace('/admin');
+            return;
+          }
+        } else {
+          // ИСПРАВЛЕНО: Проверяем ошибки конфигурации при проверке сессии
+          try {
             const data = await response.json();
-            if (data.valid) {
-              router.push('/admin');
+            const errorMessage = data.error || '';
+            const errorCode = data.code;
+            
+            // Проверяем ошибки конфигурации по коду или тексту ошибки
+            if (errorCode === 'CONFIG_ERROR' || errorCode === 'JWT_CONFIG_ERROR' || 
+                errorMessage.includes('JWT_SECRET') || errorMessage.includes('TELEGRAM_BOT_TOKEN') ||
+                errorMessage.includes('JWT configuration error')) {
+              setError('Ошибка конфигурации сервера. Обратитесь к администратору для настройки JWT_SECRET или TELEGRAM_BOT_TOKEN.');
+              setCheckingSession(false);
               return;
             }
+          } catch (parseError) {
+            // Если не удалось распарсить JSON, игнорируем
+            console.error('Error parsing error response:', parseError);
           }
-        } catch (error) {
-          console.error('Error checking token:', error);
+        }
+      } catch (error) {
+        console.error('Error checking token:', error);
+        // ИСПРАВЛЕНО: Не показываем ошибку при проверке сессии, только при логине
+      } finally {
+        setCheckingSession(false);
       }
     };
     
     checkExistingToken();
-  }, [router]);
+  }, [router, mounted]);
 
   const handleTelegramLogin = async () => {
     setLoading(true);
@@ -74,10 +130,15 @@ export default function AdminLogin() {
 
       if (!response.ok) {
         const errorMessage = data.error || 'Ошибка авторизации';
+        const errorCode = data.code;
         
-        // Красивое сообщение если не в whitelist
-        if (errorMessage.includes('whitelist') || errorMessage.includes('Unauthorized')) {
+        // ИСПРАВЛЕНО: Различаем ошибки конфигурации сервера и ошибки авторизации
+        if (errorCode === 'CONFIG_ERROR' || errorCode === 'JWT_CONFIG_ERROR') {
+          setError('Ошибка конфигурации сервера. Обратитесь к администратору для настройки JWT_SECRET или TELEGRAM_BOT_TOKEN.');
+        } else if (errorMessage.includes('whitelist') || errorMessage.includes('Unauthorized') || errorCode === 'AUTH_UNAUTHORIZED') {
           setError('Вы не в списке администраторов. Обратитесь к владельцу для добавления в whitelist.');
+        } else if (errorCode === 'DB_ERROR') {
+          setError('Ошибка подключения к базе данных. Попробуйте позже.');
         } else {
           setError(errorMessage);
         }
@@ -85,13 +146,12 @@ export default function AdminLogin() {
         return;
       }
 
-      // Сохраняем токен в localStorage для удобства
-      if (data.token) {
-      localStorage.setItem('admin_token', data.token);
-      }
+      // ИСПРАВЛЕНО (P0): Убрали сохранение token в localStorage - используем только cookie
+      // Токен уже установлен в httpOnly cookie на бэке
       
       // Перенаправляем в админ-панель
-      router.push('/admin');
+      // ИСПРАВЛЕНО: Используем replace для более быстрого редиректа
+      router.replace('/admin');
       router.refresh();
     } catch (err) {
       console.error('Error during login:', err);
@@ -105,26 +165,53 @@ export default function AdminLogin() {
     return null;
   }
 
+  // ИСПРАВЛЕНО (P1): Показываем "Проверяем доступ..." при проверке сессии
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen admin-layout flex items-center justify-center p-4" style={{ 
+        background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 30%, #f9fafb 60%, #f3f4f6 100%)',
+        backgroundSize: '400% 400%'
+      }}>
+        <div className="admin-card p-8 max-w-md w-full">
+          <div className="text-center">
+            <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Проверяем доступ...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ИСПРАВЛЕНО: Приведено к стилю админки с glassmorphism
   return (
-    <div className="min-h-screen bg-[#000000] flex items-center justify-center p-4">
-      <div className="bg-white/6 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 max-w-md w-full shadow-[0_8px_32px_rgba(139,92,246,0.3)]">
+    <div className="min-h-screen admin-layout flex items-center justify-center p-4" style={{ 
+      background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 30%, #f9fafb 60%, #f3f4f6 100%)',
+      backgroundSize: '400% 400%'
+    }}>
+      <div className="admin-card p-8 max-w-md w-full">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">SkinIQ Admin</h1>
-          <p className="text-white/60">Вход через Telegram</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">SkinIQ Admin</h1>
+          <p className="text-gray-600">Вход через Telegram</p>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200 text-sm space-y-2">
-            <p>{error}</p>
-            {window.Telegram?.WebApp?.initDataUnsafe?.user?.id && (
-              <div className="mt-3 p-3 bg-white/5 rounded-lg border border-white/10">
-                <p className="text-white/80 text-xs mb-2">Ваш Telegram ID (для добавления в whitelist):</p>
-                <code className="text-white font-mono text-sm bg-white/10 px-2 py-1 rounded block">
+          <div className="mb-6 p-4 bg-red-50/80 backdrop-blur-sm border border-red-200/50 rounded-xl text-red-700 text-sm space-y-2">
+            <p className="font-medium">{error}</p>
+            {/* ИСПРАВЛЕНО: Показываем Telegram ID только если ошибка не связана с конфигурацией */}
+            {!error.toLowerCase().includes('конфигурации') && 
+             !error.toLowerCase().includes('jwt_secret') && 
+             !error.toLowerCase().includes('telegram_bot_token') &&
+             !error.toLowerCase().includes('jwt configuration') &&
+             !error.toLowerCase().includes('configuration error') &&
+             window.Telegram?.WebApp?.initDataUnsafe?.user?.id && (
+              <div className="mt-3 p-3 bg-white/60 backdrop-blur-sm rounded-lg border border-gray-200/50">
+                <p className="text-gray-700 text-xs mb-2 font-medium">Ваш Telegram ID (для добавления в whitelist):</p>
+                <code className="text-gray-900 font-mono text-sm bg-gray-100/80 px-2 py-1 rounded block">
                   {window.Telegram.WebApp.initDataUnsafe.user.id}
                 </code>
-                <p className="text-white/60 text-xs mt-2">
+                <p className="text-gray-600 text-xs mt-2">
                   Скопируйте этот ID и запустите:<br/>
-                  <code className="bg-white/10 px-1 rounded text-xs">
+                  <code className="bg-gray-100/80 px-1 rounded text-xs">
                     npx tsx scripts/add-admin.ts {window.Telegram.WebApp.initDataUnsafe.user.id} "София"
                   </code>
                 </p>
@@ -134,12 +221,12 @@ export default function AdminLogin() {
         )}
 
         <div className="space-y-4">
-          <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-            <p className="text-white/80 text-sm mb-2">
+          <div className="p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-gray-200/50">
+            <p className="text-gray-700 text-sm mb-3 font-medium">
               Для входа в админ-панель:
             </p>
-            <ol className="text-white/60 text-sm space-y-2 list-decimal list-inside">
-              <li>Напишите боту @skiniq_bot команду <code className="bg-white/10 px-1 rounded">/admin</code></li>
+            <ol className="text-gray-600 text-sm space-y-2 list-decimal list-inside">
+              <li>Напишите боту @skiniq_bot команду <code className="bg-gray-100/80 px-1.5 py-0.5 rounded text-xs font-mono">/admin</code></li>
               <li>Нажмите кнопку "Открыть админку" в ответе бота</li>
               <li>Или убедитесь, что вы в whitelist администраторов</li>
             </ol>
@@ -147,8 +234,8 @@ export default function AdminLogin() {
 
           <button
             onClick={handleTelegramLogin}
-            disabled={loading || !window.Telegram?.WebApp?.initData}
-            className="w-full bg-black/80 backdrop-blur-xl border border-white/20 text-white py-4 rounded-2xl font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-black/90 hover:border-white/30 hover:shadow-[0_8px_32px_rgba(139,92,246,0.3)] transition-all duration-300"
+            disabled={loading || !isTelegramReady}
+            className="w-full bg-gray-900 text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-800 active:bg-gray-950 transition-all duration-200 shadow-lg hover:shadow-xl"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
@@ -160,8 +247,8 @@ export default function AdminLogin() {
             )}
           </button>
 
-          {!window.Telegram?.WebApp?.initData && (
-            <p className="text-white/40 text-xs text-center">
+          {!isTelegramReady && (
+            <p className="text-gray-500 text-xs text-center">
               Telegram WebApp не доступен. Откройте через бота.
             </p>
           )}

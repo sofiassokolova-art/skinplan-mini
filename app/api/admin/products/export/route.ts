@@ -4,35 +4,15 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db';
 import { ApiResponse } from '@/lib/api-response';
+import { verifyAdminBoolean } from '@/lib/admin-auth';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
-async function verifyAdmin(request: NextRequest): Promise<boolean> {
-  try {
-    const cookieToken = request.cookies.get('admin_token')?.value;
-    const headerToken = request.headers.get('authorization')?.replace('Bearer ', '');
-    const token = cookieToken || headerToken;
-    
-    if (!token) {
-      return false;
-    }
-
-    try {
-      jwt.verify(token, JWT_SECRET);
-      return true;
-    } catch {
-      return false;
-    }
-  } catch {
-    return false;
-  }
-}
-
 // POST - отправка экспорта в Telegram чат админа
 export async function POST(request: NextRequest) {
   try {
-    const isAdmin = await verifyAdmin(request);
+    const isAdmin = await verifyAdminBoolean(request);
     if (!isAdmin) {
       return ApiResponse.unauthorized('Unauthorized');
     }
@@ -222,7 +202,7 @@ export async function POST(request: NextRequest) {
 // GET - экспорт продуктов в CSV или JSON (оставляем для обратной совместимости)
 export async function GET(request: NextRequest) {
   try {
-    const isAdmin = await verifyAdmin(request);
+    const isAdmin = await verifyAdminBoolean(request);
     if (!isAdmin) {
       return ApiResponse.unauthorized('Unauthorized');
     }

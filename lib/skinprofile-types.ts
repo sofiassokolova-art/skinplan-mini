@@ -2,12 +2,14 @@
 // Расширенный тип SkinProfile и связанные доменные типы для правил/аналитики
 
 import type { SkinScore } from './skin-analysis-engine';
+import type { GoalKey, ConcernKey } from './concern-taxonomy';
+import type { SkinTypeKey } from './skin-type-normalizer';
 
 export type SkinProfile = {
-  skinType: "dry" | "combination_dry" | "normal" | "combination_oily" | "oily" | null;
+  skinType: SkinTypeKey | null; // ИСПРАВЛЕНО: Используем канонический SkinTypeKey
   sensitivity: "low" | "medium" | "high" | "very_high" | null;
-  mainGoals: string[];
-  secondaryGoals: string[];
+  mainGoals: GoalKey[]; // ИСПРАВЛЕНО: Используем GoalKey вместо string[]
+  secondaryGoals: GoalKey[]; // ИСПРАВЛЕНО: Используем GoalKey вместо string[]
   diagnoses: string[];
   seasonality: "summer_oilier" | "winter_drier" | "stable" | null;
   pregnancyStatus: "pregnant" | "breastfeeding" | "none" | null;
@@ -28,6 +30,7 @@ export type SkinProfile = {
 export type SkinAxes = SkinScore[];
 
 // Медицинские маркеры (беременность, лактация, диагнозы и пр.)
+// ИСПРАВЛЕНО: Убрали [key: string]: any, добавили явное поле extra
 export type MedicalMarkers = {
   diagnoses?: string[];
   pregnancyStatus?: "pregnant" | "breastfeeding" | "none";
@@ -35,10 +38,13 @@ export type MedicalMarkers = {
   atopyRisk?: "low" | "medium" | "high" | "critical";
   allergies?: string[];
   gender?: "female" | "male";
-  [key: string]: any;
+  mainGoals?: string[]; // ИСПРАВЛЕНО: Добавлено явное поле для mainGoals
+  secondaryGoals?: string[]; // ИСПРАВЛЕНО: Добавлено явное поле для secondaryGoals
+  extra?: Record<string, unknown>; // ИСПРАВЛЕНО: Явное поле для динамических данных
 };
 
 // Предпочтения пользователя по уходу/продуктам
+// ИСПРАВЛЕНО: Убрали [key: string]: any, добавили явное поле extra
 export type Preferences = {
   budgetSegment?: "budget" | "medium" | "premium" | "any";
   routineComplexity?: "minimal" | "medium" | "maximal" | "any";
@@ -47,7 +53,7 @@ export type Preferences = {
   preferredTextures?: string[];
   brandBlacklist?: string[];
   brandWhitelist?: string[];
-  [key: string]: any;
+  extra?: Record<string, unknown>; // ИСПРАВЛЕНО: Явное поле для динамических данных
 };
 
 export function createEmptySkinProfile(): SkinProfile {

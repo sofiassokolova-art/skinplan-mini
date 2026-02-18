@@ -5,10 +5,11 @@ import path from 'path';
 export default defineConfig({
   test: {
     globals: true,
-    environment: 'node',
-    include: ['tests/**/*.test.ts'],
+    environment: 'jsdom', // Для тестирования React компонентов
+    include: ['tests/**/*.test.{ts,tsx}'],
     setupFiles: ['./tests/setup.ts'],
     testTimeout: 30000, // 30 секунд для тестов с БД
+    hookTimeout: 30000, // 30 секунд для хуков (beforeAll, afterAll)
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

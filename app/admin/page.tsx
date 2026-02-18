@@ -4,7 +4,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Users, Package, FileText, MessageSquare, RefreshCw, TrendingUp } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -35,6 +36,7 @@ interface Feedback {
 }
 
 export default function AdminDashboard() {
+  const router = useRouter();
   const [stats, setStats] = useState<Stats>({
     users: 0,
     products: 0,
@@ -45,6 +47,7 @@ export default function AdminDashboard() {
   });
   const [recentFeedback, setRecentFeedback] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [userGrowth, setUserGrowth] = useState<{ date: string; users: number }[]>([]);
   const [growthPeriod, setGrowthPeriod] = useState<'day' | 'week' | 'month'>('month');
   const [growthLoading, setGrowthLoading] = useState(false);
@@ -59,22 +62,43 @@ export default function AdminDashboard() {
 
   const loadStats = async () => {
     try {
-      const token = localStorage.getItem('admin_token');
+      setError(null);
+      // ИСПРАВЛЕНО (P0): Убрали localStorage и Authorization - cookie-only подход
       const response = await fetch('/api/admin/stats', {
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
         },
         credentials: 'include',
       });
 
+      // ИСПРАВЛЕНО (P0): Редирект на login при 401
+      if (response.status === 401) {
+        router.replace('/admin/login');
+        return;
+      }
+
       if (response.ok) {
         const data = await response.json();
-        setStats(data.stats || {});
+        // ИСПРАВЛЕНО (P1): Нормализация stats с дефолтами вместо {}
+        setStats({
+          users: data.stats?.users ?? 0,
+          products: data.stats?.products ?? 0,
+          plans: data.stats?.plans ?? 0,
+          badFeedback: data.stats?.badFeedback ?? 0,
+          replacements: data.stats?.replacements ?? 0,
+          revenue: data.stats?.revenue ?? 0,
+          retakingUsers: data.stats?.retakingUsers ?? 0,
+          newUsersLast7Days: data.stats?.newUsersLast7Days ?? 0,
+          newUsersLast30Days: data.stats?.newUsersLast30Days ?? 0,
+        });
         setRecentFeedback(data.recentFeedback || []);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.error || 'Ошибка загрузки статистики');
       }
     } catch (error) {
       console.error('Error loading stats:', error);
+      setError('Ошибка подключения к серверу');
     } finally {
       setLoading(false);
     }
@@ -83,14 +107,19 @@ export default function AdminDashboard() {
   const loadUserGrowth = async () => {
     setGrowthLoading(true);
     try {
-      const token = localStorage.getItem('admin_token');
+      // ИСПРАВЛЕНО (P0): Убрали localStorage и Authorization - cookie-only подход
       const response = await fetch(`/api/admin/stats?period=${growthPeriod}`, {
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
         },
         credentials: 'include',
       });
+
+      // ИСПРАВЛЕНО (P0): Редирект на login при 401
+      if (response.status === 401) {
+        router.replace('/admin/login');
+        return;
+      }
 
       if (response.ok) {
         const data = await response.json();
@@ -115,6 +144,25 @@ export default function AdminDashboard() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="text-red-600 mb-4">Ошибка: {error}</div>
+          <button
+            onClick={() => {
+              setLoading(true);
+              loadStats();
+            }}
+            className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+          >
+            Попробовать снова
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Форматируем дату
   const currentDate = new Date().toLocaleDateString('ru-RU', { 
     day: 'numeric', 
@@ -127,7 +175,13 @@ export default function AdminDashboard() {
     { 
       label: 'Всего пользователей', 
       value: stats.users || 0, 
-      change: stats.newUsersLast30Days ? `+${Math.round((stats.newUsersLast30Days / Math.max(stats.users - stats.newUsersLast30Days, 1)) * 100)}%` : null,
+      change: stats.newUsersLast30Days && stats.users > 0 
+        ? (() => {
+            const previousUsers = Math.max(stats.users - stats.newUsersLast30Days, 1);
+            const growthPercent = Math.round((stats.newUsersLast30Days / previousUsers) * 100);
+            return `+${growthPercent}%`;
+          })()
+        : null,
       color: 'from-purple-600 to-purple-400'
     },
     { 
@@ -145,7 +199,7 @@ export default function AdminDashboard() {
     { 
       label: 'Продуктов в базе', 
       value: stats.products || 0, 
-      change: stats.products === 120 ? 'new' : null,
+      change: null, // ИСПРАВЛЕНО (P1): Убрали хак с products === 120
       color: 'from-emerald-600 to-teal-400'
     },
     { 
@@ -171,29 +225,32 @@ export default function AdminDashboard() {
   return (
     <div className="w-full">
       {/* Заголовок */}
-      <h1 className="text-4xl font-black text-gray-900 mb-10">
-        SkinIQ Admin • {currentDate}
-      </h1>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          Дашборд
+        </h1>
+        <p className="text-sm text-gray-600">{currentDate}</p>
+      </div>
       
       {/* Сетка из 7 метрик */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-12 mb-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
         {metricsData.map((m, i) => (
           <div 
             key={i} 
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg transition-all p-8 min-h-44 flex flex-col justify-between"
+            className="admin-card p-6 min-h-[180px] flex flex-col justify-between"
           >
-            <div className="text-gray-500 text-sm font-medium mb-4">{m.label}</div>
-            <div className={`text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r ${m.color} mb-4`}>
+            <div className="text-gray-600 text-sm font-medium mb-3">{m.label}</div>
+            <div className={`text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r ${m.color} mb-3`}>
               {m.value}
             </div>
             {m.change && (
               <div className={cn(
                 'text-sm font-medium',
-                m.change.startsWith('+') || m.change === 'new' 
+                m.change.startsWith('+')
                   ? 'text-emerald-600' 
                   : 'text-red-600'
               )}>
-                {m.change === 'new' ? '✓ Новый сид' : m.change + ' за 28 дней'}
+                {m.change + ' за 30 дней'}
               </div>
             )}
           </div>
@@ -201,50 +258,50 @@ export default function AdminDashboard() {
       </div>
 
       {/* Блок графика */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 mb-12">
+      <div className="admin-card p-6 mb-8">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Рост пользователей</h2>
             <p className="text-sm text-gray-500 mt-1">
-              {growthPeriod === 'day' && 'За последние 24 часа'}
-              {growthPeriod === 'week' && 'За последние 7 дней'}
-              {growthPeriod === 'month' && 'За последние 30 дней'}
+              {growthPeriod === 'day' && 'Всего пользователей за последние 24 часа (накопительно)'}
+              {growthPeriod === 'week' && 'Всего пользователей за последние 7 дней (накопительно)'}
+              {growthPeriod === 'month' && 'Всего пользователей за последние 30 дней (накопительно)'}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setGrowthPeriod('day')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 backdrop-blur-sm ${
                 growthPeriod === 'day'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-gray-900 text-white shadow-md'
+                  : 'bg-white/60 text-gray-700 hover:bg-white/80 hover:shadow-sm'
               }`}
             >
               День
             </button>
             <button
               onClick={() => setGrowthPeriod('week')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 backdrop-blur-sm ${
                 growthPeriod === 'week'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-gray-900 text-white shadow-md'
+                  : 'bg-white/60 text-gray-700 hover:bg-white/80 hover:shadow-sm'
               }`}
             >
               Неделя
             </button>
             <button
               onClick={() => setGrowthPeriod('month')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 backdrop-blur-sm ${
                 growthPeriod === 'month'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-gray-900 text-white shadow-md'
+                  : 'bg-white/60 text-gray-700 hover:bg-white/80 hover:shadow-sm'
               }`}
             >
               Месяц
             </button>
           </div>
         </div>
-        <div className="h-96">
+        <div className="h-96 w-full" style={{ position: 'relative', overflow: 'visible' }}>
           {growthLoading ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-gray-500">Загрузка данных...</div>
@@ -257,44 +314,46 @@ export default function AdminDashboard() {
               </div>
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={userGrowth}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis 
-                  dataKey="date" 
-                  stroke="#6b7280"
-                  tick={{ fill: '#6b7280', fontSize: '12px' }}
-                />
-                <YAxis 
-                  stroke="#6b7280"
-                  tick={{ fill: '#6b7280', fontSize: '12px' }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '12px',
-                    color: '#111827',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                  }}
-                  labelStyle={{ color: '#111827', fontWeight: 'bold' }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="users"
-                  stroke="#8B5CF6"
-                  strokeWidth={2}
-                  dot={{ fill: '#8B5CF6', r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={userGrowth}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="#6b7280"
+                    tick={{ fill: '#6b7280', fontSize: '12px' }}
+                  />
+                  <YAxis 
+                    stroke="#6b7280"
+                    tick={{ fill: '#6b7280', fontSize: '12px' }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '12px',
+                      color: '#111827',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                    }}
+                    labelStyle={{ color: '#111827', fontWeight: 'bold' }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="users"
+                    stroke="#8B5CF6"
+                    strokeWidth={2}
+                    dot={{ fill: '#8B5CF6', r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </div>
       </div>
 
       {/* Блок "Последние действия" */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+      <div className="admin-card p-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-6">Последние действия</h2>
         <div className="space-y-4">
           {recentFeedback.length === 0 ? (
@@ -303,7 +362,7 @@ export default function AdminDashboard() {
             recentFeedback.slice(0, 10).map((f) => (
               <div
                 key={f.id}
-                className="p-4 rounded-xl bg-gray-50 border border-gray-100 hover:bg-gray-100 transition-colors"
+                className="p-4 rounded-xl bg-white/40 backdrop-blur-sm border border-gray-200/50 hover:bg-white/60 hover:shadow-sm transition-all duration-200"
               >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-3">

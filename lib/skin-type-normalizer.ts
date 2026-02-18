@@ -1,7 +1,19 @@
 // lib/skin-type-normalizer.ts
-// Нормализация значений типов кожи и чувствительности между БД и правилами
+// ИСПРАВЛЕНО: Единая точка нормализации типов кожи
+// Все значения типа кожи должны проходить через этот нормализатор
 
 import { logger } from './logger';
+
+/**
+ * ИСПРАВЛЕНО: Канонический тип кожи - единый источник правды
+ * Используется везде вместо string для типобезопасности
+ */
+export type SkinTypeKey = 
+  | 'dry'
+  | 'combination_dry'
+  | 'normal'
+  | 'combination_oily'
+  | 'oily';
 
 /**
  * Нормализует тип кожи из БД в формат, используемый в правилах
@@ -13,6 +25,10 @@ import { logger } from './logger';
  * @param context - Контекст для определения направления нормализации (для "combo")
  * @returns Нормализованный тип кожи для правил
  */
+/**
+ * ИСПРАВЛЕНО: Единая точка нормализации типа кожи
+ * Все значения должны проходить через эту функцию перед использованием в бизнес-логике
+ */
 export function normalizeSkinTypeForRules(
   skinType: string | null | undefined,
   context?: {
@@ -20,7 +36,7 @@ export function normalizeSkinTypeForRules(
     dehydration?: number;
     userId?: string;
   }
-): "dry" | "combination_dry" | "normal" | "combination_oily" | "oily" | null {
+): SkinTypeKey | null {
   if (!skinType) return null;
 
   // ИСПРАВЛЕНО: Преобразуем в строку для проверки

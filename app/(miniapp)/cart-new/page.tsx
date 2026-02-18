@@ -3,9 +3,9 @@
 
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
-import { api } from '@/lib/api';
+import { useCart, useRemoveFromCart } from '@/hooks/useCart';
+import type { CartResponse } from '@/lib/api-types';
 import toast from 'react-hot-toast';
 
 // Отключаем статическую генерацию для этой страницы
@@ -30,31 +30,21 @@ interface CartItem {
 }
 
 function CartPageContent() {
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadCart();
-  }, []);
-
-  const loadCart = async () => {
-    try {
-      setLoading(true);
-      const data = await api.getCart() as { items?: CartItem[] };
-      setCartItems(data.items || []);
-    } catch (err: any) {
-      console.error('Error loading cart:', err);
-      toast.error('Ошибка загрузки корзины');
-      setCartItems([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // ИСПРАВЛЕНО: Используем React Query для автоматического обновления корзины
+  const { data: cartData, isLoading: loading } = useCart();
+  const removeFromCartMutation = useRemoveFromCart();
+  
+  // ИСПРАВЛЕНО: Добавлена явная типизация для параметра item
+  const cartItems: CartItem[] = (cartData?.items || []).map((item: CartResponse['items'][0]) => ({
+    id: item.id,
+    product: item.product,
+    quantity: item.quantity,
+    createdAt: item.createdAt,
+  }));
 
   const handleRemove = async (productId: number) => {
     try {
-      await api.removeFromCart(productId);
-      setCartItems(prev => prev.filter(item => item.product.id !== productId));
+      await removeFromCartMutation.mutateAsync(productId);
       toast.success('Товар удалён из корзины');
     } catch (err: any) {
       console.error('Error removing from cart:', err);
@@ -70,7 +60,11 @@ function CartPageContent() {
     if (link) {
       window.open(link, '_blank');
     } else {
-      toast.error('Ссылка на покупку не найдена');
+      // ИСПРАВЛЕНО: Показываем более информативное сообщение с подсказкой
+      toast.error(
+        `Ссылка на покупку для "${product.name}" не найдена. Попробуйте найти товар вручную на Ozon, Wildberries или в аптеках.`,
+        { duration: 5000 }
+      );
     }
   };
 
@@ -203,7 +197,7 @@ function CartPageContent() {
                       {item.product.name}
                     </h3>
                     <p style={{ fontSize: '14px', color: '#475467', marginBottom: '8px' }}>
-                      {item.product.brand.name}
+                      {item.product.brand?.name || 'Unknown'}
                       {item.product.price && ` • ${item.product.price} ₽`}
                     </p>
                     <p style={{ fontSize: '12px', color: '#6B7280', marginBottom: '12px' }}>
@@ -212,21 +206,43 @@ function CartPageContent() {
 
                     {/* Кнопки */}
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      <button
-                        onClick={() => handleBuy(item.product)}
-                        style={{
-                          padding: '8px 16px',
-                          borderRadius: '12px',
-                          border: 'none',
-                          backgroundColor: '#0A5F59',
-                          color: 'white',
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Купить
-                      </button>
+                      {(() => {
+                        const marketLinks = item.product.marketLinks as any || {};
+                        const hasLink = item.product.link || marketLinks.ozon || marketLinks.wildberries || marketLinks.apteka;
+                        
+                        return hasLink ? (
+                          <button
+                            onClick={() => handleBuy(item.product)}
+                            style={{
+                              padding: '8px 16px',
+                              borderRadius: '12px',
+                              border: 'none',
+                              backgroundColor: '#0A5F59',
+                              color: 'white',
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Купить
+                          </button>
+                        ) : (
+                          <div
+                            style={{
+                              padding: '8px 16px',
+                              borderRadius: '12px',
+                              border: '1px solid #E5E7EB',
+                              backgroundColor: '#F9FAFB',
+                              color: '#6B7280',
+                              fontSize: '12px',
+                              textAlign: 'center',
+                            }}
+                            title="Ссылка на покупку не найдена. Попробуйте найти товар вручную на маркетплейсах."
+                          >
+                            Ссылка не найдена
+                          </div>
+                        );
+                      })()}
                       <button
                         onClick={() => handleRemove(item.product.id)}
                         style={{
@@ -273,25 +289,50 @@ function CartPageContent() {
                   {totalPrice} ₽
                 </span>
               </div>
-              <button
-                onClick={() => {
-                  cartItems.forEach(item => handleBuy(item.product));
-                }}
-                style={{
-                  width: '100%',
-                  padding: '16px',
-                  borderRadius: '24px',
-                  border: 'none',
-                  background: 'linear-gradient(to right, #0A5F59, #059669)',
-                  color: 'white',
-                  fontSize: '18px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  boxShadow: '0 8px 24px rgba(10, 95, 89, 0.4)',
-                }}
-              >
-                Купить всё ({cartItems.length} товар{cartItems.length > 1 ? 'а' : ''})
-              </button>
+              {(() => {
+                // Проверяем, есть ли хотя бы у одного товара ссылка
+                const hasAnyLink = cartItems.some(item => {
+                  const marketLinks = item.product.marketLinks as any || {};
+                  return item.product.link || marketLinks.ozon || marketLinks.wildberries || marketLinks.apteka;
+                });
+                
+                return hasAnyLink ? (
+                  <button
+                    onClick={() => {
+                      cartItems.forEach(item => handleBuy(item.product));
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '16px',
+                      borderRadius: '24px',
+                      border: 'none',
+                      background: 'linear-gradient(to right, #0A5F59, #059669)',
+                      color: 'white',
+                      fontSize: '18px',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      boxShadow: '0 8px 24px rgba(10, 95, 89, 0.4)',
+                    }}
+                  >
+                    Купить всё ({cartItems.length} товар{cartItems.length > 1 ? 'а' : ''})
+                  </button>
+                ) : (
+                  <div
+                    style={{
+                      width: '100%',
+                      padding: '16px',
+                      borderRadius: '24px',
+                      border: '1px solid #E5E7EB',
+                      backgroundColor: '#F9FAFB',
+                      color: '#6B7280',
+                      fontSize: '14px',
+                      textAlign: 'center',
+                    }}
+                  >
+                    Ссылки на покупку не найдены. Попробуйте найти товары вручную на маркетплейсах.
+                  </div>
+                );
+              })()}
               <p style={{
                 fontSize: '11px',
                 color: '#6B7280',
@@ -312,4 +353,3 @@ function CartPageContent() {
 export default function CartPage() {
   return <CartPageContent />;
 }
-

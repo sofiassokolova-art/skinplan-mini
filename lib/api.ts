@@ -1,7 +1,11 @@
 // lib/api.ts
 // API клиент для работы с бэкендом
+// РЕФАКТОРИНГ: Используем модульную структуру для лучшей поддерживаемости
 
-import { handleNetworkError, fetchWithTimeout } from './network-utils';
+import { shouldBlockApiRequest } from './route-utils';
+import { request as baseRequest } from './api/client';
+import { getCachedData, setCachedData } from './api/cache';
+import { getActiveRequest, setActiveRequest, removeActiveRequest, createRequestKey } from './api/dedup';
 import type { 
   UserProfileResponse, 
   ProfileResponse, 
@@ -14,321 +18,92 @@ import type {
   RecommendationsResponse
 } from './api-types';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
-const DEFAULT_TIMEOUT = 30000; // 30 секунд по умолчанию
-
-// ИСПРАВЛЕНО: Глобальная защита от множественных одновременных запросов
-// Кэшируем активные промисы для предотвращения дублирующих запросов
-const activeRequests = new Map<string, Promise<any>>();
-const requestCache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 2000; // 2 секунды кэш для одинаковых запросов
+// Дефолтные значения для заблокированных endpoints
+const DEFAULT_CART_RESPONSE = { items: [] };
+const DEFAULT_PREFERENCES_RESPONSE = {
+  isRetakingQuiz: false,
+  fullRetakingQuiz: false,
+  paymentRetakingCompleted: false,
+  paymentFullRetakeCompleted: false,
+  hasPlanProgress: false,
+  routineProducts: null,
+  planFeedbackSent: false,
+  serviceFeedbackSent: false,
+  lastPlanFeedbackDate: null,
+  lastServiceFeedbackDate: null,
+  extra: null,
+};
 
 async function request<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  // ИСПРАВЛЕНО: Создаем уникальный ключ для запроса (GET запросы кэшируем)
-  const isGetRequest = !options.method || options.method === 'GET';
-  const requestKey = isGetRequest ? `${options.method || 'GET'}:${endpoint}` : null;
-  
-  // Если это GET запрос и он уже выполняется - возвращаем тот же промис
-  if (requestKey && activeRequests.has(requestKey)) {
-    return activeRequests.get(requestKey) as Promise<T>;
+  // РЕФАКТОРИНГ: Используем централизованную проверку из route-utils.ts
+  // Блокируем cart и preferences на /quiz для предотвращения лишних запросов
+  if (shouldBlockApiRequest(endpoint)) {
+    const isCartEndpoint = endpoint === '/cart' || endpoint.includes('/cart');
+    console.log('🚫 Blocking API request on /quiz:', endpoint);
+    
+    if (isCartEndpoint) {
+      return Promise.resolve(DEFAULT_CART_RESPONSE as T);
+    }
+    return Promise.resolve(DEFAULT_PREFERENCES_RESPONSE as T);
   }
   
-  // Если это GET запрос и есть свежий кэш - возвращаем из кэша
-  if (requestKey && requestCache.has(requestKey)) {
-    const cached = requestCache.get(requestKey)!;
-    if (Date.now() - cached.timestamp < CACHE_TTL) {
-      return Promise.resolve(cached.data) as Promise<T>;
+  // ИСПРАВЛЕНО: На сервере (SSR) также блокируем cart и preferences
+  if (typeof window === 'undefined') {
+    const isCartEndpoint = endpoint === '/cart' || endpoint.includes('/cart');
+    const isPreferencesEndpoint = endpoint === '/user/preferences' || endpoint.includes('/user/preferences');
+    
+    if (isCartEndpoint) {
+      return Promise.resolve(DEFAULT_CART_RESPONSE as T);
     }
-    requestCache.delete(requestKey);
+    if (isPreferencesEndpoint) {
+      return Promise.resolve(DEFAULT_PREFERENCES_RESPONSE as T);
+    }
   }
   
-  // Получаем initData из Telegram WebApp
-  // Ждем готовности initData, если он еще не доступен
-  let initData: string | null = null;
+  // РЕФАКТОРИНГ: Используем модули для кэширования и дедупликации
+  const requestKey = createRequestKey(options.method || 'GET', endpoint);
   
-  if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
-    initData = window.Telegram.WebApp.initData || null;
-    
-    // Если initData еще не готов, ждем немного
-    if (!initData) {
-      await new Promise((resolve) => {
-        let attempts = 0;
-        const maxAttempts = 10; // 10 * 100ms = 1 секунда
-        const checkInterval = setInterval(() => {
-          attempts++;
-          initData = window.Telegram?.WebApp?.initData || null;
-          if (initData || attempts >= maxAttempts) {
-            clearInterval(checkInterval);
-            resolve(undefined);
-          }
-        }, 100);
-      });
-    }
-  }
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string> || {}),
-  };
-
-  // Добавляем initData в заголовки для идентификации пользователя (только если доступен)
-  // Используем оба варианта для совместимости
-  // Важно: передаем initData как есть, без дополнительного кодирования
-  if (initData) {
-    // Передаем initData без изменений (он уже в правильном формате от Telegram)
-    headers['X-Telegram-Init-Data'] = initData;
-    headers['x-telegram-init-data'] = initData;
-    // Логируем только в development
-    if (process.env.NODE_ENV === 'development') {
-      console.log('✅ initData добавлен в заголовки, длина:', initData.length, 'endpoint:', endpoint);
-    }
-  } else {
-    // Предупреждение только в development или если это критичный endpoint
-    if (process.env.NODE_ENV === 'development' || endpoint.includes('/plan/generate') || endpoint.includes('/questionnaire')) {
-      console.warn('⚠️ initData not available in Telegram WebApp for endpoint:', endpoint);
-    }
-  }
-
-  // ИСПРАВЛЕНО: Создаем промис запроса и сохраняем его для предотвращения дублирования
-  const requestPromise = (async () => {
-    // Используем fetchWithTimeout для обработки таймаутов
-    // Для генерации плана используем больший таймаут
-    const timeout = endpoint.includes('/plan/generate') ? 60000 : DEFAULT_TIMEOUT;
-    
-    // ВАЖНО: Логируем перед отправкой запроса (только для критичных endpoints)
-    if (endpoint.includes('/questionnaire/answers') || endpoint.includes('/plan/generate')) {
-      if (typeof window !== 'undefined') {
-        console.log('📤 Sending request to:', `${API_BASE}${endpoint}`, {
-          method: options.method || 'GET',
-          hasInitData: !!initData,
-          initDataLength: initData?.length || 0,
-          timeout,
-        });
-      }
-    }
-    
-    let response: Response;
-    try {
-      response = await fetchWithTimeout(`${API_BASE}${endpoint}`, {
-        ...options,
-        headers,
-      }, timeout);
-      
-      // ВАЖНО: Логируем ответ (только для критичных endpoints)
-      if (endpoint.includes('/questionnaire/answers') || endpoint.includes('/plan/generate')) {
-        if (typeof window !== 'undefined') {
-          console.log('📥 Received response from:', `${API_BASE}${endpoint}`, {
-            status: response.status,
-            statusText: response.statusText,
-            ok: response.ok,
-          });
-        }
-      }
-    } catch (error) {
-      // ВАЖНО: Логируем ошибку сети (только для критичных endpoints)
-      if (endpoint.includes('/questionnaire/answers') || endpoint.includes('/plan/generate')) {
-        if (typeof window !== 'undefined') {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          const errorName = error instanceof Error ? error.name : undefined;
-          const errorStack = error instanceof Error ? error.stack?.substring(0, 200) : undefined;
-          console.error('❌ Network error for:', `${API_BASE}${endpoint}`, {
-            error: errorMessage,
-            errorType: typeof error,
-            errorName,
-            stack: errorStack,
-          });
-        }
-      }
-      // Обрабатываем сетевые ошибки
-      const errorMessage = handleNetworkError(error);
-      throw new Error(errorMessage);
-    }
-    
-    return response;
-  })();
-  
-  // ИСПРАВЛЕНО: Сохраняем промис для GET запросов, чтобы предотвратить дублирование
+  // Проверяем кэш ПЕРЕД проверкой активных запросов
   if (requestKey) {
-    activeRequests.set(requestKey, requestPromise);
+    const cached = getCachedData<T>(requestKey, endpoint);
+    if (cached !== null) {
+      return cached;
+    }
+    
+    // Проверяем активные запросы
+    const activeRequest = getActiveRequest<T>(requestKey);
+    if (activeRequest) {
+      return activeRequest;
+    }
+  }
+  
+  // Создаем промис запроса
+  const requestPromise = baseRequest<T>(endpoint, options);
+  
+  // Сохраняем активный запрос для дедупликации
+  if (requestKey) {
+    setActiveRequest(requestKey, requestPromise);
   }
   
   try {
-    const response = await requestPromise;
-
-    if (!response.ok) {
-    // Для 401 ошибок добавляем более информативное сообщение
-    // НО: для некоторых endpoints (cart, wishlist) 401 - это нормально (пользователь не авторизован)
-    // В этом случае не выбрасываем исключение, а возвращаем пустой результат
-    if (response.status === 401) {
-      // Для cart и wishlist 401 - это нормально, если пользователь не авторизован
-      // Возвращаем пустой результат вместо исключения
-      if (endpoint.includes('/cart') || endpoint.includes('/wishlist')) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('ℹ️ 401 for cart/wishlist (user may not be authorized), returning empty result');
-        }
-        return { items: [] } as T;
-      }
-      
-      // Для других endpoints 401 - это ошибка авторизации
-      const errorData = await response.json().catch(() => ({ error: 'Unauthorized' }));
-      // Всегда логируем 401 ошибки (они важны для отладки)
-      console.error('❌ 401 Unauthorized:', {
-        endpoint,
-        hasInitData: !!initData,
-        error: errorData.error,
-      });
-      
-      if (!initData) {
-        // В development при отсутствии initData не ломаем UI ошибкой,
-        // а возвращаем "пустой" результат, чтобы можно было разрабатывать без реального Mini App.
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('⚠️ 401 без initData в dev, возвращаем null вместо ошибки для endpoint:', endpoint);
-          return null as T;
-        }
-        throw new Error('Откройте приложение через Telegram Mini App. initData не доступен.');
-      } else {
-        throw new Error(errorData.error || 'Ошибка авторизации. Попробуйте обновить страницу.');
-      }
-    }
+    const data = await requestPromise;
     
-    // Для 301/302 редиректов - обычно означает, что запрос был перенаправлен
-    // Может происходить при повторной отправке формы или при изменении URL
-    if (response.status === 301 || response.status === 302) {
-      const location = response.headers.get('Location');
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('⚠️ Redirect response:', { 
-          status: response.status, 
-          endpoint, 
-          location,
-          method: options.method || 'GET'
-        });
-      }
-      
-      // Для POST запросов редирект может означать проблему с повторной отправкой
-      if (options.method === 'POST') {
-        throw new Error('Форма уже была отправлена. Пожалуйста, обновите страницу и попробуйте снова.');
-      }
-      
-      // Для GET запросов можем попробовать следовать редиректу
-      const errorData = await response.json().catch(() => ({ error: `Redirected to ${location || 'unknown location'}` }));
-      throw new Error(errorData.error || `Запрос был перенаправлен`);
-    }
-    
-    // ИСПРАВЛЕНО: Для 405 ошибок (Method Not Allowed) - обычно означает неправильный метод запроса
-    if (response.status === 405) {
-      const errorText = await response.text().catch(() => '');
-      let errorData: any = {};
-      try {
-        errorData = JSON.parse(errorText);
-      } catch {
-        errorData = { error: errorText || 'Method not allowed' };
-      }
-      const errorMessage = errorData.error || 'Method not allowed';
-      
-      // Логируем 405 ошибки (они указывают на проблему в коде)
-      console.error('❌ 405 Method Not Allowed:', { endpoint, method: options.method || 'GET', errorMessage });
-      
-      const methodError = new Error(`HTTP 405: ${errorMessage}`) as any;
-      methodError.status = 405;
-      methodError.isMethodError = true;
-      throw methodError;
-    }
-    
-    // Для 404 ошибок (Not Found) - обычно означает отсутствие профиля
-    // Это нормальная ситуация для новых пользователей или когда профиль не найден
-    if (response.status === 404) {
-      const errorText = await response.text().catch(() => '');
-      let errorData: any = {};
-      try {
-        errorData = JSON.parse(errorText);
-      } catch {
-        // Если не JSON, используем текст как есть
-        errorData = { error: errorText || 'Not found' };
-      }
-      const errorMessage = errorData.error || 'Not found';
-      
-      // Логируем 404 только в development (они могут быть нормальными для новых пользователей)
-      if (process.env.NODE_ENV === 'development') {
-        console.log('⚠️ 404 response from API:', { endpoint, errorMessage });
-      }
-      
-      // Создаем специальную ошибку с кодом 404 для обработки на клиенте
-      const notFoundError = new Error(errorMessage) as any;
-      notFoundError.status = 404;
-      notFoundError.isNotFound = true;
-      throw notFoundError;
-    }
-    
-    // ИСПРАВЛЕНО: Для ошибок 500 и других статусов правильно парсим ответ
-    const errorText = await response.text().catch(() => 'Unknown error');
-    let errorData: any = {};
-    try {
-      errorData = JSON.parse(errorText);
-    } catch {
-      // Если не JSON, используем текст как есть
-      errorData = { error: errorText || `HTTP ${response.status}` };
-    }
-    const errorMessage = errorData.error || errorData.message || `HTTP ${response.status}`;
-    
-    // Для 400 ошибок (Bad Request)
-    if (response.status === 400) {
-      throw new Error(errorMessage || 'Некорректный запрос. Проверьте данные и попробуйте снова.');
-    }
-    
-    // Для 429 (rate limit) добавляем информацию о времени ожидания
-    if (response.status === 429) {
-      const retryAfterHeader = response.headers.get('Retry-After');
-      const parsedRetryAfter = retryAfterHeader ? Number(retryAfterHeader) : null;
-      const retryAfterSeconds = parsedRetryAfter && Number.isFinite(parsedRetryAfter) ? parsedRetryAfter : null;
-      const message = retryAfterSeconds 
-        ? `Слишком много запросов. Попробуйте через ${retryAfterSeconds} секунд.`
-        : 'Слишком много запросов. Попробуйте позже.';
-      const rateLimitError = new Error(message) as any;
-      rateLimitError.status = 429;
-      if (retryAfterSeconds) {
-        rateLimitError.retryAfter = retryAfterSeconds;
-      }
-      throw rateLimitError;
-    }
-    
-    // Для 500 ошибок добавляем детальную информацию
-    if (response.status === 500) {
-      const apiError = new Error(errorMessage) as any;
-      apiError.status = 500;
-      apiError.details = errorData.details || errorData;
-      throw apiError;
-    }
-    
-    // Для остальных ошибок
-    const apiError = new Error(errorMessage) as any;
-    apiError.status = response.status;
-    apiError.details = errorData.details || errorData;
-    throw apiError;
-  }
-
-  // ИСПРАВЛЕНО: Получаем данные и кэшируем для GET запросов
-  const data = await response.json() as T;
-  
-  // Кэшируем результат для GET запросов
-  if (requestKey) {
-    requestCache.set(requestKey, { data, timestamp: Date.now() });
-  }
-  
-  return data;
-  } catch (error) {
-    // ИСПРАВЛЕНО: Удаляем промис из activeRequests при ошибке
+    // Кэшируем результат для GET запросов
     if (requestKey) {
-      activeRequests.delete(requestKey);
+      setCachedData(requestKey, data, endpoint);
+      removeActiveRequest(requestKey);
+    }
+    
+    return data;
+  } catch (error) {
+    // Удаляем промис из activeRequests при ошибке
+    if (requestKey) {
+      removeActiveRequest(requestKey);
     }
     throw error;
-  } finally {
-    // ИСПРАВЛЕНО: Удаляем промис из activeRequests после завершения
-    if (requestKey) {
-      activeRequests.delete(requestKey);
-    }
   }
 }
 
@@ -633,6 +408,48 @@ export const api = {
     });
   },
 
+  // Пользовательские настройки и флаги (замена localStorage)
+  async getUserPreferences() {
+    return request<{
+      isRetakingQuiz: boolean;
+      fullRetakeFromHome: boolean;
+      paymentRetakingCompleted: boolean;
+      paymentFullRetakeCompleted: boolean;
+      hasPlanProgress: boolean;
+      routineProducts: any;
+      planFeedbackSent: boolean;
+      serviceFeedbackSent: boolean;
+      lastPlanFeedbackDate: string | null;
+      lastServiceFeedbackDate: string | null;
+      extra: any;
+    }>('/user/preferences');
+  },
+
+  async updateUserPreferences(preferences: {
+    isRetakingQuiz?: boolean;
+    fullRetakeFromHome?: boolean;
+    paymentRetakingCompleted?: boolean;
+    paymentFullRetakeCompleted?: boolean;
+    hasPlanProgress?: boolean;
+    routineProducts?: any;
+    planFeedbackSent?: boolean;
+    serviceFeedbackSent?: boolean;
+    lastPlanFeedbackDate?: string | null;
+    lastServiceFeedbackDate?: string | null;
+    extra?: any;
+  }) {
+    return request('/user/preferences', {
+      method: 'POST',
+      body: JSON.stringify(preferences),
+    });
+  },
+
+  async removeUserPreference(key: string) {
+    return request(`/user/preferences?key=${key}`, {
+      method: 'DELETE',
+    });
+  },
+
   async getProductAlternatives(productId: number) {
     return request(`/products/alternatives/${productId}`);
   },
@@ -646,6 +463,16 @@ export const api = {
 
   // Корзина
   async getCart(): Promise<CartResponse> {
+    // ИСПРАВЛЕНО: Проверяем pathname перед вызовом request, чтобы предотвратить запросы на /quiz
+    if (typeof window !== 'undefined') {
+      const pathname = window.location.pathname;
+      if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🚫 getCart() called on /quiz - returning empty cart without API call');
+        }
+        return { items: [] } as CartResponse;
+      }
+    }
     return request<CartResponse>('/cart');
   },
 
@@ -675,6 +502,19 @@ export const api = {
   // Анализ кожи
   async getAnalysis(): Promise<AnalysisResponse> {
     return request<AnalysisResponse>('/analysis');
+  },
+
+  // Получение entitlements пользователя
+  async getEntitlements(): Promise<{
+    paid: boolean;
+    validUntil: string | null;
+    entitlements: Array<{
+      code: string;
+      active: boolean;
+      validUntil: string | null;
+    }>;
+  }> {
+    return request('/me/entitlements');
   },
 
   // Админские функции

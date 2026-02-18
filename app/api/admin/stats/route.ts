@@ -4,36 +4,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getMetricsStats } from '@/lib/admin-stats';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-
-// Проверка авторизации админа
-async function verifyAdmin(request: NextRequest): Promise<boolean> {
-  try {
-    const cookieToken = request.cookies.get('admin_token')?.value;
-    const headerToken = request.headers.get('authorization')?.replace('Bearer ', '');
-    const token = cookieToken || headerToken;
-    
-    if (!token) {
-      return false;
-    }
-
-    try {
-      jwt.verify(token, JWT_SECRET);
-      return true;
-    } catch (verifyError) {
-      return false;
-    }
-  } catch (err) {
-    console.error('Error in verifyAdmin:', err);
-    return false;
-  }
-}
+import { verifyAdminBoolean } from '@/lib/admin-auth';
+import { adminCache } from '@/lib/admin-cache';
 
 export async function GET(request: NextRequest) {
   try {
-    const isAdmin = await verifyAdmin(request);
+    const isAdmin = await verifyAdminBoolean(request);
     if (!isAdmin) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -41,22 +17,19 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // Проверяем подключение к БД перед запросами
-    try {
-      await prisma.$connect();
-    } catch (connectError) {
-      console.error('Database connection error:', connectError);
-      throw connectError;
+    // Получаем параметр периода из query string
+    const { searchParams } = new URL(request.url);
+    const period = searchParams.get('period') || 'month'; // day, week, month
+    
+    // ИСПРАВЛЕНО (P0): Кэш учитывает period
+    const cacheKey = `admin_stats:${period}`;
+    const cached = adminCache.get<any>(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
     }
     
-    // Выполняем запросы последовательно
-    let usersCount = 0;
-    try {
-      usersCount = await prisma.user.count();
-    } catch (userError) {
-      console.error('Error counting users:', userError);
-      throw userError;
-    }
+    // Получаем количество пользователей
+    const usersCount = await prisma.user.count().catch(() => 0);
     
     const [
       productsCount,
@@ -70,12 +43,16 @@ export async function GET(request: NextRequest) {
         console.error('❌ Error counting products:', err);
         return 0;
       }),
-      // Считаем количество уникальных пользователей с активными планами
-      prisma.skinProfile.groupBy({
+      // ИСПРАВЛЕНО (P0): Считаем количество активных планов по таблице Plan28
+      // План считается активным, если у пользователя есть хотя бы один план
+      prisma.plan28.groupBy({
         by: ['userId'],
       }).then(groups => groups.length).catch(err => {
         console.error('❌ Error counting active plans:', err);
-        return 0;
+        // Fallback: считаем по профилям, если Plan28 недоступен
+        return prisma.skinProfile.groupBy({
+          by: ['userId'],
+        }).then(groups => groups.length).catch(() => 0);
       }),
       prisma.wishlistFeedback.count({ where: { feedback: 'bought_bad' } }).catch(err => {
         console.error('❌ Error counting bad feedback:', err);
@@ -88,6 +65,12 @@ export async function GET(request: NextRequest) {
       prisma.wishlistFeedback.findMany({
         take: 10,
         orderBy: { createdAt: 'desc' },
+        where: {
+          // Показываем только отзывы о купленных продуктах
+          feedback: {
+            in: ['bought_love', 'bought_ok', 'bought_bad'],
+          },
+        },
         include: {
           user: {
             select: {
@@ -131,10 +114,16 @@ export async function GET(request: NextRequest) {
       return null;
     });
 
-    // Вычисляем примерный доход (сумма цен всех продуктов в вишлистах)
-    const revenue = await prisma.wishlist
+    // ИСПРАВЛЕНО (P1): Вычисляем доход партнёрки через оптимизированный запрос
+    // Берём только необходимые поля (productId и price) для минимизации памяти
+    const revenue = await prisma.wishlistFeedback
       .findMany({
-        include: {
+        where: {
+          feedback: {
+            in: ['bought_love', 'bought_ok', 'bought_bad'],
+          },
+        },
+        select: {
           product: {
             select: {
               price: true,
@@ -142,15 +131,14 @@ export async function GET(request: NextRequest) {
           },
         },
       })
-      .then((wishlists) => {
-        return wishlists.reduce((sum, w) => sum + (w.product.price || 0), 0);
+      .then((feedbacks) => {
+        return feedbacks.reduce((sum, f) => sum + (f.product?.price || 0), 0);
       })
-      .catch(() => 0);
+      .catch((err) => {
+        console.error('❌ Error calculating revenue:', err);
+        return 0;
+      });
 
-    // Получаем параметр периода из query string
-    const { searchParams } = new URL(request.url);
-    const period = searchParams.get('period') || 'month'; // day, week, month
-    
     // Получаем данные роста пользователей за выбранный период
     const now = new Date();
     let startDate: Date;
@@ -203,22 +191,25 @@ export async function GET(request: NextRequest) {
     const userGrowthData = [];
     const usersByKey = new Map<string, number>();
     
+    // ИСПРАВЛЕНО (P2): Единый подход к timezone - используем UTC для всех периодов
     // Считаем новых пользователей по периодам
     usersInPeriod.forEach(user => {
       let key: string;
+      const date = new Date(user.createdAt);
+      
       if (dateFormat === 'day') {
-        // Группируем по часам: "YYYY-MM-DD HH:00"
-        const date = new Date(user.createdAt);
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const hour = String(date.getHours()).padStart(2, '0');
+        // Группируем по часам: "YYYY-MM-DD HH:00" (UTC)
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(date.getUTCDate()).padStart(2, '0');
+        const hour = String(date.getUTCHours()).padStart(2, '0');
         key = `${year}-${month}-${day} ${hour}:00`;
       } else {
-        // Группируем по дням: "YYYY-MM-DD"
-        const date = new Date(user.createdAt);
-        date.setHours(0, 0, 0, 0);
-        key = date.toISOString().split('T')[0];
+        // Группируем по дням: "YYYY-MM-DD" (UTC)
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(date.getUTCDate()).padStart(2, '0');
+        key = `${year}-${month}-${day}`;
       }
       usersByKey.set(key, (usersByKey.get(key) || 0) + 1);
     });
@@ -226,15 +217,16 @@ export async function GET(request: NextRequest) {
     // Формируем данные для графика
     let cumulativeUsers = usersBeforePeriod;
     
+    // ИСПРАВЛЕНО (P2): Единый подход к timezone - используем UTC для всех периодов
     if (dateFormat === 'day') {
-      // Для дня показываем последние 24 часа по часам
+      // Для дня показываем последние 24 часа по часам (UTC)
       for (let i = 23; i >= 0; i--) {
         const date = new Date(now);
-        date.setHours(date.getHours() - i, 0, 0, 0);
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const hour = String(date.getHours()).padStart(2, '0');
+        date.setUTCHours(date.getUTCHours() - i, 0, 0, 0);
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(date.getUTCDate()).padStart(2, '0');
+        const hour = String(date.getUTCHours()).padStart(2, '0');
         const key = `${year}-${month}-${day} ${hour}:00`;
         
         const newUsersInHour = usersByKey.get(key) || 0;
@@ -246,12 +238,15 @@ export async function GET(request: NextRequest) {
         });
       }
     } else if (dateFormat === 'week') {
-      // Для недели показываем по дням (7 дней)
+      // Для недели показываем по дням (7 дней) (UTC)
       for (let i = 6; i >= 0; i--) {
         const date = new Date(now);
-        date.setDate(date.getDate() - i);
-        date.setHours(0, 0, 0, 0);
-        const key = date.toISOString().split('T')[0];
+        date.setUTCDate(date.getUTCDate() - i);
+        date.setUTCHours(0, 0, 0, 0);
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(date.getUTCDate()).padStart(2, '0');
+        const key = `${year}-${month}-${day}`;
         
         const newUsersToday = usersByKey.get(key) || 0;
         cumulativeUsers += newUsersToday;
@@ -262,12 +257,15 @@ export async function GET(request: NextRequest) {
         });
       }
     } else {
-      // Для месяца показываем по дням (30 дней)
+      // Для месяца показываем по дням (30 дней) (UTC)
       for (let i = 29; i >= 0; i--) {
         const date = new Date(now);
-        date.setDate(date.getDate() - i);
-        date.setHours(0, 0, 0, 0);
-        const key = date.toISOString().split('T')[0];
+        date.setUTCDate(date.getUTCDate() - i);
+        date.setUTCHours(0, 0, 0, 0);
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(date.getUTCDate()).padStart(2, '0');
+        const key = `${year}-${month}-${day}`;
         
         const newUsersToday = usersByKey.get(key) || 0;
         cumulativeUsers += newUsersToday;
@@ -279,7 +277,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
+    const responseData = {
+      period, // ИСПРАВЛЕНО (P0): Добавляем period в ответ для дебага
       stats: {
         users: usersCount,
         products: productsCount,
@@ -303,24 +302,56 @@ export async function GET(request: NextRequest) {
       },
       userGrowth: userGrowthData,
       topProducts: metrics?.topProducts || [],
-      recentFeedback: recentFeedback.map((f) => ({
+      recentFeedback: (() => {
+        // ИСПРАВЛЕНО (P1): Логируем количество отфильтрованных записей
+        const totalCount = recentFeedback.length;
+        const filtered = recentFeedback.filter((f) => f.user && f.product && f.product.brand);
+        const filteredCount = filtered.length;
+        
+        if (totalCount !== filteredCount) {
+          console.warn(`⚠️ Filtered ${totalCount - filteredCount} feedback entries without user/product/brand`);
+        }
+        
+        return filtered.map((f) => ({
         id: f.id,
         user: {
-          firstName: f.user.firstName,
-          lastName: f.user.lastName,
+            firstName: f.user?.firstName || null,
+            lastName: f.user?.lastName || null,
         },
         product: {
-          name: f.product.name,
-          brand: f.product.brand.name,
+            name: f.product?.name || 'Неизвестный продукт',
+            brand: f.product?.brand?.name || 'Неизвестный бренд',
         },
         feedback: f.feedback,
-        createdAt: f.createdAt,
-      })),
-    });
+          createdAt: f.createdAt.toISOString(),
+      }));
+      })(),
+    };
+
+    // Сохраняем в кеш на 2 минуты
+    adminCache.set(cacheKey, responseData, 120);
+
+    return NextResponse.json(responseData);
   } catch (error) {
-    console.error('Error fetching admin stats:', error);
+    console.error('❌ Error fetching admin stats:', error);
+    
+    // Возвращаем базовую структуру с нулевыми значениями, чтобы фронтенд не сломался
     return NextResponse.json(
-      { error: 'Internal server error' },
+      {
+        stats: {
+          users: 0,
+          products: 0,
+          plans: 0,
+          badFeedback: 0,
+          replacements: 0,
+          revenue: 0,
+          retakingUsers: 0,
+        },
+        userGrowth: [],
+        topProducts: [],
+        recentFeedback: [],
+        error: error instanceof Error ? error.message : 'Internal server error',
+      },
       { status: 500 }
     );
   }

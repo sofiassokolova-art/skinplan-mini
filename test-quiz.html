@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Quiz Logic</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .log { background: #f0f0f0; padding: 10px; margin: 5px 0; border-radius: 4px; }
+        .error { background: #ffebee; border-left: 4px solid #f44336; }
+        .success { background: #e8f5e8; border-left: 4px solid #4caf50; }
+        button { padding: 10px 20px; margin: 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Test Quiz Initial Screens Logic</h1>
+
+    <div>
+        <h3>Current State:</h3>
+        <p>currentInfoScreenIndex: <span id="currentIndex">0</span></p>
+        <p>initialInfoScreensLength: <span id="totalScreens">-</span></p>
+        <p>viewMode: <span id="viewMode">INITIAL_INFO</span></p>
+    </div>
+
+    <div>
+        <h3>Actions:</h3>
+        <button onclick="simulateNext()">Продолжить (handleNext)</button>
+        <button onclick="reset()">Сбросить</button>
+    </div>
+
+    <div>
+        <h3>Logs:</h3>
+        <div id="logs"></div>
+    </div>
+
+    <script>
+        // Имитация начальных экранов
+        const initialInfoScreens = [
+            { id: 'welcome', title: 'Welcome' },
+            { id: 'how_it_works', title: 'How it works' },
+            { id: 'benefits', title: 'Benefits' }
+        ];
+
+        let currentInfoScreenIndex = 0;
+
+        function log(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log ${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logs.appendChild(logEntry);
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        function updateUI() {
+            document.getElementById('currentIndex').textContent = currentInfoScreenIndex;
+            document.getElementById('totalScreens').textContent = initialInfoScreens.length;
+            document.getElementById('viewMode').textContent = getViewMode();
+        }
+
+        function getViewMode() {
+            if (currentInfoScreenIndex < initialInfoScreens.length) {
+                return 'INITIAL_INFO';
+            } else {
+                return 'QUESTION';
+            }
+        }
+
+        function simulateNext() {
+            log(`handleNext called, currentInfoScreenIndex: ${currentInfoScreenIndex}`);
+
+            if (currentInfoScreenIndex < initialInfoScreens.length - 1) {
+                // Переход к следующему начальному экрану
+                currentInfoScreenIndex++;
+                log(`Переход к следующему начальному экрану: ${currentInfoScreenIndex}`, 'success');
+            } else if (currentInfoScreenIndex === initialInfoScreens.length - 1) {
+                // Переход к вопросам
+                currentInfoScreenIndex = initialInfoScreens.length;
+                log(`Переход к вопросам после последнего начального экрана`, 'success');
+            } else {
+                log(`Уже на экране вопросов`, 'error');
+            }
+
+            updateUI();
+        }
+
+        function reset() {
+            currentInfoScreenIndex = 0;
+            log('Сброс состояния');
+            updateUI();
+        }
+
+        // Инициализация
+        document.getElementById('totalScreens').textContent = initialInfoScreens.length;
+        log('Инициализация теста');
+        log(`Найдено ${initialInfoScreens.length} начальных экранов`);
+    </script>
+</body>
+</html>

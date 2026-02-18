@@ -107,6 +107,7 @@ export function PlanInfographic({
     dehydration: 'Увлажнение',
     wrinkles: 'Морщины',
     antiage: 'Антиэйдж',
+    general: 'Общий уход',
   };
 
   return (

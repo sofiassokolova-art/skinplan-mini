@@ -90,8 +90,7 @@ export default function NewProductPage() {
     description: '',
     composition: '',
     link: '',
-    imageFile: null as File | null,
-    imageUrl: '',
+    imageUrl: '', // ИСПРАВЛЕНО (P1): Убрали imageFile - не используется
     step: '',
     skinTypes: [] as string[],
     concerns: [] as string[],
@@ -108,14 +107,20 @@ export default function NewProductPage() {
 
   const loadBrands = async () => {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+      // ИСПРАВЛЕНО (P0): Убрали localStorage и Authorization - cookie-only подход
       const response = await fetch('/api/admin/brands', {
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
         },
         credentials: 'include',
       });
+
+      // ИСПРАВЛЕНО (P0): Редирект на login при 401
+      if (response.status === 401) {
+        router.replace('/admin/login');
+        return;
+      }
+
       if (response.ok) {
         const data = await response.json();
         setBrands(data.brands || []);
@@ -127,30 +132,57 @@ export default function NewProductPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // ИСПРАВЛЕНО (P1): Защита от двойного сабмита
+    if (loading) return;
+    
+    // ИСПРАВЛЕНО (P1): Валидация критичных бизнес-полей
+    if (!form.step) {
+      alert('Выберите шаг ухода');
+      return;
+    }
+    
+    if (form.skinTypes.length === 0) {
+      alert('Выберите хотя бы один тип кожи');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      let imageUrl = form.imageUrl;
+      // ИСПРАВЛЕНО (P1): Нормализация activeIngredients (регистр, проценты)
+      const normalizedIngredients = form.activeIngredients
+        .split(',')
+        .map((s) => {
+          // Убираем пробелы и приводим к нижнему регистру
+          let normalized = s.trim().toLowerCase();
+          // Убираем проценты и скобки (например: "ниацинамид 10%" -> "ниацинамид")
+          normalized = normalized.replace(/\s*\d+%?\s*/g, '').replace(/[()]/g, '').trim();
+          return normalized;
+        })
+        .filter((s) => s.length > 0);
 
-      const token = localStorage.getItem('admin_token');
+      // ИСПРАВЛЕНО (P0): Убрали localStorage и Authorization - cookie-only подход
       const response = await fetch('/api/admin/products', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         credentials: 'include',
         body: JSON.stringify({
           ...form,
           price: form.price ? Number(form.price) : null,
           priority: Number(form.priority),
-          activeIngredients: form.activeIngredients
-            .split(',')
-            .map((s) => s.trim())
-            .filter((s) => s.length > 0),
-          imageUrl,
+          activeIngredients: normalizedIngredients,
+          imageUrl: form.imageUrl, // ИСПРАВЛЕНО (P1): Убрали imageFile, используем только imageUrl
         }),
       });
+
+      // ИСПРАВЛЕНО (P0): Редирект на login при 401
+      if (response.status === 401) {
+        router.replace('/admin/login');
+        return;
+      }
 
       if (response.ok) {
         router.push('/admin/products');
@@ -263,39 +295,22 @@ export default function NewProductPage() {
       </div>
 
           <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-2 text-gray-700">Фото продукта</label>
+              <label className="block text-sm font-medium mb-2 text-gray-700">Фото продукта (URL)</label>
+            {/* ИСПРАВЛЕНО (P1): Убрали input type="file" - не используется, оставили только URL */}
             <input
-              type="file"
-              accept="image/*"
-              onChange={(e) =>
-                setForm({ ...form, imageFile: e.target.files?.[0] || null })
-              }
-                className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-gray-900 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200"
+              type="url"
+              placeholder="https://..."
+              value={form.imageUrl}
+              onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-300"
             />
-            {(form.imageFile || form.imageUrl) && (
-                <div className="mt-4">
-              <img
-                src={
-                  form.imageFile
-                    ? URL.createObjectURL(form.imageFile)
-                    : form.imageUrl
-                }
-                alt="preview"
-                    className="w-64 h-64 object-contain rounded-xl border border-gray-200 bg-gray-50"
-              />
-                </div>
-            )}
-            {!form.imageFile && !form.imageUrl && (
+            {form.imageUrl && (
               <div className="mt-4">
-                  <label className="block text-sm font-medium mb-2 text-gray-700">
-                  Или введите URL изображения
-                </label>
-        <input
-          type="url"
-                  placeholder="https://..."
-          value={form.imageUrl}
-          onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-300"
+                <img
+                  src={form.imageUrl}
+                  alt="preview"
+                  className="w-64 h-64 object-contain rounded-xl border border-gray-200 bg-gray-50"
+                  loading="lazy"
                 />
               </div>
             )}

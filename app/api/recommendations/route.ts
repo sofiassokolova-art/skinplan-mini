@@ -664,8 +664,9 @@ export async function GET(request: NextRequest) {
 
     // ИСПРАВЛЕНО: Используем buildRuleContext для создания типизированного контекста правил
     // Это обеспечивает единую точку маппинга полей и консистентность
+    // ИСПРАВЛЕНО: Передаем concerns из ответов для правил, которые проверяют concerns: { hasSome: [...] }
     const { buildRuleContext } = await import('@/lib/rule-context');
-    const ruleContext = buildRuleContext(profile, skinScores, normalizedSkinType, normalizedSensitivity);
+    const ruleContext = buildRuleContext(profile, skinScores, normalizedSkinType, normalizedSensitivity, questionnaireAnswers.concerns);
     
     // Используем ruleContext как profileWithScores для обратной совместимости
     const profileWithScores: any = {
@@ -803,23 +804,57 @@ export async function GET(request: NextRequest) {
           code: 'budget',
         },
       },
+      include: {
+        question: {
+          include: {
+            answerOptions: true,
+          },
+        },
+      },
       take: 1,
     });
     
-    const userBudget = userAnswers.length > 0 
-      ? (userAnswers[0].answerValue || 'любой')
-      : 'любой';
+    let normalizedUserBudget: 'бюджетный' | 'средний' | 'премиум' | 'любой' = 'любой';
     
-    // Маппинг бюджета из ответов в формат для фильтрации
-    const budgetMapping: Record<string, 'бюджетный' | 'средний' | 'премиум' | 'любой'> = {
-      'budget': 'бюджетный',
-      'medium': 'средний',
-      'premium': 'премиум',
-      'any': 'любой',
-      'любой': 'любой',
-    };
-    
-    const normalizedUserBudget = budgetMapping[userBudget] || 'любой';
+    if (userAnswers.length > 0) {
+      const answer = userAnswers[0];
+      const answerValue = answer.answerValue;
+      
+      // ИСПРАВЛЕНО: Маппинг значений из БД (budget_1, budget_2, budget_3, budget_4) на формат для фильтрации
+      // Также поддерживаем старые значения (budget, medium, premium, any) для обратной совместимости
+      const budgetMapping: Record<string, 'бюджетный' | 'средний' | 'премиум' | 'любой'> = {
+        // Новые значения из БД
+        'budget_1': 'бюджетный',
+        'budget_2': 'средний',
+        'budget_3': 'премиум',
+        'budget_4': 'любой',
+        // Старые значения (для обратной совместимости)
+        'budget': 'бюджетный',
+        'medium': 'средний',
+        'premium': 'премиум',
+        'any': 'любой',
+        'любой': 'любой',
+      };
+      
+      normalizedUserBudget = budgetMapping[answerValue || ''] || 'любой';
+      
+      // Если маппинг не сработал, пробуем найти по label опции
+      if (normalizedUserBudget === 'любой' && answer.question?.answerOptions) {
+        const option = answer.question.answerOptions.find(opt => opt.value === answerValue);
+        if (option) {
+          // Маппим по label опции
+          if (option.label.includes('Бюджетный') || option.label.includes('до 2 000')) {
+            normalizedUserBudget = 'бюджетный';
+          } else if (option.label.includes('Средний') || option.label.includes('2 000–5 000')) {
+            normalizedUserBudget = 'средний';
+          } else if (option.label.includes('Премиум') || option.label.includes('5 000+')) {
+            normalizedUserBudget = 'премиум';
+          } else if (option.label.includes('Без предпочтений') || option.label.includes('Любой')) {
+            normalizedUserBudget = 'любой';
+          }
+        }
+      }
+    }
 
     // Получаем продукты для каждого шага
     const stepsJson = matchedRule.stepsJson as Record<string, RuleStep>;

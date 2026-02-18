@@ -69,7 +69,7 @@ export default function InsightsPage() {
             notes: profileData.notes || '',
           });
         }
-      } catch (err) {
+      } catch (_err) {
         clientLogger.warn('Profile not found, using fallback');
       }
 
@@ -193,7 +193,7 @@ export default function InsightsPage() {
         {/* Кнопка перехода к плану */}
         <div className="flex justify-center pt-4">
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.push('/home')}
             className="w-full max-w-md h-14 rounded-2xl font-bold text-base bg-[#0A5F59] text-white hover:bg-[#0A5F59]/90 shadow-lg hover:shadow-xl transition-all"
           >
             Перейти к плану ухода →

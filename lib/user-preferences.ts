@@ -1,0 +1,352 @@
+// lib/user-preferences.ts
+// Helper функции для работы с пользовательскими настройками
+// Заменяют использование localStorage
+
+import { api } from './api';
+import { isQuizContext } from './route-utils';
+
+// Кэш для preferences (чтобы не делать лишние запросы)
+let preferencesCache: {
+  data: any;
+  timestamp: number;
+} | null = null;
+
+// ИСПРАВЛЕНО: Промис для синхронизации одновременных запросов
+// Если несколько компонентов вызывают getUserPreferences() одновременно,
+// они все ждут одного запроса вместо создания множественных запросов
+let pendingRequest: Promise<any> | null = null;
+
+const CACHE_TTL = 30000; // 30 секунд кэш (увеличено для уменьшения запросов)
+
+// Дефолтные значения для preferences
+const DEFAULT_PREFERENCES = {
+  isRetakingQuiz: false,
+  fullRetakeFromHome: false,
+  paymentRetakingCompleted: false,
+  paymentFullRetakeCompleted: false,
+  hasPlanProgress: false,
+  routineProducts: null,
+  planFeedbackSent: false,
+  serviceFeedbackSent: false,
+  lastPlanFeedbackDate: null,
+  lastServiceFeedbackDate: null,
+  extra: null,
+};
+
+// Получаем preferences с кэшированием
+export async function getUserPreferences() {
+  // РЕФАКТОРИНГ: Используем централизованную проверку из route-utils.ts
+  // На /quiz не делаем API вызовы - используем дефолтные значения
+  if (isQuizContext()) {
+    console.log('⚠️ getUserPreferences called on /quiz - returning defaults without API call');
+    return DEFAULT_PREFERENCES;
+  }
+  
+  // Проверяем sessionStorage кэш (не на /quiz)
+  if (typeof window !== 'undefined' && !isQuizContext()) {
+    try {
+      const cached = sessionStorage.getItem('user_preferences_cache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        const cacheAge = Date.now() - parsed.timestamp;
+        if (cacheAge < CACHE_TTL && parsed.data) {
+          return parsed.data;
+        }
+      }
+    } catch (e) {
+      // Игнорируем ошибки sessionStorage
+    }
+  }
+  
+  // Проверяем кэш в памяти
+  if (preferencesCache && Date.now() - preferencesCache.timestamp < CACHE_TTL) {
+    return preferencesCache.data;
+  }
+
+  // Если уже есть запрос в процессе, возвращаем его
+  if (pendingRequest) {
+    return pendingRequest;
+  }
+
+  // Финальная проверка перед созданием запроса
+  if (isQuizContext()) {
+    console.log('⚠️ getUserPreferences: preventing new request on /quiz');
+    return DEFAULT_PREFERENCES;
+  }
+
+  // Создаем новый запрос
+  pendingRequest = (async () => {
+    // Финальная проверка внутри async функции
+    if (isQuizContext()) {
+      return DEFAULT_PREFERENCES;
+    }
+    
+    try {
+      const prefs = await api.getUserPreferences();
+      preferencesCache = {
+        data: prefs,
+        timestamp: Date.now(),
+      };
+      
+      // ИСПРАВЛЕНО: Сохраняем в sessionStorage для использования между компонентами
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem('user_preferences_cache', JSON.stringify({
+            data: prefs,
+            timestamp: Date.now(),
+          }));
+        } catch (e) {
+          // Игнорируем ошибки sessionStorage (может быть заполнен)
+        }
+      }
+      
+      return prefs;
+    } catch (error) {
+      // Если ошибка - возвращаем значения по умолчанию
+      console.warn('Failed to get user preferences, using defaults:', error);
+      return {
+        isRetakingQuiz: false,
+        fullRetakeFromHome: false,
+        paymentRetakingCompleted: false,
+        paymentFullRetakeCompleted: false,
+        hasPlanProgress: false,
+        routineProducts: null,
+        planFeedbackSent: false,
+        serviceFeedbackSent: false,
+        lastPlanFeedbackDate: null,
+        lastServiceFeedbackDate: null,
+        extra: null,
+      };
+    } finally {
+      // Очищаем pendingRequest после завершения
+      pendingRequest = null;
+    }
+  })();
+
+  return pendingRequest;
+}
+
+// Обновляем preferences
+export async function updateUserPreferences(updates: Partial<{
+  isRetakingQuiz: boolean;
+  fullRetakeFromHome: boolean;
+  paymentRetakingCompleted: boolean;
+  paymentFullRetakeCompleted: boolean;
+  hasPlanProgress: boolean;
+  routineProducts: any;
+  planFeedbackSent: boolean;
+  serviceFeedbackSent: boolean;
+  lastPlanFeedbackDate: string | null;
+  lastServiceFeedbackDate: string | null;
+  extra: any;
+}>) {
+  try {
+    await api.updateUserPreferences(updates);
+    // Инвалидируем кэш
+    preferencesCache = null;
+    // ИСПРАВЛЕНО: Инвалидируем sessionStorage кэш
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.removeItem('user_preferences_cache');
+      } catch (e) {
+        // Игнорируем ошибки
+      }
+    }
+  } catch (error) {
+    console.error('Failed to update user preferences:', error);
+    throw error;
+  }
+}
+
+// Удаляем конкретный флаг
+export async function removeUserPreference(key: string) {
+  try {
+    await api.removeUserPreference(key);
+    // Инвалидируем кэш
+    preferencesCache = null;
+  } catch (error) {
+    console.error('Failed to remove user preference:', error);
+    throw error;
+  }
+}
+
+// Helper функции для конкретных флагов (для удобства)
+
+export async function getIsRetakingQuiz(): Promise<boolean> {
+  // ТЗ: НА /quiz НИКОГДА не делаем API вызовы
+  if (typeof window !== 'undefined') {
+    const pathname = window.location.pathname;
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      return false;
+    }
+  }
+  const prefs = await getUserPreferences();
+  return prefs.isRetakingQuiz;
+}
+
+export async function setIsRetakingQuiz(value: boolean) {
+  await updateUserPreferences({ isRetakingQuiz: value });
+}
+
+export async function getFullRetakeFromHome(): Promise<boolean> {
+  // ТЗ: НА /quiz НИКОГДА не делаем API вызовы
+  if (typeof window !== 'undefined') {
+    const pathname = window.location.pathname;
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      return false;
+    }
+  }
+  const prefs = await getUserPreferences();
+  return prefs.fullRetakeFromHome;
+}
+
+export async function setFullRetakeFromHome(value: boolean) {
+  await updateUserPreferences({ fullRetakeFromHome: value });
+}
+
+export async function getHasPlanProgress(): Promise<boolean> {
+  // ТЗ: НА /quiz НИКОГДА не делаем API вызовы - возвращаем false для нового пользователя
+  // Это предотвращает лишние запросы для нового пользователя на странице анкеты
+  if (typeof window !== 'undefined') {
+    const pathname = window.location.pathname;
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      console.log('⚠️ getHasPlanProgress called on /quiz - returning false without API call');
+      return false; // Новый пользователь на анкете
+    }
+  }
+  
+  const prefs = await getUserPreferences();
+  return prefs.hasPlanProgress;
+}
+
+export async function setHasPlanProgress(value: boolean) {
+  await updateUserPreferences({ hasPlanProgress: value });
+}
+
+export async function getPaymentRetakingCompleted(): Promise<boolean> {
+  // ТЗ: НА /quiz НИКОГДА не делаем API вызовы
+  if (typeof window !== 'undefined') {
+    const pathname = window.location.pathname;
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      return false;
+    }
+  }
+  const prefs = await getUserPreferences();
+  return prefs.paymentRetakingCompleted;
+}
+
+export async function setPaymentRetakingCompleted(value: boolean) {
+  await updateUserPreferences({ paymentRetakingCompleted: value });
+}
+
+export async function getPaymentFullRetakeCompleted(): Promise<boolean> {
+  // ТЗ: НА /quiz НИКОГДА не делаем API вызовы
+  if (typeof window !== 'undefined') {
+    const pathname = window.location.pathname;
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      return false;
+    }
+  }
+  const prefs = await getUserPreferences();
+  return prefs.paymentFullRetakeCompleted;
+}
+
+export async function setPaymentFullRetakeCompleted(value: boolean) {
+  await updateUserPreferences({ paymentFullRetakeCompleted: value });
+}
+
+export async function getRoutineProducts(): Promise<any> {
+  // ТЗ: НА /quiz НИКОГДА не делаем API вызовы
+  if (typeof window !== 'undefined') {
+    const pathname = window.location.pathname;
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      return null;
+    }
+  }
+  const prefs = await getUserPreferences();
+  return prefs.routineProducts;
+}
+
+export async function setRoutineProducts(value: any) {
+  await updateUserPreferences({ routineProducts: value });
+}
+
+export async function getPlanFeedbackSent(): Promise<boolean> {
+  // ТЗ: НА /quiz НИКОГДА не делаем API вызовы
+  if (typeof window !== 'undefined') {
+    const pathname = window.location.pathname;
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      return false;
+    }
+  }
+  const prefs = await getUserPreferences();
+  return prefs.planFeedbackSent;
+}
+
+export async function setPlanFeedbackSent(value: boolean) {
+  await updateUserPreferences({ planFeedbackSent: value });
+}
+
+export async function getServiceFeedbackSent(): Promise<boolean> {
+  // ТЗ: НА /quiz НИКОГДА не делаем API вызовы
+  if (typeof window !== 'undefined') {
+    const pathname = window.location.pathname;
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      console.log('⚠️ getServiceFeedbackSent called on /quiz - returning false without API call');
+      return false; // На анкете не показываем попап
+    }
+  }
+  const prefs = await getUserPreferences();
+  return prefs.serviceFeedbackSent;
+}
+
+export async function setServiceFeedbackSent(value: boolean) {
+  await updateUserPreferences({ serviceFeedbackSent: value });
+}
+
+export async function getLastPlanFeedbackDate(): Promise<string | null> {
+  // ТЗ: НА /quiz НИКОГДА не делаем API вызовы
+  if (typeof window !== 'undefined') {
+    const pathname = window.location.pathname;
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      return null;
+    }
+  }
+  const prefs = await getUserPreferences();
+  return prefs.lastPlanFeedbackDate;
+}
+
+export async function setLastPlanFeedbackDate(value: string | null) {
+  await updateUserPreferences({ lastPlanFeedbackDate: value });
+}
+
+export async function getLastServiceFeedbackDate(): Promise<string | null> {
+  // ТЗ: НА /quiz НИКОГДА не делаем API вызовы
+  if (typeof window !== 'undefined') {
+    const pathname = window.location.pathname;
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      console.log('⚠️ getLastServiceFeedbackDate called on /quiz - returning null without API call');
+      return null; // На анкете не показываем попап
+    }
+  }
+  const prefs = await getUserPreferences();
+  return prefs.lastServiceFeedbackDate;
+}
+
+export async function setLastServiceFeedbackDate(value: string | null) {
+  await updateUserPreferences({ lastServiceFeedbackDate: value });
+}
+
+// Инвалидируем кэш (для принудительного обновления)
+export function invalidatePreferencesCache() {
+  preferencesCache = null;
+  // ИСПРАВЛЕНО: Инвалидируем sessionStorage кэш
+  if (typeof window !== 'undefined') {
+    try {
+      sessionStorage.removeItem('user_preferences_cache');
+    } catch (e) {
+      // Игнорируем ошибки
+    }
+  }
+}
+

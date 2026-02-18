@@ -12,7 +12,21 @@ import { PlanPageClient } from './plan-client';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
 import type { GeneratedPlan, ProfileResponse } from '@/lib/api-types';
 import { clientLogger } from '@/lib/client-logger';
+// ОПТИМИЗАЦИЯ: Динамический импорт DotLottieReact для code splitting
+import dynamic from 'next/dynamic';
+const DotLottieReact = dynamic(
+  () => import('@lottiefiles/dotlottie-react').then(mod => mod.DotLottieReact),
+  {
+    ssr: false,
+    loading: () => null,
+  }
+);
+import { PLAN_TIMEOUTS } from '@/lib/config/timeouts';
+import { safeSessionStorageRemove } from '@/lib/storage-utils';
 
+// РЕФАКТОРИНГ P2: Локальный тип данных для страницы плана
+// TODO: В будущем полностью унифицировать с PlanPageData из lib/plan-types.ts
+// Сейчас используем any для обратной совместимости
 interface PlanData {
   // Новый формат (plan28)
   plan28?: Plan28;
@@ -24,7 +38,7 @@ interface PlanData {
     imageUrl?: string | null;
     description?: string;
   }>;
-  planExpired?: boolean; // Флаг истечения плана (28+ дней)
+  planExpired?: boolean;
   // Старый формат (для обратной совместимости)
   user?: {
     id: string;
@@ -39,7 +53,7 @@ interface PlanData {
     primaryConcernRu: string;
     sensitivityLevel: string | null;
     acneLevel: number | null;
-    scores: any[];
+    scores: unknown[]; // РЕФАКТОРИНГ: any[] -> unknown[]
   };
   plan?: {
     weeks: Array<{
@@ -69,11 +83,36 @@ interface PlanData {
   }>;
   todayMorning?: number[];
   todayEvening?: number[];
-  // Общие поля
-  weeks?: any[];
-  products?: Map<number, any>;
-  scores?: any[];
+  weeks?: unknown[]; // РЕФАКТОРИНГ: any[] -> unknown[]
+  products?: Map<number, unknown>; // РЕФАКТОРИНГ: any -> unknown
+  scores?: unknown[]; // РЕФАКТОРИНГ: any[] -> unknown[]
 }
+
+const PlanLoadingView = ({ message }: { message: string }) => (
+  <div style={{
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '100vh',
+    background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+  }}>
+    <DotLottieReact
+      src="https://lottie.host/3c0e0e0e-0e0e-0e0e-0e0e-0e0e0e0e0e0e.json"
+      loop
+      autoplay
+      style={{ width: '200px', height: '200px' }}
+    />
+    <p style={{
+      marginTop: '20px',
+      fontSize: '18px',
+      color: '#0A5F59',
+      fontWeight: 600,
+    }}>
+      {message}
+    </p>
+  </div>
+);
 
 export default function PlanPage() {
   const router = useRouter();
@@ -83,11 +122,40 @@ export default function PlanPage() {
   const [error, setError] = useState<string | null>(null);
   const [planData, setPlanData] = useState<PlanData | null>(null);
   const [generatingState, setGeneratingState] = useState<'generating' | 'ready' | null>(null);
+  const generatingStateRef = useRef<'generating' | 'ready' | null>(null); // ИСПРАВЛЕНО: Ref для проверки в таймаутах
+  const loadingRef = useRef(true); // ИСПРАВЛЕНО: Ref для проверки в таймаутах (избегаем stale closure)
+  const planDataRef = useRef<PlanData | null>(null); // ИСПРАВЛЕНО: Ref для проверки в таймаутах (избегаем stale closure)
+  const [shouldRedirectToQuiz, setShouldRedirectToQuiz] = useState(false);
   const isMountedRef = useRef(true);
+  const pageLoadStartTimeRef = useRef<number>(Date.now()); // ИСПРАВЛЕНО: Время начала загрузки страницы для абсолютного таймаута
   const loadPlanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const planGenerationCooldownRef = useRef<number>(0);
   const planGenerationInFlightRef = useRef<Promise<GeneratedPlan | null> | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const generateKickoffRef = useRef(false);
+
+  // ФИКС P0: Централизованное управление таймерами loadPlan
+  const loadPlanInFlightRef = useRef<Promise<void> | null>(null);
+  const scheduledRetryRef = useRef<NodeJS.Timeout | null>(null);
+
+  const MAX_RETRIES = 5;
+
+  // ФИКС P0: Централизованная функция для планирования повторных вызовов loadPlan
+  const scheduleLoadPlan = (delayMs: number, reason: string) => {
+    // Очищаем предыдущий таймер
+    if (scheduledRetryRef.current) {
+      clearTimeout(scheduledRetryRef.current);
+      scheduledRetryRef.current = null;
+    }
+
+    clientLogger.log(`⏳ ${reason} - scheduling loadPlan retry in ${delayMs}ms`);
+    scheduledRetryRef.current = setTimeout(() => {
+      scheduledRetryRef.current = null;
+      if (isMountedRef.current) {
+        loadPlan(0, true); // force=true чтобы обойти проверки генерации
+      }
+    }, delayMs);
+  };
 
   // Безопасные обертки для setState (проверяют mounted перед обновлением)
   const safeSetLoading = (value: boolean) => {
@@ -158,6 +226,13 @@ export default function PlanPage() {
           );
           return null;
         }
+
+        // ИСПРАВЛЕНО: Обработка 404 ошибки (профиль не найден)
+        if (err?.status === 404) {
+          clientLogger.warn(`${logPrefix}⚠️ Profile not found (404), cannot generate plan`);
+          return null; // Возвращаем null вместо ошибки
+        }
+
         throw err;
       }
     })();
@@ -172,8 +247,36 @@ export default function PlanPage() {
   };
 
   // Polling статуса генерации плана
+  // ИСПРАВЛЕНО: Инициализируем как null, чтобы не учитывать время до начала polling
+  // Устанавливается только когда polling действительно начинается (строка 314 или внутри pollPlanStatus)
+  const pollPlanStatusStartTimeRef = useRef<number | null>(null);
+  const MAX_POLLING_DURATION = 120000; // 2 минуты максимум
+  
   const pollPlanStatus = async () => {
     try {
+      // ИСПРАВЛЕНО: Проверяем, что polling действительно начался
+      // Если ref равен null, это означает, что polling еще не начался - устанавливаем его сейчас
+      if (pollPlanStatusStartTimeRef.current === null) {
+        pollPlanStatusStartTimeRef.current = Date.now();
+        clientLogger.log('⚠️ pollPlanStatusStartTimeRef was null, setting it now (polling started)');
+      }
+      
+      // ИСПРАВЛЕНО: Останавливаем polling если прошло слишком много времени
+      const pollingDuration = Date.now() - pollPlanStatusStartTimeRef.current;
+      if (pollingDuration > MAX_POLLING_DURATION) {
+        clientLogger.warn('⚠️ Polling timeout - stopping and trying to load plan directly', {
+          duration: pollingDuration,
+          maxDuration: MAX_POLLING_DURATION,
+        });
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
+        // Пробуем загрузить план напрямую
+        loadPlan(0, true);
+        return;
+      }
+      
       const response = await fetch('/api/plan/status', {
         cache: 'no-store',
         headers: {
@@ -183,10 +286,30 @@ export default function PlanPage() {
       
       if (response.ok) {
         const data = await response.json();
-        if (data?.data?.ready) {
+        // ApiResponse.success() возвращает payload напрямую (без { data: ... }),
+        // но поддерживаем оба формата.
+        const payload = (data && typeof data === 'object' && 'data' in data) ? (data as any).data : data;
+        
+        // ИСПРАВЛЕНО: Если статус no_profile, пробуем запустить генерацию плана
+        if (payload?.status === 'no_profile') {
+          clientLogger.warn('⚠️ Plan status: no_profile - trying to generate plan', { payload });
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+          }
+          // Пробуем запустить генерацию плана
+          const generatedPlan = await tryGeneratePlan({ checkProfile: true, logPrefix: '🔄 No profile in status, ' });
+          if (generatedPlan) {
+            await processPlanData(generatedPlan);
+          }
+          return;
+        }
+        
+        if (payload?.ready) {
           // План готов - переходим к загрузке
           if (isMountedRef.current) {
             setGeneratingState('ready');
+            generatingStateRef.current = 'ready'; // ИСПРАВЛЕНО: Синхронизируем ref
             // Очищаем polling
             if (pollingIntervalRef.current) {
               clearInterval(pollingIntervalRef.current);
@@ -204,8 +327,560 @@ export default function PlanPage() {
     }
   };
 
+  const getPlanStatus = async (): Promise<{ status?: string; ready?: boolean } | null> => {
+    try {
+      const response = await fetch('/api/plan/status', {
+        cache: 'no-store',
+        headers: {
+          'X-Telegram-Init-Data': typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '',
+        },
+      });
+      if (!response.ok) return null;
+      const data = await response.json();
+      const payload = (data && typeof data === 'object' && 'data' in data) ? (data as any).data : data;
+      return payload && typeof payload === 'object' ? payload : null;
+    } catch {
+      return null;
+    }
+  };
+
+  // ФИКС P0: Функция loadPlan определена выше useEffect для избежания хрупкого hoisting
+  const loadPlan = async (retryCount = 0, force = false) => {
+    // ФИКС P0: Защита от множественных одновременных вызовов
+    if (loadPlanInFlightRef.current) {
+      clientLogger.warn('⏸️ loadPlan already in progress, skipping duplicate call');
+      return;
+    }
+
+    loadPlanInFlightRef.current = (async () => {
+      try {
+        // ИСПРАВЛЕНО: Не загружаем план, если мы в режиме генерации
+        // Проверяем state из URL напрямую, чтобы избежать проблем с задержкой searchParams
+        if (typeof window !== 'undefined') {
+          const urlParams = new URLSearchParams(window.location.search);
+          const state = urlParams.get('state');
+          if (!force && state === 'generating') {
+            clientLogger.log('⏸️ Skipping loadPlan - plan is being generated');
+            return;
+          }
+        }
+
+        // Защита от бесконечных попыток
+        if (retryCount >= MAX_RETRIES) {
+          console.error('❌ Max retries reached, stopping to prevent infinite loop');
+          safeSetError('Не удалось загрузить план. Попробуйте обновить страницу.');
+          safeSetLoading(false);
+          return;
+        }
+
+        try {
+          // Проверяем, что компонент еще смонтирован
+          if (!isMountedRef.current) {
+            clientLogger.warn('⚠️ Component unmounted, skipping loadPlan');
+            return;
+          }
+
+          // Сбрасываем ошибку только при первой попытке
+          if (retryCount === 0) {
+            safeSetLoading(true);
+            safeSetError(null);
+          }
+
+          // Проверяем, что приложение открыто через Telegram
+          // В development не блокируем, чтобы можно было тестировать локально без Mini App
+          if ((typeof window === 'undefined' || !window.Telegram?.WebApp) && !isDev) {
+            safeSetError('telegram_required');
+            safeSetLoading(false);
+            return;
+          }
+
+          // Ждем готовности initData (может быть не сразу доступен)
+          let initData: string | undefined = window.Telegram?.WebApp?.initData || undefined;
+          if (!initData) {
+            // Ждем максимум 2 секунды для инициализации
+            await new Promise<void>((resolve) => {
+              let attempts = 0;
+              const maxAttempts = 20; // 20 * 100ms = 2 секунды
+              let checkInterval: NodeJS.Timeout | null = null;
+              try {
+                checkInterval = setInterval(() => {
+                  attempts++;
+                  initData = window.Telegram?.WebApp?.initData || undefined;
+                  if (initData || attempts >= maxAttempts) {
+                    if (checkInterval) {
+                      clearInterval(checkInterval);
+                      checkInterval = null;
+                    }
+                    resolve();
+                  }
+                }, 100);
+              } catch (error) {
+                // Гарантируем очистку интервала даже при ошибке
+                if (checkInterval) {
+                  clearInterval(checkInterval);
+                }
+                resolve();
+              }
+            });
+          }
+
+          if (!initData && !isDev) {
+            console.error('❌ initData not available after waiting');
+            safeSetError('telegram_required');
+            safeSetLoading(false);
+            return;
+          }
+
+          // Логируем только в development и только если initData реально есть
+          if (process.env.NODE_ENV === 'development' && initData) {
+            clientLogger.log('✅ initData available, length:', initData.length);
+          }
+
+          // Загружаем план через API - сначала пытаемся из кэша
+          // НЕ делаем лишних проверок профиля/прогресса - это замедляет загрузку
+          let plan;
+          try {
+            clientLogger.log('🔄 Attempting to load plan from cache...');
+            plan = await api.getPlan() as GeneratedPlan | null;
+            clientLogger.log('✅ Plan loaded from cache:', {
+                hasPlan28: !!plan?.plan28,
+                hasWeeks: !!plan?.weeks,
+                weeksCount: plan?.weeks?.length || 0,
+                plan28DaysCount: plan?.plan28?.days?.length || 0,
+              planKeys: Object.keys(plan || {}),
+              });
+          } catch (planError: any) {
+            console.error('❌ Error loading plan from cache:', {
+              status: planError?.status,
+              message: planError?.message,
+              error: planError,
+              stack: planError?.stack,
+            });
+
+            // Если план не найден (404), проверяем, не идет ли уже rate limit cooldown
+            // ИСПРАВЛЕНО: Проверяем rate limit ПЕРЕД попыткой генерации, чтобы избежать лишних запросов
+            if (planError?.status === 404) {
+              // Проверяем, есть ли активный cooldown от предыдущих попыток
+              if (hasActivePlanGenerationCooldown()) {
+                const waitMs = getPlanCooldownMsRemaining();
+                scheduleLoadPlan(waitMs, `Plan not found but rate limit cooldown active (${Math.ceil(waitMs / 1000)}s)`);
+                return;
+              }
+
+              // Пробуем сгенерировать план только если нет активного cooldown
+              const generatedPlan = await tryGeneratePlan({
+                checkProfile: true,
+                logPrefix: '🔄 Plan not in cache, '
+              });
+
+              if (generatedPlan) {
+                await processPlanData(generatedPlan);
+                return;
+              }
+
+              // Если генерация не удалась и есть cooldown - ждем
+              if (hasActivePlanGenerationCooldown()) {
+                const waitMs = getPlanCooldownMsRemaining();
+                scheduleLoadPlan(waitMs, 'Plan generation temporarily unavailable after failure');
+                return;
+              }
+
+              // План не сгенерировался - проверяем, есть ли профиль
+              // ВАЖНО: Очищаем кэш профиля перед проверкой, чтобы получить актуальные данные
+              if (typeof window !== 'undefined') {
+                try {
+                  sessionStorage.removeItem('profile_check_cache');
+                  sessionStorage.removeItem('profile_check_cache_timestamp');
+                  clientLogger.log('✅ Кэш профиля очищен перед проверкой');
+                } catch (cacheError) {
+                  clientLogger.warn('⚠️ Не удалось очистить кэш профиля:', cacheError);
+                }
+              }
+
+              const profileCheck = await api.getCurrentProfile() as ProfileResponse | null;
+              if (!profileCheck) {
+                // Нет профиля - показываем ошибку
+                clientLogger.log('❌ No profile found after cache clear, showing error');
+                safeSetError('no_profile');
+                safeSetLoading(false);
+                return;
+              }
+
+              clientLogger.log('✅ Profile found after cache clear:', {
+                profileId: profileCheck.id,
+                profileVersion: profileCheck.version,
+              });
+
+              // Профиль есть, но план не сгенерировался - возможно еще обрабатывается
+              clientLogger.log('⚠️ Profile exists but plan not generated, will retry...');
+            }
+
+            // Если это не 404 или регенерация не удалась - пробуем еще раз или показываем лоадер
+            // Не показываем ошибку сразу - возможно план генерируется
+            if (retryCount < 2 && (
+              planError?.status === 500 ||
+              planError?.status === 502 ||
+              planError?.status === 503 ||
+              planError?.status === 504 ||
+              planError?.message?.includes('Internal server error') ||
+              planError?.message?.includes('timeout')
+            )) {
+              clientLogger.log(`⏳ Ошибка сервера, повторяем через 1 секунду... (попытка ${retryCount + 1}/2)`);
+              safeSetLoading(true);
+              safeSetError(null);
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              return loadPlan(retryCount + 1);
+            }
+
+            // Если это не 404 и не серверная ошибка - показываем лоадер (возможно план генерируется)
+            if (planError?.status !== 404) {
+              clientLogger.log('⚠️ Unexpected error, showing loader (plan might be generating)');
+              safeSetLoading(true);
+              safeSetError(null);
+              // ФИКС P0: Используем централизованную функцию для повторных вызовов
+              scheduleLoadPlan(2000, 'Unexpected error - retrying');
+              return;
+            }
+
+            // Для 404 - уже обработано выше
+            clientLogger.log('⚠️ Plan not found in cache');
+            plan = null;
+          }
+
+          // Проверяем наличие плана (новый формат plan28 или старый weeks)
+          if (!plan || (!plan.plan28 && (!plan.weeks || plan.weeks.length === 0))) {
+            // ИСПРАВЛЕНО: Если план не найден, проверяем наличие профиля и ответов
+            // Если есть профиль и ответы, но нет плана - это ситуацию нужно исправить
+            try {
+              const profileCheck = await api.getCurrentProfile() as any;
+              if (profileCheck) {
+                // Профиль есть - пробуем регенерировать план
+                // ИСПРАВЛЕНО: Более агрессивная генерация плана при отсутствии плана, но наличии профиля
+                clientLogger.log('🔄 Plan not found but profile exists - attempting to generate plan immediately...', {
+                  profileId: profileCheck.id,
+                  profileVersion: profileCheck.version,
+                  retryCount,
+                });
+
+                // ИСПРАВЛЕНО: Показываем лоадер генерации плана
+                safeSetLoading(true);
+                safeSetError(null);
+
+                try {
+                  // ИСПРАВЛЕНО: сначала проверяем status, чтобы не дергать /api/plan/generate лишний раз
+                  // (особенно важно при 429 и при параллельной генерации после submitAnswers).
+                  const status = await getPlanStatus();
+                  if (status?.status === 'generating' && status.ready === false) {
+                    clientLogger.log('⏳ Plan status=generating, starting polling instead of calling generate', {
+                      profileId: profileCheck.id,
+                      profileVersion: profileCheck.version,
+                    });
+                    setGeneratingState('generating');
+                    generatingStateRef.current = 'generating'; // ИСПРАВЛЕНО: Синхронизируем ref
+                    if (!pollingIntervalRef.current) {
+                      pollingIntervalRef.current = setInterval(pollPlanStatus, 1500);
+                    }
+                    return;
+                  }
+
+                  // ИСПРАВЛЕНО: Проверяем rate limit cooldown ПЕРЕД попыткой генерации
+                  if (hasActivePlanGenerationCooldown()) {
+                    const waitMs = getPlanCooldownMsRemaining();
+                    scheduleLoadPlan(waitMs, `Plan not found but rate limit cooldown active (${Math.ceil(waitMs / 1000)}s)`);
+                    return;
+                  }
+
+                  const generatedPlan = await generatePlanWithHandling('🔄 Plan not found but profile exists - ');
+
+                  if (!generatedPlan && hasActivePlanGenerationCooldown()) {
+                    const waitMs = getPlanCooldownMsRemaining();
+                    scheduleLoadPlan(waitMs, 'Plan generation temporarily paused (profile exists)');
+                    return;
+                  }
+
+                  // ИСПРАВЛЕНО: Проверяем оба формата плана
+                  const hasPlan28 = generatedPlan?.plan28 && generatedPlan.plan28.days && generatedPlan.plan28.days.length > 0;
+                  const hasWeeks = generatedPlan?.weeks && Array.isArray(generatedPlan.weeks) && generatedPlan.weeks.length > 0;
+
+                  if (generatedPlan && (hasPlan28 || hasWeeks)) {
+                    clientLogger.log('✅ Plan generated successfully, processing...', {
+                      hasPlan28,
+                      hasWeeks,
+                      plan28Days: generatedPlan?.plan28?.days?.length || 0,
+                      weeksCount: generatedPlan?.weeks?.length || 0,
+                    });
+                    await processPlanData(generatedPlan);
+                    return;
+                  } else {
+                    // План не сгенерировался - возможно еще обрабатывается или ошибка
+                    clientLogger.warn('⚠️ Plan generation returned empty result', {
+                      hasPlan: !!generatedPlan,
+                      hasPlan28,
+                      hasWeeks,
+                      planKeys: generatedPlan ? Object.keys(generatedPlan) : [],
+                    });
+
+                    // ИСПРАВЛЕНО: Если это не последняя попытка, пробуем еще раз
+                    if (retryCount < MAX_RETRIES - 1) {
+                      clientLogger.log('⏳ Retrying plan generation...', { retryCount: retryCount + 1 });
+                      safeSetLoading(true);
+                      safeSetError(null);
+                      scheduleLoadPlan(3000, 'Plan generation returned empty result');
+                      return;
+                    } else {
+                      // Последняя попытка - показываем ошибку
+                      safeSetError('Не удалось создать план. Попробуйте обновить страницу или пройдите анкету заново.');
+                      safeSetLoading(false);
+                      return;
+                    }
+                  }
+                } catch (generateError: any) {
+                  console.error('❌ Failed to regenerate plan:', generateError);
+
+                  // ИСПРАВЛЕНО: Детальное логирование ошибки
+                  clientLogger.error('❌ Plan generation failed', {
+                    error: generateError?.message,
+                    status: generateError?.status,
+                    statusText: generateError?.statusText,
+                    stack: generateError?.stack?.substring(0, 300),
+                    retryCount,
+                  });
+
+                  // Если это ошибка 404 (нет профиля) и это не первая попытка - показываем ошибку
+                  if ((generateError?.status === 404 || generateError?.message?.includes('No skin profile') || generateError?.message?.includes('Profile not found')) && retryCount >= 2) {
+                    safeSetError('no_profile');
+                    safeSetLoading(false);
+                    return;
+                  }
+
+                  // ИСПРАВЛЕНО: Для других ошибок пробуем еще раз, если не последняя попытка
+                  if (retryCount < MAX_RETRIES - 1) {
+                    clientLogger.log('⏳ Plan generation error, but profile exists - retrying...', {
+                      error: generateError?.message,
+                      retryCount: retryCount + 1,
+                    });
+                    safeSetLoading(true);
+                    safeSetError(null);
+                    scheduleLoadPlan(3000, 'Plan generation error');
+                    return;
+                  } else {
+                    // Последняя попытка - показываем ошибку
+                    safeSetError('Не удалось создать план. Попробуйте обновить страницу.');
+                    safeSetLoading(false);
+                    return;
+                  }
+                }
+              } else {
+                // Профиля нет - показываем ошибку только после нескольких попыток
+                if (retryCount >= 2) {
+                  safeSetError('no_profile');
+                  safeSetLoading(false);
+                  return;
+                }
+                // При первой попытке показываем лоадер, возможно профиль еще создается
+                clientLogger.log('⏳ Profile not found, but might be creating - waiting and retrying...');
+                safeSetLoading(true);
+                safeSetError(null);
+                scheduleLoadPlan(2000, 'Profile not found - waiting');
+                return;
+              }
+            } catch (profileCheckError: any) {
+              console.error('❌ Error checking profile:', profileCheckError);
+              // Если ошибка проверки профиля - возможно временная проблема, пробуем еще раз
+              if (retryCount < 2) {
+                clientLogger.log('⏳ Profile check error, retrying...');
+                safeSetLoading(true);
+                safeSetError(null);
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                return loadPlan(retryCount + 1);
+              }
+              // После нескольких попыток - показываем ошибку
+              safeSetError('no_profile');
+              safeSetLoading(false);
+              return;
+            }
+          }
+
+          // Получаем профиль для scores и другой информации
+          // НЕ требуем профиль для показа плана, если план уже есть
+          let profile;
+          try {
+            profile = await api.getCurrentProfile() as ProfileResponse | null;
+          } catch (profileError: any) {
+            // Если профиль не найден, но план есть - это нормально, продолжаем с plan28
+            // Профиль нужен только для старого формата плана
+            if (process.env.NODE_ENV === 'development') {
+              clientLogger.warn('Could not load profile, but plan exists - continuing with plan only');
+            }
+            profile = null;
+          }
+
+          // Если план есть в новом формате plan28, можем продолжать без профиля
+          if (plan.plan28) {
+            if (process.env.NODE_ENV === 'development') {
+              clientLogger.log('✅ Using plan28 format, profile not required');
+            }
+            // Продолжаем дальше без проверки профиля
+          } else if (!profile) {
+            // Для старого формата нужен профиль
+            if (retryCount < 3) {
+              if (process.env.NODE_ENV === 'development') {
+                clientLogger.log(`⏳ Профиль пустой, ждем 2 секунды... (попытка ${retryCount + 1}/3)`);
+              }
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              return loadPlan(retryCount + 1);
+            }
+            safeSetError('no_profile');
+            safeSetLoading(false);
+            return;
+          }
+
+          // План может быть истёкшим (28+ дней) — UX: не редиректим и не показываем отдельный экран.
+          // PaymentGate заблюрит контент и покажет оплату, а ниже будет ссылка "Перепройти анкету".
+          // Флаг expired сохраняется внутри processPlanData → planExpired.
+
+          // Используем общую функцию обработки плана (избегаем дублирования кода)
+          await processPlanData(plan);
+          return;
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          console.error('Error loading plan:', error);
+
+          // При ошибке не показываем экран ошибки - показываем лоадер
+          // Проверяем, есть ли профиль или прогресс - если есть, план должен существовать
+          // ФИКС P0: Защита от множественных вызовов через ref
+          const progressCheckInProgressRef = useRef(false);
+
+          if (progressCheckInProgressRef.current) {
+            clientLogger.warn('⏸️ Progress check already in progress, skipping');
+            return;
+          }
+
+          progressCheckInProgressRef.current = true;
+
+          try {
+            const [profileCheck, progressCheck] = await Promise.allSettled([
+              api.getCurrentProfile() as Promise<any>,
+              api.getPlanProgress() as Promise<any>,
+            ]);
+
+            const hasProfile = profileCheck.status === 'fulfilled' && !!profileCheck.value;
+            const hasProgress = progressCheck.status === 'fulfilled' &&
+              !!progressCheck.value &&
+              (progressCheck.value.completedDays?.length > 0 || progressCheck.value.currentDay > 1);
+
+            if (hasProfile || hasProgress) {
+              // План должен существовать - но сначала проверяем, не идет ли rate limit cooldown
+              if (hasActivePlanGenerationCooldown()) {
+                const waitMs = getPlanCooldownMsRemaining();
+                scheduleLoadPlan(waitMs, `Plan should exist but rate limit cooldown active (${Math.ceil(waitMs / 1000)}s)`);
+                progressCheckInProgressRef.current = false;
+                return;
+              }
+
+              // План должен существовать - пробуем регенерировать
+              clientLogger.log('🔄 Plan should exist, attempting to regenerate...');
+              safeSetLoading(true);
+              safeSetError(null);
+              try {
+                const generatedPlan = await generatePlanWithHandling('🔄 Plan should exist - ');
+                if (!generatedPlan && hasActivePlanGenerationCooldown()) {
+                  const waitMs = getPlanCooldownMsRemaining();
+                  scheduleLoadPlan(waitMs, 'Plan regeneration paused due to cooldown');
+                  progressCheckInProgressRef.current = false;
+                  return;
+                }
+                if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
+                  clientLogger.log('✅ Plan regenerated successfully, processing...');
+                  await processPlanData(generatedPlan);
+                    progressCheckInProgressRef.current = false;
+                  return;
+                }
+              } catch (generateError: any) {
+                console.error('❌ Failed to regenerate plan:', generateError);
+                // Если слишком много попыток - показываем ошибку
+                if (retryCount >= MAX_RETRIES - 1) {
+                  safeSetError('Не удалось загрузить план. Попробуйте обновить страницу.');
+                  safeSetLoading(false);
+                  progressCheckInProgressRef.current = false;
+                  return;
+                }
+                // Пробуем еще раз через 3 секунды, но увеличиваем счетчик попыток
+                safeSetLoading(true);
+                safeSetError(null);
+                scheduleLoadPlan(3000, 'Plan regeneration failed');
+                progressCheckInProgressRef.current = false;
+                return;
+              }
+            } else {
+              // Профиля нет - показываем ошибку профиля
+              safeSetError('no_profile');
+            safeSetLoading(false);
+              progressCheckInProgressRef.current = false;
+              return;
+            }
+            progressCheckInProgressRef.current = false;
+          } catch (checkError) {
+            console.error('❌ Error checking profile/progress:', checkError);
+            progressCheckInProgressRef.current = false;
+            // Если слишком много попыток - показываем ошибку
+            if (retryCount >= MAX_RETRIES - 1) {
+              safeSetError('Не удалось загрузить план. Попробуйте обновить страницу.');
+              safeSetLoading(false);
+              return;
+            }
+            // При ошибке проверки пробуем еще раз через 2 секунды, но увеличиваем счетчик попыток
+            safeSetLoading(true);
+            safeSetError(null);
+            scheduleLoadPlan(2000, 'Error checking profile/progress');
+            return;
+          }
+        }
+      } finally {
+        loadPlanInFlightRef.current = null;
+      }
+    })();
+  };
+
+  // ИСПРАВЛЕНО: Синхронизируем generatingStateRef с generatingState
+  useEffect(() => {
+    generatingStateRef.current = generatingState;
+  }, [generatingState]);
+
+  // ИСПРАВЛЕНО: Синхронизируем loadingRef с loading для использования в таймаутах
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
+
+  // ИСПРАВЛЕНО: Синхронизируем planDataRef с planData для использования в таймаутах
+  useEffect(() => {
+    planDataRef.current = planData;
+  }, [planData]);
+
   useEffect(() => {
     isMountedRef.current = true;
+    pageLoadStartTimeRef.current = Date.now(); // ИСПРАВЛЕНО: Запоминаем время начала загрузки страницы
+    
+    // УМНЫЙ абсолютный таймаут: учитывает реальный прогресс
+    const absoluteTimeout = setTimeout(() => {
+      if (isMountedRef.current && loadingRef.current && !planDataRef.current) {
+        // Проверяем реальный прогресс загрузки
+        const timeElapsed = Date.now() - pageLoadStartTimeRef.current;
+        const hasRealProgress = planDataRef.current || generatingStateRef.current === 'generating';
+
+        // Если нет реального прогресса и прошло достаточно времени - показываем ошибку
+        if (!hasRealProgress && timeElapsed > PLAN_TIMEOUTS.PAGE_ABSOLUTE) {
+          clientLogger.warn('⚠️ Smart absolute timeout reached - showing fallback screen', {
+            timeElapsed,
+            hasProgress: !!planDataRef.current,
+            isGenerating: generatingStateRef.current === 'generating',
+            maxTime: PLAN_TIMEOUTS.PAGE_ABSOLUTE
+          });
+          safeSetLoading(false);
+          safeSetError('Не удалось загрузить план за отведенное время. Пожалуйста, попробуйте обновить страницу или перейти в анкету.');
+        }
+      }
+    }, PLAN_TIMEOUTS.PAGE_ABSOLUTE);
     
     // ИСПРАВЛЕНО: Проверяем state из URL напрямую, чтобы избежать проблем с задержкой searchParams
     let state: string | null = null;
@@ -222,25 +897,45 @@ export default function PlanPage() {
     
     if (state === 'generating') {
       clientLogger.log('✅ State=generating detected, starting polling');
+      pollPlanStatusStartTimeRef.current = Date.now(); // Сбрасываем таймер при старте polling
       setGeneratingState('generating');
+      generatingStateRef.current = 'generating'; // ИСПРАВЛЕНО: Синхронизируем ref сразу
       safeSetLoading(true);
+
+      // ИСПРАВЛЕНО: при /plan?state=generating мы обязаны "пнуть" генерацию,
+      // иначе polling /api/plan/status может крутиться бесконечно (если генерация ещё не стартовала).
+      if (!generateKickoffRef.current) {
+        generateKickoffRef.current = true;
+        (async () => {
+          try {
+            // profileId помогает read-your-write после submitAnswers / создания профиля
+            const profileId = searchParams?.get('profileId') || undefined;
+            await api.generatePlan(profileId);
+            clientLogger.log('✅ Plan generation kickoff requested', { profileId: profileId || null });
+          } catch (err: any) {
+            // Не критично: polling/обычная загрузка ещё могут подобрать план
+            clientLogger.warn('⚠️ Plan generation kickoff failed (non-critical):', err);
+          }
+        })();
+      }
       
       // Начинаем polling статуса плана
-      pollingIntervalRef.current = setInterval(pollPlanStatus, 1500);
+      pollingIntervalRef.current = setInterval(pollPlanStatus, PLAN_TIMEOUTS.POLLING_INTERVAL);
       
-      // Таймаут на 60 секунд
+      // РЕФАКТОРИНГ: Таймаут генерации из конфигурации
       setTimeout(() => {
-        if (isMountedRef.current && generatingState === 'generating') {
+        if (isMountedRef.current && generatingStateRef.current === 'generating') {
           clientLogger.warn('Plan generation timeout, loading plan anyway');
           if (pollingIntervalRef.current) {
             clearInterval(pollingIntervalRef.current);
             pollingIntervalRef.current = null;
           }
           setGeneratingState('ready');
+          generatingStateRef.current = 'ready';
           router.replace('/plan');
           loadPlan(0, true);
         }
-      }, 60000);
+      }, PLAN_TIMEOUTS.GENERATION_TIMEOUT);
     } else {
       // Обычная загрузка плана
       // ВАЖНО: Очищаем кэш профиля при загрузке страницы плана
@@ -260,10 +955,15 @@ export default function PlanPage() {
     
     return () => {
       isMountedRef.current = false;
-      // Очищаем таймер при размонтировании
+      // Очищаем таймеры при размонтировании
+      clearTimeout(absoluteTimeout); // ИСПРАВЛЕНО: Очищаем абсолютный таймаут
       if (loadPlanTimeoutRef.current) {
         clearTimeout(loadPlanTimeoutRef.current);
         loadPlanTimeoutRef.current = null;
+      }
+      if (scheduledRetryRef.current) {
+        clearTimeout(scheduledRetryRef.current);
+        scheduledRetryRef.current = null;
       }
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
@@ -272,6 +972,16 @@ export default function PlanPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ИСПРАВЛЕНО: Если нет профиля, сразу редиректим на /quiz вместо показа экрана ошибки
+  // Это предотвращает показ страницы плана на секунду перед редиректом
+  useEffect(() => {
+    if (error === 'no_profile' && !loading && !shouldRedirectToQuiz) {
+      clientLogger.log('❌ No profile found on plan page, redirecting to /quiz');
+      setShouldRedirectToQuiz(true);
+      router.replace('/quiz');
+    }
+  }, [error, loading, shouldRedirectToQuiz, router]);
 
   // Функция для генерации плана с проверкой профиля
   // Унифицированная функция для замены дублирующейся логики
@@ -350,6 +1060,78 @@ export default function PlanPage() {
       // Другие ошибки - возвращаем null, но не показываем ошибку сразу
       return null;
     }
+  };
+
+  // Кэш продуктов для производительности
+  const productsCacheRef = useRef<Map<string, { data: Map<number, any>; timestamp: number }>>(new Map());
+
+  // Функция для загрузки продуктов с кэшированием
+  const loadProductsBatch = async (productIds: number[]): Promise<Map<number, any>> => {
+    if (productIds.length === 0) {
+      return new Map();
+    }
+
+    const cacheKey = productIds.sort().join(',');
+    const cached = productsCacheRef.current.get(cacheKey);
+
+    // Используем кэш если он свежий (5 минут)
+    if (cached && Date.now() - cached.timestamp < 5 * 60 * 1000) {
+      clientLogger.log('✅ Using cached products batch');
+      return cached.data;
+    }
+
+    const productsMap = new Map<number, any>();
+
+    if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+      try {
+        clientLogger.log('📦 Loading products from batch endpoint, count:', productIds.length);
+
+        const productsResponse = await fetch('/api/products/batch', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Telegram-Init-Data': window.Telegram.WebApp.initData,
+          },
+          body: JSON.stringify({ productIds }),
+        });
+
+        if (productsResponse.ok) {
+          const productsData = await productsResponse.json();
+          clientLogger.log('✅ Products loaded from batch:', productsData.products?.length || 0);
+
+          if (productsData.products && Array.isArray(productsData.products)) {
+            productsData.products.forEach((p: any) => {
+              if (p && p.id) {
+                productsMap.set(p.id, {
+                  id: p.id,
+                  name: p.name || 'Неизвестный продукт',
+                  brand: { name: p.brand?.name || (typeof p.brand === 'string' ? p.brand : 'Unknown') },
+                  price: p.price || null,
+                  imageUrl: p.imageUrl || null,
+                  description: p.descriptionUser || p.description || null,
+                });
+              }
+            });
+          }
+        } else {
+          console.error('❌ Failed to load products from batch endpoint:', {
+            status: productsResponse.status,
+            statusText: productsResponse.statusText,
+          });
+        }
+      } catch (err: any) {
+        console.error('❌ Error loading products from batch endpoint:', err);
+      }
+    }
+
+    // Кэшируем результат
+    productsCacheRef.current.set(cacheKey, {
+      data: productsMap,
+      timestamp: Date.now()
+    });
+
+    clientLogger.log('📊 Products loaded and cached, map size:', productsMap.size);
+    return productsMap;
   };
 
   // Функция для обработки данных плана (вынесена для переиспользования)
@@ -483,7 +1265,7 @@ export default function PlanPage() {
       const todayProducts = (plan.products || []).filter((p: any) => todayProductIds.includes(p.id)).map((p: any) => ({
         id: p.id,
         name: p.name,
-        brand: { name: p.brand || 'Unknown' },
+        brand: { name: p.brand?.name || (typeof p.brand === 'string' ? p.brand : 'Unknown') },
         price: p.price || 0,
         volume: p.volume || null,
         imageUrl: p.imageUrl || null,
@@ -513,106 +1295,27 @@ export default function PlanPage() {
         plan28.days.forEach(day => {
           day.morning.forEach(step => {
             if (step.productId) allProductIds.add(Number(step.productId));
-            step.alternatives.forEach(alt => allProductIds.add(Number(alt)));
+            (step.alternatives ?? []).forEach(alt => allProductIds.add(Number(alt)));
           });
           day.evening.forEach(step => {
             if (step.productId) allProductIds.add(Number(step.productId));
-            step.alternatives.forEach(alt => allProductIds.add(Number(alt)));
+            (step.alternatives ?? []).forEach(alt => allProductIds.add(Number(alt)));
           });
           day.weekly.forEach(step => {
             if (step.productId) allProductIds.add(Number(step.productId));
-            step.alternatives.forEach(alt => allProductIds.add(Number(alt)));
+            (step.alternatives ?? []).forEach(alt => allProductIds.add(Number(alt)));
           });
         });
 
-        // Загружаем продукты из API - ОСНОВНАЯ ЛОГИКА
-        // Сначала пробуем загрузить из API, если не получилось - используем fallback
+        // Загружаем продукты из API с кэшированием
         let productsLoadedFromAPI = false;
-        
-        clientLogger.log('🔍 DEBUG: Starting product loading', {
-          allProductIdsSize: allProductIds.size,
-          allProductIds: Array.from(allProductIds).slice(0, 20),
-          hasWindow: typeof window !== 'undefined',
-          hasInitData: typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData,
-        });
-        
-        if (allProductIds.size > 0 && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
-          try {
-            const productIdsArray = Array.from(allProductIds);
-            clientLogger.log('📦 Loading products from batch endpoint, count:', productIdsArray.length, 'IDs:', productIdsArray.slice(0, 10));
-            
-            // Используем api.getProductAlternatives или создаем отдельный метод для batch
-            // Пока используем fetch напрямую, но с улучшенной обработкой ошибок
-            const productsResponse = await fetch('/api/products/batch', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-Telegram-Init-Data': window.Telegram.WebApp.initData,
-              },
-              body: JSON.stringify({ productIds: productIdsArray }),
-            });
-            
-            clientLogger.log('📡 Batch API response status:', productsResponse.status, productsResponse.ok);
 
-            if (productsResponse.ok) {
-              const productsData = await productsResponse.json();
-              clientLogger.log('✅ Products loaded from batch:', productsData.products?.length || 0);
-              
-              if (productsData.products && Array.isArray(productsData.products)) {
-                let addedCount = 0;
-                productsData.products.forEach((p: any) => {
-                  if (p && p.id) {
-                  productsMap.set(p.id, {
-                    id: p.id,
-                      name: p.name || 'Неизвестный продукт',
-                    brand: { name: p.brand?.name || p.brand || 'Unknown' },
-                      price: p.price || null,
-                    imageUrl: p.imageUrl || null,
-                    // Используем descriptionUser для синхронизации с главной страницей
-                    description: p.descriptionUser || p.description || null,
-                  });
-                    addedCount++;
-              }
-                });
-                productsLoadedFromAPI = productsMap.size > 0;
-                clientLogger.log(`✅ Products added to map from API: ${addedCount}/${productsData.products.length}, total size: ${productsMap.size}`);
-                
-                if (productsMap.size === 0 && productsData.products.length > 0) {
-                  console.error('❌ CRITICAL: Products array is not empty but nothing was added to map!', {
-                    productsData: productsData.products.slice(0, 3),
-                  });
-                }
-              } else {
-                clientLogger.warn('⚠️ productsData.products is not an array:', {
-                  type: typeof productsData.products,
-                  isArray: Array.isArray(productsData.products),
-                  data: productsData,
-                });
-              }
-            } else {
-              const errorText = await productsResponse.text().catch(() => '');
-              console.error('❌ Failed to load products from batch endpoint:', {
-                status: productsResponse.status,
-                statusText: productsResponse.statusText,
-                error: errorText.substring(0, 200),
-                productIdsCount: productIdsArray.length,
-              });
-            }
-          } catch (err: any) {
-            console.error('❌ Error loading products from batch endpoint:', {
-              error: err,
-              message: err?.message,
-              stack: err?.stack,
-              productIdsCount: allProductIds.size,
-            });
-          }
-        } else {
-          clientLogger.warn('⚠️ Cannot load products from API:', {
-            hasProductIds: allProductIds.size > 0,
-            hasWindow: typeof window !== 'undefined',
-            hasInitData: typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData,
-            initDataLength: typeof window !== 'undefined' && window.Telegram?.WebApp?.initData?.length || 0,
+        if (allProductIds.size > 0) {
+          const loadedProductsMap = await loadProductsBatch(Array.from(allProductIds));
+          loadedProductsMap.forEach((product, id) => {
+            productsMap.set(id, product);
           });
+          productsLoadedFromAPI = productsMap.size > 0;
         }
 
         // Fallback: если продукты не загрузились из API, используем продукты из плана
@@ -624,7 +1327,7 @@ export default function PlanPage() {
               productsMap.set(p.id, {
                 id: p.id,
                 name: p.name,
-                brand: { name: p.brand?.name || p.brand || 'Unknown' },
+                brand: { name: p.brand?.name || (typeof p.brand === 'string' ? p.brand : 'Unknown') },
                 price: p.price,
                 imageUrl: p.imageUrl || null,
                 description: p.description || p.descriptionUser || null,
@@ -658,7 +1361,7 @@ export default function PlanPage() {
           productsMap.set(p.id, {
             id: p.id,
             name: p.name,
-            brand: { name: p.brand?.name || p.brand || 'Unknown' },
+            brand: { name: p.brand?.name || (typeof p.brand === 'string' ? p.brand : 'Unknown') },
             price: p.price,
             imageUrl: p.imageUrl || null,
             description: p.description || p.descriptionUser || null,
@@ -674,6 +1377,20 @@ export default function PlanPage() {
       // ИСПРАВЛЕНО: Сохраняем флаг expired из ответа API
       const planResponse = plan as any;
       const planExpired = planResponse?.expired === true;
+      
+      // ИСПРАВЛЕНО: Устанавливаем hasPlanProgress = true после успешной обработки плана
+      // Это гарантирует, что пользователь не будет редиректиться на /quiz при следующем заходе
+      try {
+        const { setHasPlanProgress } = await import('@/lib/user-preferences');
+        await setHasPlanProgress(true);
+        clientLogger.log('✅ hasPlanProgress установлен в true после успешной загрузки плана');
+      } catch (error) {
+        clientLogger.warn('⚠️ Ошибка при установке hasPlanProgress (некритично):', error);
+      }
+
+      // ИСПРАВЛЕНО: Очищаем quiz_just_submitted при успешной загрузке плана
+      // Иначе при заходе на /home будет редирект обратно на /plan
+      safeSessionStorageRemove('quiz_just_submitted');
       
       safeSetPlanData({
         plan28: plan28 || undefined,
@@ -769,981 +1486,156 @@ export default function PlanPage() {
     }
   };
 
-  const MAX_RETRIES = 5;
-  
-  const loadPlan = async (retryCount = 0, force = false) => {
-    // ИСПРАВЛЕНО: Не загружаем план, если мы в режиме генерации
-    // Проверяем state из URL напрямую, чтобы избежать проблем с задержкой searchParams
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const state = urlParams.get('state');
-      if (!force && state === 'generating') {
-        clientLogger.log('⏸️ Skipping loadPlan - plan is being generated');
-        return;
-      }
-    }
-    
-    const scheduleRetryAfterCooldown = (context: string) => {
-      if (!hasActivePlanGenerationCooldown()) {
-        return false;
-      }
-
-      const waitMs = getPlanCooldownMsRemaining();
-      if (waitMs <= 0) {
-        return false;
-      }
-
-      const waitSeconds = Math.ceil(waitMs / 1000);
-      clientLogger.log(`${context}⏳ Waiting ${waitSeconds}s before retrying plan flow`);
-      safeSetLoading(true);
-      safeSetError(null);
-
-      if (loadPlanTimeoutRef.current) {
-        clearTimeout(loadPlanTimeoutRef.current);
-      }
-
-      loadPlanTimeoutRef.current = setTimeout(() => {
-        loadPlanTimeoutRef.current = null;
-        if (isMountedRef.current) {
-          loadPlan(retryCount);
-        }
-      }, waitMs);
-
-      return true;
-    };
-
-    // Защита от бесконечных попыток
-    if (retryCount >= MAX_RETRIES) {
-      console.error('❌ Max retries reached, stopping to prevent infinite loop');
-      safeSetError('Не удалось загрузить план. Попробуйте обновить страницу.');
-      safeSetLoading(false);
-      return;
-    }
-    
-    try {
-      // Проверяем, что компонент еще смонтирован
-      if (!isMountedRef.current) {
-        clientLogger.warn('⚠️ Component unmounted, skipping loadPlan');
-        return;
-      }
-      
-      // Сбрасываем ошибку только при первой попытке
-      if (retryCount === 0) {
-        safeSetLoading(true);
-        safeSetError(null);
-      }
-
-      // Проверяем, что приложение открыто через Telegram
-      // В development не блокируем, чтобы можно было тестировать локально без Mini App
-      if ((typeof window === 'undefined' || !window.Telegram?.WebApp) && !isDev) {
-        safeSetError('telegram_required');
-        safeSetLoading(false);
-        return;
-      }
-
-      // Ждем готовности initData (может быть не сразу доступен)
-      let initData: string | undefined = window.Telegram?.WebApp?.initData || undefined;
-      if (!initData) {
-        // Ждем максимум 2 секунды для инициализации
-        await new Promise<void>((resolve) => {
-          let attempts = 0;
-          const maxAttempts = 20; // 20 * 100ms = 2 секунды
-          let checkInterval: NodeJS.Timeout | null = null;
-          try {
-            checkInterval = setInterval(() => {
-              attempts++;
-              initData = window.Telegram?.WebApp?.initData || undefined;
-              if (initData || attempts >= maxAttempts) {
-                if (checkInterval) {
-                  clearInterval(checkInterval);
-                  checkInterval = null;
-                }
-                resolve();
-              }
-            }, 100);
-          } catch (error) {
-            // Гарантируем очистку интервала даже при ошибке
-            if (checkInterval) {
-              clearInterval(checkInterval);
-            }
-            resolve();
-          }
-        });
-      }
-
-      if (!initData && !isDev) {
-        console.error('❌ initData not available after waiting');
-        safeSetError('telegram_required');
-        safeSetLoading(false);
-        return;
-      }
-
-      // Логируем только в development и только если initData реально есть
-      if (process.env.NODE_ENV === 'development' && initData) {
-        clientLogger.log('✅ initData available, length:', initData.length);
-      }
-
-      // Загружаем план через API - сначала пытаемся из кэша
-      // НЕ делаем лишних проверок профиля/прогресса - это замедляет загрузку
-      let plan;
-      try {
-        clientLogger.log('🔄 Attempting to load plan from cache...');
-        plan = await api.getPlan() as GeneratedPlan | null;
-        clientLogger.log('✅ Plan loaded from cache:', {
-            hasPlan28: !!plan?.plan28,
-            hasWeeks: !!plan?.weeks,
-            weeksCount: plan?.weeks?.length || 0,
-            plan28DaysCount: plan?.plan28?.days?.length || 0,
-          planKeys: Object.keys(plan || {}),
-          });
-      } catch (planError: any) {
-        console.error('❌ Error loading plan from cache:', {
-          status: planError?.status,
-          message: planError?.message,
-          error: planError,
-          stack: planError?.stack,
-        });
-        
-        // Если план не найден (404), проверяем, не идет ли уже rate limit cooldown
-        // ИСПРАВЛЕНО: Проверяем rate limit ПЕРЕД попыткой генерации, чтобы избежать лишних запросов
-        if (planError?.status === 404) {
-          // Проверяем, есть ли активный cooldown от предыдущих попыток
-          if (hasActivePlanGenerationCooldown()) {
-            const waitMs = getPlanCooldownMsRemaining();
-            const waitSeconds = Math.ceil(waitMs / 1000);
-            clientLogger.warn(`🔄 Plan not found but rate limit cooldown active (${waitSeconds}s), waiting before retry...`);
-            
-            if (scheduleRetryAfterCooldown('Plan generation temporarily unavailable due to rate limit. ')) {
-              return;
-            }
-          }
-          
-          // Пробуем сгенерировать план только если нет активного cooldown
-          const generatedPlan = await tryGeneratePlan({ 
-            checkProfile: true,
-            logPrefix: '🔄 Plan not in cache, '
-          });
-          
-          if (generatedPlan) {
-            await processPlanData(generatedPlan);
-            return;
-          }
-          
-          // Если генерация не удалась и есть cooldown - ждем
-          if (scheduleRetryAfterCooldown('Plan generation temporarily unavailable. ')) {
-            return;
-          }
-          
-          // План не сгенерировался - проверяем, есть ли профиль
-          // ВАЖНО: Очищаем кэш профиля перед проверкой, чтобы получить актуальные данные
-          if (typeof window !== 'undefined') {
-            try {
-              sessionStorage.removeItem('profile_check_cache');
-              sessionStorage.removeItem('profile_check_cache_timestamp');
-              clientLogger.log('✅ Кэш профиля очищен перед проверкой');
-            } catch (cacheError) {
-              clientLogger.warn('⚠️ Не удалось очистить кэш профиля:', cacheError);
-            }
-          }
-          
-          const profileCheck = await api.getCurrentProfile() as ProfileResponse | null;
-          if (!profileCheck) {
-            // Нет профиля - показываем ошибку
-            clientLogger.log('❌ No profile found after cache clear, showing error');
-            safeSetError('no_profile');
-            safeSetLoading(false);
-            return;
-          }
-          
-          clientLogger.log('✅ Profile found after cache clear:', {
-            profileId: profileCheck.id,
-            profileVersion: profileCheck.version,
-          });
-          
-          // Профиль есть, но план не сгенерировался - возможно еще обрабатывается
-          clientLogger.log('⚠️ Profile exists but plan not generated, will retry...');
-        }
-        
-        // Если это не 404 или регенерация не удалась - пробуем еще раз или показываем лоадер
-        // Не показываем ошибку сразу - возможно план генерируется
-        if (retryCount < 2 && (
-          planError?.status === 500 ||
-          planError?.status === 502 ||
-          planError?.status === 503 ||
-          planError?.status === 504 ||
-          planError?.message?.includes('Internal server error') ||
-          planError?.message?.includes('timeout')
-        )) {
-          clientLogger.log(`⏳ Ошибка сервера, повторяем через 1 секунду... (попытка ${retryCount + 1}/2)`);
-          safeSetLoading(true);
-          safeSetError(null);
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          return loadPlan(retryCount + 1);
-        }
-        
-        // Если это не 404 и не серверная ошибка - показываем лоадер (возможно план генерируется)
-        if (planError?.status !== 404) {
-          clientLogger.log('⚠️ Unexpected error, showing loader (plan might be generating)');
-          safeSetLoading(true);
-          safeSetError(null);
-          // Пробуем еще раз через 2 секунды
-          // ВАЖНО: Очищаем предыдущий таймер и сохраняем новый
-          if (loadPlanTimeoutRef.current) {
-            clearTimeout(loadPlanTimeoutRef.current);
-          }
-          loadPlanTimeoutRef.current = setTimeout(() => {
-            loadPlanTimeoutRef.current = null;
-            if (isMountedRef.current) {
-              loadPlan(retryCount + 1);
-            }
-          }, 2000);
-          return;
-        }
-        
-        // Для 404 - уже обработано выше
-        clientLogger.log('⚠️ Plan not found in cache');
-        plan = null;
-      }
-      
-      // Проверяем наличие плана (новый формат plan28 или старый weeks)
-      if (!plan || (!plan.plan28 && (!plan.weeks || plan.weeks.length === 0))) {
-        // ИСПРАВЛЕНО: Если план не найден, проверяем наличие профиля и ответов
-        // Если есть профиль и ответы, но нет плана - это ситуация, которую нужно исправить
-        try {
-          const profileCheck = await api.getCurrentProfile() as any;
-          if (profileCheck) {
-            // Профиль есть - пробуем регенерировать план
-            // ИСПРАВЛЕНО: Более агрессивная генерация плана при отсутствии плана, но наличии профиля
-            clientLogger.log('🔄 Plan not found but profile exists - attempting to generate plan immediately...', {
-              profileId: profileCheck.id,
-              profileVersion: profileCheck.version,
-              retryCount,
-            });
-            
-            // ИСПРАВЛЕНО: Показываем лоадер генерации плана
-            safeSetLoading(true);
-            safeSetError(null);
-            
-            try {
-              // ИСПРАВЛЕНО: Проверяем rate limit cooldown ПЕРЕД попыткой генерации
-              if (hasActivePlanGenerationCooldown()) {
-                const waitMs = getPlanCooldownMsRemaining();
-                const waitSeconds = Math.ceil(waitMs / 1000);
-                clientLogger.warn(`🔄 Plan not found but rate limit cooldown active (${waitSeconds}s), waiting before retry...`, {
-                  profileId: profileCheck.id,
-                  profileVersion: profileCheck.version,
-                });
-                
-                if (scheduleRetryAfterCooldown('Plan generation temporarily paused (profile exists, rate limit). ')) {
-                  return;
-                }
-              }
-              
-              const generatedPlan = await generatePlanWithHandling('🔄 Plan not found but profile exists - ');
-
-              if (!generatedPlan && scheduleRetryAfterCooldown('Plan generation temporarily paused (profile exists). ')) {
-                return;
-              }
-
-              // ИСПРАВЛЕНО: Проверяем оба формата плана
-              const hasPlan28 = generatedPlan?.plan28 && generatedPlan.plan28.days && generatedPlan.plan28.days.length > 0;
-              const hasWeeks = generatedPlan?.weeks && Array.isArray(generatedPlan.weeks) && generatedPlan.weeks.length > 0;
-              
-              if (generatedPlan && (hasPlan28 || hasWeeks)) {
-                clientLogger.log('✅ Plan generated successfully, processing...', {
-                  hasPlan28,
-                  hasWeeks,
-                  plan28Days: generatedPlan?.plan28?.days?.length || 0,
-                  weeksCount: generatedPlan?.weeks?.length || 0,
-                });
-                await processPlanData(generatedPlan);
-                return;
-              } else {
-                // План не сгенерировался - возможно еще обрабатывается или ошибка
-                clientLogger.warn('⚠️ Plan generation returned empty result', {
-                  hasPlan: !!generatedPlan,
-                  hasPlan28,
-                  hasWeeks,
-                  planKeys: generatedPlan ? Object.keys(generatedPlan) : [],
-                });
-                
-                // ИСПРАВЛЕНО: Если это не последняя попытка, пробуем еще раз
-                if (retryCount < MAX_RETRIES - 1) {
-                  clientLogger.log('⏳ Retrying plan generation...', { retryCount: retryCount + 1 });
-                  safeSetLoading(true);
-                  safeSetError(null);
-                  setTimeout(() => {
-                    loadPlan(retryCount + 1);
-                  }, 3000);
-                  return;
-                } else {
-                  // Последняя попытка - показываем ошибку
-                  safeSetError('Не удалось создать план. Попробуйте обновить страницу или пройдите анкету заново.');
-                  safeSetLoading(false);
-                  return;
-                }
-              }
-            } catch (generateError: any) {
-              console.error('❌ Failed to regenerate plan:', generateError);
-              
-              // ИСПРАВЛЕНО: Детальное логирование ошибки
-              clientLogger.error('❌ Plan generation failed', {
-                error: generateError?.message,
-                status: generateError?.status,
-                statusText: generateError?.statusText,
-                stack: generateError?.stack?.substring(0, 300),
-                retryCount,
-              });
-              
-              // Если это ошибка 404 (нет профиля) и это не первая попытка - показываем ошибку
-              if ((generateError?.status === 404 || generateError?.message?.includes('No skin profile') || generateError?.message?.includes('Profile not found')) && retryCount >= 2) {
-                safeSetError('no_profile');
-                safeSetLoading(false);
-                return;
-              }
-              
-              // ИСПРАВЛЕНО: Для других ошибок пробуем еще раз, если не последняя попытка
-              if (retryCount < MAX_RETRIES - 1) {
-                clientLogger.log('⏳ Plan generation error, but profile exists - retrying...', {
-                  error: generateError?.message,
-                  retryCount: retryCount + 1,
-                });
-                safeSetLoading(true);
-                safeSetError(null);
-                setTimeout(() => {
-                  loadPlan(retryCount + 1);
-                }, 3000);
-                return;
-              } else {
-                // Последняя попытка - показываем ошибку
-                safeSetError('Не удалось создать план. Попробуйте обновить страницу.');
-                safeSetLoading(false);
-                return;
-              }
-            }
-          } else {
-            // Профиля нет - показываем ошибку только после нескольких попыток
-            if (retryCount >= 2) {
-              safeSetError('no_profile');
-              safeSetLoading(false);
-              return;
-            }
-            // При первой попытке показываем лоадер, возможно профиль еще создается
-            clientLogger.log('⏳ Profile not found, but might be creating - waiting and retrying...');
-            safeSetLoading(true);
-            safeSetError(null);
-            setTimeout(() => {
-              loadPlan(retryCount + 1);
-            }, 2000);
-            return;
-          }
-        } catch (profileCheckError: any) {
-          console.error('❌ Error checking profile:', profileCheckError);
-          // Если ошибка проверки профиля - возможно временная проблема, пробуем еще раз
-          if (retryCount < 2) {
-            clientLogger.log('⏳ Profile check error, retrying...');
-            safeSetLoading(true);
-            safeSetError(null);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            return loadPlan(retryCount + 1);
-          }
-          // После нескольких попыток - показываем ошибку
-          safeSetError('no_profile');
-          safeSetLoading(false);
-          return;
-        }
-      }
-
-      // Получаем профиль для scores и другой информации
-      // НЕ требуем профиль для показа плана, если план уже есть
-      let profile;
-      try {
-        profile = await api.getCurrentProfile() as ProfileResponse | null;
-      } catch (profileError: any) {
-        // Если профиль не найден, но план есть - это нормально, продолжаем с план28
-        // Профиль нужен только для старого формата плана
-        if (process.env.NODE_ENV === 'development') {
-          clientLogger.warn('Could not load profile, but plan exists - continuing with plan only');
-        }
-        profile = null;
-      }
-      
-      // Если план есть в новом формате plan28, можем продолжать без профиля
-      if (plan.plan28) {
-        if (process.env.NODE_ENV === 'development') {
-          clientLogger.log('✅ Using plan28 format, profile not required');
-        }
-        // Продолжаем дальше без проверки профиля
-      } else if (!profile) {
-        // Для старого формата нужен профиль
-        if (retryCount < 3) {
-          if (process.env.NODE_ENV === 'development') {
-            clientLogger.log(`⏳ Профиль пустой, ждем 2 секунды... (попытка ${retryCount + 1}/3)`);
-          }
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          return loadPlan(retryCount + 1);
-        }
-        safeSetError('no_profile');
-        safeSetLoading(false);
-        return;
-      }
-
-      // План может быть истёкшим (28+ дней) — UX: не редиректим и не показываем отдельный экран.
-      // PaymentGate заблюрит контент и покажет оплату, а ниже будет ссылка "Перепройти анкету".
-      // Флаг expired сохраняется внутри processPlanData → planExpired.
-      
-      // Используем общую функцию обработки плана (избегаем дублирования кода)
-      await processPlanData(plan);
-      return;
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('Error loading plan:', error);
-      
-      // При ошибке не показываем экран ошибки - показываем лоадер
-      // Проверяем, есть ли профиль или прогресс - если есть, план должен существовать
-      // ИСПРАВЛЕНО: Защита от множественных вызовов - используем локальную переменную
-      let progressCheckInProgress = false;
-      try {
-        if (!progressCheckInProgress) {
-          progressCheckInProgress = true;
-        const [profileCheck, progressCheck] = await Promise.allSettled([
-          api.getCurrentProfile() as Promise<any>,
-          api.getPlanProgress() as Promise<any>,
-        ]);
-        
-        const hasProfile = profileCheck.status === 'fulfilled' && !!profileCheck.value;
-        const hasProgress = progressCheck.status === 'fulfilled' && 
-          !!progressCheck.value && 
-          (progressCheck.value.completedDays?.length > 0 || progressCheck.value.currentDay > 1);
-        
-        if (hasProfile || hasProgress) {
-          // План должен существовать - но сначала проверяем, не идет ли rate limit cooldown
-          if (hasActivePlanGenerationCooldown()) {
-            const waitMs = getPlanCooldownMsRemaining();
-            const waitSeconds = Math.ceil(waitMs / 1000);
-            clientLogger.warn(`🔄 Plan should exist but rate limit cooldown active (${waitSeconds}s), waiting...`);
-            
-            if (scheduleRetryAfterCooldown('Plan regeneration paused due to rate limit cooldown. ')) {
-              progressCheckInProgress = false;
-              return;
-            }
-          }
-          
-          // План должен существовать - пробуем регенерировать
-          clientLogger.log('🔄 Plan should exist, attempting to regenerate...');
-          safeSetLoading(true);
-          safeSetError(null);
-          try {
-            const generatedPlan = await generatePlanWithHandling('🔄 Plan should exist - ');
-            if (!generatedPlan && scheduleRetryAfterCooldown('Plan regeneration paused due to cooldown. ')) {
-              progressCheckInProgress = false;
-              return;
-            }
-            if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
-              clientLogger.log('✅ Plan regenerated successfully, processing...');
-              await processPlanData(generatedPlan);
-                progressCheckInProgress = false;
-              return;
-            }
-          } catch (generateError: any) {
-            console.error('❌ Failed to regenerate plan:', generateError);
-            // Если слишком много попыток - показываем ошибку
-            if (retryCount >= MAX_RETRIES - 1) {
-              safeSetError('Не удалось загрузить план. Попробуйте обновить страницу.');
-              safeSetLoading(false);
-                progressCheckInProgress = false;
-              return;
-            }
-            // Пробуем еще раз через 3 секунды, но увеличиваем счетчик попыток
-            safeSetLoading(true);
-            safeSetError(null);
-              progressCheckInProgress = false;
-            setTimeout(() => {
-              loadPlan(retryCount + 1);
-            }, 3000);
-            return;
-          }
-        } else {
-          // Профиля нет - показываем ошибку профиля
-          safeSetError('no_profile');
-      safeSetLoading(false);
-            progressCheckInProgress = false;
-          return;
-          }
-          progressCheckInProgress = false;
-        }
-      } catch (checkError) {
-        console.error('❌ Error checking profile/progress:', checkError);
-        progressCheckInProgress = false;
-        // Если слишком много попыток - показываем ошибку
-        if (retryCount >= MAX_RETRIES - 1) {
-          safeSetError('Не удалось загрузить план. Попробуйте обновить страницу.');
-          safeSetLoading(false);
-          return;
-        }
-        // При ошибке проверки пробуем еще раз через 2 секунды, но увеличиваем счетчик попыток
-        safeSetLoading(true);
-        safeSetError(null);
-        setTimeout(() => {
-          loadPlan(retryCount + 1);
-        }, 2000);
-        return;
-      }
-    }
-  };
-
-  // Старый код обработки плана удален - теперь используется processPlanData
-
-  // Остальная часть UI компонента
-
-  // Показываем специальный экран генерации плана
-  if (generatingState === 'generating') {
-    return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        minHeight: '100vh', 
-        flexDirection: 'column', 
-        gap: '24px',
-        padding: '20px',
-        background: 'linear-gradient(135deg, #0A5F59 0%, #0d7a72 100%)',
-        color: 'white'
-      }}>
-        <div style={{ fontSize: '24px', fontWeight: 'bold', textAlign: 'center' }}>
-          Подбираем уход под вашу кожу…
-        </div>
-        <div style={{ 
-          width: '280px', 
-          height: '8px', 
-          backgroundColor: 'rgba(255,255,255,0.2)', 
-          borderRadius: '4px',
-          overflow: 'hidden'
-        }}>
-          <div style={{
-            height: '100%',
-            width: '66%',
-            backgroundColor: 'white',
-            borderRadius: '4px',
-            animation: 'pulse 2s ease-in-out infinite',
-          }} />
-        </div>
-        <div style={{ fontSize: '14px', opacity: 0.9, textAlign: 'center', maxWidth: '300px' }}>
-          Анализ кожи → Подбор средств → Формирование плана
-        </div>
-        <style jsx>{`
-          @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-          }
-        `}</style>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        flexDirection: 'column',
-        gap: '16px',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-      }}>
-        <div style={{
-          width: '48px',
-          height: '48px',
-          border: '4px solid rgba(10, 95, 89, 0.2)',
-          borderTop: '4px solid #0A5F59',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
-        }}></div>
-        <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка плана...</div>
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
-      </div>
-    );
-  }
-
-  // План с истекшим сроком теперь не имеет отдельного экрана:
-  // PaymentGate отработает как paywall + блюр, а ретейк-ссылка отображается в оверлее PaymentGate.
-
-  if (error === 'telegram_required') {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-      }}>
-        <div style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          borderRadius: '24px',
-          padding: '32px',
-          maxWidth: '500px',
-          width: '100%',
-          textAlign: 'center',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-        }}>
-          <h2 style={{
-            fontSize: '24px',
-            fontWeight: 'bold',
-            color: '#0A5F59',
-            marginBottom: '12px',
-          }}>
-            Откройте через Telegram
-          </h2>
-          <p style={{
-            color: '#475467',
-            marginBottom: '24px',
-            lineHeight: '1.6',
-          }}>
-            Для просмотра плана необходимо открыть приложение через Telegram Mini App.
-          </p>
-          <a
-            href="/"
-            style={{
-              display: 'inline-block',
-              padding: '12px 24px',
-              borderRadius: '12px',
-              backgroundColor: '#0A5F59',
-              color: 'white',
-              textDecoration: 'none',
-              fontSize: '16px',
-              fontWeight: '600',
-              boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
-            }}
-          >
-            На главную
-          </a>
-        </div>
-      </div>
-    );
-  }
-
-  if (error === 'plan_generating') {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-      }}>
-        <div style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          borderRadius: '24px',
-          padding: '32px',
-          maxWidth: '500px',
-          width: '100%',
-          textAlign: 'center',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-        }}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            border: '4px solid rgba(10, 95, 89, 0.2)',
-            borderTop: '4px solid #0A5F59',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 24px',
-          }}></div>
-          <h2 style={{
-            fontSize: '24px',
-            fontWeight: 'bold',
-            color: '#0A5F59',
-            marginBottom: '12px',
-          }}>
-            Генерация плана
-          </h2>
-          <p style={{
-            color: '#475467',
-            marginBottom: '24px',
-            lineHeight: '1.6',
-          }}>
-            План ухода формируется. Это может занять несколько секунд.
-          </p>
-          <button
-            onClick={async () => {
-              safeSetError(null);
-              safeSetLoading(true);
-              try {
-                // Явно генерируем план
-                if (process.env.NODE_ENV === 'development') {
-                  clientLogger.log('🔄 User requested plan generation...');
-                }
-                
-                // ИСПРАВЛЕНО: Проверяем rate limit cooldown ПЕРЕД попыткой генерации
-                if (hasActivePlanGenerationCooldown()) {
-                  const waitMs = getPlanCooldownMsRemaining();
-                  const waitSeconds = Math.ceil(waitMs / 1000);
-                  clientLogger.log(`⏳ Manual refresh delayed due to rate limit cooldown (${waitSeconds}s).`);
-                  
-                  // Ждем окончания cooldown перед повторной попыткой
-                  safeSetLoading(true);
-                  safeSetError(null);
-                  if (loadPlanTimeoutRef.current) {
-                    clearTimeout(loadPlanTimeoutRef.current);
-                  }
-                  loadPlanTimeoutRef.current = setTimeout(() => {
-                    loadPlanTimeoutRef.current = null;
-                    if (isMountedRef.current) {
-                      loadPlan(0);
-                    }
-                  }, waitMs);
-                  return;
-                }
-                
-                const generatedPlan = await generatePlanWithHandling('🔄 Manual refresh - ');
-                if (!generatedPlan) {
-                  if (hasActivePlanGenerationCooldown()) {
-                    const waitMs = getPlanCooldownMsRemaining();
-                    const waitSeconds = Math.ceil(waitMs / 1000);
-                    clientLogger.log(`⏳ Manual refresh delayed due to cooldown (${waitSeconds}s).`);
-                    if (loadPlanTimeoutRef.current) {
-                      clearTimeout(loadPlanTimeoutRef.current);
-                    }
-                    loadPlanTimeoutRef.current = setTimeout(() => {
-                      loadPlanTimeoutRef.current = null;
-                      if (isMountedRef.current) {
-                        loadPlan(0);
-                      }
-                    }, waitMs);
-                    safeSetError('plan_generating');
-                    return;
-                  }
-                  
-                  await loadPlan(0);
-                  return;
-                }
-                if (process.env.NODE_ENV === 'development') {
-                  clientLogger.log('✅ Plan generated successfully', {
-                    hasPlan28: !!generatedPlan?.plan28,
-                    hasWeeks: !!generatedPlan?.weeks,
-                  });
-                }
-                
-                // Используем план напрямую из ответа генерации, не перезагружаем из кэша
-                // Это избегает race condition, когда кэш еще не успел обновиться
-                if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
-                  await processPlanData(generatedPlan);
-                } else {
-                  // Если план не в ожидаемом формате, все же пытаемся загрузить из кэша
-                  await loadPlan(0);
-                }
-              } catch (generateError: any) {
-                console.error('❌ Failed to generate plan:', generateError);
-                safeSetError('plan_generating');
-                safeSetLoading(false);
-              }
-            }}
-            style={{
-              display: 'inline-block',
-              padding: '12px 24px',
-              borderRadius: '12px',
-              backgroundColor: '#0A5F59',
-              color: 'white',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '16px',
-              fontWeight: '600',
-              boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
-            }}
-          >
-            Обновить
-          </button>
-          <style>{`
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          `}</style>
-        </div>
-      </div>
-    );
-  }
-
-  // Показываем ошибку только если точно нет профиля (не показываем если просто загрузка)
-  if (error === 'no_profile' && !loading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-      }}>
-        <div style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          borderRadius: '24px',
-          padding: '32px',
-          maxWidth: '500px',
-          width: '100%',
-          textAlign: 'center',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-        }}>
-          <h2 style={{
-            fontSize: '24px',
-            fontWeight: 'bold',
-            color: '#0A5F59',
-            marginBottom: '12px',
-          }}>
-            Профиль не найден
-          </h2>
-          <p style={{
-            color: '#475467',
-            marginBottom: '24px',
-            lineHeight: '1.6',
-          }}>
-            Для просмотра плана необходимо сначала пройти анкету.
-          </p>
-          <a
-            href="/quiz"
-            style={{
-              display: 'inline-block',
-              padding: '12px 24px',
-              borderRadius: '12px',
-              backgroundColor: '#0A5F59',
-              color: 'white',
-              textDecoration: 'none',
-              fontSize: '16px',
-              fontWeight: '600',
-              boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
-            }}
-          >
-            Пройти анкету
-          </a>
-        </div>
-      </div>
-    );
-  }
-  
-  // Если нет planData, но загрузка еще идет - показываем лоадер
-  if (!planData && loading) {
-    // Лоадер уже показан выше
+  // ИСПРАВЛЕНО: Добавлен return statement для рендеринга компонента
+  // Если редиректим на /quiz, не рендерим ничего
+  if (shouldRedirectToQuiz) {
     return null;
   }
-  
-  // Если нет planData и загрузка завершена, но нет ошибки - показываем лоадер
-  // (это не должно происходить, но на всякий случай)
-  if (!planData && !loading && !error) {
-    // Показываем лоадер
+
+  // ДИАГНОСТИКА: Логируем состояние для отладки
+  if (isDev) {
+    console.log('🔍 [PlanPage] Render state:', {
+      loading,
+      hasPlanData: !!planData,
+      hasPlan28: !!planData?.plan28,
+      hasUser: !!planData?.user,
+      hasProfile: !!planData?.profile,
+      hasPlan: !!planData?.plan,
+      generatingState,
+      error,
+      shouldRedirectToQuiz,
+    });
+  }
+
+  // Если загрузка, показываем лоадер
+  if (loading || !planData) {
+    // Показываем лоадер генерации, если план генерируется
+    if (generatingState === 'generating') {
+      return <PlanLoadingView message="Генерируем ваш план..." />;
+    }
+
+    // Обычный лоадер
+    return <PlanLoadingView message="Загружаем план..." />;
+  }
+
+  // Если ошибка, показываем сообщение об ошибке
+  if (error && error !== 'no_profile') {
     return (
       <div style={{
-        minHeight: '100vh',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
+        minHeight: '100vh',
+        padding: '20px',
         background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
       }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            border: '4px solid #E8FBF7',
-            borderTop: '4px solid #0A5F59',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 16px',
-          }} />
-          <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка плана...</div>
-        </div>
+        <p style={{
+          fontSize: '18px',
+          color: '#D32F2F',
+          marginBottom: '20px',
+          textAlign: 'center',
+        }}>
+          {error}
+        </p>
+        <button
+          onClick={() => {
+            setError(null);
+            setLoading(true);
+            loadPlan(0);
+          }}
+          style={{
+            padding: '12px 24px',
+            background: '#0A5F59',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          Попробовать снова
+        </button>
       </div>
     );
   }
 
+  // Рендерим план
   // Используем новый компонент, если есть plan28
-  if (planData && (planData as any).plan28) {
-    // Проверяем, что productsMap существует, иначе создаем пустой Map
-    let productsMap: Map<number, any> = new Map();
-    
-    // Пытаемся получить productsMap из planData
-    const productsMapFromData = (planData as any).productsMap || (planData as any).products;
-    
-    // Если productsMap является Map, используем его
-    if (productsMapFromData instanceof Map) {
-      productsMap = productsMapFromData;
-    } else if (productsMapFromData && typeof productsMapFromData === 'object' && productsMapFromData !== null) {
-      // Если это объект, преобразуем в Map
-      clientLogger.log('⚠️ Converting productsMap from object to Map');
-      try {
-        Object.entries(productsMapFromData).forEach(([key, value]) => {
-          const numKey = parseInt(key);
-          if (!isNaN(numKey) && value) {
-            productsMap.set(numKey, value);
-          }
-        });
-      } catch (err) {
-        console.error('❌ Error converting productsMap:', err);
-        productsMap = new Map();
-      }
-    } else {
-      // Если productsMap не определен или не является объектом/Map, создаем пустой Map
-      clientLogger.warn('⚠️ productsMap is not available, using empty Map');
-      productsMap = new Map();
-    }
-    
-    clientLogger.log('✅ Final productsMap size:', productsMap.size);
-    
+  if (planData.plan28) {
     return (
-      <Suspense fallback={
-        <div style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-        }}>
-          <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка плана...</div>
-        </div>
-      }>
-      <PlanPageClientNew
-        plan28={(planData as any).plan28}
-        products={productsMap}
-        wishlist={planData.wishlist}
-        currentDay={planData.currentDay}
-        completedDays={planData.progress?.completedDays || []}
-        planExpired={planData.planExpired || false}
-      />
+      <Suspense fallback={<PlanLoadingView message="Загружаем план..." />}>
+        <PlanPageClientNew
+          plan28={planData.plan28}
+          products={planData.productsMap || planData.products || new Map()}
+          wishlist={planData.wishlist || []}
+          currentDay={planData.currentDay || 1}
+          completedDays={planData.progress?.completedDays || []}
+          planExpired={planData.planExpired || false}
+        />
       </Suspense>
     );
   }
 
-  // Иначе используем старый компонент (для обратной совместимости)
-  // Проверяем, что все необходимые поля присутствуют
-  if (!planData || !planData.user || !planData.profile || !planData.plan || !planData.progress || !planData.todayProducts || planData.todayMorning === undefined || planData.todayEvening === undefined || planData.currentWeek === undefined) {
+  // Используем старый компонент для обратной совместимости
+  if (planData.user && planData.profile && planData.plan) {
     return (
-      <div style={{ padding: '20px', textAlign: 'center' }}>
-        <p>Ошибка: недостаточно данных для отображения плана</p>
-      </div>
+      <Suspense fallback={<PlanLoadingView message="Загружаем план..." />}>
+        <PlanPageClient
+          user={planData.user}
+          profile={planData.profile}
+          plan={planData.plan}
+          progress={planData.progress || { currentDay: 1, completedDays: [] }}
+          wishlist={planData.wishlist || []}
+          currentDay={planData.currentDay || 1}
+          currentWeek={planData.currentWeek || 1}
+          todayProducts={planData.todayProducts || []}
+          todayMorning={planData.todayMorning || []}
+          todayEvening={planData.todayEvening || []}
+        />
+      </Suspense>
     );
   }
 
+  // Если данные плана неполные, показываем ошибку
   return (
-    <PlanPageClient
-      user={planData.user}
-      profile={planData.profile}
-      plan={planData.plan}
-      progress={planData.progress}
-      wishlist={planData.wishlist}
-      currentDay={planData.currentDay}
-      currentWeek={planData.currentWeek}
-      todayProducts={planData.todayProducts}
-      todayMorning={planData.todayMorning}
-      todayEvening={planData.todayEvening}
-    />
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '100vh',
+      padding: '20px',
+      background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+    }}>
+      <p style={{
+        fontSize: '18px',
+        color: '#D32F2F',
+        marginBottom: '20px',
+        textAlign: 'center',
+      }}>
+        Не удалось загрузить план. Пожалуйста, попробуйте обновить страницу.
+      </p>
+      <button
+        onClick={() => {
+          setError(null);
+          setLoading(true);
+          loadPlan(0);
+        }}
+        style={{
+          padding: '12px 24px',
+          background: '#0A5F59',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          fontSize: '16px',
+          fontWeight: 600,
+          cursor: 'pointer',
+        }}
+      >
+        Обновить
+      </button>
+    </div>
   );
 }

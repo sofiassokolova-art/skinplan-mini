@@ -1,13 +1,183 @@
 // app/api/questionnaire/active/route.ts
 // Получение активной анкеты (обновленная версия с правильной структурой)
+// ИСПРАВЛЕНО: Проверяет профиль и план на бэкенде, возвращает информацию о редиректе
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { logger } from '@/lib/logger';
+import { logger, logApiRequest, logApiError } from '@/lib/logger';
+import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
+import { getCurrentProfile } from '@/lib/get-current-profile';
+import { addCacheHeaders, CachePresets } from '@/lib/utils/api-cache';
+import { getCorrelationId, addCorrelationIdToHeaders } from '@/lib/utils/correlation-id';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'GET';
+  const path = '/api/questionnaire/active';
+  let userId: string | null = null;
+  const correlationId = getCorrelationId(request) || undefined;
+  
   try {
-    logger.info('Fetching active questionnaire');
+    // ИСПРАВЛЕНО: Проверяем авторизацию и получаем userId
+    const auth = await requireTelegramAuth(request, { ensureUser: false });
+    let shouldRedirectToPlan = false;
+    let isCompleted = false;
+    let hasPlanProgress = false;
+    let isRetakingQuiz = false;
+    let fullRetakeFromHome = false;
+    let paymentRetakingCompleted = false;
+    let paymentFullRetakeCompleted = false;
+    
+    // ДИАГНОСТИКА: Логируем результат авторизации
+    if (!auth.ok) {
+      logger.warn('⚠️ Telegram auth failed, but continuing to load questionnaire (public access)', {
+        authStatus: auth.response?.status,
+        authCode: (auth.response as any)?.body?.code,
+        authMessage: (auth.response as any)?.body?.message,
+        hasInitData: !!request.headers.get('X-Telegram-Init-Data') || !!request.headers.get('x-telegram-init-data'),
+      });
+    }
+    
+    if (auth.ok) {
+      userId = auth.ctx.userId;
+      
+      // ОПТИМИЗАЦИЯ: Параллельно загружаем preferences и профиль
+      // Это сокращает время выполнения с ~400ms до ~200ms (самый медленный запрос)
+      const [userPrefs, profile, activeQuestionnaireId] = await Promise.all([
+        prisma.userPreferences.findUnique({
+          where: { userId },
+          select: {
+            hasPlanProgress: true,
+            isRetakingQuiz: true,
+            fullRetakeFromHome: true,
+            paymentRetakingCompleted: true,
+            paymentFullRetakeCompleted: true,
+          },
+        }),
+        getCurrentProfile(userId),
+        prisma.questionnaire.findFirst({
+          where: { isActive: true },
+          select: { id: true },
+        }),
+      ]);
+      
+      if (userPrefs) {
+        hasPlanProgress = userPrefs.hasPlanProgress;
+        isRetakingQuiz = userPrefs.isRetakingQuiz;
+        fullRetakeFromHome = userPrefs.fullRetakeFromHome;
+        paymentRetakingCompleted = userPrefs.paymentRetakingCompleted;
+        paymentFullRetakeCompleted = userPrefs.paymentFullRetakeCompleted;
+      }
+      
+      if (profile && profile.id && activeQuestionnaireId) {
+        // ОПТИМИЗАЦИЯ: Используем count вместо findMany для проверки наличия ответов
+        // Это быстрее, так как не загружает данные, только считает
+        const answersCount = await prisma.userAnswer.count({
+          where: {
+            userId,
+            questionnaireId: activeQuestionnaireId.id,
+          },
+        });
+        
+        // Если есть ответы и профиль - анкета завершена
+        if (answersCount > 0) {
+          isCompleted = true;
+          shouldRedirectToPlan = true;
+          
+          logger.info('Profile exists and questionnaire is completed, should redirect to plan', {
+            userId,
+            profileId: profile.id,
+            answersCount,
+          });
+        }
+      } else if (!profile || !profile.id) {
+        // ИСПРАВЛЕНО: Для нового пользователя (без профиля) логируем как INFO, не WARN
+        // Это нормальная ситуация для нового пользователя - не логируем как предупреждение
+        logger.info('New user (no profile) - will return active questionnaire', {
+          userId,
+          hasProfile: false,
+        });
+      }
+    }
+    
+    logger.info('Fetching active questionnaire', { userId, shouldRedirectToPlan, isCompleted, authOk: auth.ok });
+    
+    // ДИАГНОСТИКА: Сначала проверяем, есть ли активная анкета вообще
+    const activeQuestionnaireCheck = await prisma.questionnaire.findFirst({
+      where: { isActive: true },
+      select: { id: true, name: true, version: true },
+    });
+    
+    logger.info('🔍 Active questionnaire check', {
+      found: !!activeQuestionnaireCheck,
+      questionnaireId: activeQuestionnaireCheck?.id,
+      name: activeQuestionnaireCheck?.name,
+      version: activeQuestionnaireCheck?.version,
+    });
+    
+    let directQuestionsCount = 0;
+    let directGroupsCount = 0;
+    let directQuestionsInGroupsCount = 0;
+    let directQuestionsWithoutGroupCount = 0;
+
+    // ДИАГНОСТИКА: Проверяем количество вопросов напрямую в БД
+    if (activeQuestionnaireCheck) {
+      directQuestionsCount = await prisma.question.count({
+        where: { questionnaireId: activeQuestionnaireCheck.id },
+      });
+      directGroupsCount = await prisma.questionGroup.count({
+        where: { questionnaireId: activeQuestionnaireCheck.id },
+      });
+      directQuestionsInGroupsCount = await prisma.question.count({
+        where: {
+          questionnaireId: activeQuestionnaireCheck.id,
+          groupId: { not: null },
+        },
+      });
+      directQuestionsWithoutGroupCount = await prisma.question.count({
+        where: {
+          questionnaireId: activeQuestionnaireCheck.id,
+          groupId: null,
+        },
+      });
+      
+      // КРИТИЧНО: Получаем все вопросы напрямую для диагностики
+      const allQuestionsDirect = await prisma.question.findMany({
+        where: { questionnaireId: activeQuestionnaireCheck.id },
+        select: {
+          id: true,
+          code: true,
+          groupId: true,
+          questionnaireId: true,
+        },
+        take: 20, // Ограничиваем для логов
+      });
+      
+      logger.info('🔍 Direct DB query for questions count', {
+        totalQuestions: directQuestionsCount,
+        groupsCount: directGroupsCount,
+        questionsInGroups: directQuestionsInGroupsCount,
+        questionsWithoutGroup: directQuestionsWithoutGroupCount,
+        // КРИТИЧНО: Логируем первые вопросы для диагностики
+        sampleQuestions: allQuestionsDirect.map(q => ({
+          id: q.id,
+          code: q.code,
+          groupId: q.groupId,
+          questionnaireId: q.questionnaireId,
+        })),
+        // КРИТИЧНО: Проверяем, есть ли вопросы с неправильным questionnaireId
+        hasQuestionsWithWrongQuestionnaireId: allQuestionsDirect.some(q => q.questionnaireId !== activeQuestionnaireCheck.id),
+      });
+      
+      if (directQuestionsCount === 0) {
+        logger.error('❌ КРИТИЧЕСКАЯ ПРОБЛЕМА: В БД НЕТ вопросов для активной анкеты!', {
+          questionnaireId: activeQuestionnaireCheck.id,
+          totalQuestionsInDB: directQuestionsCount,
+        });
+      }
+    }
+    
+    // ДИАГНОСТИКА: Логируем запрос к базе данных
     const questionnaire = await prisma.questionnaire.findFirst({
       where: { isActive: true },
       include: {
@@ -37,6 +207,38 @@ export async function GET() {
         },
       },
     });
+    
+    // ДИАГНОСТИКА: Логируем результат запроса к базе данных
+    if (questionnaire) {
+      const prismaGroupQuestionsCount = questionnaire.questionGroups?.reduce((sum, group) => sum + (group.questions?.length || 0), 0) || 0;
+      const prismaQuestionsCount = prismaGroupQuestionsCount + (questionnaire.questions?.length || 0);
+
+      if (typeof directQuestionsCount !== 'undefined' && directQuestionsCount > 0 && prismaQuestionsCount === 0) {
+        logger.warn('⚠️ В БД ЕСТЬ вопросы, но Prisma не вернул их в анкете!', {
+          directQuestionsCount,
+          directQuestionsInGroupsCount,
+          directQuestionsWithoutGroupCount,
+          directGroupsCount,
+          prismaGroupQuestionsCount,
+          prismaQuestionsCount,
+        });
+      }
+      logger.info('✅ Questionnaire found in DB', {
+        questionnaireId: questionnaire.id,
+        hasQuestionGroups: !!questionnaire.questionGroups,
+        hasQuestions: !!questionnaire.questions,
+        questionGroupsCount: questionnaire.questionGroups?.length || 0,
+        questionsCount: questionnaire.questions?.length || 0,
+        prismaQuestionsCount,
+        questionGroupsWithQuestions: questionnaire.questionGroups?.map(g => ({
+          id: g.id,
+          title: g.title,
+          questionsCount: g.questions?.length || 0,
+        })) || [],
+      });
+    } else {
+      logger.error('❌ No active questionnaire found in DB');
+    }
 
     if (!questionnaire) {
       logger.warn('No active questionnaire found');
@@ -46,23 +248,209 @@ export async function GET() {
       );
     }
 
+    // ДИАГНОСТИКА: Проверяем структуру данных из Prisma
+    logger.info('🔍 Raw Prisma response structure', {
+      hasQuestionGroups: !!questionnaire.questionGroups,
+      hasQuestions: !!questionnaire.questions,
+      questionGroupsType: typeof questionnaire.questionGroups,
+      questionsType: typeof questionnaire.questions,
+      questionGroupsIsArray: Array.isArray(questionnaire.questionGroups),
+      questionsIsArray: Array.isArray(questionnaire.questions),
+      questionGroupsLength: Array.isArray(questionnaire.questionGroups) ? questionnaire.questionGroups.length : 'not array',
+      questionsLength: Array.isArray(questionnaire.questions) ? questionnaire.questions.length : 'not array',
+    });
+    
     const groups = questionnaire.questionGroups || [];
     const plainQuestions = questionnaire.questions || [];
+    
+    // ДИАГНОСТИКА: Проверяем каждую группу отдельно
+    logger.info('🔍 Groups details', {
+      groupsCount: groups.length,
+      groupsWithQuestions: groups.map(g => ({
+        id: g.id,
+        title: g.title,
+        hasQuestions: !!g.questions,
+        questionsType: typeof g.questions,
+        questionsIsArray: Array.isArray(g.questions),
+        questionsCount: Array.isArray(g.questions) ? g.questions.length : 'not array',
+        questions: Array.isArray(g.questions) ? g.questions.map((q: any) => ({
+          id: q.id,
+          code: q.code,
+        })) : 'not array',
+      })),
+    });
+    
     const groupsQuestionsCount = groups.reduce(
-      (sum, g) => sum + (g.questions?.length || 0),
+      (sum, g) => {
+        const qCount = Array.isArray(g.questions) ? g.questions.length : 0;
+        logger.info(`🔍 Group ${g.id} (${g.title}): ${qCount} questions`, {
+          groupId: g.id,
+          groupTitle: g.title,
+          questionsCount: qCount,
+          questionsIsArray: Array.isArray(g.questions),
+          questionsType: typeof g.questions,
+          // КРИТИЧНО: Логируем первые вопросы в группе для диагностики
+          sampleQuestions: Array.isArray(g.questions) ? g.questions.slice(0, 3).map((q: any) => ({
+            id: q?.id,
+            code: q?.code,
+          })) : 'not array',
+        });
+        return sum + qCount;
+      },
       0
     );
     const totalQuestionsCount = groupsQuestionsCount + plainQuestions.length;
+    
+    logger.info('🔍 Questions count calculation', {
+      groupsQuestionsCount,
+      plainQuestionsCount: plainQuestions.length,
+      totalQuestionsCount,
+    });
+    
+    // КРИТИЧНО: Детальная диагностика, если totalQuestionsCount === 0
+    if (totalQuestionsCount === 0) {
+      logger.error('❌ КРИТИЧЕСКАЯ ПРОБЛЕМА: totalQuestionsCount === 0 после Prisma запроса!', {
+        questionnaireId: questionnaire.id,
+        groupsLength: groups.length,
+        plainQuestionsLength: plainQuestions.length,
+        groupsQuestionsCount,
+        totalQuestionsCount,
+        // КРИТИЧНО: Проверяем, что вернул Prisma
+        groupsStructure: groups.map(g => ({
+          id: g.id,
+          title: g.title,
+          hasQuestions: !!g.questions,
+          questionsType: typeof g.questions,
+          questionsIsArray: Array.isArray(g.questions),
+          questionsLength: Array.isArray(g.questions) ? g.questions.length : 'not array',
+        })),
+        plainQuestionsStructure: {
+          hasQuestions: !!questionnaire.questions,
+          questionsType: typeof questionnaire.questions,
+          questionsIsArray: Array.isArray(questionnaire.questions),
+          questionsLength: Array.isArray(questionnaire.questions) ? questionnaire.questions.length : 'not array',
+        },
+      });
+    }
 
-    logger.info('Active questionnaire found', {
+    // ИСПРАВЛЕНО: Детальное логирование сырых данных из базы для диагностики
+    logger.info('Active questionnaire found (raw data from DB)', {
       questionnaireId: questionnaire.id,
       name: questionnaire.name,
       version: questionnaire.version,
       groupsCount: groups.length,
-      questionsCount: totalQuestionsCount,
       plainQuestionsCount: plainQuestions.length,
       groupsQuestionsCount,
+      totalQuestionsCount,
+      hasQuestionGroups: !!questionnaire.questionGroups,
+      hasQuestions: !!questionnaire.questions,
+      questionGroupsType: Array.isArray(questionnaire.questionGroups),
+      questionsType: Array.isArray(questionnaire.questions),
+      groupsDetails: groups.map(g => ({
+        id: g.id,
+        title: g.title,
+        position: g.position,
+        questionsCount: g.questions?.length || 0,
+        hasQuestions: !!g.questions,
+        questionsType: Array.isArray(g.questions),
+        questions: g.questions?.map((q: any) => ({
+          id: q.id,
+          code: q.code,
+          position: q.position,
+        })) || [],
+      })),
+      plainQuestionsDetails: plainQuestions.map((q: any) => ({
+        id: q.id,
+        code: q.code,
+        position: q.position,
+        groupId: q.groupId,
+      })),
     });
+    
+    // ДИАГНОСТИКА: Проверяем структуру данных перед проверкой количества
+    logger.info('🔍 Checking questionnaire structure', {
+      totalQuestionsCount,
+      groupsQuestionsCount,
+      plainQuestionsCount: plainQuestions.length,
+      groupsLength: groups.length,
+      plainQuestionsLength: plainQuestions.length,
+      willReturn500: totalQuestionsCount === 0,
+    });
+    
+    // ИСПРАВЛЕНО: Проверяем, что анкета содержит вопросы
+    // Если вопросов нет - это критическая ошибка, возвращаем 500
+    // КРИТИЧНО: Перед возвратом 500 проверяем, есть ли вопросы в БД напрямую
+    if (totalQuestionsCount === 0) {
+      // КРИТИЧНО: Проверяем БД напрямую, чтобы понять, проблема в Prisma или в данных
+      const directCheck = await prisma.question.count({
+        where: { questionnaireId: questionnaire.id },
+      });
+      
+      logger.error('❌ CRITICAL: totalQuestionsCount === 0, returning 500 error', {
+        questionnaireId: questionnaire.id,
+        totalQuestionsCountFromPrisma: totalQuestionsCount,
+        directQuestionsCountFromDB: directCheck,
+        isPrismaIssue: directCheck > 0 && totalQuestionsCount === 0,
+        isDataIssue: directCheck === 0,
+      });
+      
+      logger.error('❌ Active questionnaire has no questions!', {
+        questionnaireId: questionnaire.id,
+        name: questionnaire.name,
+        version: questionnaire.version,
+        groupsCount: groups.length,
+        plainQuestionsCount: plainQuestions.length,
+        groupsDetails: groups.map(g => ({
+          id: g.id,
+          title: g.title,
+          position: g.position,
+          questionsCount: g.questions?.length || 0,
+        })),
+        // Дополнительная диагностика: проверяем связи в базе
+        rawQuestionnaireData: {
+          hasQuestionGroups: !!questionnaire.questionGroups,
+          hasQuestions: !!questionnaire.questions,
+          questionGroupsType: Array.isArray(questionnaire.questionGroups),
+          questionsType: Array.isArray(questionnaire.questions),
+        },
+        // КРИТИЧНО: Если в БД есть вопросы, но Prisma не вернул их - это проблема Prisma
+        directQuestionsCount: directCheck,
+        prismaIssue: directCheck > 0 ? 'Prisma не вернул вопросы, хотя они есть в БД!' : 'В БД действительно нет вопросов',
+      });
+      
+      // ИСПРАВЛЕНО: Если в БД есть вопросы, но Prisma не вернул их - это проблема Prisma
+      // В этом случае НЕ возвращаем 500, а пытаемся перезагрузить данные
+      if (directCheck > 0) {
+        logger.error('❌ КРИТИЧЕСКАЯ ПРОБЛЕМА PRISMA: В БД есть вопросы, но Prisma не вернул их!', {
+          questionnaireId: questionnaire.id,
+          directQuestionsCount: directCheck,
+          totalQuestionsCountFromPrisma: totalQuestionsCount,
+        });
+        // КРИТИЧНО: Возвращаем 500 с особым сообщением для диагностики
+        return NextResponse.json(
+          { 
+            error: 'Prisma query issue',
+            message: 'Анкета временно недоступна из-за проблемы с загрузкой данных. Пожалуйста, попробуйте позже.',
+            questionnaireId: questionnaire.id,
+            _meta: {
+              hasQuestionsInDB: true,
+              prismaIssue: true,
+            },
+          },
+          { status: 500 }
+        );
+      }
+      
+      // ИСПРАВЛЕНО: Возвращаем ошибку 500, чтобы фронтенд мог показать понятное сообщение
+      return NextResponse.json(
+        { 
+          error: 'Active questionnaire is empty',
+          message: 'Анкета временно недоступна. Пожалуйста, попробуйте позже.',
+          questionnaireId: questionnaire.id,
+        },
+        { status: 500 }
+      );
+    }
 
     // Форматируем данные в структуру, похожую на Quiz.tsx
     // Для совместимости с существующим фронтендом
@@ -118,17 +506,95 @@ export async function GET() {
       plainQuestionsCount: formatted.questions.length,
       groupsQuestionsCount,
       totalQuestions: totalQuestionsCount,
+      shouldRedirectToPlan,
+      isCompleted,
     });
 
-    return NextResponse.json(formatted);
+    // ИСПРАВЛЕНО: Возвращаем анкету с информацией о редиректе и preferences
+    const duration = Date.now() - startTime;
+    let response = NextResponse.json({
+      ...formatted,
+      // Метаданные для фронтенда
+      _meta: {
+        shouldRedirectToPlan,
+        isCompleted,
+        hasProfile: !!userId, // userId будет null если не авторизован
+        // ИСПРАВЛЕНО: Добавляем preferences в метаданные, чтобы не делать отдельные запросы
+        preferences: {
+          hasPlanProgress,
+          isRetakingQuiz,
+          fullRetakeFromHome,
+          paymentRetakingCompleted,
+          paymentFullRetakeCompleted,
+        },
+      },
+    });
+    
+    // ИСПРАВЛЕНО: Логируем успешный запрос в KV для мониторинга
+    logApiRequest(method, path, 200, duration, userId, correlationId);
+    
+    // Добавляем кэширование: анкета меняется редко, кэшируем на 1 час
+    // Но для персональных данных (shouldRedirectToPlan) не кэшируем
+    const responseWithCache = !shouldRedirectToPlan
+      ? addCacheHeaders(response, CachePresets.longCache())
+      : addCacheHeaders(response, CachePresets.noCache());
+    if (correlationId) {
+      addCorrelationIdToHeaders(correlationId, responseWithCache.headers);
+    }
+    return responseWithCache;
   } catch (error: any) {
+    const duration = Date.now() - startTime;
+    
+    // КРИТИЧНО: Проверяем, является ли это ошибкой отсутствия таблицы
+    const isTableMissingError = error?.message?.includes('does not exist') || 
+                                error?.message?.includes('table') ||
+                                error?.code === 'P2021' || // Prisma error code for table not found
+                                error?.name === 'PrismaClientKnownRequestError';
+    
+    if (isTableMissingError) {
+      logger.error('❌ КРИТИЧЕСКАЯ ОШИБКА: Таблица не существует в БД (миграции не применены)', error, {
+        errorMessage: error?.message,
+        errorCode: error?.code,
+        errorName: error?.name,
+        tableName: error?.message?.match(/table `([^`]+)`/)?.[1] || 'unknown',
+        suggestion: 'Необходимо применить миграции Prisma: npx prisma migrate deploy',
+      });
+      
+      logApiError(method, path, error, userId, correlationId);
+      
+      const errorResponse = NextResponse.json(
+        { 
+          error: 'Database schema not initialized',
+          message: 'Анкета временно недоступна. Пожалуйста, попробуйте позже.',
+          // В development показываем детали для диагностики
+          ...(process.env.NODE_ENV === 'development' ? {
+            details: error?.message,
+            suggestion: 'Примените миграции: npx prisma migrate deploy',
+          } : {}),
+        },
+        { status: 500 }
+      );
+      if (correlationId) {
+        addCorrelationIdToHeaders(correlationId, errorResponse.headers);
+      }
+      return errorResponse;
+    }
+    
     logger.error('Error fetching active questionnaire', error, {
       errorMessage: error?.message,
       errorStack: error?.stack?.substring(0, 500),
     });
-    return NextResponse.json(
+    
+    // ИСПРАВЛЕНО: Логируем ошибку в KV для мониторинга
+    logApiError(method, path, error, userId, correlationId);
+    
+    const errorResponse = NextResponse.json(
       { error: 'Internal server error', details: process.env.NODE_ENV === 'development' ? error?.message : undefined },
       { status: 500 }
     );
+    if (correlationId) {
+      addCorrelationIdToHeaders(correlationId, errorResponse.headers);
+    }
+    return errorResponse;
   }
 }

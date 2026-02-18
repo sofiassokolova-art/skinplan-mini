@@ -209,40 +209,6 @@ export function PlanPageClient({
       background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
       paddingBottom: '120px',
     }}>
-      {/* Логотип */}
-      <div style={{
-        padding: '20px',
-        textAlign: 'center',
-      }}>
-        <button
-          onClick={() => router.push('/')}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: 0,
-            display: 'inline-block',
-          }}
-        >
-        <img
-          src="/skiniq-logo.png"
-          alt="SkinIQ"
-          style={{
-            height: '140px',
-            marginTop: '8px',
-            marginBottom: '8px',
-              transition: 'transform 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'scale(1.05)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'scale(1)';
-          }}
-        />
-        </button>
-      </div>
-
       {/* Шапка с прогрессом и инфографикой */}
       <ProgressHeader 
         currentDay={currentDay}

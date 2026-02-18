@@ -15,53 +15,125 @@ export function ServiceFeedbackPopup() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
+    // КРИТИЧНО: Проверяем pathname ПЕРЕД любыми async операциями
+    // На /quiz не показываем попап и не делаем запросы
+    // ИСПРАВЛЕНО: Также не показываем на главной странице для нового пользователя
+    if (typeof window !== 'undefined') {
+      const pathname = window.location.pathname;
+      if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+        return; // Не показываем попап на /quiz
+      }
+      
+      // КРИТИЧНО: На главной странице (/home) проверяем, есть ли план, ПЕРЕД вызовом getUserPreferences
+      // Это предотвращает запросы к /api/user/preferences для нового пользователя
+      // ИСПРАВЛЕНО: Проверяем /home вместо /, так как / теперь просто редирект
+      if (pathname === '/home') {
+        // Проверяем sessionStorage для hasPlanProgress БЕЗ API вызова
+        try {
+          const cached = sessionStorage.getItem('user_preferences_cache');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            const hasPlanProgress = parsed?.data?.hasPlanProgress ?? false;
+            if (!hasPlanProgress) {
+              // Новый пользователь без плана - не показываем попап и не делаем запросы
+              return;
+            }
+          } else {
+            // Если кэша нет, не делаем запросы на главной - попап показывается только после формирования плана
+            // Новый пользователь будет редиректить на /quiz, где попап не показывается
+            return;
+          }
+        } catch {
+          // При ошибке парсинга не показываем попап на главной
+          return;
+        }
+      }
+    }
+    
     // Проверяем, нужно ли показывать попап
     const checkShouldShow = async () => {
       if (typeof window === 'undefined') return;
-
-      // Если пользователь уже отправил обратную связь через попап - больше не показываем
-      const feedbackSent = localStorage.getItem(SERVICE_FEEDBACK_SENT_KEY);
-      if (feedbackSent === 'true') {
-        setIsVisible(false);
-        return;
+      
+      // КРИТИЧНО: Проверяем pathname еще раз внутри async функции
+      const pathname = window.location.pathname;
+      if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+        return; // Не показываем попап на /quiz
       }
-
-      // ВАЖНО: Проверяем, прошло ли 3 дня с момента генерации плана
-      try {
-        const profile = await api.getCurrentProfile() as any;
-        if (profile && profile.createdAt) {
-          const profileCreatedAt = new Date(profile.createdAt);
-          const now = new Date();
-          const daysSincePlanGeneration = Math.floor((now.getTime() - profileCreatedAt.getTime()) / (1000 * 60 * 60 * 24));
-          
-          // Поп-ап показывается только через 3 дня после генерации плана
-          if (daysSincePlanGeneration < 3) {
-            console.log(`⚠️ Plan generated ${daysSincePlanGeneration} days ago, need 3 days. Skipping service feedback popup.`);
-            setIsVisible(false);
+      
+      // КРИТИЧНО: На главной странице (/home) проверяем наличие плана ПЕРЕД вызовом getUserPreferences
+      // ИСПРАВЛЕНО: Проверяем /home вместо /, так как / теперь просто редирект
+      if (pathname === '/home') {
+        // Проверяем sessionStorage для hasPlanProgress БЕЗ API вызова
+        try {
+          const cached = sessionStorage.getItem('user_preferences_cache');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            const hasPlanProgress = parsed?.data?.hasPlanProgress ?? false;
+            if (!hasPlanProgress) {
+              // Новый пользователь без плана - не показываем попап и не делаем запросы
+              return;
+            }
+          } else {
+            // Если кэша нет, не делаем запросы на главной
             return;
           }
-        } else {
-          // Если профиль не найден, не показываем поп-ап
-          setIsVisible(false);
+        } catch {
+          // При ошибке парсинга не показываем попап на главной
           return;
+        }
+      }
+
+      // ВАЖНО: Проверяем наличие профиля ПЕРЕД вызовом getUserPreferences
+      // Это предотвращает запросы для нового пользователя
+      try {
+        const profile = await api.getCurrentProfile() as any;
+        if (!profile || !profile.createdAt) {
+          // Если профиль не найден, не показываем поп-ап
+          // Это означает, что пользователь новый и плана еще нет
+          return;
+        }
+        
+        const profileCreatedAt = new Date(profile.createdAt);
+        const now = new Date();
+        const daysSincePlanGeneration = Math.floor((now.getTime() - profileCreatedAt.getTime()) / (1000 * 60 * 60 * 24));
+        
+        // Поп-ап показывается только через 3 дня после генерации плана
+        if (daysSincePlanGeneration < 3) {
+          return; // Не показываем попап, если прошло меньше 3 дней
         }
       } catch (profileError) {
         // Если профиль не найден, не показываем поп-ап
-        console.log('⚠️ Profile not found, skipping service feedback popup');
-        setIsVisible(false);
+        // Это означает, что пользователь новый и плана еще нет
         return;
       }
 
-      const lastFeedbackDate = localStorage.getItem(LAST_SERVICE_FEEDBACK_KEY);
-      if (lastFeedbackDate) {
-        const lastDate = new Date(lastFeedbackDate);
-        const now = new Date();
-        const daysSinceLastFeedback = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
-        
-        if (daysSinceLastFeedback < FEEDBACK_COOLDOWN_DAYS) {
+      // Если пользователь уже отправил обратную связь через попап - больше не показываем
+      try {
+        const { getServiceFeedbackSent } = await import('@/lib/user-preferences');
+        const feedbackSent = await getServiceFeedbackSent();
+        if (feedbackSent) {
           setIsVisible(false);
           return;
         }
+      } catch (error) {
+        // При ошибке продолжаем проверку
+      }
+
+      try {
+        const { getLastServiceFeedbackDate } = await import('@/lib/user-preferences');
+        const lastFeedbackDate = await getLastServiceFeedbackDate();
+        if (lastFeedbackDate) {
+          const lastDate = new Date(lastFeedbackDate);
+          const now = new Date();
+          const daysSinceLastFeedback = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
+          
+          if (daysSinceLastFeedback < FEEDBACK_COOLDOWN_DAYS) {
+            setIsVisible(false);
+            return;
+          }
+        }
+      } catch (error) {
+        // При ошибке продолжаем проверку
       }
       
       // Показываем попап (прошло 3+ дня и выполнены все условия)
@@ -87,10 +159,13 @@ export function ServiceFeedbackPopup() {
         type: 'service',
       });
       
-      // Сохраняем дату отправки и флаг отправки через попап
-      if (typeof window !== 'undefined') {
-      localStorage.setItem(LAST_SERVICE_FEEDBACK_KEY, new Date().toISOString());
-        localStorage.setItem(SERVICE_FEEDBACK_SENT_KEY, 'true');
+      // Сохраняем дату отправки и флаг отправки через попап в БД
+      try {
+        const { setLastServiceFeedbackDate, setServiceFeedbackSent } = await import('@/lib/user-preferences');
+        await setLastServiceFeedbackDate(new Date().toISOString());
+        await setServiceFeedbackSent(true);
+      } catch (error) {
+        console.warn('Failed to save service feedback flag:', error);
       }
       
       // Скрываем попап

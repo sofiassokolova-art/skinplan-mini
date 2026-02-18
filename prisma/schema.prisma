@@ -44,6 +44,8 @@ model User {
   supportChats             SupportChat[]
   clientLogs               ClientLog[]
   questionnaireSubmissions QuestionnaireSubmission[]
+  questionnaireProgress    QuestionnaireProgress[]
+  userPreferences          UserPreferences?
   payments                 Payment[]
   entitlements             Entitlement[]
 
@@ -77,6 +79,7 @@ model SkinProfile {
 
   @@unique([userId, version])
   @@index([userId])
+  @@index([userId, createdAt]) // ОПТИМИЗАЦИЯ: Для запросов с orderBy createdAt (getCurrentProfile)
   @@map("skin_profiles")
 }
 
@@ -95,8 +98,10 @@ model Questionnaire {
   questions      Question[]
   userAnswers    UserAnswer[]
   submissions    QuestionnaireSubmission[]
+  progress       QuestionnaireProgress[]
 
   @@unique([version])
+  @@index([isActive]) // ОПТИМИЗАЦИЯ: Часто используется findFirst({ where: { isActive: true }})
   @@map("questionnaires")
 }
 
@@ -167,7 +172,28 @@ model UserAnswer {
   @@index([userId])
   @@index([questionnaireId])
   @@index([questionId])
+  @@index([userId, questionnaireId]) // ОПТИМИЗАЦИЯ: Составной индекс для частых запросов по userId + questionnaireId
   @@map("user_answers")
+}
+
+/// Метаданные позиции в анкете для синхронизации между устройствами
+model QuestionnaireProgress {
+  id              Int      @id @default(autoincrement())
+  userId          String   @map("user_id")
+  questionnaireId Int      @map("questionnaire_id")
+  questionIndex   Int      @default(0) @map("question_index")
+  infoScreenIndex Int      @default(0) @map("info_screen_index")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questionnaire Questionnaire @relation(fields: [questionnaireId], references: [id], onDelete: Cascade)
+
+  // Один прогресс на пользователя и анкету
+  @@unique([userId, questionnaireId])
+  @@index([userId])
+  @@index([questionnaireId])
+  @@map("questionnaire_progress")
 }
 
 /// Фиксирует финальные отправки анкеты и обеспечивает идемпотентность по clientSubmissionId
@@ -290,9 +316,29 @@ model RecommendationRule {
   updatedAt      DateTime @updatedAt @map("updated_at")
 
   recommendationSessions RecommendationSession[]
+  history                RecommendationRuleHistory[]
 
   @@index([isActive, priority])
   @@map("recommendation_rules")
+}
+
+model RecommendationRuleHistory {
+  id             Int      @id @default(autoincrement())
+  ruleId         Int      @map("rule_id")
+  name           String
+  conditionsJson Json     @map("conditions_json")
+  stepsJson      Json     @map("steps_json")
+  priority       Int      @default(0)
+  isActive       Boolean  @default(true) @map("is_active")
+  version        Int      @default(1) // Номер версии
+  createdBy      String?  @map("created_by") // ID админа, который создал версию
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  rule RecommendationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId])
+  @@index([ruleId, version])
+  @@map("recommendation_rule_history")
 }
 
 model RecommendationSession {
@@ -384,6 +430,7 @@ model Plan28 {
   @@index([userId])
   @@index([skinProfileId])
   @@index([profileVersion])
+  @@index([userId, profileVersion]) // ОПТИМИЗАЦИЯ: Составной индекс для частых запросов по userId + profileVersion
   @@map("plan28")
 }
 
@@ -597,6 +644,42 @@ model ClientLog {
   @@index([level])
   @@index([createdAt])
   @@map("client_logs")
+}
+
+// ============================================
+// ПОЛЬЗОВАТЕЛЬСКИЕ НАСТРОЙКИ И ФЛАГИ
+// ============================================
+
+model UserPreferences {
+  id     String @id @default(cuid())
+  userId String @unique @map("user_id")
+
+  // Флаги перепрохождения анкеты
+  isRetakingQuiz             Boolean @default(false) @map("is_retaking_quiz")
+  fullRetakeFromHome         Boolean @default(false) @map("full_retake_from_home")
+  paymentRetakingCompleted   Boolean @default(false) @map("payment_retaking_completed")
+  paymentFullRetakeCompleted Boolean @default(false) @map("payment_full_retake_completed")
+
+  // Прогресс и кэш
+  hasPlanProgress Boolean @default(false) @map("has_plan_progress")
+  routineProducts Json?   @map("routine_products") // Кэш продуктов рутины
+
+  // Фидбек
+  planFeedbackSent        Boolean   @default(false) @map("plan_feedback_sent")
+  serviceFeedbackSent     Boolean   @default(false) @map("service_feedback_sent")
+  lastPlanFeedbackDate    DateTime? @map("last_plan_feedback_date")
+  lastServiceFeedbackDate DateTime? @map("last_service_feedback_date")
+
+  // Дополнительные настройки (JSON для расширяемости)
+  extra Json? // Для будущих настроек
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_preferences")
 }
 
 // ============================================

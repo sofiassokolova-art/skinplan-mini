@@ -33,6 +33,22 @@ async function resetUserToNew(telegramId: string) {
 
     // Удаляем все данные пользователя в правильном порядке (из-за foreign keys)
     
+    // 0. Сбрасываем "указатели" и служебные поля на самом пользователе
+    // Чтобы пользователь действительно выглядел "как новый" в приложении.
+    console.log('🧼 Сбрасываю служебные поля пользователя (currentProfileId, tags)...');
+    try {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          currentProfileId: null,
+          tags: [],
+        },
+      });
+      console.log('   ✅ Поля пользователя сброшены');
+    } catch (userUpdateError: any) {
+      console.log(`   ⚠️  Не удалось обновить пользователя (не критично): ${userUpdateError?.message || 'unknown'}`);
+    }
+
     // 1. Удаляем клиентские логи
     console.log('🗑️  Удаляю клиентские логи...');
     const deletedLogs = await prisma.clientLog.deleteMany({
@@ -130,19 +146,54 @@ async function resetUserToNew(telegramId: string) {
     });
     console.log(`   ✅ Удалено сессий: ${deletedSessions.count}`);
 
-    // 14. Удаляем SkinProfile (удалит связанные Plan28 и RecommendationSession через cascade)
+    // 14. Удаляем прогресс анкеты (позиция/инфоскрины)
+    console.log('🗑️  Удаляю прогресс анкеты...');
+    const deletedQuestionnaireProgress = await prisma.questionnaireProgress.deleteMany({
+      where: { userId: user.id },
+    });
+    console.log(`   ✅ Удалено записей прогресса анкеты: ${deletedQuestionnaireProgress.count}`);
+
+    // 15. Удаляем финальные отправки анкеты (идемпотентность)
+    console.log('🗑️  Удаляю submissions анкеты...');
+    const deletedQuestionnaireSubmissions = await prisma.questionnaireSubmission.deleteMany({
+      where: { userId: user.id },
+    });
+    console.log(`   ✅ Удалено submissions: ${deletedQuestionnaireSubmissions.count}`);
+
+    // 16. Удаляем SkinProfile (удалит связанные Plan28 и RecommendationSession через cascade)
     console.log('🗑️  Удаляю профили кожи...');
     const deletedProfiles = await prisma.skinProfile.deleteMany({
       where: { userId: user.id },
     });
     console.log(`   ✅ Удалено профилей: ${deletedProfiles.count}`);
 
-    // 15. Удаляем UserAnswer
+    // 17. Удаляем UserAnswer
     console.log('🗑️  Удаляю ответы на вопросы анкеты...');
     const deletedAnswers = await prisma.userAnswer.deleteMany({
       where: { userId: user.id },
     });
     console.log(`   ✅ Удалено ответов: ${deletedAnswers.count}`);
+
+    // 18. Удаляем UserPreferences (флаги/кэш; будут пересозданы автоматически при первом GET)
+    console.log('🗑️  Удаляю user preferences...');
+    const deletedUserPreferences = await prisma.userPreferences.deleteMany({
+      where: { userId: user.id },
+    });
+    console.log(`   ✅ Удалено preferences: ${deletedUserPreferences.count}`);
+
+    // 19. Удаляем Entitlement
+    console.log('🗑️  Удаляю entitlements...');
+    const deletedEntitlements = await prisma.entitlement.deleteMany({
+      where: { userId: user.id },
+    });
+    console.log(`   ✅ Удалено entitlements: ${deletedEntitlements.count}`);
+
+    // 20. Удаляем Payment
+    console.log('🗑️  Удаляю платежи...');
+    const deletedPayments = await prisma.payment.deleteMany({
+      where: { userId: user.id },
+    });
+    console.log(`   ✅ Удалено платежей: ${deletedPayments.count}`);
 
     // ВАЖНО: Пользователя НЕ удаляем - только его данные
 

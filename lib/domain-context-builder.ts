@@ -45,31 +45,62 @@ export function buildDomainContext(input: BuildDomainContextInput): DomainContex
     const code = question.code || key;
     
     if (code === 'skin_type' || code === 'skinType') {
-      questionnaireAnswers.skinType = Array.isArray(value) ? value[0] : value as string;
+      questionnaireAnswers.skinType = Array.isArray(value) 
+        ? (typeof value[0] === 'string' ? value[0] : String(value[0]))
+        : (typeof value === 'string' ? value : String(value));
     } else if (code === 'age' || code === 'age_group') {
-      questionnaireAnswers.age = Array.isArray(value) ? value[0] : value as string;
+      questionnaireAnswers.age = Array.isArray(value) 
+        ? (typeof value[0] === 'string' ? value[0] : String(value[0]))
+        : (typeof value === 'string' ? value : String(value));
     } else if (code === 'concerns' || code === 'skin_concerns') {
-      questionnaireAnswers.concerns = Array.isArray(value) ? value : [value as string];
+      questionnaireAnswers.concerns = Array.isArray(value) 
+        ? value.filter((v): v is string => typeof v === 'string')
+        : (typeof value === 'string' ? [value] : [String(value)]);
     } else if (code === 'habits') {
-      questionnaireAnswers.habits = Array.isArray(value) ? value : [value as string];
+      questionnaireAnswers.habits = Array.isArray(value) 
+        ? value.filter((v): v is string => typeof v === 'string')
+        : (typeof value === 'string' ? [value] : [String(value)]);
     } else if (code === 'diagnoses') {
-      questionnaireAnswers.diagnoses = Array.isArray(value) ? value : [value as string];
+      questionnaireAnswers.diagnoses = Array.isArray(value) 
+        ? value.filter((v): v is string => typeof v === 'string')
+        : (typeof value === 'string' ? [value] : [String(value)]);
     } else if (code === 'allergies') {
-      questionnaireAnswers.allergies = Array.isArray(value) ? value : [value as string];
-    } else if (code === 'season_change' || code === 'seasonChange') {
-      questionnaireAnswers.seasonChange = Array.isArray(value) ? value[0] : value as string;
+      questionnaireAnswers.allergies = Array.isArray(value) 
+        ? value.filter((v): v is string => typeof v === 'string')
+        : (typeof value === 'string' ? [value] : [String(value)]);
+    // ИСПРАВЛЕНО (P0): Маппинг кодов анкеты - используем канонические ключи
+    // seasonality (не season_change), spf_usage (не spf_frequency)
+    } else if (code === 'seasonality' || code === 'season_change' || code === 'seasonChange') {
+      // ИСПРАВЛЕНО: Маппим на seasonality для канонической схемы
+      questionnaireAnswers.seasonality = Array.isArray(value) 
+        ? (typeof value[0] === 'string' ? value[0] : String(value[0])) as any
+        : (typeof value === 'string' ? value : String(value)) as any;
+      // Обратная совместимость
+      questionnaireAnswers.seasonChange = questionnaireAnswers.seasonality as any;
     } else if (code === 'retinol_reaction' || code === 'retinolReaction') {
-      questionnaireAnswers.retinolReaction = Array.isArray(value) ? value[0] : value as string;
-    } else if (code === 'spf_frequency' || code === 'spfFrequency') {
-      questionnaireAnswers.spfFrequency = Array.isArray(value) ? value[0] : value as string;
+      questionnaireAnswers.retinolReaction = Array.isArray(value) 
+        ? (typeof value[0] === 'string' ? value[0] : String(value[0]))
+        : (typeof value === 'string' ? value : String(value));
+    } else if (code === 'spf_usage' || code === 'spf_frequency' || code === 'spfFrequency') {
+      // ИСПРАВЛЕНО: Маппим на spfUsage для канонической схемы
+      questionnaireAnswers.spfUsage = Array.isArray(value) 
+        ? (typeof value[0] === 'string' ? value[0] : String(value[0])) as any
+        : (typeof value === 'string' ? value : String(value)) as any;
+      // Обратная совместимость
+      questionnaireAnswers.spfFrequency = questionnaireAnswers.spfUsage as any;
     } else if (code === 'sun_exposure' || code === 'sunExposure') {
-      questionnaireAnswers.sunExposure = Array.isArray(value) ? value[0] : value as string;
+      questionnaireAnswers.sunExposure = Array.isArray(value) 
+        ? (typeof value[0] === 'string' ? value[0] : String(value[0]))
+        : (typeof value === 'string' ? value : String(value));
     } else if (code === 'sensitivity_level' || code === 'sensitivityLevel') {
-      questionnaireAnswers.sensitivityLevel = Array.isArray(value) ? value[0] : (value as string) || 'low';
+      questionnaireAnswers.sensitivityLevel = Array.isArray(value) 
+        ? (typeof value[0] === 'string' ? value[0] : String(value[0]))
+        : (typeof value === 'string' ? value : String(value)) || 'low';
     } else if (code === 'acne_level' || code === 'acneLevel') {
       const numValue = Array.isArray(value) ? parseInt(value[0] as string) : parseInt(value as string);
       questionnaireAnswers.acneLevel = isNaN(numValue) ? 0 : numValue;
-    } else if (code === 'pregnant' || code === 'has_pregnancy' || code === 'pregnancy_breastfeeding') {
+    // ИСПРАВЛЕНО: pregnancy (не pregnancy_breastfeeding) - как в JSON правил
+    } else if (code === 'pregnancy' || code === 'pregnant' || code === 'has_pregnancy' || code === 'pregnancy_breastfeeding') {
       const boolValue = Array.isArray(value) ? value[0] : value;
       // ИСПРАВЛЕНО: Приводим к строке для сравнения, чтобы избежать ошибки типов
       const strValue = String(boolValue).toLowerCase();
@@ -78,7 +109,8 @@ export function buildDomainContext(input: BuildDomainContextInput): DomainContex
   }
 
   // ИСПРАВЛЕНО: Вычисляем axes ТОЛЬКО из answers
-  const axes: SkinAxes = calculateSkinAxes(questionnaireAnswers);
+  // Явно указываем тип, чтобы TypeScript гарантированно видел возвращаемое значение
+  const axes: SkinAxes = calculateSkinAxes(questionnaireAnswers) as SkinAxes;
 
   // ИСПРАВЛЕНО: Извлекаем medical markers из profileSnapshot
   const medicalMarkers = (profileSnapshot as any).medicalMarkers || {};
@@ -125,6 +157,7 @@ export function buildDomainContext(input: BuildDomainContextInput): DomainContex
     gender: medical.gender,
   };
 
+  // ИСПРАВЛЕНО: Создаем и возвращаем context в конце функции
   const context: DomainContext = {
     meta,
     questionnaire,
@@ -143,13 +176,6 @@ export function buildDomainContext(input: BuildDomainContextInput): DomainContex
       warnings: [],
     },
   };
-
-  logger.debug('DomainContext built', {
-    userId: meta.userId,
-    answersCount: Object.keys(answers).length,
-    axesCount: axes.length,
-    productsCount: products.length,
-  });
 
   return context;
 }

@@ -28,6 +28,9 @@ export interface RuleContext {
   allergies?: string[];
   contraindications?: string[];
   
+  // Concerns из ответов пользователя (для правил, которые проверяют concerns: { hasSome: [...] })
+  concerns?: string[];
+  
   // Дополнительные поля
   hasPregnancy?: boolean;
   pregnant?: boolean;
@@ -41,7 +44,8 @@ export function buildRuleContext(
   profile: SkinProfile & { medicalMarkers?: any },
   skinScores: Array<{ axis: string; value: number }>,
   normalizedSkinType: string | null,
-  normalizedSensitivity: string | null
+  normalizedSensitivity: string | null,
+  concerns?: string[] // ИСПРАВЛЕНО: Добавлен параметр concerns для правил, которые проверяют concerns: { hasSome: [...] }
 ): RuleContext {
   const medicalMarkers = (profile.medicalMarkers as Record<string, any> | null) || {};
   
@@ -71,6 +75,9 @@ export function buildRuleContext(
     diagnoses: diagnoses,
     allergies: Array.isArray(medicalMarkers.allergies) ? medicalMarkers.allergies : undefined,
     contraindications: Array.isArray(medicalMarkers.contraindications) ? medicalMarkers.contraindications : undefined,
+    
+    // Concerns из ответов пользователя (для правил, которые проверяют concerns: { hasSome: [...] })
+    concerns: concerns,
     
     // Дополнительные поля
     hasPregnancy: profile.hasPregnancy || false,

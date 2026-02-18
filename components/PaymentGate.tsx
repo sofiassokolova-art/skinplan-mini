@@ -8,16 +8,18 @@ import toast from 'react-hot-toast';
 
 interface PaymentGateProps {
   price?: number;
-  productCode?: 'plan_access' | 'subscription_month' | 'retake_topic';
+  productCode?: 'plan_access' | 'subscription_month' | 'retake_topic' | 'retake_full';
   isRetaking: boolean;
   onPaymentComplete: () => void;
   retakeCta?: { text: string; href: string };
+  cancelCta?: { text: string; onClick: () => void };
   children: React.ReactNode;
 }
 
 const PRODUCT_PRICES: Record<string, number> = {
   plan_access: 199,
-  retake_topic: 99,
+  retake_topic: 49, // ИСПРАВЛЕНО: цена за перепрохождение одной темы
+  retake_full: 99, // Цена за полное перепрохождение анкеты
   subscription_month: 499,
 };
 
@@ -29,6 +31,7 @@ const ENTITLEMENTS_TTL_MS = 5000;
 function requiredEntitlementCode(productCode: string): string {
   if (productCode === 'plan_access') return 'paid_access';
   if (productCode === 'retake_topic') return 'retake_topic_access';
+  if (productCode === 'retake_full') return 'retake_full_access';
   // Для подписки пока не вводим отдельный код — считаем, что она тоже даёт paid_access
   return 'paid_access';
 }
@@ -41,21 +44,34 @@ async function fetchEntitlementCodes(initData: string): Promise<string[]> {
     },
   });
 
-  if (!response.ok) return [];
+  if (!response.ok) {
+    console.warn('[PaymentGate] Entitlements API returned error:', response.status, response.statusText);
+    return [];
+  }
+  
   const data = await response.json();
+  console.log('[PaymentGate] Entitlements API response:', data);
+  
   // ApiResponse.success() в проекте возвращает payload напрямую (без { data: ... }),
   // но поддерживаем оба формата на всякий случай.
   const payload = (data && typeof data === 'object' && 'data' in data) ? (data as any).data : data;
 
   const entitlements = payload?.entitlements;
   if (Array.isArray(entitlements)) {
-    return entitlements
+    const codes = entitlements
       .map((e: any) => (typeof e?.code === 'string' ? e.code : null))
       .filter((c: any): c is string => typeof c === 'string');
+    console.log('[PaymentGate] Extracted entitlement codes:', codes);
+    return codes;
   }
 
   // Fallback: если API вернул только paid=true без списка
-  if (payload?.paid === true) return ['paid_access'];
+  if (payload?.paid === true) {
+    console.log('[PaymentGate] Using fallback: paid=true, returning paid_access');
+    return ['paid_access'];
+  }
+  
+  console.log('[PaymentGate] No entitlements found, returning empty array');
   return [];
 }
 
@@ -65,26 +81,98 @@ export function PaymentGate({
   isRetaking,
   onPaymentComplete,
   retakeCta,
+  cancelCta,
   children,
 }: PaymentGateProps) {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [dbChecked, setDbChecked] = useState(false);
   const [paymentId, setPaymentId] = useState<string | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // hasPaid = "уверены, что оплата есть" (проверяется через Entitlement)
   const [hasPaid, setHasPaid] = useState(false);
   const [checkingDbPayment, setCheckingDbPayment] = useState(false);
+  const [refreshTick, setRefreshTick] = useState(0);
+  const [checkedOnce, setCheckedOnce] = useState(false);
+  const [initDataReady, setInitDataReady] = useState(false);
+
+  // Ждем появления Telegram initData (иначе paywall может "мигать" при повторном входе в приложение)
+  useEffect(() => {
+    let cancelled = false;
+
+    // Если уже есть initData — готовы
+    const current =
+      typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '';
+    if (current) {
+      setInitDataReady(true);
+      return;
+    }
+
+    // Подождём до 2.5 секунд (Telegram иногда отдаёт initData не мгновенно)
+    const start = Date.now();
+    const intervalId = setInterval(() => {
+      if (cancelled) return;
+      const initData =
+        typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '';
+      if (initData) {
+        clearInterval(intervalId);
+        setInitDataReady(true);
+        return;
+      }
+      if (Date.now() - start > 2500) {
+        clearInterval(intervalId);
+        setInitDataReady(false);
+        // Если initData так и не появилось — считаем, что "проверка" невозможна
+        // и не держим пользователя на бесконечном "Проверяем доступ..."
+        // Устанавливаем checkedOnce, чтобы показать paywall
+        setCheckedOnce(true);
+      }
+    }, 100);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+  }, []);
+
+  // Когда initDataReady становится true, сбрасываем checkingDbPayment чтобы перепроверить entitlements
+  useEffect(() => {
+    if (initDataReady && !checkedOnce) {
+      setCheckingDbPayment(false);
+    }
+  }, [initDataReady, checkedOnce]);
+
+  // ВАЖНО: paywall один на главной и плане.
+  // Если пользователь оплатил на одном экране и сразу перешел на другой,
+  // второй PaymentGate может успеть смонтироваться ДО обновления entitlement.
+  // Поэтому для plan_access мы короткое время перепроверяем entitlement в фоне.
+  useEffect(() => {
+    if (hasPaid) return;
+    if (productCode !== 'plan_access') return;
+
+    // До 30 секунд после монтирования обновляем статус раз в 2 секунды.
+    // Глобальный cache/promise внутри PaymentGate не даст спамить API слишком сильно.
+    const intervalId = setInterval(() => setRefreshTick((t) => t + 1), 2000);
+    const timeoutId = setTimeout(() => clearInterval(intervalId), 30000);
+
+    return () => {
+      clearInterval(intervalId);
+      clearTimeout(timeoutId);
+    };
+  }, [hasPaid, productCode]);
 
   // ПРАВИЛЬНАЯ ЛОГИКА: источник правды — БД через /api/me/entitlements
   // Проверяем Entitlement, а не теги пользователя
+  // В dev короткий таймаут, чтобы на локальном сервере не ждать на главной/плане
+  const ENTITLEMENTS_CHECK_TIMEOUT_MS =
+    process.env.NODE_ENV === 'development' ? 500 : 8000;
+
   useEffect(() => {
     let isMounted = true;
+    let timeoutId: NodeJS.Timeout | null = null;
+    let fallbackTimeoutId: NodeJS.Timeout | null = null;
 
     const checkEntitlements = async () => {
-      // Если уже отправлен запрос и мы получили ответ от БД — не дёргаем API повторно
-      if (dbChecked) return;
       if (checkingDbPayment) return;
 
       try {
@@ -93,11 +181,7 @@ export function PaymentGate({
         const initData =
           typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '';
         if (!initData) {
-          // В деве может не быть initData — тогда остаёмся на локальном флаге,
-          // но помечаем, что проверка БД уже сделана, чтобы не спамить консоль
-          if (isMounted) {
-            setDbChecked(true);
-          }
+          // initData ещё не готов — выходим, таймаут установлен отдельно
           return;
         }
 
@@ -106,6 +190,7 @@ export function PaymentGate({
           if (isMounted) {
             const required = requiredEntitlementCode(productCode);
             setHasPaid(entitlementsCache.codes.includes(required));
+            setCheckedOnce(true);
           }
           return;
         }
@@ -123,26 +208,67 @@ export function PaymentGate({
 
         const codes = await entitlementsPromise;
         const required = requiredEntitlementCode(productCode);
-        if (isMounted) setHasPaid(codes.includes(required));
+        if (isMounted) {
+          const hasAccess = codes.includes(required);
+          console.log('[PaymentGate] Entitlements checked:', { codes, required, hasAccess });
+          setHasPaid(hasAccess);
+          setCheckedOnce(true);
+        }
       } catch (error) {
         // В проде это просто значит: временно опираемся на локальный флаг
         if (isMounted) {
           console.warn('Could not check entitlements from DB:', error);
+          setCheckedOnce(true);
         }
       } finally {
         if (isMounted) {
           setCheckingDbPayment(false);
-          setDbChecked(true);
         }
       }
     };
 
-    checkEntitlements();
+    // Если initDataReady, проверяем entitlements
+    if (initDataReady) {
+      console.log('[PaymentGate] initDataReady is true, checking entitlements');
+      checkEntitlements();
+      // В dev: сразу показываем контент, проверка в фоне; при таймауте API ничего не меняем
+      if (process.env.NODE_ENV === 'development') {
+        if (isMounted) {
+          setHasPaid(true);
+          setCheckedOnce(true);
+          setCheckingDbPayment(false);
+        }
+        return () => {
+          isMounted = false;
+          if (timeoutId) clearTimeout(timeoutId);
+          if (fallbackTimeoutId) clearTimeout(fallbackTimeoutId);
+        };
+      }
+      // Прод: не зависать на лоадере — через N с показываем paywall
+      fallbackTimeoutId = setTimeout(() => {
+        if (isMounted) {
+          setCheckedOnce(true);
+          setCheckingDbPayment(false);
+          console.warn('[PaymentGate] Entitlements check timeout, showing paywall');
+        }
+      }, ENTITLEMENTS_CHECK_TIMEOUT_MS);
+    } else {
+      // Если initData еще не готов, устанавливаем таймаут для показа paywall через 3 секунды
+      console.log('[PaymentGate] initDataReady is false, setting 3s timeout to show paywall');
+      timeoutId = setTimeout(() => {
+        if (isMounted) {
+          console.warn('[PaymentGate] initData not available after timeout, showing paywall');
+          setCheckedOnce(true);
+        }
+      }, 3000);
+    }
 
     return () => {
       isMounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
+      if (fallbackTimeoutId) clearTimeout(fallbackTimeoutId);
     };
-  }, [isRetaking, dbChecked, checkingDbPayment, productCode]);
+  }, [isRetaking, productCode, refreshTick, initDataReady]);
 
   // Polling для проверки статуса оплаты после создания платежа
   useEffect(() => {
@@ -197,6 +323,9 @@ export function PaymentGate({
     try {
       const initData =
         typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '';
+      // После старта оплаты сбрасываем кеш entitlement, чтобы второй экран (план/главная)
+      // быстрее увидел "paid_access".
+      entitlementsCache = null;
 
       // Создаем платеж через правильный endpoint
       const response = await fetch('/api/payments/create', {
@@ -233,6 +362,7 @@ export function PaymentGate({
       // Если платеж уже успешен (идемпотентность)
       if (paymentData.status === 'succeeded' && paymentData.hasAccess) {
         setHasPaid(true);
+        entitlementsCache = null;
         toast.success('Оплата успешно обработана!');
         setTimeout(() => {
           onPaymentComplete();
@@ -304,6 +434,62 @@ export function PaymentGate({
     return <>{children}</>;
   }
 
+  // ИСПРАВЛЕНО: не показываем paywall до первой проверки entitlements,
+  // иначе при повторном входе в приложение будет "снова оплата" на долю секунды.
+  if (!checkedOnce) {
+    return (
+      <div style={{ position: 'relative' }}>
+        <div style={{
+          filter: 'blur(8px)',
+          pointerEvents: 'none',
+          userSelect: 'none',
+          opacity: 0.5,
+        }}>
+          {children}
+        </div>
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(10px)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '24px',
+          zIndex: 1000,
+          borderRadius: '24px',
+          textAlign: 'center',
+        }}>
+          <div style={{
+            width: '44px',
+            height: '44px',
+            border: '4px solid rgba(10, 95, 89, 0.2)',
+            borderTop: '4px solid #0A5F59',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            marginBottom: '14px',
+          }} />
+          <div style={{ fontSize: '16px', fontWeight: 700, color: '#0A5F59' }}>
+            Проверяем доступ…
+          </div>
+          <div style={{ fontSize: '13px', color: '#475467', marginTop: '6px' }}>
+            {initDataReady ? 'Почти готово' : 'Открываем Telegram Mini App'}
+          </div>
+          <style>{`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>
+      </div>
+    );
+  }
+
   const displayPrice =
     typeof price === 'number' && Number.isFinite(price) ? price : (PRODUCT_PRICES[productCode] ?? 0);
 
@@ -360,9 +546,11 @@ export function PaymentGate({
           }}>
             {productCode === 'retake_topic'
               ? 'Перепройдите тему'
-              : isRetaking
-                ? 'Обновите доступ к плану'
-                : 'Получите полный доступ к плану'}
+              : productCode === 'retake_full'
+                ? 'Пройдите всю анкету заново'
+                : isRetaking
+                  ? 'Обновите доступ к плану'
+                  : 'Получите полный доступ к плану'}
           </h2>
           
           <p style={{
@@ -372,10 +560,12 @@ export function PaymentGate({
             lineHeight: '1.6',
           }}>
             {productCode === 'retake_topic'
-              ? 'Выберите тему, оплатите 99 ₽ и обновите только затронутые части рекомендаций.'
-              : isRetaking 
-                ? 'Обновите свой план ухода и получите персональные рекомендации на основе новых данных'
-                : 'Оплатите доступ, чтобы увидеть полный план ухода на 28 дней с персональными рекомендациями'}
+              ? 'Выберите тему, оплатите 49 ₽ и обновите только затронутые части рекомендаций.'
+              : productCode === 'retake_full'
+                ? 'Оплатите 99 ₽ и пройдите всю анкету заново. Счёт 28 дней начнётся заново.'
+                : isRetaking 
+                  ? 'Обновите свой план ухода и получите персональные рекомендации на основе новых данных'
+                  : 'Оплатите доступ, чтобы увидеть полный план ухода на 28 дней с персональными рекомендациями'}
           </p>
 
           {/* Цена */}
@@ -495,15 +685,33 @@ export function PaymentGate({
             Платеж обрабатывается безопасно через сервер
           </p>
 
+          {cancelCta && (
+            <button
+              type="button"
+              onClick={cancelCta.onClick}
+              style={{
+                marginTop: '16px',
+                background: 'transparent',
+                border: 'none',
+                color: '#6B7280',
+                textDecoration: 'underline',
+                cursor: 'pointer',
+                fontSize: '14px',
+              }}
+            >
+              {cancelCta.text}
+            </button>
+          )}
           {retakeCta && (
             <button
               type="button"
-              onClick={() => {
+              onClick={async () => {
                 if (typeof window !== 'undefined') {
                   // ИСПРАВЛЕНО: ретейк-ссылка должна открывать экран выбора тем
                   // (/quiz показывает экран выбора тем, когда is_retaking_quiz=true)
                   try {
-                    localStorage.setItem('is_retaking_quiz', 'true');
+                    const { setIsRetakingQuiz } = await import('@/lib/user-preferences');
+                    await setIsRetakingQuiz(true);
                   } catch {
                     // ignore
                   }

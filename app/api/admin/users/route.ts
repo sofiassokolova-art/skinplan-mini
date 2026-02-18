@@ -3,52 +3,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-
-// Проверка авторизации админа
-async function verifyAdmin(request: NextRequest): Promise<boolean> {
-  try {
-    const cookieToken = request.cookies.get('admin_token')?.value;
-    const headerToken = request.headers.get('authorization')?.replace('Bearer ', '');
-    const token = cookieToken || headerToken;
-    
-    if (!token) {
-      return false;
-    }
-
-    try {
-      jwt.verify(token, JWT_SECRET);
-      return true;
-    } catch (verifyError) {
-      return false;
-    }
-  } catch (err) {
-    return false;
-  }
-}
+import { verifyAdminBoolean } from '@/lib/admin-auth';
 
 // GET - список всех пользователей
 export async function GET(request: NextRequest) {
   try {
-    const isAdmin = await verifyAdmin(request);
+    const isAdmin = await verifyAdminBoolean(request);
     if (!isAdmin) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
-      );
-    }
-
-    // Проверяем подключение к БД
-    try {
-      await prisma.$connect();
-      console.log('✅ Database connected');
-    } catch (dbError: any) {
-      console.error('❌ Database connection error:', dbError);
-      return NextResponse.json(
-        { error: 'Database connection failed', details: dbError.message },
-        { status: 500 }
       );
     }
 
@@ -73,10 +37,15 @@ export async function GET(request: NextRequest) {
             take: 1,
             orderBy: { createdAt: 'desc' },
           },
+          plan28s: {
+            take: 1,
+            orderBy: { createdAt: 'desc' },
+          },
           _count: {
             select: {
               skinProfiles: true,
               recommendationSessions: true,
+              plan28s: true,
               planFeedbacks: true,
             },
           },
@@ -99,9 +68,10 @@ export async function GET(request: NextRequest) {
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
         hasProfile: user.skinProfiles.length > 0,
-        hasPlan: user.recommendationSessions.length > 0,
+        // ИСПРАВЛЕНО: План может быть в Plan28 или recommendationSessions
+        hasPlan: user.plan28s.length > 0 || user.recommendationSessions.length > 0,
         profileCount: user._count.skinProfiles,
-        planCount: user._count.recommendationSessions,
+        planCount: user._count.plan28s + user._count.recommendationSessions,
         feedbackCount: user._count.planFeedbacks,
         latestProfile: user.skinProfiles[0] || null,
       })),

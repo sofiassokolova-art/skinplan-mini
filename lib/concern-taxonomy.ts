@@ -1,10 +1,14 @@
 // lib/concern-taxonomy.ts
 // ИСПРАВЛЕНО: Единая таксономия concerns для primaryFocus и product.concerns
 // Обеспечивает согласованность между определением primaryFocus и фильтрацией продуктов
+//
+// ПРИМЕЧАНИЕ: severity и related поля не используются в concern-taxonomy
+// severity используется только в ingredient-compatibility.ts для конфликтов ингредиентов
+// Если в будущем понадобится severity для concerns - добавить отдельную структуру
 
 /**
- * Канонические concern ключи
- * ИСПРАВЛЕНО: Единая таксономия для primaryFocus и product.concerns
+ * ИСПРАВЛЕНО: Канонические concern ключи - единый источник правды
+ * Используется везде вместо string[] для типобезопасности
  */
 export type ConcernKey = 
   | 'acne'
@@ -17,7 +21,10 @@ export type ConcernKey =
   | 'oiliness'
   | 'sensitivity'
   | 'redness'
-  | 'rosacea';
+  | 'rosacea'
+  | 'general'
+  | 'antiage'
+  | 'dark_circles';
 
 /**
  * PrimaryFocus значения
@@ -32,6 +39,21 @@ export type PrimaryFocus =
   | 'dehydration'
   | 'dryness'
   | 'general';
+
+/**
+ * GoalKey - канонические ключи для mainGoals
+ * ИСПРАВЛЕНО: Union тип вместо string для типобезопасности
+ */
+export type GoalKey = 
+  | 'acne'
+  | 'pores'
+  | 'pigmentation'
+  | 'barrier'
+  | 'dehydration'
+  | 'wrinkles'
+  | 'antiage'
+  | 'general'
+  | 'dark_circles';
 
 /**
  * Маппинг primaryFocus к concern ключам
@@ -64,6 +86,9 @@ export const CONCERN_TO_PRIMARY_FOCUS: Record<ConcernKey, PrimaryFocus> = {
   sensitivity: 'barrier', // sensitivity маппится в barrier
   redness: 'barrier', // redness маппится в barrier
   rosacea: 'barrier', // rosacea маппится в barrier
+  general: 'general', // ИСПРАВЛЕНО: Добавлено для новых ConcernKey
+  antiage: 'wrinkles', // antiage маппится в wrinkles
+  dark_circles: 'general', // dark_circles маппится в general
 };
 
 /**
@@ -141,6 +166,11 @@ export function normalizeConcernKey(concern: string): ConcernKey | null {
     'покраснения': 'redness',
     'rosacea': 'rosacea',
     'розацеа': 'rosacea',
+    'general': 'general', // ИСПРАВЛЕНО: Добавлено для новых ConcernKey
+    'antiage': 'antiage',
+    'антиэйдж': 'antiage',
+    'dark_circles': 'dark_circles',
+    'темные круги': 'dark_circles',
   };
 
   return concernMap[normalized] || null;

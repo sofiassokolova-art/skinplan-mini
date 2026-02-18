@@ -47,19 +47,40 @@ export default function SupportAdmin() {
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // ИСПРАВЛЕНО: Автоматическое обновление списка чатов всегда (даже когда чат не выбран)
   useEffect(() => {
     loadChats();
-  }, []);
+    
+    // Обновляем список чатов каждые 5 секунд для обнаружения новых обращений
+    const chatsInterval = setInterval(() => {
+      loadChats();
+    }, 5000);
+    
+    return () => {
+      clearInterval(chatsInterval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // ИСПРАВЛЕНО: Пустой массив зависимостей - polling работает всегда
 
   useEffect(() => {
     if (selectedChat) {
       loadMessages(selectedChat.id);
-      // Polling для обновления сообщений каждые 2 секунды
-      const interval = setInterval(() => {
+      
+      // ИСПРАВЛЕНО (P1): Оптимизированный polling
+      // Messages обновляем каждые 2 секунды
+      // Chats обновляем каждые 5 секунд (даже когда чат выбран, чтобы видеть новые обращения)
+      const messagesInterval = setInterval(() => {
         loadMessages(selectedChat.id);
-        loadChats(); // Обновляем список чатов для счетчиков
       }, 2000);
-      return () => clearInterval(interval);
+      
+      const chatsInterval = setInterval(() => {
+        loadChats();
+      }, 5000); // ИСПРАВЛЕНО: Обновляем чаты каждые 5 секунд для обнаружения новых обращений
+      
+      return () => {
+        clearInterval(messagesInterval);
+        clearInterval(chatsInterval);
+      };
     }
   }, [selectedChat]);
 
@@ -67,24 +88,34 @@ export default function SupportAdmin() {
 
   const loadChats = async () => {
     try {
-      const token = localStorage.getItem('admin_token');
+      // ИСПРАВЛЕНО (P0): Убрали localStorage и Authorization - cookie-only подход
       const response = await fetch('/api/admin/support/chats', {
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
         },
         credentials: 'include',
       });
 
+      // ИСПРАВЛЕНО (P0): Редирект на login при 401
       if (response.status === 401) {
-        router.push('/admin/login');
+        router.replace('/admin/login');
         return;
       }
 
       if (response.ok) {
         const data = await response.json();
-        setChats(data.chats || []);
-        // Не выбираем автоматически первый чат - показываем общий список
+        const newChats = data.chats || [];
+        
+        // ИСПРАВЛЕНО: Обновляем список чатов, сохраняя выбранный чат если он есть
+        setChats(newChats);
+        
+        // Если выбранный чат был обновлен (например, изменился статус или unread), обновляем его
+        if (selectedChat) {
+          const updatedChat = newChats.find((c: Chat) => c.id === selectedChat.id);
+          if (updatedChat) {
+            setSelectedChat(updatedChat);
+          }
+        }
       }
     } catch (error) {
       console.error('Error loading chats:', error);
@@ -95,35 +126,28 @@ export default function SupportAdmin() {
 
   const loadMessages = async (chatId: string) => {
     try {
-      const token = localStorage.getItem('admin_token');
-      const response = await fetch(`/api/admin/support/messages?chatId=${chatId}`, {
+      // ИСПРАВЛЕНО (P0): Убрали localStorage и Authorization - cookie-only подход
+      // ИСПРАВЛЕНО (P1): encode chatId для безопасности
+      const response = await fetch(`/api/admin/support/messages?chatId=${encodeURIComponent(chatId)}`, {
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
         },
         credentials: 'include',
       });
+
+      // ИСПРАВЛЕНО (P0): Редирект на login при 401
+      if (response.status === 401) {
+        router.replace('/admin/login');
+        return;
+      }
 
       if (response.ok) {
         const data = await response.json();
         const messagesList = data.messages || [];
         setMessages(messagesList);
         
-        // Автоматически определяем статус на основе сообщений
-        if (selectedChat && selectedChat.status !== 'closed') {
-          // Проверяем, есть ли ответы оператора (не автоответ)
-          const hasAdminReply = messagesList.some((msg: Message) => 
-            msg.isAdmin && !msg.text.includes('Привет! Это поддержка SkinIQ') && !msg.text.includes('за пределами рабочего времени')
-          );
-          
-          // Обновляем статус в selectedChat
-          const newStatus = hasAdminReply ? 'in_progress' : 'active';
-          if (selectedChat.status !== newStatus) {
-            setSelectedChat({ ...selectedChat, status: newStatus });
-            // Обновляем статус в БД
-            updateChatStatus(selectedChat.id, newStatus);
-          }
-        }
+        // ИСПРАВЛЕНО (P0): Убрали вычисление статуса по тексту - статус приходит с сервера
+        // Статус обновляется только при событиях: sendReply → in_progress, close → closed
       }
     } catch (error) {
       console.error('Error loading messages:', error);
@@ -135,12 +159,11 @@ export default function SupportAdmin() {
 
     setSending(true);
     try {
-      const token = localStorage.getItem('admin_token');
+      // ИСПРАВЛЕНО (P0): Убрали localStorage и Authorization - cookie-only подход
       const response = await fetch('/api/admin/support/send', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
         },
         credentials: 'include',
         body: JSON.stringify({
@@ -149,16 +172,29 @@ export default function SupportAdmin() {
         }),
       });
 
+      // ИСПРАВЛЕНО (P0): Редирект на login при 401
+      if (response.status === 401) {
+        router.replace('/admin/login');
+        return;
+      }
+
       if (response.ok) {
         setReplyText('');
+        // ИСПРАВЛЕНО (P0): Обновляем статус на in_progress после отправки сообщения оператором
+        if (selectedChat.status !== 'in_progress' && selectedChat.status !== 'closed') {
+          await updateChatStatus(selectedChat.id, 'in_progress');
+          setSelectedChat({ ...selectedChat, status: 'in_progress' });
+        }
         await loadMessages(selectedChat.id);
+        // ИСПРАВЛЕНО (P1): Обновляем chats только после отправки, не при каждом polling
         await loadChats();
         // Прокручиваем вниз только после отправки нового сообщения
         setTimeout(() => {
           messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }, 100);
       } else {
-        alert('Ошибка отправки сообщения');
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.error || 'Ошибка отправки сообщения');
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -173,17 +209,17 @@ export default function SupportAdmin() {
   };
 
   const openUserProfile = (userId: string) => {
-    router.push(`/admin/users?userId=${userId}`);
+    // ИСПРАВЛЕНО (P1): encode userId для безопасности
+    router.push(`/admin/users?userId=${encodeURIComponent(userId)}`);
   };
 
   const updateChatStatus = async (chatId: string, status: string) => {
     try {
-      const token = localStorage.getItem('admin_token');
-      await fetch('/api/admin/support/status', {
+      // ИСПРАВЛЕНО (P0): Убрали localStorage и Authorization - cookie-only подход
+      const response = await fetch('/api/admin/support/status', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
         },
         credentials: 'include',
         body: JSON.stringify({
@@ -191,6 +227,12 @@ export default function SupportAdmin() {
           status,
         }),
       });
+
+      // ИСПРАВЛЕНО (P0): Редирект на login при 401
+      if (response.status === 401) {
+        router.replace('/admin/login');
+        return;
+      }
     } catch (error) {
       console.error('Error updating chat status:', error);
     }
@@ -204,12 +246,11 @@ export default function SupportAdmin() {
     }
 
     try {
-      const token = localStorage.getItem('admin_token');
+      // ИСПРАВЛЕНО (P0): Убрали localStorage и Authorization - cookie-only подход
       const response = await fetch('/api/admin/support/status', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
         },
         credentials: 'include',
         body: JSON.stringify({
@@ -217,6 +258,12 @@ export default function SupportAdmin() {
           status: 'closed',
         }),
       });
+
+      // ИСПРАВЛЕНО (P0): Редирект на login при 401
+      if (response.status === 401) {
+        router.replace('/admin/login');
+        return;
+      }
 
       if (response.ok) {
         // Обновляем статус в текущем чате

@@ -6,16 +6,24 @@ import { prisma } from '@/lib/db';
 import { ApiResponse } from '@/lib/api-response';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { getCurrentProfile } from '@/lib/get-current-profile';
-import { logger } from '@/lib/logger';
+import { logger, logApiRequest, logApiError } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'GET';
+  const path = '/api/plan/status';
+  let userId: string | null = null;
+  
   try {
     const auth = await requireTelegramAuth(request, { ensureUser: true });
-    if (!auth.ok) return auth.response;
-    const userId = auth.ctx.userId;
+    if (!auth.ok) {
+      logApiRequest(method, path, auth.response.status, Date.now() - startTime, null);
+      return auth.response;
+    }
+    userId = auth.ctx.userId;
 
     // Получаем текущий профиль
     const profile = await getCurrentProfile(userId);
@@ -44,24 +52,32 @@ export async function GET(request: NextRequest) {
       const hasPlan28 = planData?.days && Array.isArray(planData.days) && planData.days.length > 0;
       
       if (hasPlan28) {
-        return ApiResponse.success({
+        const duration = Date.now() - startTime;
+        const response = ApiResponse.success({
           status: 'ready',
           ready: true,
           profileVersion: profile.version,
           profileId: profile.id,
         });
+        logApiRequest(method, path, 200, duration, userId);
+        return response;
       }
     }
 
     // План еще не готов
-    return ApiResponse.success({
+    const duration = Date.now() - startTime;
+    const response = ApiResponse.success({
       status: 'generating',
       ready: false,
       profileVersion: profile.version,
       profileId: profile.id,
     });
+    logApiRequest(method, path, 200, duration, userId);
+    return response;
   } catch (error: unknown) {
+    const duration = Date.now() - startTime;
     logger.error('Error checking plan status', error);
+    logApiError(method, path, error, userId);
     return ApiResponse.internalError(error);
   }
 }

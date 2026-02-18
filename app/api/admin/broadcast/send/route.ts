@@ -3,44 +3,20 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+import { verifyAdmin, verifyAdminBoolean } from '@/lib/admin-auth';
+// ИСПРАВЛЕНО (P0): Убран JWT - используем только verifyAdmin
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
-async function verifyAdmin(request: NextRequest): Promise<boolean> {
-  try {
-    const cookieToken = request.cookies.get('admin_token')?.value;
-    const headerToken = request.headers.get('authorization')?.replace('Bearer ', '');
-    const token = cookieToken || headerToken;
-    
-    if (!token) return false;
-    
-    try {
-      jwt.verify(token, JWT_SECRET);
-      return true;
-    } catch {
-      return false;
-    }
-  } catch {
-    return false;
-  }
-}
-
-// Рендеринг сообщения с переменными
+// ИСПРАВЛЕНО (P0): Улучшен renderMessage - дефолты, ограничение длины, экранирование
 function renderMessage(template: string, user: any, profile: any): string {
   let message = template;
   
-  // {name}
-  if (user.firstName) {
-    message = message.replace(/{name}/g, user.firstName);
-  } else if (user.username) {
-    message = message.replace(/{name}/g, `@${user.username}`);
-  } else {
-    message = message.replace(/{name}/g, 'друг');
-  }
+  // ИСПРАВЛЕНО (P0): {name} с дефолтами и ограничением длины
+  const userName = (user.firstName || user.username ? `@${user.username}` : 'друг').trim();
+  const safeName = userName.length > 50 ? userName.substring(0, 50) : userName;
+  message = message.replace(/{name}/g, safeName);
   
-  // {skinType}
+  // ИСПРАВЛЕНО (P0): {skinType} с дефолтами
   if (profile?.skinType) {
     const skinTypeMap: Record<string, string> = {
       oily: 'жирная',
@@ -49,10 +25,13 @@ function renderMessage(template: string, user: any, profile: any): string {
       sensitive: 'чувствительная',
       normal: 'нормальная',
     };
-    message = message.replace(/{skinType}/g, skinTypeMap[profile.skinType] || profile.skinType);
+    const skinType = skinTypeMap[profile.skinType] || profile.skinType || 'не указан';
+    message = message.replace(/{skinType}/g, skinType);
+  } else {
+    message = message.replace(/{skinType}/g, 'не указан');
   }
   
-  // {concern}
+  // ИСПРАВЛЕНО (P0): {concern} с дефолтами
   if (profile?.medicalMarkers?.concerns && Array.isArray(profile.medicalMarkers.concerns)) {
     const concerns = profile.medicalMarkers.concerns;
     if (concerns.length > 0) {
@@ -65,8 +44,13 @@ function renderMessage(template: string, user: any, profile: any): string {
         pores: 'поры',
         redness: 'покраснения',
       };
-      message = message.replace(/{concern}/g, concernMap[concerns[0]] || concerns[0]);
+      const concern = concernMap[concerns[0]] || concerns[0] || 'не указано';
+      message = message.replace(/{concern}/g, concern);
+    } else {
+      message = message.replace(/{concern}/g, 'не указано');
     }
+  } else {
+    message = message.replace(/{concern}/g, 'не указано');
   }
   
   // {link} - можно добавить ссылку на продукт или промо
@@ -176,6 +160,93 @@ async function sendTelegramMessage(
   }
 }
 
+// ИСПРАВЛЕНО (P0): Whitelist разрешённых фильтров для безопасности
+const ALLOWED_FILTER_KEYS = [
+  'skinTypes',
+  'concerns',
+  'lastActive',
+  'hasPurchases',
+  'excludePregnant',
+  'sendToAll',
+  'planDay', // Пока не реализован, но разрешён
+] as const;
+
+// ИСПРАВЛЕНО (P0): Валидация фильтров - только разрешённые ключи
+function validateFilters(filters: any): { valid: boolean; error?: string; cleanFilters?: any } {
+  if (!filters || typeof filters !== 'object' || Array.isArray(filters)) {
+    return { valid: false, error: 'Filters must be an object' };
+  }
+
+  // Проверяем, что все ключи в whitelist
+  const unknownKeys = Object.keys(filters).filter(key => !ALLOWED_FILTER_KEYS.includes(key as any));
+  if (unknownKeys.length > 0) {
+    return { valid: false, error: `Unknown filter keys: ${unknownKeys.join(', ')}` };
+  }
+
+  // Валидация значений
+  const cleanFilters: any = {};
+
+  if (filters.skinTypes !== undefined) {
+    if (!Array.isArray(filters.skinTypes)) {
+      return { valid: false, error: 'skinTypes must be an array' };
+    }
+    const validSkinTypes = ['oily', 'dry', 'combo', 'sensitive', 'normal'];
+    const invalidTypes = filters.skinTypes.filter((t: string) => !validSkinTypes.includes(t));
+    if (invalidTypes.length > 0) {
+      return { valid: false, error: `Invalid skinTypes: ${invalidTypes.join(', ')}` };
+    }
+    if (filters.skinTypes.length > 0) {
+      cleanFilters.skinTypes = filters.skinTypes;
+    }
+  }
+
+  if (filters.concerns !== undefined) {
+    if (!Array.isArray(filters.concerns)) {
+      return { valid: false, error: 'concerns must be an array' };
+    }
+    if (filters.concerns.length > 0) {
+      cleanFilters.concerns = filters.concerns;
+    }
+  }
+
+  if (filters.lastActive !== undefined) {
+    const validValues = ['<7', '7-30', '30+'];
+    if (!validValues.includes(filters.lastActive)) {
+      return { valid: false, error: `lastActive must be one of: ${validValues.join(', ')}` };
+    }
+    cleanFilters.lastActive = filters.lastActive;
+  }
+
+  if (filters.hasPurchases !== undefined) {
+    if (typeof filters.hasPurchases !== 'boolean') {
+      return { valid: false, error: 'hasPurchases must be a boolean' };
+    }
+    if (filters.hasPurchases) {
+      cleanFilters.hasPurchases = true;
+    }
+  }
+
+  if (filters.excludePregnant !== undefined) {
+    if (typeof filters.excludePregnant !== 'boolean') {
+      return { valid: false, error: 'excludePregnant must be a boolean' };
+    }
+    if (filters.excludePregnant) {
+      cleanFilters.excludePregnant = true;
+    }
+  }
+
+  if (filters.sendToAll !== undefined) {
+    if (typeof filters.sendToAll !== 'boolean') {
+      return { valid: false, error: 'sendToAll must be a boolean' };
+    }
+    if (filters.sendToAll) {
+      cleanFilters.sendToAll = true;
+    }
+  }
+
+  return { valid: true, cleanFilters };
+}
+
 // Получение пользователей по фильтрам (та же логика, что в count)
 async function getUsersByFilters(filters: any) {
   const where: any = {};
@@ -247,7 +318,7 @@ async function getUsersByFilters(filters: any) {
 
 export async function POST(request: NextRequest) {
   try {
-    const isAdmin = await verifyAdmin(request);
+    const isAdmin = await verifyAdminBoolean(request);
     if (!isAdmin) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -263,9 +334,14 @@ export async function POST(request: NextRequest) {
     let filters: any;
     let message: string;
     let test: boolean;
+    let dryRun: boolean; // ИСПРАВЛЕНО (P1): Dry-run режим
+    let scheduledAt: string | undefined; // ИСПРАВЛЕНО (P0): Поддержка scheduledAt
     let imageUrl: string | undefined;
     let imageBuffer: Buffer | undefined;
     let buttons: Array<{ text: string; url: string }> | undefined;
+
+    const { searchParams } = new URL(request.url);
+    dryRun = searchParams.get('dryRun') === 'true'; // ИСПРАВЛЕНО (P1): Dry-run через query param
 
     const contentType = request.headers.get('content-type') || '';
     
@@ -295,6 +371,7 @@ export async function POST(request: NextRequest) {
       }
       message = formData.get('message') as string;
       test = formData.get('test') === 'true';
+      scheduledAt = formData.get('scheduledAt') as string | undefined; // ИСПРАВЛЕНО (P0): Поддержка scheduledAt
       
       const imageFile = formData.get('image') as File | null;
       if (imageFile) {
@@ -310,10 +387,11 @@ export async function POST(request: NextRequest) {
       buttons = buttonsStr ? JSON.parse(buttonsStr) : undefined;
     } else {
       // Обрабатываем JSON (для обратной совместимости)
-    const body = await request.json();
+      const body = await request.json();
       filters = body.filters;
       message = body.message;
       test = body.test;
+      scheduledAt = body.scheduledAt; // ИСПРАВЛЕНО (P0): Поддержка scheduledAt
       imageUrl = body.imageUrl;
       buttons = body.buttons;
     }
@@ -325,41 +403,105 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ИСПРАВЛЕНО (P0): Валидация фильтров через whitelist
+    const filtersValidation = validateFilters(filters);
+    if (!filtersValidation.valid) {
+      return NextResponse.json(
+        { error: filtersValidation.error || 'Invalid filters' },
+        { status: 400 }
+      );
+    }
+    const cleanFilters = filtersValidation.cleanFilters || {};
+
+    // ИСПРАВЛЕНО (P0): Защита от рассылки в прошлое
+    let normalizedScheduledAt: Date | null = null;
+    if (scheduledAt) {
+      const dt = new Date(scheduledAt);
+      if (Number.isNaN(dt.getTime())) {
+        return NextResponse.json(
+          { error: 'scheduledAt must be a valid date' },
+          { status: 400 }
+        );
+      }
+      // ИСПРАВЛЕНО (P0): Проверяем, что дата в будущем (минимум +1 минута для буфера)
+      const oneMinuteFromNow = new Date(Date.now() + 60 * 1000);
+      if (dt <= oneMinuteFromNow) {
+        return NextResponse.json(
+          { error: 'scheduledAt must be at least 1 minute in the future' },
+          { status: 400 }
+        );
+      }
+      normalizedScheduledAt = dt;
+    }
+
+    // ИСПРАВЛЕНО (P1): Dry-run режим - только считаем пользователей и рендерим пример
+    if (dryRun) {
+      // Получаем пользователей для подсчёта и примера
+      let allUsers;
+      if (cleanFilters.sendToAll) {
+        allUsers = await prisma.user.findMany({
+          include: {
+            skinProfiles: {
+              orderBy: { createdAt: 'desc' },
+              take: 1,
+            },
+          },
+        });
+      } else {
+        allUsers = await getUsersByFilters(cleanFilters);
+      }
+
+      const totalCount = allUsers.length;
+
+      // Рендерим пример сообщения на первом пользователе
+      let exampleMessage = message;
+      if (allUsers.length > 0) {
+        const exampleUser = allUsers[0];
+        const exampleProfile = exampleUser.skinProfiles[0] || null;
+        exampleMessage = renderMessage(message, exampleUser, exampleProfile);
+      }
+
+      return NextResponse.json({
+        dryRun: true,
+        totalCount,
+        exampleMessage,
+        filters: cleanFilters,
+        message: `Would send to ${totalCount} users. Example message rendered above.`,
+      });
+    }
+
     // Получаем пользователей
     let users;
     if (test) {
-      // Для тестовой рассылки получаем админа из токена
-      const cookieToken = request.cookies.get('admin_token')?.value;
-      const headerToken = request.headers.get('authorization')?.replace('Bearer ', '');
-      const token = cookieToken || headerToken;
-      if (!token) {
+      // ИСПРАВЛЕНО (P0): Для тестовой рассылки получаем админа через verifyAdmin
+      const adminResult = await verifyAdmin(request);
+      if (!adminResult.valid || !adminResult.adminId) {
         return NextResponse.json(
-          { error: 'Token not found' },
-          { status: 401 }
-        );
-      }
-      let decoded: any;
-      try {
-        decoded = jwt.verify(token, JWT_SECRET) as any;
-      } catch (error) {
-        return NextResponse.json(
-          { error: 'Invalid token' },
+          { error: 'Admin authentication failed' },
           { status: 401 }
         );
       }
       
-      // Получаем telegramId из токена админа
-      const adminTelegramId = decoded.telegramId;
-      if (!adminTelegramId) {
+      // Ищем админа в whitelist для получения telegramId
+      // ИСПРАВЛЕНО: adminId может быть string | number, приводим к number для поиска
+      const adminId = typeof adminResult.adminId === 'string' ? parseInt(adminResult.adminId, 10) : adminResult.adminId;
+      const admin = await prisma.adminWhitelist.findFirst({
+        where: {
+          id: adminId,
+          isActive: true,
+        },
+      });
+      
+      if (!admin || !admin.telegramId) {
         return NextResponse.json(
-          { error: 'Admin telegramId not found in token' },
+          { error: 'Admin telegramId not found' },
           { status: 404 }
         );
       }
       
       // Ищем пользователя по telegramId
       users = await prisma.user.findMany({
-        where: { telegramId: adminTelegramId },
+        where: { telegramId: admin.telegramId },
         include: {
           skinProfiles: {
             orderBy: { createdAt: 'desc' },
@@ -372,8 +514,8 @@ export async function POST(request: NextRequest) {
       if (users.length === 0) {
         users = [{
           id: 'test-admin',
-          telegramId: adminTelegramId,
-          firstName: decoded.adminId || 'Админ',
+          telegramId: admin.telegramId,
+          firstName: admin.phoneNumber || 'Админ',
           lastName: null,
           username: null,
           language: 'ru',
@@ -384,17 +526,17 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // Если sendToAll, получаем всех пользователей
-      if (filters?.sendToAll) {
+      if (cleanFilters.sendToAll) {
         users = await prisma.user.findMany({
-        include: {
-          skinProfiles: {
-            orderBy: { createdAt: 'desc' },
-            take: 1,
+          include: {
+            skinProfiles: {
+              orderBy: { createdAt: 'desc' },
+              take: 1,
+            },
           },
-        },
-      });
-    } else {
-      users = await getUsersByFilters(filters);
+        });
+      } else {
+        users = await getUsersByFilters(cleanFilters);
       }
     }
 
@@ -420,16 +562,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Создаем запись о рассылке только для реальных рассылок
-    // Очищаем filters от undefined значений для корректной сериализации в JSON
-    const cleanFilters = filters ? Object.fromEntries(
-      Object.entries(filters).filter(([_, value]) => {
-        if (value === undefined || value === null) return false;
-        if (typeof value === 'string' && value.trim() === '') return false;
-        if (Array.isArray(value) && value.length === 0) return false;
-        return true;
-      })
-    ) : {};
+    // ИСПРАВЛЕНО (P0): Жёсткая блокировка повторного запуска - проверяем дубликаты
+    // Если есть рассылка с теми же параметрами в статусе sending/scheduled за последние 5 минут - блокируем
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
     
     // Валидируем, что cleanFilters может быть сериализован в JSON
     try {
@@ -442,86 +577,62 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    // ИСПРАВЛЕНО (P0): Проверяем, нет ли уже рассылки в статусе sending/scheduled с теми же параметрами
+    const existingBroadcast = await prisma.broadcastMessage.findFirst({
+      where: {
+        status: { in: ['sending', 'scheduled'] },
+        message: message.trim(),
+        filtersJson: cleanFilters as any,
+        createdAt: { gte: fiveMinutesAgo },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    
+    if (existingBroadcast) {
+      return NextResponse.json(
+        { error: 'Broadcast is already running or was recently started', broadcastId: existingBroadcast.id },
+        { status: 409 }
+      );
+    }
+    
+    // ИСПРАВЛЕНО (P0): Строгий lifecycle статуса
+    // draft → scheduled (если scheduledAt) → sending → completed/failed
+    // Нет других переходов
+    const initialStatus = normalizedScheduledAt ? 'scheduled' : 'sending';
+    
+    // ИСПРАВЛЕНО (P0): Создаём рассылку с правильным статусом
     const broadcast = await prisma.broadcastMessage.create({
       data: {
         title: `Рассылка ${new Date().toLocaleDateString('ru-RU')}`,
-        message,
-        filtersJson: cleanFilters as any, // Prisma Json type accepts any serializable object
+        message: message.trim(),
+        filtersJson: cleanFilters as any,
         buttonsJson: buttons ? (buttons as any) : null,
         imageUrl: imageUrl || null,
-        status: 'sending',
+        status: initialStatus, // ИСПРАВЛЕНО (P0): scheduled или sending в зависимости от scheduledAt
+        scheduledAt: normalizedScheduledAt,
         totalCount: users.length,
       },
     });
 
-    // Для реальной рассылки запускаем асинхронно
-    // В реальном приложении лучше использовать очередь (Bull, BullMQ)
-    // Здесь делаем простую реализацию с задержками
+    // ИСПРАВЛЕНО (P0): Рассылка вынесена в worker для избежания таймаутов
+    // POST /send только создаёт рассылку со статусом scheduled/sending
+    // Реальная отправка происходит через /api/admin/broadcasts/worker (вызывается cron)
+    // Это единственный способ избежать дублей и "зависших" рассылок на Vercel/Next.js
     
-    // Запускаем отправку в фоне (не ждем завершения)
-    (async () => {
-      // Telegram Bot API позволяет до 30 сообщений в секунду
-      // Используем небольшую задержку для безопасности (50-100ms)
-      const RANDOM_DELAY_MIN = 50;
-      const RANDOM_DELAY_MAX = 100;
-
-      let sentCount = 0;
-      let failedCount = 0;
-
-      for (const user of users) {
-        try {
-          const profile = user.skinProfiles[0] || null;
-          const renderedMessage = renderMessage(message, user, profile);
-          
-          const result = await sendTelegramMessage(user.telegramId, renderedMessage, imageBuffer, imageUrl, buttons);
-          
-          await prisma.broadcastLog.create({
-            data: {
-              broadcastId: broadcast.id,
-              userId: user.id,
-              telegramId: user.telegramId,
-              status: result.success ? 'sent' : 'failed',
-              errorMessage: result.error || null,
-            },
-          });
-
-          if (result.success) {
-            sentCount++;
-          } else {
-            failedCount++;
-          }
-
-          // Обновляем счетчики каждые 10 сообщений
-          if ((sentCount + failedCount) % 10 === 0) {
-            await prisma.broadcastMessage.update({
-              where: { id: broadcast.id },
-              data: {
-                sentCount,
-                failedCount,
-              },
-            });
-          }
-
-          // Задержка между сообщениями (рандомная для анти-бана)
-          const randomDelay = Math.random() * (RANDOM_DELAY_MAX - RANDOM_DELAY_MIN) + RANDOM_DELAY_MIN;
-          await new Promise(resolve => setTimeout(resolve, randomDelay));
-        } catch (error: any) {
-          console.error(`Error sending to user ${user.id}:`, error);
-          failedCount++;
-        }
-      }
-
-      // Финальное обновление
-      await prisma.broadcastMessage.update({
-        where: { id: broadcast.id },
-        data: {
-          status: 'completed',
-          sentCount,
-          failedCount,
-          sentAt: new Date(),
-        },
+    // Если scheduled - ждём worker
+    if (normalizedScheduledAt) {
+      return NextResponse.json({
+        success: true,
+        broadcastId: broadcast.id,
+        totalCount: users.length,
+        scheduledAt: normalizedScheduledAt.toISOString(),
+        message: 'Broadcast scheduled. Will be sent by worker when time comes.',
       });
-    })();
+    }
+    
+    // ИСПРАВЛЕНО (P0): Для немедленной рассылки статус sending, worker обработает
+    // Worker вызывается cron каждую минуту или может быть вызван вручную
+    // Это гарантирует, что рассылка не зависнет в HTTP-запросе
 
     return NextResponse.json({
       success: true,

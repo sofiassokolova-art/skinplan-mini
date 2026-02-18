@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnalysisLoading } from '@/components/AnalysisLoading';
 import { UserProfileCard } from '@/components/UserProfileCard';
@@ -11,6 +11,7 @@ import { SkinIssuesCarousel } from '@/components/SkinIssuesCarousel';
 import { CareRoutine } from '@/components/CareRoutine';
 import { FeedbackBlock } from '@/components/FeedbackBlock';
 import { api } from '@/lib/api';
+import { useAddToWishlist, useRemoveFromWishlist } from '@/hooks/useWishlist';
 import toast from 'react-hot-toast';
 import { clientLogger } from '@/lib/client-logger';
 import type { AnalysisResponse, CareStep } from '@/lib/api-types';
@@ -27,18 +28,7 @@ function AnalysisPageContent() {
   const [inRoutineProducts, setInRoutineProducts] = useState<Set<number>>(new Set());
   const [wishlistProductIds, setWishlistProductIds] = useState<Set<number>>(new Set());
 
-  useEffect(() => {
-    loadAnalysisData();
-  }, []);
-
-  // Останавливаем анимацию загрузки, если произошла ошибка
-  useEffect(() => {
-    if (error && showLoading) {
-      setShowLoading(false);
-    }
-  }, [error, showLoading]);
-
-  const loadAnalysisData = async () => {
+  const loadAnalysisData = useCallback(async () => {
     try {
       clientLogger.info('📥 Loading analysis data');
       setLoading(true);
@@ -64,17 +54,15 @@ function AnalysisPageContent() {
         clientLogger.warn('Could not load wishlist:', err);
       }
 
-      // Загружаем выбранные продукты из localStorage
-      if (typeof window !== 'undefined') {
-        try {
-          const savedRoutine = localStorage.getItem('routine_products');
-          if (savedRoutine) {
-            const routineProducts = JSON.parse(savedRoutine) as number[];
-            setInRoutineProducts(new Set(routineProducts));
-          }
-        } catch (err) {
-          clientLogger.warn('Could not load routine products from localStorage:', err);
+      // Загружаем выбранные продукты из БД
+      try {
+        const { getRoutineProducts } = await import('@/lib/user-preferences');
+        const routineProducts = await getRoutineProducts();
+        if (routineProducts && Array.isArray(routineProducts)) {
+          setInRoutineProducts(new Set(routineProducts));
         }
+      } catch (err) {
+        clientLogger.warn('Could not load routine products from DB:', err);
       }
 
       setAnalysisData(analysisData);
@@ -98,7 +86,18 @@ function AnalysisPageContent() {
       setError(err?.message || 'Ошибка загрузки данных анализа');
       setLoading(false);
     }
-  };
+  }, [setLoading, setError, setAnalysisData]);
+
+  useEffect(() => {
+    loadAnalysisData();
+  }, [loadAnalysisData]);
+
+  // Останавливаем анимацию загрузки, если произошла ошибка
+  useEffect(() => {
+    if (error && showLoading) {
+      setShowLoading(false);
+    }
+  }, [error, showLoading]);
 
   const handleAddToRoutine = async (productId: number) => {
     const newSet = new Set(inRoutineProducts);
@@ -109,17 +108,27 @@ function AnalysisPageContent() {
     } else {
       newSet.add(productId);
     }
-    setInRoutineProducts(newSet);
     
-    // Сохраняем в localStorage для сохранения состояния между сессиями
-    // План будет использовать выбранные продукты при генерации
-    if (typeof window !== 'undefined') {
+    // ИСПРАВЛЕНО: Сначала сохраняем в БД, только при успехе обновляем локальное состояние
+    // Это предотвращает рассинхронизацию между UI и сервером
+    try {
+      const { setRoutineProducts } = await import('@/lib/user-preferences');
       const routineProducts = Array.from(newSet);
-      localStorage.setItem('routine_products', JSON.stringify(routineProducts));
+      await setRoutineProducts(routineProducts);
+      
+      // Только после успешного сохранения обновляем локальное состояние
+      setInRoutineProducts(newSet);
+      toast.success(wasInRoutine ? 'Удалено из ухода' : 'Добавлено в уход');
+    } catch (err) {
+      clientLogger.error('Could not save routine products to DB:', err);
+      toast.error('Не удалось сохранить изменения. Пожалуйста, попробуйте еще раз.');
+      // Не обновляем локальное состояние при ошибке, чтобы UI оставался синхронизированным с сервером
     }
-    
-    toast.success(wasInRoutine ? 'Удалено из ухода' : 'Добавлено в уход');
   };
+
+  // ИСПРАВЛЕНО: Используем React Query хуки для автоматической инвалидации кэша
+  const addToWishlistMutation = useAddToWishlist();
+  const removeFromWishlistMutation = useRemoveFromWishlist();
 
   const handleToggleWishlist = async (productId: number) => {
     try {
@@ -127,7 +136,7 @@ function AnalysisPageContent() {
       
       if (isInWishlist) {
         clientLogger.info('Removing product from wishlist', { productId });
-        await api.removeFromWishlist(productId);
+        await removeFromWishlistMutation.mutateAsync(productId);
         setWishlistProductIds(prev => {
           const newSet = new Set(prev);
           newSet.delete(productId);
@@ -136,7 +145,7 @@ function AnalysisPageContent() {
         toast.success('Удалено из избранного');
       } else {
         clientLogger.info('Adding product to wishlist', { productId });
-        await api.addToWishlist(productId);
+        await addToWishlistMutation.mutateAsync(productId);
         setWishlistProductIds(prev => {
           const newSet = new Set(prev);
           newSet.add(productId);
@@ -290,39 +299,6 @@ function AnalysisPageContent() {
       padding: '20px',
       paddingBottom: '100px',
     }}>
-      {/* Логотип */}
-      <div style={{
-        padding: '20px',
-        textAlign: 'center',
-      }}>
-        <button
-          onClick={() => router.push('/')}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: 0,
-            display: 'inline-block',
-          }}
-        >
-        <img
-          src="/skiniq-logo.png"
-          alt="SkinIQ"
-          style={{
-            height: '120px',
-            marginBottom: '8px',
-              transition: 'transform 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'scale(1.05)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'scale(1)';
-          }}
-        />
-        </button>
-      </div>
-
       <h1 style={{
         fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
         fontWeight: 700,

@@ -11,6 +11,104 @@ import {
   extractActiveIngredients,
   type ActiveIngredient,
 } from './ingredient-compatibility';
+
+/**
+ * ИСПРАВЛЕНО (P0): Определяет активные ингредиенты из stepCategory
+ * Используется как fallback, если product.activeIngredients пусто или ненадежно
+ */
+function getActiveIngredientsFromStepCategory(stepCategory?: StepCategory): ActiveIngredient[] {
+  if (!stepCategory) return [];
+  
+  const ingredients: ActiveIngredient[] = [];
+  
+  // Маппинг stepCategory на активные ингредиенты
+  if (stepCategory.includes('retinol') || stepCategory === 'treatment_antiage') {
+    ingredients.push('retinol');
+  }
+  if (stepCategory.includes('retinoid')) {
+    ingredients.push('retinoid');
+  }
+  if (stepCategory.includes('adapalene')) {
+    ingredients.push('adapalene');
+  }
+  if (stepCategory.includes('tretinoin')) {
+    ingredients.push('tretinoin');
+  }
+  if (stepCategory.includes('vitc') || stepCategory.includes('vitamin_c')) {
+    ingredients.push('vitamin_c');
+  }
+  if (stepCategory.includes('niacinamide')) {
+    ingredients.push('niacinamide');
+  }
+  if (stepCategory.includes('aha') || stepCategory === 'toner_aha') {
+    ingredients.push('aha');
+  }
+  if (stepCategory.includes('bha') || stepCategory === 'toner_bha') {
+    ingredients.push('bha');
+  }
+  if (stepCategory.includes('exfoliant') || stepCategory.includes('acid') || 
+      stepCategory === 'toner_exfoliant' || stepCategory === 'treatment_exfoliant_mild' || 
+      stepCategory === 'treatment_exfoliant_strong' || stepCategory === 'mask_acid') {
+    ingredients.push('aha', 'bha'); // Может быть любая кислота
+  }
+  if (stepCategory.includes('azelaic') || stepCategory === 'treatment_acne_azelaic') {
+    ingredients.push('azelaic_acid');
+  }
+  if (stepCategory.includes('bpo') || stepCategory === 'treatment_acne_bpo') {
+    ingredients.push('benzoyl_peroxide');
+  }
+  if (stepCategory.includes('peptide')) {
+    ingredients.push('peptides');
+  }
+  if (stepCategory.includes('ceramide') || stepCategory.includes('barrier')) {
+    ingredients.push('ceramides');
+  }
+  if (stepCategory.includes('hyaluronic') || stepCategory.includes('hydrating')) {
+    ingredients.push('hyaluronic_acid');
+  }
+  
+  return [...new Set(ingredients)];
+}
+
+/**
+ * ИСПРАВЛЕНО (P0): Единая функция для определения активных ингредиентов продукта
+ * Использует stepCategory как источник истины, если activeIngredients пусто
+ * 
+ * Приоритет:
+ * 1. extractActiveIngredients из product.activeIngredients (если есть)
+ * 2. getActiveIngredientsFromStepCategory из context.stepCategory (если есть)
+ * 3. extractActiveIngredients из product.step/category (fallback)
+ */
+function getIngredientsForProduct(
+  product: ProductWithBrand,
+  context: ProductSelectionContext
+): ActiveIngredient[] {
+  // 1. Пытаемся извлечь из реальных activeIngredients
+  const extractedFromActives = extractActiveIngredients({
+    activeIngredients: product.activeIngredients || [],
+    composition: undefined, // ProductWithBrand не имеет composition
+  });
+  
+  if (extractedFromActives.length > 0) {
+    return extractedFromActives;
+  }
+  
+  // 2. Если activeIngredients пусто, используем stepCategory как источник истины
+  if (context.stepCategory) {
+    const fromStepCategory = getActiveIngredientsFromStepCategory(context.stepCategory);
+    if (fromStepCategory.length > 0) {
+      return fromStepCategory;
+    }
+  }
+  
+  // 3. Fallback: пытаемся извлечь из step/category (старая логика)
+  const extractedFromStep = extractActiveIngredients({
+    activeIngredients: [],
+    composition: `${product.step || ''} ${product.category || ''}`.trim() || undefined,
+  });
+  
+  return extractedFromStep;
+}
 import {
   determineProtocol,
   isProductAllowedByProtocol,
@@ -26,6 +124,9 @@ export interface ProductSelectionContext {
   alreadySelected: ProductWithBrand[];
   protocol: DermatologyProtocol;
   profileClassification: ProfileClassification;
+  // ИСПРАВЛЕНО (P1): Добавлен stepCategory для точного определения типа шага
+  // Особенно важно, если activeIngredients пустой/грязный
+  stepCategory?: StepCategory;
 }
 
 export interface ProductSelectionResult {
@@ -39,6 +140,7 @@ export interface ProductSelectionResult {
 
 /**
  * Фильтрует продукты по дерматологическому протоколу
+ * ИСПРАВЛЕНО (P0): Передает реальные activeIngredients вместо пустого массива
  */
 export function filterByProtocol(
   products: ProductWithBrand[],
@@ -46,12 +148,14 @@ export function filterByProtocol(
   context: ProductSelectionContext
 ): ProductSelectionResult[] {
   return products.map(product => {
-    // Для ProductWithBrand извлекаем ингредиенты из step/category
-    // В будущем можно добавить загрузку полной информации о продукте
+    // ИСПРАВЛЕНО: Используем единую функцию для определения активов
+    const ingredients = getIngredientsForProduct(product, context);
+    
     const productForCheck = {
-      activeIngredients: [] as string[], // Будет определяться по step/category
+      activeIngredients: ingredients.map(ing => String(ing)), // Преобразуем ActiveIngredient[] в string[]
       step: product.step,
       category: product.category || undefined,
+      stepCategory: context.stepCategory, // ИСПРАВЛЕНО: Передаем stepCategory для точной проверки
     };
     
     const check = isProductAllowedByProtocol(
@@ -67,9 +171,11 @@ export function filterByProtocol(
       };
     }
 
+    // ИСПРАВЛЕНО: Добавляем warning, если есть (soft allowlist)
     return {
       product,
       allowed: true,
+      warning: check.warning,
     };
   });
 }
@@ -82,9 +188,7 @@ export function checkCompatibilityWithSelected(
   product: ProductWithBrand,
   context: ProductSelectionContext
 ): ProductSelectionResult {
-  // ИСПРАВЛЕНО: Импортируем функции проверки совместимости синхронно
-  const { canUseTogether, getOptimalTimeOfDay } = require('./ingredient-compatibility');
-  
+  // ИСПРАВЛЕНО: Используем уже импортированные функции из ingredient-compatibility
   // ИСПРАВЛЕНО: Используем реальные activeIngredients из продукта
   const productForCompatibility = {
     activeIngredients: product.activeIngredients || [],
@@ -92,13 +196,16 @@ export function checkCompatibilityWithSelected(
   };
   
   // ИСПРАВЛЕНО: Используем реальные activeIngredients из уже выбранных продуктов
+  // ИСПРАВЛЕНО (P0): Передаем skinSensitivity в canUseTogether
+  const skinSensitivity = context.profileClassification.sensitivityLevel as 'low' | 'medium' | 'high' | 'very_high' || 'medium';
   const compatibility = canUseTogether(
     productForCompatibility,
     context.alreadySelected.map(p => ({
       activeIngredients: p.activeIngredients || [],
       composition: undefined as string | undefined,
     })),
-    context.timeOfDay
+    context.timeOfDay,
+    skinSensitivity
   );
 
   if (!compatibility.compatible) {
@@ -106,9 +213,11 @@ export function checkCompatibilityWithSelected(
     
       // Если конфликт можно решить разделением по времени
       if (conflict.solution === 'separate_time') {
-        const productForTimeCheck: { step?: string; category?: string | null; activeIngredients?: string[]; composition?: string } = {
-          step: product.step,
-          category: product.category,
+        // ИСПРАВЛЕНО (P0): Передаем реальные активы в getOptimalTimeOfDay
+        const ingredients = getIngredientsForProduct(product, context);
+        const productForTimeCheck = {
+          activeIngredients: ingredients.map(ing => String(ing)),
+          composition: undefined as string | undefined,
         };
         const optimalTime = getOptimalTimeOfDay(
           productForTimeCheck,
@@ -143,21 +252,53 @@ export function checkCompatibilityWithSelected(
 
 /**
  * Проверяет дублирование активных ингредиентов
+ * ИСПРАВЛЕНО (P0): Использует stepCategory для определения активов, если product.activeIngredients пусто
  */
 export function checkForDuplication(
   products: ProductWithBrand[],
   context: ProductSelectionContext
 ): ProductSelectionResult[] {
   const allProducts = [...context.alreadySelected, ...products];
-  // Преобразуем ProductWithBrand в формат для checkIngredientDuplication
-  const productsForCheck = allProducts.map(p => ({
-    activeIngredients: [] as string[],
-    composition: undefined as string | undefined,
-  }));
+  
+  // ИСПРАВЛЕНО (P0): Используем реальные activeIngredients вместо пустого массива
+  // ИСПРАВЛЕНО (P1): Создаем мапу product.id -> index для безопасного матчинга
+  const productIdToIndex = new Map<number, number>();
+  allProducts.forEach((p, index) => {
+    if (p.id) {
+      productIdToIndex.set(p.id, index);
+    }
+  });
+  
+  const productsForCheck = allProducts.map((p, index) => {
+    // ИСПРАВЛЕНО: Используем единую функцию для определения активов
+    // Для alreadySelected используем сохраненный stepCategory, если он есть
+    let stepCategory: StepCategory | undefined = undefined;
+    if (index < context.alreadySelected.length) {
+      // Для уже выбранных продуктов используем сохраненный stepCategory
+      stepCategory = (p as any).stepCategory;
+    } else {
+      // Для новых продуктов используем stepCategory из контекста
+      stepCategory = context.stepCategory;
+    }
+    const tempContext: ProductSelectionContext = {
+      ...context,
+      stepCategory,
+    };
+    const ingredients = getIngredientsForProduct(p, tempContext);
+    
+    return {
+      activeIngredients: ingredients.map(ing => String(ing)), // Преобразуем ActiveIngredient[] в string[]
+      composition: undefined as string | undefined,
+    };
+  });
   const duplicates = checkIngredientDuplication(productsForCheck);
 
   return products.map(product => {
-    const productIndex = allProducts.indexOf(product);
+    // ИСПРАВЛЕНО (P1): Используем product.id для безопасного матчинга вместо indexOf
+    const productIndex = product.id && productIdToIndex.has(product.id)
+      ? productIdToIndex.get(product.id)!
+      : allProducts.findIndex(p => p.id === product.id || (p.step === product.step && p.name === product.name));
+    
     const duplicate = duplicates.find(d => d.products.includes(productIndex));
 
     if (duplicate) {
@@ -183,61 +324,48 @@ export function checkForDuplication(
 
 /**
  * Проверяет, соответствует ли продукт расписанию применения активных ингредиентов
+ * ИСПРАВЛЕНО (P0): Использует stepCategory для определения активов, если product.activeIngredients пусто
  */
 export function checkTitrationSchedule(
   product: ProductWithBrand,
   context: ProductSelectionContext
 ): ProductSelectionResult {
-  // Определяем ингредиенты по step/category (упрощенная версия)
-  const ingredients: ActiveIngredient[] = [];
-  const stepLower = (product.step || '').toLowerCase();
-  const categoryLower = (product.category || '').toLowerCase();
-  
-  if (stepLower.includes('retinol') || categoryLower.includes('retinol')) {
-    ingredients.push('retinol');
-  }
-  if (stepLower.includes('bha') || categoryLower.includes('bha') || stepLower.includes('salicylic')) {
-    ingredients.push('bha');
-  }
-  if (stepLower.includes('aha') || categoryLower.includes('aha')) {
-    ingredients.push('aha');
-  }
-  if (stepLower.includes('vitamin c') || stepLower.includes('vitc') || categoryLower.includes('vitamin c')) {
-    ingredients.push('vitamin_c');
-  }
-  if (stepLower.includes('azelaic') || categoryLower.includes('azelaic')) {
-    ingredients.push('azelaic_acid');
-  }
+  // ИСПРАВЛЕНО (P0): Используем единую функцию для определения активов
+  // Это гарантирует использование реальных activeIngredients и stepCategory как fallback
+  const ingredients = getIngredientsForProduct(product, context);
   const schedule = context.protocol.titrationSchedule || [];
 
   for (const ingredient of ingredients) {
-    const ingredientSchedule = schedule.find(s => s.ingredient === ingredient);
-    if (ingredientSchedule) {
-      const weekSchedule = getIngredientSchedule(ingredient, context.protocol, context.week);
-      
-      // Проверяем, можно ли применять в этот день недели
-      const dayOfWeek = ((context.day - 1) % 7) + 1;
-      const allowedDays = weekSchedule.days || [];
-      
-      if (allowedDays.length > 0 && !allowedDays.includes(dayOfWeek)) {
-        return {
-          product,
-          allowed: false,
-          reason: `Ингредиент ${ingredient} не должен применяться в этот день согласно расписанию`,
-          recommendation: `Применяйте ${ingredient} в дни: ${allowedDays.join(', ')}`,
-        };
-      }
-
-      // Проверяем частоту применения
-      const maxFrequency = weekSchedule.frequency;
-      if (maxFrequency === 0) {
-        return {
-          product,
-          allowed: false,
-          reason: `Ингредиент ${ingredient} не должен применяться на ${context.week} неделе`,
-        };
-      }
+    // ИСПРАВЛЕНО (P0): Проверяем и titrationSchedule, и cyclingRules через getIngredientSchedule
+    const weekSchedule = getIngredientSchedule(ingredient, context.protocol, context.week);
+    
+    // ИСПРАВЛЕНО (P1): frequency: null означает "нет ограничений" - пропускаем проверку
+    if (weekSchedule.frequency === null || weekSchedule.frequency === undefined) {
+      continue; // Нет ограничений для этого ингредиента
     }
+    
+    // ИСПРАВЛЕНО (P0): Проверяем фиксированные дни из cyclingRules (приоритет)
+    const dayOfWeek = ((context.day - 1) % 7) + 1;
+    const allowedDays = weekSchedule.days || [];
+    
+    if (allowedDays.length > 0 && !allowedDays.includes(dayOfWeek)) {
+      return {
+        product,
+        allowed: false,
+        reason: `Ингредиент ${ingredient} не должен применяться в этот день согласно расписанию`,
+        recommendation: `Применяйте ${ingredient} в дни: ${allowedDays.join(', ')}`,
+      };
+    }
+
+    // Проверяем частоту применения (если нет фиксированных дней)
+    if (allowedDays.length === 0 && weekSchedule.frequency === 0) {
+      return {
+        product,
+        allowed: false,
+        reason: `Ингредиент ${ingredient} не должен применяться на ${context.week} неделе`,
+      };
+    }
+    // Если frequency > 0 и нет фиксированных дней - проверка частоты будет в другом месте (счетчик применений)
   }
 
   return {
@@ -312,12 +440,15 @@ export function filterProductsWithDermatologyLogic(
   const finalCompatible = titrationResults.filter(r => r.allowed);
   const finalIncompatible = titrationResults.filter(r => !r.allowed);
 
-  // Если есть несовместимые, но они могут быть перенесены на другое время - помечаем это
+  // ИСПРАВЛЕНО (P1): Разделяем несовместимые на те, что можно перенести, и те, что нельзя
+  // Убираем дублирование - один продукт не должен попадать дважды
   const canBeMoved = incompatible.filter(r => r.movedToTime);
+  const hardIncompatible = incompatible.filter(r => !r.movedToTime);
   
   return [
     ...finalCompatible,
     ...finalIncompatible,
+    ...hardIncompatible,
     ...canBeMoved,
   ];
 }

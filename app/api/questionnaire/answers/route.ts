@@ -10,6 +10,7 @@ import { MAX_DUPLICATE_SUBMISSION_WINDOW_MS } from '@/lib/constants';
 import { buildSkinProfileFromAnswers } from '@/lib/skinprofile-rules-engine';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { logDbFingerprint } from '@/lib/db-fingerprint';
+import { normalizeProfileData, normalizeMedicalMarkers } from '@/lib/profile-normalizer';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -81,11 +82,13 @@ export async function POST(request: NextRequest) {
   let userId: string | undefined;
 
   try {
-    // DEBUG: Логируем DB fingerprint для диагностики разных БД
-    // Используем console.warn для гарантированного вывода в Vercel logs
-    console.warn('🔍 [QUESTIONNAIRE/ANSWERS] Starting DB fingerprint check...');
-    const fingerprintAtStart = await logDbFingerprint('/api/questionnaire/answers');
-    console.warn('🔍 [QUESTIONNAIRE/ANSWERS] DB fingerprint at start:', JSON.stringify(fingerprintAtStart, null, 2));
+    // ИСПРАВЛЕНО: Логирование только при включенном DEBUG флаге
+    const DEBUG_DB_FINGERPRINT = process.env.DEBUG_DB_FINGERPRINT === 'true';
+    if (DEBUG_DB_FINGERPRINT) {
+      console.warn('🔍 [QUESTIONNAIRE/ANSWERS] Starting DB fingerprint check...');
+      const fingerprintAtStart = await logDbFingerprint('/api/questionnaire/answers');
+      console.warn('🔍 [QUESTIONNAIRE/ANSWERS] DB fingerprint at start:', JSON.stringify(fingerprintAtStart, null, 2));
+    }
     
     const auth = await requireTelegramAuth(request, { ensureUser: true });
     if (!auth.ok) return auth.response;
@@ -98,15 +101,18 @@ export async function POST(request: NextRequest) {
       clientSubmissionId?: string | null;
     };
 
-    // ВАЖНО: Логируем полученные данные для диагностики
-    logger.debug('Received answers submission', {
-      userId,
-      questionnaireId,
-      answersCount: Array.isArray(answers) ? answers.length : 0,
-      answersType: Array.isArray(answers) ? 'array' : typeof answers,
-      answerQuestionIds: Array.isArray(answers) ? answers.map((a: any) => a.questionId) : [],
-      answerSample: Array.isArray(answers) ? answers.slice(0, 3) : answers,
-    });
+    // ИСПРАВЛЕНО: Логируем только при включенном DEBUG флаге (избегаем PII и шума)
+    const DEBUG_QUESTIONNAIRE = process.env.DEBUG_QUESTIONNAIRE === 'true';
+    if (DEBUG_QUESTIONNAIRE) {
+      logger.debug('Received answers submission', {
+        userId,
+        questionnaireId,
+        answersCount: Array.isArray(answers) ? answers.length : 0,
+        answersType: Array.isArray(answers) ? 'array' : typeof answers,
+        answerQuestionIds: Array.isArray(answers) ? answers.map((a: any) => a.questionId) : [],
+        // ИСПРАВЛЕНО: Не логируем answerSample (может содержать PII)
+      });
+    }
 
     if (!questionnaireId || !Array.isArray(answers)) {
       logger.error('Invalid request body', {
@@ -133,8 +139,8 @@ export async function POST(request: NextRequest) {
       // Продолжаем обработку, но логируем проблему
     }
     
-    // Фильтруем только валидные ответы
-    const validAnswers = answers.filter((a: any) => a.questionId && typeof a.questionId === 'number' && a.questionId > 0);
+    // ИСПРАВЛЕНО: Фильтруем только валидные ответы (let вместо const, т.к. может быть переприсвоен после валидации)
+    let validAnswers = answers.filter((a: any) => a.questionId && typeof a.questionId === 'number' && a.questionId > 0);
     
     if (validAnswers.length === 0) {
       logger.error('No valid answers to process', {
@@ -146,12 +152,15 @@ export async function POST(request: NextRequest) {
       return ApiResponse.badRequest('No valid answers provided');
     }
     
-    logger.debug('Processing valid answers', {
-      userId,
-      questionnaireId,
-      validAnswersCount: validAnswers.length,
-      validQuestionIds: validAnswers.map((a: any) => a.questionId),
-    });
+    // ИСПРАВЛЕНО: Логируем только при включенном DEBUG флаге
+    if (DEBUG_QUESTIONNAIRE) {
+      logger.debug('Processing valid answers', {
+        userId,
+        questionnaireId,
+        validAnswersCount: validAnswers.length,
+        // ИСПРАВЛЕНО: Не логируем validQuestionIds (может быть шумно)
+      });
+    }
 
     // Получаем анкету
     const questionnaire = await prisma.questionnaire.findUnique({
@@ -283,7 +292,8 @@ export async function POST(request: NextRequest) {
 
     // ИСПРАВЛЕНО: Серверная валидация критических медицинских условий
     // Не доверяем UI фильтрации - проверяем на сервере
-    const validateMedicalConditions = async () => {
+    // ИСПРАВЛЕНО: Убрана мутация через splice, возвращаем новый массив через filter
+    const validateMedicalConditions = async (): Promise<AnswerInput[]> => {
       // Получаем все вопросы анкеты для проверки кодов
       const allQuestions = await prisma.question.findMany({
         where: { questionnaireId },
@@ -325,6 +335,9 @@ export async function POST(request: NextRequest) {
                option?.value?.toLowerCase().includes('male');
       })();
 
+      // ИСПРАВЛЕНО: Используем filter вместо splice для избежания мутации
+      let filteredAnswers = [...validAnswers];
+
       // Проверяем вопрос про беременность - не должен быть у мужчин
       const pregnancyQuestion = allQuestions.find(q => 
         q.code === 'pregnancy' || 
@@ -339,11 +352,8 @@ export async function POST(request: NextRequest) {
             questionId: pregnancyQuestion.id,
             questionCode: pregnancyQuestion.code,
           });
-          // Удаляем невалидный ответ из validAnswers
-          const index = validAnswers.findIndex((a: AnswerInput) => a.questionId === pregnancyQuestion.id);
-          if (index >= 0) {
-            validAnswers.splice(index, 1);
-          }
+          // ИСПРАВЛЕНО: Фильтруем вместо мутации
+          filteredAnswers = filteredAnswers.filter((a: AnswerInput) => a.questionId !== pregnancyQuestion.id);
         }
       }
 
@@ -393,17 +403,16 @@ export async function POST(request: NextRequest) {
             questionId: retinoidReactionQuestion.id,
             questionCode: retinoidReactionQuestion.code,
           });
-          // Удаляем невалидный ответ из validAnswers
-          const index = validAnswers.findIndex((a: AnswerInput) => a.questionId === retinoidReactionQuestion.id);
-          if (index >= 0) {
-            validAnswers.splice(index, 1);
-          }
+          // ИСПРАВЛЕНО: Фильтруем вместо мутации
+          filteredAnswers = filteredAnswers.filter((a: AnswerInput) => a.questionId !== retinoidReactionQuestion.id);
         }
       }
+
+      return filteredAnswers;
     };
 
     // Выполняем валидацию перед транзакцией
-    await validateMedicalConditions();
+    validAnswers = await validateMedicalConditions();
 
     // ВАЖНО: Логируем перед началом транзакции
     logger.debug('Starting transaction for answers submission', {
@@ -578,6 +587,13 @@ export async function POST(request: NextRequest) {
               return option?.label || val;
             })
             .filter(Boolean);
+        } else if (answer.answerValue && answer.question?.answerOptions) {
+          // ИСПРАВЛЕНО: Для single_choice тоже маппим value на label
+          // Это важно для правил, которые ищут опции по label (например, бюджет)
+          const option = answer.question.answerOptions.find(opt => opt.value === answer.answerValue);
+          if (option?.label) {
+            answerOptionLabels = [option.label];
+          }
         }
         
         return {
@@ -592,12 +608,32 @@ export async function POST(request: NextRequest) {
       // Применяем правила для извлечения mainGoals
       const profileFromRules = buildSkinProfileFromAnswers(rawAnswers);
       
-      // ВАЖНО: Извлекаем diagnoses и другие данные из ответов напрямую
-      // createSkinProfile не извлекает diagnoses, поэтому делаем это здесь
-      const diagnosesAnswer = fullAnswers.find(a => a.question?.code === 'diagnoses' || a.question?.code === 'DIAGNOSES');
+      // ИСПРАВЛЕНО: Извлекаем diagnoses через маппинг value -> label -> доменный enum
+      // Используем answerOptionLabels из rawAnswers (уже маппленные), а не сырые answerValues
+      const diagnosesAnswer = rawAnswers.find(a => a.questionCode === 'diagnoses' || a.questionCode === 'DIAGNOSES');
       
       const extractedData: any = {};
-      if (diagnosesAnswer && Array.isArray(diagnosesAnswer.answerValues)) {
+      // ИСПРАВЛЕНО: Используем answerOptionLabels (labels) вместо answerValues (сырые values)
+      // Это гарантирует, что diagnoses будут доменными значениями (acne, rosacea и т.п.), а не "diagnoses_3"
+      if (diagnosesAnswer && diagnosesAnswer.answerOptionLabels && Array.isArray(diagnosesAnswer.answerOptionLabels)) {
+        // Маппим labels на доменные значения через правила
+        // Если label совпадает с доменным значением - используем как есть, иначе нормализуем
+        extractedData.diagnoses = diagnosesAnswer.answerOptionLabels.map((label: string) => {
+          // Нормализуем label к доменному значению (например, "Акне" -> "acne")
+          const normalizedLabel = label.toLowerCase();
+          if (normalizedLabel.includes('акне') || normalizedLabel.includes('acne')) return 'acne';
+          if (normalizedLabel.includes('розацеа') || normalizedLabel.includes('rosacea')) return 'rosacea';
+          if (normalizedLabel.includes('экзема') || normalizedLabel.includes('eczema')) return 'eczema';
+          if (normalizedLabel.includes('псориаз') || normalizedLabel.includes('psoriasis')) return 'psoriasis';
+          // Если не распознали - возвращаем label как есть (может быть уже доменным значением)
+          return label;
+        });
+      } else if (diagnosesAnswer && Array.isArray(diagnosesAnswer.answerValues)) {
+        // Fallback: если answerOptionLabels нет, используем answerValues, но с предупреждением
+        logger.warn('Using raw answerValues for diagnoses (answerOptionLabels not available)', {
+          userId,
+          questionId: diagnosesAnswer.questionId,
+        });
         extractedData.diagnoses = diagnosesAnswer.answerValues;
       }
       // ИСПРАВЛЕНО: Используем mainGoals из buildSkinProfileFromAnswers вместо concernsAnswer
@@ -655,30 +691,52 @@ export async function POST(request: NextRequest) {
           }
         }
       }
+      // ИСПРАВЛЕНО: ОБЯЗАТЕЛЬНЫЙ normalization layer после анкеты
+      // Все значения должны быть нормализованы к каноническим типам перед сохранением
+      const normalizedProfile = normalizeProfileData({
+        ...profileData,
+        mainGoals: extractedData.mainGoals,
+        diagnoses: extractedData.diagnoses,
+      }, {
+        userId,
+      });
+
+      // ИСПРАВЛЕНО: Нормализуем medicalMarkers
+      const normalizedMarkers = normalizeMedicalMarkers(mergedMarkers);
+
       // ВАЖНО: Валидируем данные перед созданием профиля
       // Проверяем, что все обязательные поля присутствуют
-      if (!profileData.skinType) {
-        logger.error('CRITICAL: skinType is missing in profileData', {
+      if (!normalizedProfile.skinType) {
+        logger.error('CRITICAL: skinType is missing after normalization', {
           userId,
           questionnaireId,
           profileData,
+          normalizedProfile,
         });
         throw new Error('skinType is required for profile creation');
       }
       
-      if (!profileData.sensitivityLevel) {
-        logger.error('CRITICAL: sensitivityLevel is missing in profileData', {
+      if (!normalizedProfile.sensitivity) {
+        logger.error('CRITICAL: sensitivityLevel is missing after normalization', {
           userId,
           questionnaireId,
           profileData,
+          normalizedProfile,
         });
         throw new Error('sensitivityLevel is required for profile creation');
       }
       
+      // ИСПРАВЛЕНО: Преобразуем нормализованные значения для Prisma
+      // Prisma ожидает JsonValue, поэтому преобразуем канонические типы в строки
       const profileDataForPrisma = {
-        ...profileData,
-        ageGroup: existingProfile?.ageGroup ?? profileData.ageGroup,
-        medicalMarkers: Object.keys(mergedMarkers).length > 0 ? mergedMarkers : null,
+        ...profileData, // Сохраняем оригинальные поля для Prisma (совместимость)
+        skinType: normalizedProfile.skinType || profileData.skinType, // ИСПРАВЛЕНО: Используем нормализованный тип
+        sensitivityLevel: normalizedProfile.sensitivity || profileData.sensitivityLevel, // ИСПРАВЛЕНО: Используем нормализованную чувствительность
+        ageGroup: existingProfile?.ageGroup ?? normalizedProfile.ageGroup ?? profileData.ageGroup,
+        // ИСПРАВЛЕНО: Преобразуем нормализованные маркеры в формат для Prisma (JsonValue)
+        medicalMarkers: Object.keys(normalizedMarkers).length > 0 
+          ? normalizedMarkers as any // Prisma ожидает JsonValue, канонические типы совместимы
+          : null,
       };
       
       // ВАЖНО: Логируем данные перед созданием профиля для диагностики
@@ -946,7 +1004,14 @@ export async function POST(request: NextRequest) {
     
     // ИСПРАВЛЕНО: Всегда очищаем кэш после создания/обновления профиля
     // Критично: даже при первом создании профиля нужно очистить кэш,
-    // иначе старый кэш "нет профиля/нет плана" будет возвращаться
+    // иначе старый кэш "нет профиля/нет плана" будет возвращаться.
+    //
+    // ВАЖНО: нельзя делать "массовое" удаление 1..100 версий — это даёт огромный шлейф DEL в Redis,
+    // замедляет ответ /api/questionnaire/answers и может создавать гонки с генерацией плана.
+    // Достаточно удалить:
+    // - версию 1 (исторически там мог закэшироваться ответ "нет профиля/нет плана")
+    // - старую версию (если обновление профиля)
+    // - новую версию (текущая)
     const isFirstProfile = !existingProfile;
     const isProfileUpdated = existingProfile && existingProfile.version !== profile.version;
     
@@ -960,20 +1025,15 @@ export async function POST(request: NextRequest) {
       });
       
       try {
-        const { invalidateCache, invalidateAllUserCache } = await import('@/lib/cache');
+        const { invalidateCache } = await import('@/lib/cache');
         
-        // ИСПРАВЛЕНО: Всегда очищаем весь кэш пользователя после создания/обновления профиля
-        // Это критично для первого профиля - иначе старый кэш "нет профиля" останется
-        await invalidateAllUserCache(userId);
-        logger.info('All user cache cleared', { 
-          userId, 
-          profileVersion: profile.version,
-        });
+        // Минимальная, но достаточная инвалидация.
+        await invalidateCache(userId, 1);
+        await invalidateCache(userId, profile.version);
         
         // Если это обновление (не первый профиль) - также очищаем кэш для старой версии
         if (isProfileUpdated && existingProfile) {
-        await invalidateCache(userId, existingProfile.version);
-        await invalidateCache(userId, profile.version);
+          await invalidateCache(userId, existingProfile.version);
           logger.info('Cache cleared for old and new profile versions', { 
           userId, 
           oldVersion: existingProfile.version,
@@ -1134,38 +1194,9 @@ export async function POST(request: NextRequest) {
       profileFoundAfterCreate: !!profileAfterCreate,
     });
 
-    // ВАЖНО: Запускаем генерацию плана асинхронно (не блокируя ответ)
-    // План будет сгенерирован в фоне, клиент будет polling /api/plan/status
-    const initData = request.headers.get('X-Telegram-Init-Data') || request.headers.get('x-telegram-init-data');
-    if (initData) {
-      // Запускаем генерацию плана в фоне (не ждем завершения)
-      // Используем абсолютный URL для внутреннего вызова
-      const baseUrl = process.env.VERCEL_URL 
-        ? `https://${process.env.VERCEL_URL}` 
-        : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-      
-      fetch(`${baseUrl}/api/plan/generate?profileId=${profile.id}`, {
-        method: 'GET',
-        headers: {
-          'X-Telegram-Init-Data': initData,
-        },
-      }).catch(err => {
-        logger.warn('Background plan generation failed (non-critical)', { 
-          userId, 
-          profileId: profile.id,
-          error: err?.message 
-        });
-        // Не критично - план пересоберется при следующем запросе
-      });
-      
-      logger.info('🚀 Plan generation started in background', {
-        userId,
-        profileId: profile.id,
-        profileVersion: profile.version,
-      });
-    } else {
-      logger.warn('Cannot trigger plan generation: initData missing', { userId });
-    }
+    // ИСПРАВЛЕНО: Генерация плана — единый источник — страница /plan при state=generating.
+    // Не вызываем plan/generate отсюда, чтобы избежать дублирования с api.generatePlan()
+    // на странице плана (race, 429, двойная нагрузка).
 
     return ApiResponse.success({
       success: true,

@@ -9,7 +9,7 @@
 import type { NextRequest } from 'next/server';
 import { ApiResponse } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
-import { validateTelegramInitData } from '@/lib/telegram';
+import { validateTelegramInitDataUnified } from '@/lib/telegram-validation';
 import { prisma } from '@/lib/db';
 import { updateUserActivity } from '@/lib/update-user-activity';
 
@@ -42,11 +42,13 @@ export function getTelegramInitDataFromHeaders(request: NextRequest): string | n
   );
 }
 
-export function tryGetTelegramIdentityFromRequest(
+export async function tryGetTelegramIdentityFromRequest(
   request: NextRequest
 ):
-  | { ok: true; telegramId: string; user: TelegramAuthContext['user'] }
-  | { ok: false; code: TelegramAuthErrorCode; message: string } {
+  Promise<
+    | { ok: true; telegramId: string; user: TelegramAuthContext['user'] }
+    | { ok: false; code: TelegramAuthErrorCode; message: string }
+  > {
   const initData = getTelegramInitDataFromHeaders(request);
   if (!initData) {
     return { ok: false, code: 'AUTH_MISSING_INITDATA', message: 'Missing Telegram initData' };
@@ -55,11 +57,11 @@ export function tryGetTelegramIdentityFromRequest(
   if (!botToken) {
     return { ok: false, code: 'AUTH_BOT_TOKEN_MISSING', message: 'Bot token not configured' };
   }
-  const validation = validateTelegramInitData(initData, botToken);
-  if (!validation.valid || !validation.data?.user) {
+  const validation = await validateTelegramInitDataUnified(initData);
+  if (!validation.valid || !validation.payload?.user) {
     return { ok: false, code: 'AUTH_INVALID_INITDATA', message: validation.error || 'Invalid initData' };
   }
-  const telegramUser = validation.data.user;
+  const telegramUser = validation.payload.user;
   return { ok: true, telegramId: telegramUser.id.toString(), user: telegramUser };
 }
 
@@ -141,32 +143,32 @@ export async function requireTelegramAuth(
     };
   }
 
-  const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  if (!botToken) {
+  // ИСПРАВЛЕНО: Используем validateTelegramInitDataUnified для поддержки тестового initData в development
+  const validation = await validateTelegramInitDataUnified(initData);
+  
+  if (!validation.valid || !validation.telegramId || !validation.payload?.user) {
+    // Логируем для отладки в development режиме
+    if (process.env.NODE_ENV === 'development') {
+      logger.warn('Telegram auth validation failed', {
+        error: validation.error,
+        hasTelegramId: !!validation.telegramId,
+        hasPayload: !!validation.payload,
+        initDataLength: initData?.length,
+        isTestInitData: initData?.includes('test_hash_for_development_only'),
+      });
+    }
     return {
       ok: false,
       response: ApiResponse.failure({
-        status: 500,
-        code: 'AUTH_BOT_TOKEN_MISSING',
-        message: 'Bot token not configured',
-      }),
-    };
-  }
-
-  const validation = validateTelegramInitData(initData, botToken);
-  if (!validation.valid || !validation.data?.user) {
-    return {
-      ok: false,
-      response: ApiResponse.failure({
-        status: 401,
-        code: 'AUTH_INVALID_INITDATA',
+        status: validation.error === 'Bot token not configured' ? 500 : 401,
+        code: validation.error === 'Bot token not configured' ? 'AUTH_BOT_TOKEN_MISSING' : 'AUTH_INVALID_INITDATA',
         message: validation.error || 'Invalid or expired initData',
       }),
     };
   }
 
-  const telegramUser = validation.data.user;
-  const telegramId = telegramUser.id.toString();
+  const telegramUser = validation.payload.user;
+  const telegramId = validation.telegramId;
 
   try {
     let userId: string | null = null;

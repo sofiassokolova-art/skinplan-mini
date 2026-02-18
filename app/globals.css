@@ -5,6 +5,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* CSS переменные для шрифтов (используются с Google Fonts или локальными файлами) */
+:root {
+  --font-unbounded: 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-inter: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
 /* Шрифты для админки 2025 */
 html {
   font-family: 'Manrope', system-ui, sans-serif;
@@ -98,6 +104,38 @@ h1, h2, h3 {
   letter-spacing: -0.5px;
 }
 
+/* Все заголовки в анкете (h1, h2) - используют Unbounded с максимальным приоритетом */
+/* ИСПРАВЛЕНО: Используем CSS переменную из next/font/local для локальных шрифтов */
+.quiz-title,
+h1.quiz-title,
+h2.quiz-title,
+h3.quiz-title,
+.quiz-welcome-title,
+.quiz-how-it-works-title,
+h1.quiz-welcome-title,
+h1.quiz-how-it-works-title {
+  font-family: var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-weight: inherit !important;
+  letter-spacing: inherit !important;
+}
+
+/* Дополнительное правило для всех h1, h2 внутри анкеты - используем более специфичный селектор */
+/* ИСПРАВЛЕНО: Используем CSS переменную из next/font/local для локальных шрифтов */
+[class*="quiz"] h1,
+[class*="quiz"] h2,
+[class*="quiz"] h3,
+div[style*="quiz"] h1,
+div[style*="quiz"] h2,
+div[style*="quiz"] h3 {
+  font-family: var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+/* Класс для текста Inter в анкете */
+/* ИСПРАВЛЕНО: Используем CSS переменную из next/font/local для локальных шрифтов */
+.quiz-text {
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
 /* Неон-текст */
 .neon-purple {
   text-shadow: 0 0 20px rgba(139, 92, 246, 0.6);
@@ -120,131 +158,407 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%) !important;
-  background-attachment: fixed !important;
-  color: #111827 !important; /* Черный текст */
+  /* ИСПРАВЛЕНО: Фон только для админки, не для всего приложения */
+  /* background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%); */
+  color: #111827; /* Базовый цвет текста (без !important, чтобы не перекрывать Tailwind классы) */
 }
 
-/* Все тексты в админке черные по умолчанию */
-.admin-layout,
-.admin-layout * {
-  color: #111827 !important; /* Черный текст */
-  background-color: #f3f4f6 !important; /* Светло-серый фон */
-}
-
-/* Исключения для градиентов и специальных цветов */
-.admin-layout .bg-clip-text,
-.admin-layout .text-transparent,
-.admin-layout .text-emerald-400,
-.admin-layout .text-red-400,
-.admin-layout .text-purple-400,
-.admin-layout .text-pink-400 {
-  color: inherit !important;
-}
-
-/* Стили для админ-панели - светлая тема */
+/* Стили для админ-панели - Glassmorphism серый стиль */
 .admin-layout {
-  background-color: #f3f4f6 !important;
-  color: #111827 !important;
+  background-color: #f3f4f6;
+  color: #111827;
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
 }
 
-.admin-layout * {
-  color: #111827 !important;
+/* Гарантируем, что main контент растягивается правильно */
+.admin-layout > main {
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
+  overflow-x: visible; /* Разрешаем графикам отображаться */
+  /* width управляется через inline стили в layout.tsx */
 }
 
-/* Исключения для специальных цветов */
-.admin-layout .bg-clip-text,
-.admin-layout .text-transparent,
-.admin-layout .text-emerald-600,
-.admin-layout .text-red-600,
-.admin-layout .text-purple-600,
-.admin-layout .text-pink-600,
-.admin-layout .text-blue-600,
-.admin-layout .text-yellow-600,
-.admin-layout [class*="text-emerald"],
-.admin-layout [class*="text-red"],
-.admin-layout [class*="text-purple"],
-.admin-layout [class*="text-pink"],
-.admin-layout [class*="text-blue"],
-.admin-layout [class*="text-yellow"],
-.admin-layout [class*="text-green"],
-.admin-layout [class*="text-gray"] {
-  color: inherit !important;
+/* Glassmorphism сайдбар */
+.admin-sidebar-glass {
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  /* КРИТИЧНО: Явно задаем позиционирование для сайдбара */
+  position: fixed !important;
+  left: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  z-index: 50 !important;
+  /* Гарантируем вертикальное расположение */
+  flex-direction: column !important;
+  height: 100vh !important;
 }
 
-.admin-sidebar {
-  background: rgba(243, 244, 246, 0.95) !important;
+/* Glassmorphism карточки для админки */
+.admin-card {
+  background: rgba(255, 255, 255, 0.85) !important;
   backdrop-filter: blur(20px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-  border-right: none !important;
-  box-shadow: none !important;
-  color: #111827 !important;
-}
-
-.admin-sidebar * {
-  color: #111827 !important;
-}
-
-/* Улучшенные кнопки */
-.btn-primary {
-  background: #000000 !important;
-  color: #ffffff !important;
-  border: 1px solid #000000 !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  border-radius: 1rem !important;
   box-shadow: 
-    0 4px 12px 0 rgba(0, 0, 0, 0.15),
-    0 2px 4px 0 rgba(0, 0, 0, 0.1) !important;
+    0 4px 16px rgba(0, 0, 0, 0.04),
+    0 2px 8px rgba(0, 0, 0, 0.02),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.admin-card:hover {
+  background: rgba(255, 255, 255, 0.95) !important;
+  box-shadow: 
+    0 8px 24px rgba(0, 0, 0, 0.06),
+    0 4px 12px rgba(0, 0, 0, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Улучшенные стили для карточек в админке */
+.admin-layout .bg-white {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+}
+
+.admin-layout .rounded-2xl {
+  border-radius: 1rem !important;
+}
+
+.admin-layout .border {
+  border-width: 1px !important;
+}
+
+.admin-layout .border-gray-200 {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.admin-layout .shadow-sm {
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.04),
+    0 1px 4px rgba(0, 0, 0, 0.02) !important;
+}
+
+.admin-layout .shadow-lg {
+  box-shadow: 
+    0 8px 24px rgba(0, 0, 0, 0.06),
+    0 4px 12px rgba(0, 0, 0, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Гарантируем, что grid и flex работают в админке */
+.admin-layout .grid {
+  display: grid;
+}
+
+.admin-layout .flex {
+  display: flex;
+}
+
+/* Гарантируем, что карточки видны */
+.admin-layout .admin-card {
+  display: block;
+  visibility: visible;
+}
+
+/* Стили для графиков - разрешаем отображение */
+.admin-layout svg,
+.admin-layout .recharts-wrapper,
+.admin-layout .recharts-surface,
+.admin-layout .recharts-legend-wrapper,
+.admin-layout .recharts-tooltip-wrapper {
+  overflow: visible !important;
+}
+
+/* Контейнер для графиков */
+.admin-layout .recharts-responsive-container {
+  width: 100% !important;
+  height: 100% !important;
+  overflow: visible !important;
+}
+
+/* Стили для таблиц в админке */
+.admin-layout table {
+  background: transparent !important;
+}
+
+.admin-layout thead {
+  background: rgba(255, 255, 255, 0.6) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
+
+.admin-layout tbody tr {
+  background: transparent !important;
+  transition: background-color 0.2s ease !important;
+}
+
+.admin-layout tbody tr:hover {
+  background: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Стили для модальных окон */
+.admin-layout .fixed.inset-0 {
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+/* УБРАНО: Пустой селектор .admin-layout * может вызывать проблемы */
+
+/* Улучшенные кнопки для админки */
+.admin-layout .btn-primary {
+  background: #111827 !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  box-shadow: 
+    0 4px 12px 0 rgba(0, 0, 0, 0.1),
+    0 2px 4px 0 rgba(0, 0, 0, 0.06) !important;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-.btn-primary:hover {
-  background: #1a1a1a !important;
+.admin-layout .btn-primary:hover {
+  background: #1f2937 !important;
   box-shadow: 
-    0 6px 16px 0 rgba(0, 0, 0, 0.2),
-    0 3px 6px 0 rgba(0, 0, 0, 0.12) !important;
+    0 6px 16px 0 rgba(0, 0, 0, 0.15),
+    0 3px 6px 0 rgba(0, 0, 0, 0.08) !important;
   transform: translateY(-1px) !important;
 }
 
-.btn-primary:active {
+.admin-layout .btn-primary:active {
   transform: translateY(0) !important;
   box-shadow: 
-    0 2px 8px 0 rgba(0, 0, 0, 0.12),
-    0 1px 2px 0 rgba(0, 0, 0, 0.08) !important;
+    0 2px 8px 0 rgba(0, 0, 0, 0.1),
+    0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
 }
 
-/* Улучшенные инпуты */
-input[type="text"],
-input[type="number"],
-input[type="email"],
-input[type="password"],
-input[type="datetime-local"],
-textarea,
-select {
-  background: rgba(255, 255, 255, 0.9) !important;
+/* Улучшенные инпуты для админки */
+.admin-layout input[type="text"],
+.admin-layout input[type="number"],
+.admin-layout input[type="email"],
+.admin-layout input[type="password"],
+.admin-layout input[type="datetime-local"],
+.admin-layout textarea,
+.admin-layout select {
+  background: rgba(255, 255, 255, 0.7) !important;
   backdrop-filter: blur(10px) !important;
   -webkit-backdrop-filter: blur(10px) !important;
   border: 1px solid rgba(0, 0, 0, 0.1) !important;
   box-shadow: 
     0 2px 8px 0 rgba(0, 0, 0, 0.04),
-    inset 0 1px 2px 0 rgba(0, 0, 0, 0.02) !important;
+    inset 0 1px 2px 0 rgba(255, 255, 255, 0.5) !important;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-input[type="text"]:focus,
-input[type="number"]:focus,
-input[type="email"]:focus,
-input[type="password"]:focus,
-input[type="datetime-local"]:focus,
-textarea:focus,
-select:focus {
-  background: rgba(255, 255, 255, 1) !important;
-  border-color: rgba(0, 0, 0, 0.2) !important;
+.admin-layout input[type="text"]:focus,
+.admin-layout input[type="number"]:focus,
+.admin-layout input[type="email"]:focus,
+.admin-layout input[type="password"]:focus,
+.admin-layout input[type="datetime-local"]:focus,
+.admin-layout textarea:focus,
+.admin-layout select:focus {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(0, 0, 0, 0.15) !important;
   box-shadow: 
-    0 4px 12px 0 rgba(0, 0, 0, 0.08),
-    0 2px 4px 0 rgba(0, 0, 0, 0.04),
-    inset 0 1px 2px 0 rgba(0, 0, 0, 0.02) !important;
+    0 4px 12px 0 rgba(0, 0, 0, 0.06),
+    0 2px 4px 0 rgba(0, 0, 0, 0.03),
+    inset 0 1px 2px 0 rgba(255, 255, 255, 0.6) !important;
   outline: none !important;
 }
 
 * {
   box-sizing: border-box;
+}
+
+/* ИСПРАВЛЕНО (P2): Глобальные стили для админ-лейаута (вынесены из layout.tsx) */
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.admin-layout {
+  animation: gradientShift 15s ease infinite;
+}
+
+/* ============================================
+   РЕФАКТОРИНГ P2: Унифицированные утилитарные классы
+   ============================================ */
+
+/* Основные фоны приложения */
+.bg-app-gradient {
+  background: linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%);
+}
+
+.bg-app-gradient-dark {
+  background: linear-gradient(135deg, #1A2F2D 0%, #0D1F1D 100%);
+}
+
+/* Минимальная высота для страниц */
+.min-h-page {
+  min-height: 100vh;
+}
+
+.min-h-page-safe {
+  min-height: calc(100vh - env(safe-area-inset-bottom) - 60px);
+}
+
+/* Стандартные отступы для страниц */
+.page-padding {
+  padding: 20px;
+}
+
+.page-padding-lg {
+  padding: 24px;
+}
+
+/* Стандартные радиусы */
+.radius-sm {
+  border-radius: 8px;
+}
+
+.radius-md {
+  border-radius: 12px;
+}
+
+.radius-lg {
+  border-radius: 16px;
+}
+
+.radius-xl {
+  border-radius: 24px;
+}
+
+.radius-full {
+  border-radius: 9999px;
+}
+
+/* Стандартные тени */
+.shadow-card {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.shadow-card-hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.shadow-button {
+  box-shadow: 0 4px 14px rgba(10, 95, 89, 0.25);
+}
+
+/* Цвета бренда */
+:root {
+  --color-primary: #0A5F59;
+  --color-primary-light: #E8FBF7;
+  --color-primary-dark: #073D39;
+  --color-secondary: #4ECDC4;
+  --color-accent: #FFD93D;
+  --color-text: #1A2F2D;
+  --color-text-muted: #6B7280;
+  --color-border: rgba(0, 0, 0, 0.1);
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+}
+
+/* Текстовые стили */
+.text-primary {
+  color: var(--color-primary);
+}
+
+.text-muted {
+  color: var(--color-text-muted);
+}
+
+/* Кнопки */
+.btn-primary {
+  background-color: var(--color-primary);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background-color: var(--color-primary-dark);
+  box-shadow: var(--shadow-button);
+}
+
+.btn-secondary {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background-color: #D1F7F0;
+}
+
+/* Карточки */
+.card {
+  background: white;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.card-lg {
+  background: white;
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Контейнер для полноэкранных страниц */
+.page-container {
+  min-height: 100vh;
+  padding: 20px;
+  background: linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%);
+}
+
+/* Центрирование контента */
+.center-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Анимация появления */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Анимация пульсации для загрузки */
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 1.5s ease-in-out infinite;
 }

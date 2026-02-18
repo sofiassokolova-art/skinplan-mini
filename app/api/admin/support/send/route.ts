@@ -3,29 +3,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import jwt from 'jsonwebtoken';
+import { verifyAdminBoolean } from '@/lib/admin-auth';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-
-async function verifyAdmin(request: NextRequest): Promise<boolean> {
-  try {
-    const cookieToken = request.cookies.get('admin_token')?.value;
-    const headerToken = request.headers.get('authorization')?.replace('Bearer ', '');
-    const token = cookieToken || headerToken;
-    
-    if (!token) return false;
-    
-    try {
-      jwt.verify(token, JWT_SECRET);
-      return true;
-    } catch {
-      return false;
-    }
-  } catch {
-    return false;
-  }
-}
 
 async function sendTelegramMessage(telegramId: string, text: string): Promise<{ success: boolean; error?: string }> {
   if (!TELEGRAM_BOT_TOKEN) {
@@ -59,7 +39,7 @@ async function sendTelegramMessage(telegramId: string, text: string): Promise<{ 
 
 export async function POST(request: NextRequest) {
   try {
-    const isAdmin = await verifyAdmin(request);
+    const isAdmin = await verifyAdminBoolean(request);
     if (!isAdmin) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

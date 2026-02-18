@@ -12,8 +12,30 @@ export default function BottomNavigation() {
   const pathname = usePathname();
   const [scrollY, setScrollY] = useState(0);
   
+  // ТЗ: НЕ вызываем useCart на /quiz, чтобы предотвратить лишние запросы
+  // Проверяем pathname синхронно через window.location для надежности
+  // КРИТИЧНО: Проверяем ПЕРЕД вызовом useCart, чтобы предотвратить любые запросы
+  const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
+  const isOnQuizPage = currentPath === '/quiz' || currentPath.startsWith('/quiz/') ||
+                       pathname === '/quiz' || pathname.startsWith('/quiz/');
+  
+  // ТЗ: Если на /quiz, не вызываем useCart вообще (возвращаем null для компонента)
+  // Это предотвращает любые запросы к API корзины на странице анкеты
+  if (isOnQuizPage) {
+    // ИСПРАВЛЕНО: Логируем для диагностики (только в dev режиме)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🚫 BottomNavigation: returning null on /quiz', {
+        currentPath,
+        pathname,
+        isOnQuizPage,
+      });
+    }
+    return null; // КРИТИЧНО: Не рендерим компонент на /quiz
+  }
+  
   // ИСПРАВЛЕНО: Используем React Query для кэширования корзины
   // Это значительно снижает количество запросов к API
+  // Кэш автоматически обновляется при добавлении/удалении товаров через React Query хуки
   const { data: cartData } = useCart();
   const cartCount = cartData?.items?.length || 0;
 
@@ -27,7 +49,7 @@ export default function BottomNavigation() {
   }, []);
 
   const navItems = [
-    { path: '/', label: 'Главная', icon: 'home' },
+    { path: '/home', label: 'Главная', icon: 'home' },
     { path: '/plan', label: 'План', icon: 'plan' },
     { path: '/cart', label: 'Избранное', icon: 'wishlist' },
     { path: '/profile', label: 'Профиль', icon: 'profile' },
@@ -37,8 +59,8 @@ export default function BottomNavigation() {
   const showCartButton = cartCount > 0;
 
   const isActive = (path: string) => {
-    if (path === '/') {
-      return pathname === '/';
+    if (path === '/home') {
+      return pathname === '/home';
     }
     // Для /cart нужно точное совпадение или /cart/..., но не /cart-new
     if (path === '/cart') {

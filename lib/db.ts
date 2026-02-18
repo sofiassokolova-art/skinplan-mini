@@ -14,7 +14,7 @@ function createPrismaClient() {
 
   // КРИТИЧНО: Используем ТОЛЬКО DATABASE_URL как единственный источник правды
   // Не используем POSTGRES_URL, POSTGRES_PRISMA_URL или другие переменные
-  const url = process.env.DATABASE_URL;
+  let url = process.env.DATABASE_URL;
   
   if (!url) {
     if (process.env.NODE_ENV === 'production') {
@@ -22,6 +22,28 @@ function createPrismaClient() {
     }
     console.warn('⚠️ DATABASE_URL is not set; Prisma will require it for DB operations.');
   } else {
+    // ИСПРАВЛЕНО: Добавляем параметры connection pool для предотвращения timeout
+    // Если параметры уже есть в URL, не добавляем их повторно
+    const urlObj = new URL(url);
+    
+    // Увеличиваем connection_limit до 20 (по умолчанию Prisma использует num_physical_cpus * 2 + 1)
+    if (!urlObj.searchParams.has('connection_limit')) {
+      urlObj.searchParams.set('connection_limit', '20');
+    }
+    
+    // Увеличиваем pool_timeout до 20 секунд (по умолчанию 10 секунд)
+    if (!urlObj.searchParams.has('pool_timeout')) {
+      urlObj.searchParams.set('pool_timeout', '20');
+    }
+    
+    // Увеличиваем connect_timeout до 15 секунд (по умолчанию 5 секунд)
+    // Это особенно важно для Neon, когда compute находится в idle состоянии
+    if (!urlObj.searchParams.has('connect_timeout')) {
+      urlObj.searchParams.set('connect_timeout', '15');
+    }
+    
+    url = urlObj.toString();
+    
     baseOptions.datasources = {
       db: { url },
     };

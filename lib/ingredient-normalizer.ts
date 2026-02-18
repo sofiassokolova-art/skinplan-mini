@@ -1,8 +1,63 @@
 // lib/ingredient-normalizer.ts
-// Нормализация названий ингредиентов для сопоставления
+// ИСПРАВЛЕНО: Нормализация названий ингредиентов с возвратом канонических типов
+
+import type { ActiveIngredient } from './ingredient-compatibility';
 
 /**
- * Нормализует название ингредиента для сопоставления
+ * ИСПРАВЛЕНО: Канонический тип ингредиента - единый источник правды
+ * Используется везде вместо string для типобезопасности
+ */
+export type IngredientKey = ActiveIngredient;
+
+/**
+ * ИСПРАВЛЕНО: Нормализует название ингредиента к каноническому ключу
+ * Возвращает IngredientKey | null вместо string | null
+ * 
+ * @param ing - Название ингредиента (например, "транексамовая кислота 5–10%")
+ * @returns Канонический ключ ингредиента или null
+ */
+export function normalizeIngredientName(ing: string | null | undefined): IngredientKey | null {
+  if (!ing) return null;
+  
+  const normalized = normalizeIngredientSimple(ing);
+  
+  // ИСПРАВЛЕНО: Маппинг на канонические ключи из ingredient-compatibility
+  const ingredientMap: Record<string, IngredientKey> = {
+    'retinol': 'retinol',
+    'retinoid': 'retinoid',
+    'adapalene': 'adapalene',
+    'tretinoin': 'tretinoin',
+    'vitamin_c': 'vitamin_c',
+    'vitaminc': 'vitamin_c',
+    'ascorbic_acid': 'ascorbic_acid',
+    'ascorbicacid': 'ascorbic_acid',
+    'niacinamide': 'niacinamide',
+    'aha': 'aha',
+    'bha': 'bha',
+    'pha': 'pha',
+    'salicylic_acid': 'salicylic_acid',
+    'salicylicacid': 'salicylic_acid',
+    'glycolic_acid': 'glycolic_acid',
+    'glycolicacid': 'glycolic_acid',
+    'lactic_acid': 'lactic_acid',
+    'lacticacid': 'lactic_acid',
+    'azelaic_acid': 'azelaic_acid',
+    'azelaicacid': 'azelaic_acid',
+    'benzoyl_peroxide': 'benzoyl_peroxide',
+    'benzoylperoxide': 'benzoyl_peroxide',
+    'peptides': 'peptides',
+    'ceramides': 'ceramides',
+    'hyaluronic_acid': 'hyaluronic_acid',
+    'hyaluronicacid': 'hyaluronic_acid',
+    'tranexamic_acid': 'azelaic_acid', // Транексамовая кислота маппится к azelaic_acid
+    'tranexamicacid': 'azelaic_acid',
+  };
+  
+  return ingredientMap[normalized] || null;
+}
+
+/**
+ * Нормализует название ингредиента для сопоставления (старая версия для обратной совместимости)
  * Убирает проценты, диапазоны, дополнительные слова
  * 
  * @param ing - Название ингредиента (например, "транексамовая кислота 5–10%")

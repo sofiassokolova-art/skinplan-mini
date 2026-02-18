@@ -78,6 +78,7 @@ function mapProviderStatus(provider: string, providerStatus: string): string {
 function entitlementCodeForProduct(productCode: string): string {
   if (productCode === 'plan_access') return 'paid_access';
   if (productCode === 'retake_topic') return 'retake_topic_access';
+  if (productCode === 'retake_full') return 'retake_full_access';
   // По умолчанию — доступ к плану (обратная совместимость)
   return 'paid_access';
 }
@@ -189,6 +190,9 @@ export async function POST(request: NextRequest) {
         } else if (payment.productCode === 'retake_topic') {
           // Ретейк темы — короткий доступ, "съедается" после успешного partial-update
           validUntil.setDate(validUntil.getDate() + 1);
+        } else if (payment.productCode === 'retake_full') {
+          // Полное перепрохождение — доступ на 28 дней (после этого payment gate снова появляется)
+          validUntil.setDate(validUntil.getDate() + 28);
         } else {
           // Для других продуктов - по умолчанию 1 год
           validUntil.setFullYear(validUntil.getFullYear() + 1);

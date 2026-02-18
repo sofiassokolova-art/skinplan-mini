@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { logger } from '@/lib/logger';
+import { rateLimit, getIdentifier } from '@/lib/rate-limit';
 
 // ИСПРАВЛЕНО: Убрали хардкод JWT секрета - теперь обязательная переменная
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -13,6 +14,41 @@ const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
 
 export async function POST(request: NextRequest) {
   try {
+    // ОПТИМИЗАЦИЯ: Rate limiting для защиты от brute force атак
+    const identifier = getIdentifier(request);
+    const rateLimitResult = await rateLimit(
+      `admin-login:${identifier}`,
+      {
+        interval: 60 * 1000, // 1 минута
+        maxRequests: 5, // Максимум 5 попыток в минуту
+      },
+      'admin-login'
+    );
+
+    if (!rateLimitResult.success) {
+      logger.warn('Admin login rate limit exceeded', {
+        identifier,
+        remaining: rateLimitResult.remaining,
+        resetAt: new Date(rateLimitResult.resetAt).toISOString(),
+      });
+      return NextResponse.json(
+        { 
+          error: 'Слишком много попыток входа. Попробуйте позже.',
+          code: 'RATE_LIMIT_EXCEEDED',
+          resetAt: rateLimitResult.resetAt,
+        },
+        { 
+          status: 429,
+          headers: {
+            'Retry-After': String(Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000)),
+            'X-RateLimit-Limit': '5',
+            'X-RateLimit-Remaining': String(rateLimitResult.remaining),
+            'X-RateLimit-Reset': String(rateLimitResult.resetAt),
+          },
+        }
+      );
+    }
+
     // ИСПРАВЛЕНО: Проверяем JWT_SECRET перед использованием
     if (!JWT_SECRET || JWT_SECRET === 'your-secret-key-change-in-production') {
       logger.error('JWT_SECRET not configured or using default value', {
@@ -109,14 +145,18 @@ export async function POST(request: NextRequest) {
       logger.info('Default admin created', { adminId: admin.id });
     }
 
-    // Генерируем JWT токен
+    // ИСПРАВЛЕНО (P2): Генерируем JWT токен с issuer/audience для безопасности
     const token = jwt.sign(
       {
         adminId: admin.id,
         role: admin.role || 'admin',
       },
       JWT_SECRET!, // Теперь мы уверены, что JWT_SECRET не null
-      { expiresIn: '7d' }
+      {
+        expiresIn: '7d',
+        issuer: 'skiniq-admin',
+        audience: 'skiniq-admin-ui',
+      }
     );
 
     logger.info('Admin logged in via secret word', { 
@@ -125,18 +165,18 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
 
-    // Создаем ответ с токеном
+    // ИСПРАВЛЕНО (P1): Убрали token из JSON ответа - cookie-only подход
     const response = NextResponse.json({
-      token,
+      valid: true,
       admin: {
         id: admin.id,
         role: admin.role,
       },
     });
 
-    // Устанавливаем токен в cookies для автоматической передачи
+    // ИСПРАВЛЕНО (P0): httpOnly: true для защиты от XSS
     response.cookies.set('admin_token', token, {
-      httpOnly: false, // Нужен доступ из JS для отправки в заголовках
+      httpOnly: true, // ИСПРАВЛЕНО (P0): Защита от XSS
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 7 дней

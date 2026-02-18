@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест квиза - проверка навигации</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .screen {
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .button {
+            background: #D5FE61;
+            color: #000;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 10px;
+        }
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .log {
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            margin: 10px 0;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .state {
+            background: #e8f4fd;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Тест навигации квиза</h1>
+
+        <div class="state">
+            <h3>Текущее состояние:</h3>
+            <div id="currentState">Загрузка...</div>
+        </div>
+
+        <div class="screen" id="screen">
+            <div id="screenContent">Инициализация...</div>
+        </div>
+
+        <div>
+            <button class="button" id="continueBtn" onclick="handleContinue()">Продолжить</button>
+            <button class="button" id="backBtn" onclick="handleBack()" style="background: #eee; color: #666;">Назад</button>
+        </div>
+
+        <div class="log">
+            <h3>Логи:</h3>
+            <div id="logs"></div>
+        </div>
+    </div>
+
+    <script>
+        // Имитация состояния квиза
+        let state = {
+            currentInfoScreenIndex: 0,
+            viewMode: 'INITIAL_INFO',
+            isLoading: false,
+            questionnaireLoaded: false,
+            questionsLoaded: false,
+            initialInfoScreens: [
+                { id: 'welcome', title: 'Подбери уход для своей кожи со SkinIQ' },
+                { id: 'how_it_works', title: 'Как это работает?' },
+                { id: 'personal_analysis', title: 'SkinIQ — ваш персональный анализ кожи' },
+                { id: 'goals_intro', title: 'Расскажите о вашей цели' }
+            ]
+        };
+
+        const logs = [];
+
+        function log(message, data = null) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `${timestamp}: ${message}`;
+            logs.push(logEntry);
+            if (data) {
+                logs.push(`  ${JSON.stringify(data, null, 2)}`);
+            }
+            updateLogs();
+            console.log(message, data);
+        }
+
+        function updateLogs() {
+            document.getElementById('logs').innerHTML = logs.slice(-20).join('<br>');
+        }
+
+        function updateUI() {
+            const currentScreen = state.initialInfoScreens[state.currentInfoScreenIndex];
+            const isLastScreen = state.currentInfoScreenIndex === state.initialInfoScreens.length - 1;
+
+            document.getElementById('currentState').innerHTML = `
+                <strong>currentInfoScreenIndex:</strong> ${state.currentInfoScreenIndex}<br>
+                <strong>viewMode:</strong> ${state.viewMode}<br>
+                <strong>isLoading:</strong> ${state.isLoading}<br>
+                <strong>questionnaireLoaded:</strong> ${state.questionnaireLoaded}<br>
+                <strong>questionsLoaded:</strong> ${state.questionsLoaded}<br>
+                <strong>currentScreen:</strong> ${currentScreen ? currentScreen.id : 'none'}<br>
+                <strong>isLastScreen:</strong> ${isLastScreen}
+            `;
+
+            document.getElementById('screenContent').innerHTML = currentScreen ?
+                `<h2>${currentScreen.title}</h2>` :
+                '<p>Экран не найден</p>';
+
+            document.getElementById('continueBtn').disabled = state.isLoading;
+            document.getElementById('backBtn').disabled = state.currentInfoScreenIndex === 0;
+        }
+
+        async function handleContinue() {
+            log('🖱️ Кнопка "Продолжить" нажата', {
+                currentInfoScreenIndex: state.currentInfoScreenIndex,
+                viewMode: state.viewMode
+            });
+
+            if (state.isLoading) {
+                log('⏸️ Уже выполняется загрузка, пропускаем');
+                return;
+            }
+
+            const initialLen = state.initialInfoScreens.length;
+
+            // Проверяем, находимся ли мы на начальных инфо-экранах
+            if (state.currentInfoScreenIndex < initialLen - 1) {
+                // Переход к следующему инфо-экрану
+                const newIndex = state.currentInfoScreenIndex + 1;
+                log('🔄 Переход к следующему инфо-экрану', {
+                    from: state.currentInfoScreenIndex,
+                    to: newIndex
+                });
+                state.currentInfoScreenIndex = newIndex;
+                updateUI();
+                return;
+            }
+
+            // Мы на последнем начальном экране - нужно загрузить вопросы
+            if (state.currentInfoScreenIndex === initialLen - 1) {
+                log('📚 На последнем инфо-экране, начинаем загрузку вопросов');
+                state.isLoading = true;
+                updateUI();
+
+                try {
+                    // Имитация загрузки анкеты
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    state.questionnaireLoaded = true;
+                    log('✅ Анкета загружена');
+
+                    // Имитация загрузки вопросов
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    state.questionsLoaded = true;
+                    log('✅ Вопросы загружены');
+
+                    // Переход к вопросам
+                    state.currentInfoScreenIndex = initialLen;
+                    state.viewMode = 'QUESTION';
+                    log('🎯 Переход к вопросам', {
+                        newInfoScreenIndex: state.currentInfoScreenIndex,
+                        viewMode: state.viewMode
+                    });
+
+                } catch (error) {
+                    log('❌ Ошибка загрузки', error);
+                    state.viewMode = 'ERROR';
+                } finally {
+                    state.isLoading = false;
+                    updateUI();
+                }
+                return;
+            }
+
+            log('⚠️ Неизвестное состояние', state);
+        }
+
+        function handleBack() {
+            if (state.currentInfoScreenIndex > 0) {
+                state.currentInfoScreenIndex--;
+                log('⬅️ Переход назад', {
+                    newIndex: state.currentInfoScreenIndex
+                });
+                updateUI();
+            }
+        }
+
+        // Инициализация
+        log('🚀 Инициализация теста');
+        updateUI();
+    </script>
+</body>
+</html>

@@ -6,7 +6,18 @@ import { getAdminFromInitData } from '@/lib/get-admin-from-initdata';
 import jwt from 'jsonwebtoken';
 import { getTelegramInitDataFromHeaders } from '@/lib/auth/telegram-auth';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+// ИСПРАВЛЕНО (P0): Убран fallback - критическая уязвимость безопасности
+// ИСПРАВЛЕНО: Возвращаем ошибку вместо throw, чтобы не ломать обработку
+function getJwtSecret(): { valid: boolean; secret?: string; error?: string } {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    return { valid: false, error: 'JWT_SECRET is not set. Please set JWT_SECRET environment variable.' };
+  }
+  return { valid: true, secret };
+}
+
+// ИСПРАВЛЕНО: Runtime для Node.js (требуется для crypto, jsonwebtoken)
+export const runtime = 'nodejs';
 
 // POST - авторизация через Telegram initData
 export async function POST(request: NextRequest) {
@@ -33,21 +44,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Генерируем JWT токен
+    // ИСПРАВЛЕНО (P2): Генерируем JWT токен с issuer/audience для безопасности
+    const jwtSecretResult = getJwtSecret();
+    if (!jwtSecretResult.valid || !jwtSecretResult.secret) {
+      return NextResponse.json(
+        { error: jwtSecretResult.error || 'JWT configuration error', code: 'JWT_CONFIG_ERROR' },
+        { status: 500 }
+      );
+    }
+
     const token = jwt.sign(
       {
         adminId: result.admin.id,
         telegramId: result.admin.telegramId,
         role: result.admin.role,
       },
-      JWT_SECRET,
-      { expiresIn: '7d' }
+      jwtSecretResult.secret,
+      {
+        expiresIn: '7d',
+        issuer: 'skiniq-admin',
+        audience: 'skiniq-admin-ui',
+      }
     );
 
-
-    // Создаем ответ с токеном
+    // ИСПРАВЛЕНО (P1): Убрали token из JSON ответа - cookie-only подход
+    // ИСПРАВЛЕНО (P0): httpOnly: true для защиты от XSS
     const response = NextResponse.json({
-      token,
+      valid: true,
       admin: {
         id: result.admin.id,
         telegramId: result.admin.telegramId,
@@ -55,9 +78,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Устанавливаем токен в cookies
+    // Устанавливаем токен в cookies (httpOnly для защиты от XSS)
     response.cookies.set('admin_token', token, {
-      httpOnly: false, // Нужен доступ из JS
+      httpOnly: true, // ИСПРАВЛЕНО (P0): Защита от XSS
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 7 дней
@@ -67,26 +90,49 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (error) {
     console.error('Admin auth error:', error);
+    // ИСПРАВЛЕНО: Показываем реальную причину ошибки для дебага
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const isConfigError = errorMessage.includes('JWT_SECRET') || errorMessage.includes('TELEGRAM_BOT_TOKEN');
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: isConfigError ? errorMessage : 'Internal server error',
+        code: isConfigError ? 'CONFIG_ERROR' : 'INTERNAL_ERROR',
+        // В development показываем детали
+        ...(process.env.NODE_ENV === 'development' && { details: errorMessage })
+      },
       { status: 500 }
     );
   }
 }
 
 // GET - проверка текущего токена
+// ИСПРАВЛЕНО (P1): Только cookie, убрали поддержку Authorization header
 export async function GET(request: NextRequest) {
   try {
-    const token =
-      request.cookies.get('admin_token')?.value ||
-      request.headers.get('authorization')?.replace('Bearer ', '');
+    // ИСПРАВЛЕНО (P1): Только cookie, убрали чтение Authorization header
+    const token = request.cookies.get('admin_token')?.value;
 
     if (!token) {
       return NextResponse.json({ valid: false }, { status: 401 });
     }
 
+    // ИСПРАВЛЕНО (P2): Проверяем JWT_SECRET ДО попытки верификации токена
+    const jwtSecretResult = getJwtSecret();
+    if (!jwtSecretResult.valid || !jwtSecretResult.secret) {
+      console.error('JWT_SECRET not configured in GET /api/admin/auth');
+      return NextResponse.json(
+        { error: jwtSecretResult.error || 'JWT configuration error', code: 'JWT_CONFIG_ERROR' },
+        { status: 500 }
+      );
+    }
+
     try {
-      const decoded = jwt.verify(token, JWT_SECRET) as {
+      // ИСПРАВЛЕНО (P2): Проверяем issuer/audience при верификации
+      const decoded = jwt.verify(token, jwtSecretResult.secret, {
+        issuer: 'skiniq-admin',
+        audience: 'skiniq-admin-ui',
+      }) as {
         adminId: string;
         telegramId: string;
         role: string;
@@ -100,12 +146,24 @@ export async function GET(request: NextRequest) {
           role: decoded.role,
         },
       });
-    } catch (error) {
+    } catch (verifyError: any) {
+      // ИСПРАВЛЕНО: Логируем ошибку верификации для отладки
+      console.warn('Token verification failed:', verifyError.message);
       return NextResponse.json({ valid: false }, { status: 401 });
     }
   } catch (error) {
+    // ИСПРАВЛЕНО: Показываем реальную причину ошибки для дебага
+    console.error('Unexpected error in GET /api/admin/auth:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const isConfigError = errorMessage.includes('JWT_SECRET') || errorMessage.includes('TELEGRAM_BOT_TOKEN');
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: isConfigError ? errorMessage : 'Internal server error',
+        code: isConfigError ? 'CONFIG_ERROR' : 'INTERNAL_ERROR',
+        // В development показываем детали
+        ...(process.env.NODE_ENV === 'development' && { details: errorMessage })
+      },
       { status: 500 }
     );
   }

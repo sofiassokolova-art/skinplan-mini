@@ -1,14 +1,16 @@
 // lib/domain-normalizers.ts
-// ИСПРАВЛЕНО: Domain normalizers для бизнес-логики
-// Эти функции нормализуют значения для использования в правилах, фильтрах, планах
-// НЕ для отображения - используйте ui-formatters для UI
+// ИСПРАВЛЕНО: Обязательный normalization layer после анкеты
+// Все значения из анкеты/БД/API должны проходить через эти нормализаторы
+// Возвращают канонические типы (ConcernKey, SkinTypeKey, IngredientKey) вместо string
 
-import { normalizeSkinTypeForRules, normalizeSensitivityForRules } from './skin-type-normalizer';
+import { normalizeSkinTypeForRules, normalizeSensitivityForRules, type SkinTypeKey } from './skin-type-normalizer';
+import { normalizeConcernKey, normalizeConcerns as normalizeConcernsArray, type ConcernKey } from './concern-taxonomy';
+import { normalizeIngredientName, type IngredientKey } from './ingredient-normalizer';
 
 /**
- * Нормализует тип кожи для использования в бизнес-логике (правила, фильтры, планы)
- * ИСПРАВЛЕНО: Возвращает канонический тип кожи (dry, oily, combination_dry, combination_oily, normal)
- * НЕ для отображения - используйте formatSkinTypeLabel для UI
+ * ИСПРАВЛЕНО: Нормализует тип кожи для использования в бизнес-логике
+ * Возвращает канонический SkinTypeKey вместо string
+ * ОБЯЗАТЕЛЬНО использовать после получения данных из анкеты/БД/API
  */
 export function normalizeSkinType(
   skinType: string | null | undefined,
@@ -17,7 +19,7 @@ export function normalizeSkinType(
     dehydration?: number;
     userId?: string;
   }
-): "dry" | "combination_dry" | "normal" | "combination_oily" | "oily" | null {
+): SkinTypeKey | null {
   return normalizeSkinTypeForRules(skinType, context);
 }
 
@@ -73,23 +75,56 @@ export function normalizeAgeGroup(
 }
 
 /**
- * Нормализует concerns для использования в бизнес-логике
- * ИСПРАВЛЕНО: Возвращает массив канонических concern ключей
- * НЕ для отображения - используйте formatConcerns для UI
+ * ИСПРАВЛЕНО: Нормализует concerns для использования в бизнес-логике
+ * Возвращает массив канонических ConcernKey вместо string[]
+ * ОБЯЗАТЕЛЬНО использовать после получения данных из анкеты/БД/API
  */
 export function normalizeConcerns(
   concerns: string[] | string | null | undefined
-): string[] {
-  if (!concerns) return [];
-  if (typeof concerns === 'string') {
-    try {
-      const parsed = JSON.parse(concerns);
-      if (Array.isArray(parsed)) return parsed;
-    } catch {
-      return [concerns];
+): ConcernKey[] {
+  return normalizeConcernsArray(concerns);
+}
+
+/**
+ * ИСПРАВЛЕНО: Нормализует один concern к каноническому ключу
+ * Возвращает ConcernKey | null вместо string | null
+ */
+export function normalizeConcern(
+  concern: string | null | undefined
+): ConcernKey | null {
+  if (!concern) return null;
+  return normalizeConcernKey(concern);
+}
+
+/**
+ * ИСПРАВЛЕНО: Нормализует ингредиент к каноническому ключу
+ * Возвращает IngredientKey | null вместо string | null
+ * ОБЯЗАТЕЛЬНО использовать после получения данных из анкеты/БД/API
+ */
+export function normalizeIngredient(
+  ingredient: string | null | undefined
+): IngredientKey | null {
+  return normalizeIngredientName(ingredient);
+}
+
+/**
+ * ИСПРАВЛЕНО: Нормализует массив ингредиентов к каноническим ключам
+ * Возвращает IngredientKey[] вместо string[]
+ */
+export function normalizeIngredients(
+  ingredients: string[] | string | null | undefined
+): IngredientKey[] {
+  if (!ingredients) return [];
+  const ingredientsArray = Array.isArray(ingredients) ? ingredients : [ingredients];
+  const normalized: IngredientKey[] = [];
+  
+  for (const ing of ingredientsArray) {
+    const normalizedKey = normalizeIngredientName(ing);
+    if (normalizedKey && !normalized.includes(normalizedKey)) {
+      normalized.push(normalizedKey);
     }
   }
-  if (Array.isArray(concerns)) return concerns;
-  return [];
+  
+  return normalized;
 }
 
