@@ -2,6 +2,7 @@
 // Создание платежа через ЮKassa (реальная оплата) или тестовый flow в dev
 
 import { NextRequest } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { ApiResponse } from '@/lib/api-response';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
@@ -255,7 +256,7 @@ export async function POST(request: NextRequest) {
       where: { id: payment.id },
       data: {
         providerPaymentId,
-        providerPayload,
+        providerPayload: providerPayload as unknown as Prisma.InputJsonValue,
       },
       select: { id: true },
     });
