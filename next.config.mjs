@@ -24,10 +24,22 @@ const nextConfig = {
   pageExtensions: ['tsx', 'ts'],
   // Security headers
   async headers() {
-    // В режиме разработки отключаем строгие CSP для удобства разработки
     const isProduction = process.env.NODE_ENV === 'production';
 
     return [
+      // HTML главной не кэшировать — иначе на кастомном домене браузер получает 304 и старую версию
+      {
+        source: '/',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, max-age=0' },
+        ],
+      },
+      {
+        source: '/home',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, max-age=0' },
+        ],
+      },
       {
         source: '/:path*',
         headers: [

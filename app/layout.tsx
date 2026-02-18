@@ -139,6 +139,13 @@ export default function RootLayout({
         {/* Шрифты Unbounded и Inter загружаются через next/font (см. импорты выше) */}
       </head>
       <body style={{ margin: 0, minHeight: '100vh' }}>
+        {/* Таймаут без React: если чанки не загрузились, через 15 с показываем кнопку обновить (работает без JS-бандлов) */}
+        <div id="loading-timeout-fallback" style={{ display: 'none' }} />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `setTimeout(function(){var e=document.getElementById("loading-timeout-fallback");if(e){e.style.cssText="display:block;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;padding:12px 20px;background:rgba(10,95,89,0.95);color:#fff;border-radius:12px;font-family:system-ui,sans-serif;font-size:14px;box-shadow:0 4px 20px rgba(0,0,0,0.2);";e.innerHTML='Страница загружается дольше обычного. <a href="javascript:location.reload()" style="color:#fff;text-decoration:underline;font-weight:600">Обновить</a>';}},15000);`,
+          }}
+        />
         {/* Показывается, если JS не загрузился (например, чанки не дошли) */}
         <noscript>
           <div style={{
