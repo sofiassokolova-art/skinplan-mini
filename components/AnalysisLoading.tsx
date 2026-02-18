@@ -44,39 +44,6 @@ export function AnalysisLoading({ onComplete, duration = 6000 }: AnalysisLoading
       background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
       padding: '20px',
     }}>
-      {/* Логотип */}
-      <div style={{
-        marginBottom: '48px',
-        textAlign: 'center',
-      }}>
-        <button
-          onClick={() => router.push('/home')}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: 0,
-            display: 'inline-block',
-          }}
-        >
-        <img
-          src="/skiniq-logo.png"
-          alt="SkinIQ"
-          style={{
-            height: '120px',
-            marginBottom: '24px',
-              transition: 'transform 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'scale(1.05)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'scale(1)';
-          }}
-        />
-        </button>
-      </div>
-
       {/* Анимированный лоадер */}
       <div style={{
         width: '80px',

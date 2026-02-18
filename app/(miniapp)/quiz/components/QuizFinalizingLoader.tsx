@@ -20,18 +20,14 @@ export function QuizFinalizingLoader({
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center">
       <div className="rounded-2xl bg-white/10 border border-white/20 p-6 text-white w-[320px] backdrop-blur-md">
-        <div className="text-lg font-semibold mb-2">Собираем ваш план…</div>
+        <div className="text-lg font-semibold mb-2">Анализируем кожу...</div>
         <div className="mt-2 text-sm opacity-80 mb-4">
-          {finalizingStep === 'answers' && 'Сохраняем ответы'}
-          {finalizingStep === 'plan' && 'Подбираем средства и строим план'}
-          {finalizingStep === 'done' && 'Готово!'}
+          Это может занять до 1 минуты
         </div>
         <div className="mt-4 h-2 w-full bg-white/20 rounded-full overflow-hidden">
-          <div 
-            className="h-2 bg-white rounded-full transition-all duration-300"
-            style={{
-              width: finalizingStep === 'answers' ? '33%' : finalizingStep === 'plan' ? '66%' : '100%'
-            }}
+          <div
+            className="h-2 bg-white rounded-full animate-pulse"
+            style={{ width: '100%' }}
           />
         </div>
         {finalizeError && (

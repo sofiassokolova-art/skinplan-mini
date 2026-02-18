@@ -6,8 +6,8 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { createPortal } from 'react-dom';
 import { useState, useCallback, useRef, useEffect, useMemo, memo } from 'react';
+import { BackButtonFixed } from '@/components/BackButtonFixed';
 import type { Question } from '@/lib/quiz/types';
 
 interface QuizQuestionProps {
@@ -141,20 +141,24 @@ export const QuizQuestion = memo(function QuizQuestion({
     return t;
   };
 
-  const ProgressBar = ({ useLimeOffsets }: { useLimeOffsets: boolean }) => {
+  // Отступ сверху: прогресс-бар не должен накладываться на кнопку «Назад» (зона кнопки ~80px, контент с 48px)
+  const PROGRESS_BAR_TOP_OFFSET = '44px';
+
+  // Ширина прогресс-бара совпадает с контейнером вариантов ответов (640px с padding 20px → полоса 600px)
+  const ProgressBar = () => {
     if (hideProgressBar) return null;
 
     return (
       <div
         style={{
           marginBottom: '24px',
-          marginTop: '75px',
+          marginTop: PROGRESS_BAR_TOP_OFFSET,
           width: '100%',
-          maxWidth: '600px',
-          marginLeft: useLimeOffsets ? 'max(20px, calc(50% - 300px))' : 'auto',
-          marginRight: useLimeOffsets ? 'max(20px, calc(50% - 300px))' : 'auto',
-          paddingLeft: '0',
-          paddingRight: '0',
+          maxWidth: '640px',
+          marginLeft: 'auto',
+          marginRight: 'auto',
+          paddingLeft: '20px',
+          paddingRight: '20px',
           boxSizing: 'border-box',
         }}
       >
@@ -188,46 +192,8 @@ export const QuizQuestion = memo(function QuizQuestion({
     );
   };
 
-  // Кнопка "Назад" - портал в body
-  const backButton =
-    showBackButton && typeof window !== 'undefined'
-      ? createPortal(
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onBack();
-            }}
-            style={{
-              position: 'fixed',
-              top: 'clamp(20px, 4vh, 40px)',
-              left: 'clamp(19px, 5vw, 24px)',
-              zIndex: 99999,
-              width: '44px',
-              height: '44px',
-              background: 'transparent',
-              border: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              padding: 0,
-              pointerEvents: 'auto',
-            }}
-          >
-            <svg width="12" height="20" viewBox="0 0 12 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path
-                d="M10 2L2 10L10 18"
-                stroke="#1A1A1A"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>,
-          document.body
-        )
-      : null;
+  // Кнопка "Назад" в фиксированном контейнере (портал в body)
+  const backButton = <BackButtonFixed show={showBackButton} onClick={onBack} />;
 
   const hasAnswer = (qid: number) => {
     const v = answers[qid];
@@ -677,6 +643,9 @@ export const QuizQuestion = memo(function QuizQuestion({
       );
     });
 
+    // Чтобы лайм доходил до низа экрана: отступ сверху (padding 48px + прогресс-бар ~74px) ≈ 122px
+    const limeMinHeight = (isGoalsQuestion || isSkinTypeQuestion) ? 'calc(100vh - 122px)' : 'auto';
+
     return (
       <div
         style={{
@@ -695,7 +664,7 @@ export const QuizQuestion = memo(function QuizQuestion({
           width: (isGoalsQuestion || isSkinTypeQuestion) ? '100%' : 'auto',
           marginLeft: (isGoalsQuestion || isSkinTypeQuestion) ? '0' : 'auto',
           marginRight: (isGoalsQuestion || isSkinTypeQuestion) ? '0' : 'auto',
-          minHeight: isGoalsQuestion ? '100vh' : 'auto',
+          minHeight: limeMinHeight,
           position: 'static',
           boxSizing: 'border-box',
           display: isGoalsQuestion ? 'flex' : 'block',
@@ -1146,7 +1115,7 @@ export const QuizQuestion = memo(function QuizQuestion({
         }}
       >
         {/* Прогресс-бар (вне лайм-контейнера) */}
-        {!useLimeStyle && <ProgressBar useLimeOffsets={false} />}
+        {!useLimeStyle && <ProgressBar />}
 
         {/* Заголовок (вне лайма) */}
         {!useLimeStyle && (
@@ -1160,7 +1129,7 @@ export const QuizQuestion = memo(function QuizQuestion({
                 fontWeight: 700,
                 color: '#000000',
                 marginBottom: subtitle ? '4px' : '24px',
-                marginTop: hideProgressBar ? '60px' : '0',
+                marginTop: '0',
               }}
             >
               {renderTitle(title)}
@@ -1186,8 +1155,8 @@ export const QuizQuestion = memo(function QuizQuestion({
           </>
         )}
 
-        {/* Лаймовый прогресс-бар (для лайм-экранов) */}
-        {useLimeStyle && <ProgressBar useLimeOffsets={isSkinTypeQuestion ? false : true} />}
+        {/* Лаймовый прогресс-бар — та же ширина, что и на остальных вопросах */}
+        {useLimeStyle && <ProgressBar />}
 
         {/* Рендеры */}
         <LimeStyle />

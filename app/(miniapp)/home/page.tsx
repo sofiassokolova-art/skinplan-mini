@@ -11,8 +11,6 @@ import { api } from '@/lib/api';
 import { clientLogger } from '@/lib/client-logger';
 import { PaymentGate } from '@/components/PaymentGate';
 import { getBaseStepFromStepCategory } from '@/lib/plan-helpers';
-import { RoutineSkeleton } from '@/components/ui/SkeletonLoader';
-
 interface RoutineItem {
   id: string;
   title: string;
@@ -724,83 +722,29 @@ export default function HomePage() {
 
   if (!mounted || loading) {
     return (
-      <div style={{ 
+      <div style={{
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px',
         paddingBottom: '120px',
+        boxSizing: 'border-box',
       }}>
-        {/* Header Skeleton */}
         <div style={{
-          padding: '20px',
-          textAlign: 'center',
-        }}>
-          <div style={{
-            width: '140px',
-            height: '140px',
-            backgroundColor: 'rgba(255, 255, 255, 0.5)',
-            borderRadius: '12px',
-            margin: '8px auto',
-          }} />
-          <div style={{
-            width: '200px',
-            height: '20px',
-            backgroundColor: 'rgba(255, 255, 255, 0.5)',
-            borderRadius: '4px',
-            margin: '12px auto 8px',
-          }} />
-          <div style={{
-            width: '250px',
-            height: '26px',
-            backgroundColor: 'rgba(255, 255, 255, 0.5)',
-            borderRadius: '4px',
-            margin: '0 auto 16px',
-          }} />
-          <div style={{
-            width: '150px',
-            height: '44px',
-            backgroundColor: 'rgba(255, 255, 255, 0.5)',
-            borderRadius: '12px',
-            margin: '0 auto',
-          }} />
+          width: '44px',
+          height: '44px',
+          border: '4px solid rgba(10, 95, 89, 0.2)',
+          borderTop: '4px solid #0A5F59',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          marginBottom: '16px',
+        }} />
+        <div style={{ color: '#0A5F59', fontSize: '16px', fontWeight: 500 }}>
+          Загрузка плана...
         </div>
-
-        {/* Loading Text with Spinner */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          gap: '12px',
-          marginBottom: '24px',
-        }}>
-          <div style={{
-            width: '20px',
-            height: '20px',
-            border: '3px solid rgba(10, 95, 89, 0.2)',
-            borderTop: '3px solid #0A5F59',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite'
-          }}></div>
-          <div style={{ color: '#0A5F59', fontSize: '16px', fontWeight: 500 }}>Загрузка плана...</div>
-        </div>
-
-        {/* Toggle AM/PM Skeleton */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          marginBottom: '24px',
-        }}>
-          <div style={{
-            width: '200px',
-            height: '44px',
-            backgroundColor: 'rgba(255, 255, 255, 0.42)',
-            borderRadius: '28px',
-            backdropFilter: 'blur(20px)',
-          }} />
-        </div>
-
-        {/* Routine Items Skeleton */}
-        <RoutineSkeleton />
-
         <style>{`
           @keyframes spin {
             0% { transform: rotate(0deg); }
@@ -924,19 +868,6 @@ export default function HomePage() {
         padding: '20px',
         textAlign: 'center',
       }}>
-        <img
-          src="/skiniq-logo.png"
-          alt="SkinIQ"
-          style={{
-            height: '140px',
-            marginTop: '8px',
-            marginBottom: '8px',
-          }}
-          onError={(e) => {
-            clientLogger.warn('Logo not found');
-            (e.target as HTMLImageElement).style.display = 'none';
-          }}
-        />
         {/* Приветствие с именем */}
         {userName && (
           <div style={{

@@ -301,6 +301,37 @@ export async function generateRecommendationsForProfile(
       return { ok: false, reason: 'invalid_steps_json' } as any;
     }
 
+    // Дополняем сессию обязательными шагами, если правило их не задало (serum, treatment, mask).
+    // Один централизованный фикс — все сессии получают полный набор без правки десятков правил.
+    const requiredStepGroups = ['serum', 'treatment', 'mask'] as const;
+    const ruleStepKeys = Array.isArray(stepsJson)
+      ? (stepsJson as { category?: string[] }[])
+          .filter((s) => s?.category)
+          .flatMap((s) => s.category!.map((c) => c.toLowerCase()))
+      : Object.keys(stepsJson || {}).map((k) => k.toLowerCase());
+    const hasStep = (step: string) =>
+      ruleStepKeys.includes(step) || ruleStepKeys.some((k) => k.startsWith(step + '_'));
+
+    for (const stepGroup of requiredStepGroups) {
+      if (hasStep(stepGroup)) continue;
+      const fallbackProducts = await getProductsForStep(
+        { category: [stepGroup], max_items: 1 },
+        normalizedBudget?.priceSegment,
+        profileClassification
+      );
+      if (fallbackProducts.length > 0) {
+        allProductIds.push((fallbackProducts[0] as any).id);
+        logger.info('Session supplemented with required step', {
+          step: stepGroup,
+          productId: (fallbackProducts[0] as any).id,
+          productName: (fallbackProducts[0] as any).name,
+          userId,
+          profileId,
+          ruleId: matchedRule.id,
+        });
+      }
+    }
+
     // ИСПРАВЛЕНО: Убираем дубли продуктов и стабилизируем порядок
     const uniqueProductIds = Array.from(new Set(allProductIds));
     // Стабилизируем сортировку по ID для предсказуемости

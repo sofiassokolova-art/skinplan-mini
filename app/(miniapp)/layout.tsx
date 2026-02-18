@@ -4,7 +4,7 @@
 'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
-import { createPortal } from 'react-dom';
+import { BackButtonFixed } from '@/components/BackButtonFixed';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import BottomNavigation from '@/components/BottomNavigation';
 import PageTransition from '@/components/PageTransition';
@@ -308,96 +308,31 @@ function LayoutContent({
                   isPlanGenerating ||
                   isOnRootPage; // Скрываем навигацию на главной странице всегда (это только редирект)
   
-  // Скрываем логотип на главной странице, на странице незавершенной анкеты, на странице анкеты (там логотип на фоне), и на страницах плана, избранного и профиля (там логотип встроен в страницу)
-  const showLogo = pathname !== '/' && 
-                   !isResumeScreen && 
-                   pathname !== '/quiz' &&
-                   !pathname.startsWith('/quiz/') &&
-                   pathname !== '/plan' && 
-                   pathname !== '/wishlist' && 
-                   pathname !== '/cart' &&
-                   pathname !== '/cart-new' &&
-                   pathname !== '/profile';
-
   return (
     <>
       <NetworkStatus />
 
-      {/* ФИКС: Кнопка "назад" через портал в body — только на инфо-экранах; на вопросах кнопку рендерит QuizQuestion */}
-      {isOnQuizPage && typeof window !== 'undefined' && (() => {
-        const currentInfoScreenIndex = parseInt(sessionStorage.getItem('currentInfoScreenIndex') || '0', 10);
-        const initialLen = getInitialInfoScreens().length;
-        return currentInfoScreenIndex > 0 && currentInfoScreenIndex < initialLen;
-      })() &&
-        createPortal(
-          <button
-            type="button"
-            onClick={() => {
-              if (typeof window !== 'undefined' && window.history.length > 1) {
-                window.history.back();
-              } else {
-                router.push('/home');
-              }
-            }}
-            style={{
-              position: 'fixed',
-              top: 'clamp(20px, 4vh, 40px)',
-              left: 'clamp(19px, 5vw, 24px)',
-              zIndex: 99999,
-              width: '44px',
-              height: '44px',
-              background: 'transparent',
-              border: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              padding: 0,
-              pointerEvents: 'auto',
-            }}
-          >
-            <svg width="12" height="20" viewBox="0 0 12 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M10 2L2 10L10 18" stroke="#1A1A1A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>,
-          document.body
-        )}
-
-      {/* Логотип наверху всех экранов (кроме главной) - как на главной странице */}
-      {showLogo && (
-        <div style={{
-          padding: '20px',
-          textAlign: 'center',
-        }}>
-          <button
-            onClick={() => router.push('/home')}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 0,
-              display: 'inline-block',
-            }}
-          >
-            <img
-              src="/skiniq-logo.png"
-              alt="SkinIQ"
-              style={{
-                height: '140px',
-                marginTop: '8px',
-                marginBottom: '8px',
-                transition: 'transform 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'scale(1.05)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)';
-              }}
-            />
-          </button>
-        </div>
+      {/* Кнопка "назад" в фиксированном контейнере (портал в body) — только на инфо-экранах */}
+      {isOnQuizPage && (
+        <BackButtonFixed
+          show={
+            typeof window !== 'undefined' &&
+            (() => {
+              const currentInfoScreenIndex = parseInt(sessionStorage.getItem('currentInfoScreenIndex') || '0', 10);
+              const initialLen = getInitialInfoScreens().length;
+              return currentInfoScreenIndex > 0 && currentInfoScreenIndex < initialLen;
+            })()
+          }
+          onClick={() => {
+            if (typeof window !== 'undefined' && window.history.length > 1) {
+              window.history.back();
+            } else {
+              router.push('/home');
+            }
+          }}
+        />
       )}
+
       <PageTransition>
         {children}
       </PageTransition>
@@ -418,16 +353,6 @@ function LayoutFallback() {
   // Но для fallback лучше показать универсальную структуру
   const pathname = usePathname();
   
-  // Определяем, нужно ли показывать логотип (та же логика, что и в LayoutContent)
-  const showLogo = pathname !== '/' && 
-                   pathname !== '/quiz' &&
-                   !pathname.startsWith('/quiz/') &&
-                   pathname !== '/plan' && 
-                   pathname !== '/wishlist' && 
-                   pathname !== '/cart' &&
-                   pathname !== '/cart-new' &&
-                   pathname !== '/profile';
-  
   // ИСПРАВЛЕНО: Проверяем pathname синхронно через window.location для надежности
   // ТЗ: Скрываем навигацию на /quiz для чистого UX
   const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
@@ -444,23 +369,6 @@ function LayoutFallback() {
   return (
     <>
       <NetworkStatus />
-      {/* Логотип наверху всех экранов (кроме главной) */}
-      {showLogo && (
-        <div style={{
-          padding: '20px',
-          textAlign: 'center',
-        }}>
-          <img
-            src="/skiniq-logo.png"
-            alt="SkinIQ"
-            style={{
-              height: '140px',
-              marginTop: '8px',
-              marginBottom: '8px',
-            }}
-          />
-        </div>
-      )}
       <PageTransition>
         <div style={{
           minHeight: 'calc(100vh - 200px)',

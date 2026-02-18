@@ -1,88 +1,83 @@
-// Скрипт для очистки localStorage и sessionStorage
-// Запустите этот скрипт в консоли браузера (F12)
+// Скрипт для полной очистки localStorage и sessionStorage (как новый пользователь).
+// Вариант 1: Открой в браузере http://localhost:3001/dev/clear — очистит всё и сделает редирект.
+// Вариант 2: Вставь этот код в консоль (F12) на странице приложения.
 
-console.log('🧹 Начинаю очистку localStorage и sessionStorage...');
+console.log('🧹 Очистка хранилища (как новый пользователь)...');
 
-// Очистка localStorage
-try {
-  const localStorageKeys = [
-    'is_retaking_quiz',
-    'full_retake_from_home',
-    'quiz_progress',
-    'profile_check_cache',
-    'profile_check_cache_timestamp',
-  ];
-  
-  let removedFromLocalStorage = 0;
-  localStorageKeys.forEach(key => {
+const QUIZ_KEYS = [
+  'quiz_progress',
+  'quiz_just_submitted',
+  'quiz_retake',
+  'quiz_full_retake_from_home',
+  'quiz_progress_cleared',
+  'quiz_initCalled',
+  'quiz_completed',
+  'quiz_currentInfoScreenIndex',
+  'quiz_currentQuestionIndex',
+  'quiz_currentQuestionCode',
+  'quiz_answers_backup',
+  'default:quiz_progress_cleared',
+  'user_preferences_cache',
+  'profile_check_cache',
+  'profile_check_cache_timestamp',
+  'is_retaking_quiz',
+  'full_retake_from_home',
+  'currentInfoScreenIndex',
+];
+
+function clearAll() {
+  let removed = 0;
+
+  QUIZ_KEYS.forEach((key) => {
     if (localStorage.getItem(key) !== null) {
       localStorage.removeItem(key);
-      removedFromLocalStorage++;
-      console.log(`✅ Удалено из localStorage: ${key}`);
+      removed++;
+      console.log('localStorage:', key);
     }
-  });
-  
-  console.log(`📊 Удалено ${removedFromLocalStorage} ключей из localStorage`);
-} catch (error) {
-  console.error('❌ Ошибка при очистке localStorage:', error);
-}
-
-// Очистка sessionStorage
-try {
-  const sessionStorageKeys = [
-    'quiz_just_submitted',
-    'profile_check_cache',
-    'profile_check_cache_timestamp',
-  ];
-  
-  let removedFromSessionStorage = 0;
-  sessionStorageKeys.forEach(key => {
     if (sessionStorage.getItem(key) !== null) {
       sessionStorage.removeItem(key);
-      removedFromSessionStorage++;
-      console.log(`✅ Удалено из sessionStorage: ${key}`);
+      removed++;
+      console.log('sessionStorage:', key);
     }
   });
-  
-  console.log(`📊 Удалено ${removedFromSessionStorage} ключей из sessionStorage`);
-} catch (error) {
-  console.error('❌ Ошибка при очистке sessionStorage:', error);
+
+  [...Object.keys(sessionStorage)].forEach((key) => {
+    if (
+      key.includes('quiz') ||
+      key.includes('Quiz') ||
+      key.includes('currentQuestion') ||
+      key.includes('currentInfoScreen') ||
+      key.includes('questionnaire') ||
+      key.includes('profile_check') ||
+      key.includes('user_preferences')
+    ) {
+      sessionStorage.removeItem(key);
+      removed++;
+      console.log('sessionStorage (pattern):', key);
+    }
+  });
+
+  [...Object.keys(localStorage)].forEach((key) => {
+    if (
+      key.includes('quiz') ||
+      key.includes('Quiz') ||
+      key.includes('questionnaire') ||
+      key.includes('profile_check') ||
+      key === 'user_preferences_cache'
+    ) {
+      localStorage.removeItem(key);
+      removed++;
+      console.log('localStorage (pattern):', key);
+    }
+  });
+
+  return removed;
 }
 
-// ИСПРАВЛЕНО: Безопасное получение оставшихся ключей с обработкой ошибок
-// Используем setTimeout для неблокирующего выполнения
-setTimeout(() => {
-  try {
-    console.log('\n📋 Оставшиеся ключи в localStorage:');
-    try {
-      const keys = Object.keys(localStorage);
-      // Ограничиваем вывод для предотвращения блокировки консоли
-      if (keys.length > 50) {
-        console.log(keys.slice(0, 50));
-        console.log(`... и еще ${keys.length - 50} ключей`);
-      } else {
-        console.log(keys);
-      }
-    } catch (e) {
-      console.warn('Ошибка при получении ключей localStorage:', e);
-    }
-
-    console.log('\n📋 Оставшиеся ключи в sessionStorage:');
-    try {
-      const keys = Object.keys(sessionStorage);
-      if (keys.length > 50) {
-        console.log(keys.slice(0, 50));
-        console.log(`... и еще ${keys.length - 50} ключей`);
-      } else {
-        console.log(keys);
-      }
-    } catch (e) {
-      console.warn('Ошибка при получении ключей sessionStorage:', e);
-    }
-
-    console.log('\n✅ Очистка завершена! Обновите страницу для применения изменений.');
-  } catch (error) {
-    console.error('Ошибка при выводе оставшихся ключей:', error);
-    console.log('\n✅ Очистка завершена! Обновите страницу для применения изменений.');
-  }
-}, 0);
+try {
+  const n = clearAll();
+  console.log('✅ Удалено ключей:', n);
+  console.log('Обнови страницу (F5) или открой /dev/clear для сброса прогресса на сервере.');
+} catch (e) {
+  console.error('Ошибка:', e);
+}

@@ -3,7 +3,7 @@
 
 'use client';
 
-import React, { Suspense, lazy, memo, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { Suspense, lazy, memo, useEffect, useMemo, useCallback, useRef, useState } from 'react';
 import { useQuizContext } from './QuizProvider';
 import { ScreenErrorBoundary, QuestionErrorBoundary } from '@/components/QuizErrorBoundary';
 
@@ -41,6 +41,40 @@ import * as userPreferences from '@/lib/user-preferences';
 import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
 
 type Screen = 'LOADER' | 'ERROR' | 'RETAKE' | 'RESUME' | 'INFO' | 'INITIAL_INFO' | 'QUESTION';
+
+/** Откладывает рендер QuizResumeScreen до после монтирования — один и тот же вывод на сервере и при первом клиентском рендере (loader), устраняет hydration mismatch. */
+function ResumeScreenDeferred(props: {
+  savedProgress: any;
+  questionnaire: any;
+  answers: Record<number, string | string[]>;
+  isRetakingQuiz: boolean;
+  showRetakeScreen: boolean;
+  onResume: () => void;
+  onStartOver: () => Promise<void>;
+  isBusy: boolean;
+}) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted || !props.savedProgress) {
+    return <QuizInitialLoader />;
+  }
+  return (
+    <Suspense fallback={<QuizInitialLoader />}>
+      <ScreenErrorBoundary componentName="QuizResumeScreen">
+        <QuizResumeScreen
+          savedProgress={props.savedProgress}
+          questionnaire={props.questionnaire}
+          answers={props.answers}
+          isRetakingQuiz={props.isRetakingQuiz}
+          showRetakeScreen={props.showRetakeScreen}
+          onResume={props.onResume}
+          onStartOver={props.onStartOver}
+          isBusy={props.isBusy}
+        />
+      </ScreenErrorBoundary>
+    </Suspense>
+  );
+}
 
 interface QuizRendererProps {
   screen: Screen;
@@ -178,7 +212,7 @@ export const QuizRenderer = memo(function QuizRenderer({
   // Мемоизация вычислений для оптимизации рендеринга
   const memoizedValues = useMemo(() => {
     const isQuestionScreen = isQuestionScreenUtil(currentQuestion, pendingInfoScreen, false, showRetakeScreen);
-    const backgroundColor = getQuizBackgroundColor(isQuestionScreen);
+    const backgroundColor = getQuizBackgroundColor(isQuestionScreen, currentQuestion);
     const effectiveQuestionnaire = questionnaireQuery.data;
     const allQuestions = effectiveQuestionnaire ? extractQuestionsFromQuestionnaire(effectiveQuestionnaire) : [];
     const allQuestionsLength = allQuestions.length;
@@ -773,23 +807,20 @@ export const QuizRenderer = memo(function QuizRenderer({
     );
   }
 
-  if (screen === 'RESUME' && savedProgress) {
+  // RESUME: рендерим только после монтирования, чтобы сервер и первый клиентский рендер совпадали (избегаем hydration mismatch из‑за savedProgress)
+  if (screen === 'RESUME') {
     return (
       <ScreenErrorBoundary componentName="ResumeScreen">
-        <Suspense fallback={<QuizInitialLoader />}>
-          <ScreenErrorBoundary componentName="QuizResumeScreen">
-            <QuizResumeScreen
-              savedProgress={savedProgress}
-              questionnaire={questionnaireFromQuery || questionnaireRef.current || questionnaire}
-              answers={answers}
-              isRetakingQuiz={isRetakingQuiz}
-              showRetakeScreen={showRetakeScreen}
-              onResume={handleResume}
-              onStartOver={handleStartOver}
-              isBusy={isStartingOver || isSubmitting}
-            />
-          </ScreenErrorBoundary>
-        </Suspense>
+        <ResumeScreenDeferred
+          savedProgress={savedProgress}
+          questionnaire={questionnaireFromQuery || questionnaireRef.current || questionnaire}
+          answers={answers}
+          isRetakingQuiz={isRetakingQuiz}
+          showRetakeScreen={showRetakeScreen}
+          onResume={handleResume}
+          onStartOver={handleStartOver}
+          isBusy={isStartingOver || isSubmitting}
+        />
       </ScreenErrorBoundary>
     );
   }
@@ -1010,7 +1041,7 @@ export const QuizRenderer = memo(function QuizRenderer({
         style={{
           minHeight: '100vh',
           backgroundColor,
-          paddingTop: '60px',
+          paddingTop: '48px',
           paddingBottom: '20px',
         }}
       >

@@ -3,8 +3,8 @@
 // Вынесен из renderInfoScreen для улучшения читаемости
 
 import React from 'react';
-import { createPortal } from 'react-dom';
 import { FixedContinueButton } from '../buttons/FixedContinueButton';
+import { BackButtonFixed } from '@/components/BackButtonFixed';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 
 export interface HowItWorksScreenProps {
@@ -33,40 +33,7 @@ function HowItWorksScreenComponent({
       position: 'relative',
       width: '100%',
     }}>
-      {/* Кнопка "Назад" — через портал в body, не листается при скролле (transform в PageTransition ломает position: fixed) */}
-      {currentInfoScreenIndex > 0 &&
-        typeof window !== 'undefined' &&
-        createPortal(
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onBack();
-            }}
-            style={{
-              position: 'fixed',
-              top: 'clamp(20px, 4vh, 40px)',
-              left: 'clamp(19px, 5vw, 24px)',
-              zIndex: 99999,
-              width: '44px',
-              height: '44px',
-              background: 'transparent',
-              border: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              padding: 0,
-              pointerEvents: 'auto',
-            }}
-          >
-            <svg width="12" height="20" viewBox="0 0 12 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M10 2L2 10L10 18" stroke="#1A1A1A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>,
-          document.body
-        )}
+      <BackButtonFixed show={currentInfoScreenIndex > 0} onClick={onBack} />
 
       {/* Контент */}
       <div style={{

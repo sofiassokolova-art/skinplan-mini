@@ -3,7 +3,7 @@
 // Вынесен из renderInfoScreen для улучшения читаемости
 
 import React from 'react';
-import { createPortal } from 'react-dom';
+import { BackButtonFixed } from '@/components/BackButtonFixed';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 
 export interface PersonalAnalysisScreenProps {
@@ -19,70 +19,16 @@ function PersonalAnalysisScreenComponent({
   onContinue,
   onBack
 }: PersonalAnalysisScreenProps) {
-  // Кнопка "Назад" - создаём один раз для всех экранов
-  const shouldShowBackButton = currentInfoScreenIndex > 0 && screen.id !== 'welcome';
-  const backButton =
-    shouldShowBackButton &&
-    typeof window !== 'undefined' &&
-    onBack
-      ? createPortal(
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              // Prevent any scroll effects
-              const html = document.documentElement;
-              const body = document.body;
-              const scrollTop = window.pageYOffset || html.scrollTop || body.scrollTop || 0;
-              const scrollLeft = window.pageXOffset || html.scrollLeft || body.scrollLeft || 0;
-
-              onBack();
-
-              // Restore scroll position in case something changed it
-              setTimeout(() => {
-                window.scrollTo(scrollLeft, scrollTop);
-              }, 0);
-            }}
-            style={{
-              position: 'fixed',
-              top: 'clamp(20px, 4vh, 40px)',
-              left: 'clamp(19px, 5vw, 24px)',
-              zIndex: 1000,
-              width: '44px',
-              height: '44px',
-              background: 'transparent',
-              border: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              padding: 0,
-              pointerEvents: 'auto',
-            }}
-          >
-            <svg
-              width="12"
-              height="20"
-              viewBox="0 0 12 20"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M10 2L2 10L10 18"
-                stroke="#1A1A1A"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>,
-          document.body
-        )
-      : null;
+  const shouldShowBackButton = currentInfoScreenIndex > 0 && screen.id !== 'welcome' && !!onBack;
+  const handleBackWithScroll = () => {
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft || document.body.scrollLeft || 0;
+    onBack?.();
+    setTimeout(() => window.scrollTo(scrollLeft, scrollTop), 0);
+  };
   return (
     <>
-      {backButton}
+      <BackButtonFixed show={shouldShowBackButton} onClick={handleBackWithScroll} />
       {/* Кнопка "Назад" - будет рендерится общей логикой в QuizInfoScreen */}
       <div style={{
         padding: 0,

@@ -11,7 +11,6 @@ const STATIC_ASSETS = [
   '/manifest.json',
   '/favicon.ico',
   // Критические изображения
-  '/skiniq-logo.png',
   '/quiz_welcome_image.png',
 ];
 

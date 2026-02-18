@@ -43,12 +43,20 @@ export function shouldShowInitialLoader(params: ShouldShowInitialLoaderParams): 
          (loading || !initCompletedRef.current);
 }
 
+const LIME_GRADIENT = 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)';
+
 /**
- * Определяет цвет фона страницы
+ * Определяет цвет фона страницы.
+ * На экранах вопросов с лаймовым стилем (skin_type, skin_goals) фон лаймовый до конца.
  */
-export function getQuizBackgroundColor(isQuestionScreen: boolean): string {
-  if (isQuestionScreen) return '#FFFFFF';
-  return 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)';
+export function getQuizBackgroundColor(
+  isQuestionScreen: boolean,
+  currentQuestion?: Question | null
+): string {
+  if (!isQuestionScreen) return LIME_GRADIENT;
+  const code = currentQuestion?.code;
+  if (code === 'skin_type' || code === 'skin_goals') return LIME_GRADIENT;
+  return '#FFFFFF';
 }
 
 /**

@@ -5,8 +5,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import Image from 'next/image';
+import { BackButtonFixed } from '@/components/BackButtonFixed';
 import type { Questionnaire } from '@/lib/quiz/types';
 import type { InfoScreen } from '../info-screens';
 import { getNextInfoScreenAfterScreen } from '../info-screens';
@@ -231,70 +231,19 @@ export function QuizInfoScreen({
   // Для начальных инфо-экранов показываем кнопку всегда, кроме welcome
   const shouldShowBackButton = screen.id !== 'welcome' && (isInitialInfoScreen || currentInfoScreenIndex > 0);
   const backButton =
-    shouldShowBackButton &&
-    typeof window !== 'undefined' &&
-    handleBack
-      ? createPortal(
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              // Prevent any scroll effects
-              const html = document.documentElement;
-              const body = document.body;
-              const scrollTop = window.pageYOffset || html.scrollTop || body.scrollTop || 0;
-              const scrollLeft = window.pageXOffset || html.scrollLeft || body.scrollLeft || 0;
-
-              handleBack();
-
-              // Restore scroll position in case something changed it
-              setTimeout(() => {
-                window.scrollTo(scrollLeft, scrollTop);
-              }, 0);
-            }}
-            style={{
-              position: 'fixed',
-              top: 'clamp(20px, 4vh, 40px)',
-              left: 'clamp(19px, 5vw, 24px)',
-              zIndex: 99999,
-              width: '44px',
-              height: '44px',
-              background: 'transparent',
-              border: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              padding: 0,
-              pointerEvents: 'auto',
-              transform: 'translateZ(0)', // Создаем новый слой для правильного позиционирования
-              backfaceVisibility: 'hidden', // Оптимизация рендеринга
-              WebkitTransform: 'translateZ(0)', // Для Safari
-              isolation: 'isolate', // Создаем новый контекст стекирования
-              willChange: 'transform', // Оптимизация для браузера
-              contain: 'layout style paint', // Изолируем кнопку от остального контента
-            }}
-          >
-            <svg
-              width="12"
-              height="20"
-              viewBox="0 0 12 20"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M10 2L2 10L10 18"
-                stroke="#1A1A1A"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>,
-          document.body
-        )
-      : null;
+    shouldShowBackButton && handleBack ? (
+      <BackButtonFixed
+        show
+        onClick={() => {
+          const html = document.documentElement;
+          const body = document.body;
+          const scrollTop = window.pageYOffset || html.scrollTop || body.scrollTop || 0;
+          const scrollLeft = window.pageXOffset || html.scrollLeft || body.scrollLeft || 0;
+          handleBack();
+          setTimeout(() => window.scrollTo(scrollLeft, scrollTop), 0);
+        }}
+      />
+    ) : null;
 
   if (isWelcomeScreen) {
     return (

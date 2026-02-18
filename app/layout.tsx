@@ -113,28 +113,33 @@ export default function RootLayout({
           src="https://telegram.org/js/telegram-web-app.js"
           strategy="beforeInteractive"
         />
-        {/* DEV-режим: мок Telegram WebApp для локальной разработки без настоящего мини-аппа */}
+        {/* DEV-режим: мок Telegram WebApp для локального браузера (initData в формате, принимаемом API) */}
         {isDev && (
           <Script id="telegram-dev-mock" strategy="beforeInteractive">
             {`
               (function () {
                 if (typeof window === 'undefined') return;
-                // Не переопределяем, если реальный Telegram уже есть
-                if (window.Telegram && window.Telegram.WebApp) return;
+                if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) return;
 
-                // Используем простой мок только на localhost/127.0.0.1
                 var host = window.location.hostname;
                 if (host !== 'localhost' && host !== '127.0.0.1') return;
 
-                window.Telegram = {
-                  WebApp: {
-                    initData: 'dev-init-data=1',
+                var TEST_TELEGRAM_ID = '987654321';
+                var authDate = Math.floor(Date.now() / 1000);
+                var testInitData = 'user=%7B%22id%22%3A' + TEST_TELEGRAM_ID + '%2C%22first_name%22%3A%22Test%22%2C%22last_name%22%3A%22User%22%2C%22username%22%3A%22testuser%22%2C%22language_code%22%3A%22ru%22%7D&auth_date=' + authDate + '&hash=test_hash_for_development_only';
+
+                if (!window.Telegram) {
+                  window.Telegram = { WebApp: null };
+                }
+                if (!window.Telegram.WebApp) {
+                  window.Telegram.WebApp = {
+                    initData: testInitData,
                     initDataUnsafe: {
                       user: {
-                        id: 123456,
-                        first_name: 'Dev',
+                        id: parseInt(TEST_TELEGRAM_ID, 10),
+                        first_name: 'Test',
                         last_name: 'User',
-                        username: 'dev_user',
+                        username: 'testuser',
                         language_code: 'ru',
                       },
                     },
@@ -145,10 +150,24 @@ export default function RootLayout({
                     showPopup: function (params) { console.log('[DEV TG] showPopup:', params); },
                     openLink: function (url) { window.open(url, '_blank'); },
                     openTelegramLink: function (url) { window.open(url, '_blank'); },
-                  },
-                };
+                  };
+                } else {
+                  var w = window.Telegram.WebApp;
+                  if (!w.initData || w.initData === 'dev-init-data=1') {
+                    try {
+                      w.initData = testInitData;
+                    } catch (e) {
+                      try {
+                        Object.defineProperty(w, 'initData', { value: testInitData, writable: true });
+                      } catch (e2) {}
+                    }
+                    if (w.initDataUnsafe && w.initDataUnsafe.user) {
+                      w.initDataUnsafe.user.id = parseInt(TEST_TELEGRAM_ID, 10);
+                    }
+                  }
+                }
 
-                console.log('[DEV TG] Telegram WebApp mocked for local development');
+                console.log('[DEV TG] Telegram WebApp mocked for local development (test initData)');
               })();
             `}
           </Script>
@@ -161,6 +180,8 @@ export default function RootLayout({
         {/* Шрифты Unbounded и Inter загружаются через next/font (см. импорты выше) */}
       </head>
       <body>
+        {/* Контейнер для кнопки «Назад» — вне основного контента, чтобы position:fixed не ломался из‑за transform */}
+        <div id="back-button-portal-root" />
         <ErrorBoundary>
           <QueryProvider>
             <GlobalErrorHandler />

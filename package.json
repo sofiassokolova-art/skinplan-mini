@@ -40,6 +40,7 @@
     "backup:db": "tsx scripts/backup-db.ts",
     "restore:db": "tsx scripts/restore-db.ts",
     "clear:user": "tsx scripts/clear-all-user-data.ts",
+    "clear:local": "echo 'Открой в браузере: http://localhost:3001/dev/clear'",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",

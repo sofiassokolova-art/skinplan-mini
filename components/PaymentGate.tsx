@@ -163,9 +163,14 @@ export function PaymentGate({
 
   // ПРАВИЛЬНАЯ ЛОГИКА: источник правды — БД через /api/me/entitlements
   // Проверяем Entitlement, а не теги пользователя
+  // В dev короткий таймаут, чтобы на локальном сервере не ждать на главной/плане
+  const ENTITLEMENTS_CHECK_TIMEOUT_MS =
+    process.env.NODE_ENV === 'development' ? 500 : 8000;
+
   useEffect(() => {
     let isMounted = true;
     let timeoutId: NodeJS.Timeout | null = null;
+    let fallbackTimeoutId: NodeJS.Timeout | null = null;
 
     const checkEntitlements = async () => {
       if (checkingDbPayment) return;
@@ -226,6 +231,27 @@ export function PaymentGate({
     if (initDataReady) {
       console.log('[PaymentGate] initDataReady is true, checking entitlements');
       checkEntitlements();
+      // В dev: сразу показываем контент, проверка в фоне; при таймауте API ничего не меняем
+      if (process.env.NODE_ENV === 'development') {
+        if (isMounted) {
+          setHasPaid(true);
+          setCheckedOnce(true);
+          setCheckingDbPayment(false);
+        }
+        return () => {
+          isMounted = false;
+          if (timeoutId) clearTimeout(timeoutId);
+          if (fallbackTimeoutId) clearTimeout(fallbackTimeoutId);
+        };
+      }
+      // Прод: не зависать на лоадере — через N с показываем paywall
+      fallbackTimeoutId = setTimeout(() => {
+        if (isMounted) {
+          setCheckedOnce(true);
+          setCheckingDbPayment(false);
+          console.warn('[PaymentGate] Entitlements check timeout, showing paywall');
+        }
+      }, ENTITLEMENTS_CHECK_TIMEOUT_MS);
     } else {
       // Если initData еще не готов, устанавливаем таймаут для показа paywall через 3 секунды
       console.log('[PaymentGate] initDataReady is false, setting 3s timeout to show paywall');
@@ -239,9 +265,8 @@ export function PaymentGate({
 
     return () => {
       isMounted = false;
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
+      if (timeoutId) clearTimeout(timeoutId);
+      if (fallbackTimeoutId) clearTimeout(fallbackTimeoutId);
     };
   }, [isRetaking, productCode, refreshTick, initDataReady]);
 

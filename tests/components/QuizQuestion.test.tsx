@@ -111,8 +111,8 @@ describe('QuizQuestion', () => {
       />
     );
 
-    // Кнопка "Назад" рендерится через createPortal в body, содержит только SVG стрелку
-    const backButton = document.body.querySelector('button[style*="position: fixed"]');
+    // Кнопка "Назад" рендерится через BackButtonFixed (портал в body, фиксированный контейнер)
+    const backButton = document.body.querySelector('div[style*="position: fixed"] button') ?? document.body.querySelector('button');
     expect(backButton).toBeInTheDocument();
   });
 
@@ -130,8 +130,7 @@ describe('QuizQuestion', () => {
       />
     );
 
-    // Кнопка "Назад" рендерится через createPortal
-    const backButton = document.body.querySelector('button[style*="position: fixed"]') as HTMLButtonElement;
+    const backButton = (document.body.querySelector('div[style*="position: fixed"] button') ?? document.body.querySelector('button')) as HTMLButtonElement;
     expect(backButton).toBeInTheDocument();
     
     if (backButton) {
