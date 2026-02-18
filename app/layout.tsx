@@ -35,53 +35,12 @@ const unbounded = localFont({
   adjustFontFallback: false,
 });
 
+// Inter: только основные начертания, чтобы меньше запросов к статике (особенно на кастомном домене)
 const inter = localFont({
   src: [
-    {
-      path: '../public/fonts/inter-thin.ttf',
-      weight: '100',
-      style: 'normal',
-    },
-    {
-      path: '../public/fonts/inter-extralight.ttf',
-      weight: '200',
-      style: 'normal',
-    },
-    {
-      path: '../public/fonts/inter-light.ttf',
-      weight: '300',
-      style: 'normal',
-    },
-    {
-      path: '../public/fonts/inter-regular.ttf',
-      weight: '400',
-      style: 'normal',
-    },
-    {
-      path: '../public/fonts/inter-medium.ttf',
-      weight: '500',
-      style: 'normal',
-    },
-    {
-      path: '../public/fonts/inter-semibold.ttf',
-      weight: '600',
-      style: 'normal',
-    },
-    {
-      path: '../public/fonts/inter-bold.ttf',
-      weight: '700',
-      style: 'normal',
-    },
-    {
-      path: '../public/fonts/inter-bold.ttf',
-      weight: '800',
-      style: 'normal',
-    },
-    {
-      path: '../public/fonts/inter-black.ttf',
-      weight: '900',
-      style: 'normal',
-    },
+    { path: '../public/fonts/inter-regular.ttf', weight: '400', style: 'normal' },
+    { path: '../public/fonts/inter-semibold.ttf', weight: '600', style: 'normal' },
+    { path: '../public/fonts/inter-bold.ttf', weight: '700', style: 'normal' },
   ],
   variable: '--font-inter',
   display: 'swap',
@@ -179,7 +138,26 @@ export default function RootLayout({
         />
         {/* Шрифты Unbounded и Inter загружаются через next/font (см. импорты выше) */}
       </head>
-      <body>
+      <body style={{ margin: 0, minHeight: '100vh' }}>
+        {/* Показывается, если JS не загрузился (например, чанки не дошли) */}
+        <noscript>
+          <div style={{
+            minHeight: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 24,
+            background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+            color: '#0A5F59',
+            fontFamily: 'system-ui, sans-serif',
+            textAlign: 'center',
+          }}>
+            <div>
+              <p style={{ fontSize: 18, marginBottom: 8 }}>SkinIQ</p>
+              <p style={{ fontSize: 14, opacity: 0.9 }}>Включите JavaScript или обновите страницу.</p>
+            </div>
+          </div>
+        </noscript>
         {/* Контейнер для кнопки «Назад» — вне основного контента, чтобы position:fixed не ломался из‑за transform */}
         <div id="back-button-portal-root" />
         <ErrorBoundary>

@@ -67,9 +67,11 @@ export default function HomePage() {
     setMounted(true);
     initialize();
     setError(null);
-    
+    const initDoneRef = { current: false };
+
     // Загружаем данные (пользователь идентифицируется автоматически через initData)
     const initAndLoad = async () => {
+      try {
       // КРИТИЧНО: Проверяем флаг quiz_just_submitted ПЕРЕД ВСЕМ
       // Это предотвращает редирект на /quiz сразу после отправки анкеты
       const justSubmitted = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
@@ -190,9 +192,21 @@ export default function HomePage() {
       clientLogger.log('ℹ️ No plan but plan_progress exists - loading recommendations (plan may be generating)');
       await loadRecommendations();
       loadUserNameAsync();
+      } finally {
+        initDoneRef.current = true;
+      }
     };
 
     initAndLoad();
+
+    // Если загрузка зависла (например, таймаут API на кастомном домене) — через 25 с снимаем лоадер
+    const timeoutId = setTimeout(() => {
+      if (!initDoneRef.current) {
+        setLoading(false);
+        setError('Загрузка заняла слишком много времени. Проверьте интернет или обновите страницу.');
+      }
+    }, 25000);
+    return () => clearTimeout(timeoutId);
   }, [router, initialize]);
 
   // Фолбэк: строим рутину напрямую из 28-дневного плана, если рекомендации по каким‑то причинам пустые
