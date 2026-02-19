@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 import { clientLogger } from '@/lib/client-logger';
-import { REDIRECT_TIMEOUTS } from '@/lib/config/timeouts';
+import { REDIRECT_TIMEOUTS, ROOT_LOAD_TIMEOUTS } from '@/lib/config/timeouts';
 
 export default function RootPage() {
   const [isRedirecting, setIsRedirecting] = useState(false);
@@ -80,55 +80,70 @@ export default function RootPage() {
     }
 
     // 3) Авторизация (не блокирующая) + проверка hasPlanProgress
+    const maxWait = ROOT_LOAD_TIMEOUTS.ROOT_PAGE_MAX_WAIT;
+    const timeoutId = setTimeout(() => {
+      if (redirectInProgressRef.current) return;
+      clientLogger.warn('⚠️ Root page: max wait reached, redirecting to /quiz');
+      safeReplace('/quiz');
+    }, maxWait);
+
     const checkAndRedirect = async () => {
       setIsLoading(true);
 
-      try {
-        if (window.Telegram?.WebApp?.initData) {
-          await api.authTelegram(window.Telegram.WebApp.initData);
-          clientLogger.log('✅ Authorization successful');
-        } else {
-          clientLogger.warn('⚠️ Telegram WebApp initData not available, skipping authorization');
-        }
-      } catch (authError: any) {
-        clientLogger.warn(
-          '⚠️ Authorization failed, but continuing (non-blocking):',
-          authError?.message
-        );
-      }
-
+      // Сначала проверяем кэш (синхронно) — при повторном заходе редирект без ожидания API
       let hasPlanProgress = false;
-
       try {
-        // сначала берём кэш
         const cached = sessionStorage.getItem('user_preferences_cache');
         if (cached) {
+          const parsed = JSON.parse(cached);
+          const age = Date.now() - (parsed?.timestamp ?? 0);
+          if (age < 5 * 60 * 1000 && parsed?.data) {
+            hasPlanProgress = parsed.data.hasPlanProgress ?? false;
+            clientLogger.log('ℹ️ cached hasPlanProgress (fast path):', hasPlanProgress);
+          }
+        }
+      } catch {
+        // ignore
+      }
+
+      // Если по кэшу уже знаем — редиректим сразу, авторизацию догоним на целевой странице
+      if (hasPlanProgress) {
+        clearTimeout(timeoutId);
+        clientLogger.log('ℹ️ Has plan_progress (from cache) → /home');
+        safeReplace('/home');
+        return;
+      }
+
+      // Нет свежего кэша: запросы auth и hasPlanProgress параллельно (не подряд)
+      try {
+        const initData = window.Telegram?.WebApp?.initData;
+        const authPromise = initData
+          ? api.authTelegram(initData).then(() => true).catch((e: any) => {
+              clientLogger.warn('⚠️ Authorization failed (non-blocking):', e?.message);
+              return false;
+            })
+          : Promise.resolve(false);
+        const planPromise = (async () => {
           try {
-            const parsed = JSON.parse(cached);
-            hasPlanProgress = parsed?.data?.hasPlanProgress ?? false;
-            clientLogger.log('ℹ️ cached hasPlanProgress:', hasPlanProgress);
-          } catch {
-            // ignore broken cache
-          }
-        }
-
-        // если кэша нет/false — можно сходить в getHasPlanProgress (кроме /quiz)
-        if (!hasPlanProgress) {
-          const currentPath = window.location.pathname;
-          const isOnQuizPage =
-            currentPath === '/quiz' || currentPath.startsWith('/quiz/');
-
-          if (!isOnQuizPage) {
             const { getHasPlanProgress } = await import('@/lib/user-preferences');
-            hasPlanProgress = await getHasPlanProgress();
+            return await getHasPlanProgress();
+          } catch (e) {
+            clientLogger.warn('⚠️ Error getHasPlanProgress, assume new user:', e);
+            return false;
           }
-        }
+        })();
+
+        const [authOk, planProgress] = await Promise.all([authPromise, planPromise]);
+        hasPlanProgress = planProgress;
+        if (initData && authOk) clientLogger.log('✅ Authorization successful');
       } catch (error) {
-        clientLogger.warn('⚠️ Error checking hasPlanProgress, assume new user:', error);
+        clientLogger.warn('⚠️ Root check error:', error);
         hasPlanProgress = false;
       }
 
       if (redirectInProgressRef.current) return;
+
+      clearTimeout(timeoutId);
 
       if (!hasPlanProgress) {
         clientLogger.log('ℹ️ No plan_progress → /quiz');
@@ -143,6 +158,7 @@ export default function RootPage() {
     checkAndRedirect();
 
     return () => {
+      clearTimeout(timeoutId);
       if (cleanupTimerRef.current) {
         clearTimeout(cleanupTimerRef.current);
         cleanupTimerRef.current = null;

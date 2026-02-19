@@ -139,6 +139,24 @@ export default function RootLayout({
         {/* Шрифты Unbounded и Inter загружаются через next/font (см. импорты выше) */}
       </head>
       <body style={{ margin: 0, minHeight: '100vh' }}>
+        {/* Первый кадр: показываем сразу, до загрузки React (убирается при гидрации) */}
+        <div
+          id="root-loading"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+            color: '#0A5F59',
+            fontSize: 16,
+            fontFamily: 'system-ui, sans-serif',
+            zIndex: 99998,
+          }}
+        >
+          Загрузка...
+        </div>
         {/* Таймаут без React: если чанки не загрузились, через 15 с показываем кнопку обновить (работает без JS-бандлов) */}
         <div id="loading-timeout-fallback" style={{ display: 'none' }} />
         <script
@@ -167,16 +185,19 @@ export default function RootLayout({
         </noscript>
         {/* Контейнер для кнопки «Назад» — вне основного контента, чтобы position:fixed не ломался из‑за transform */}
         <div id="back-button-portal-root" />
-        <ErrorBoundary>
-          <QueryProvider>
-            <GlobalErrorHandler />
-            <WebVitalsTracker />
-            <ServiceWorker />
-            {children}
-            <Toaster />
-            <Analytics />
-          </QueryProvider>
-        </ErrorBoundary>
+        {/* Обёртка для React DevTools и селекторов: в App Router нет #__next по умолчанию */}
+        <div id="__next">
+          <ErrorBoundary>
+            <QueryProvider>
+              <GlobalErrorHandler />
+              <WebVitalsTracker />
+              <ServiceWorker />
+              {children}
+              <Toaster />
+              <Analytics />
+            </QueryProvider>
+          </ErrorBoundary>
+        </div>
       </body>
     </html>
   );
