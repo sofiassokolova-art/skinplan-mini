@@ -5,15 +5,8 @@ const bundleAnalyzerConfig = withBundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
 });
 
-// В production чанки грузятся с основного домена (proskiniq), не с vercel.app
-const assetPrefix =
-  process.env.VERCEL_ENV === 'production' && process.env.NEXT_PUBLIC_MINI_APP_URL
-    ? process.env.NEXT_PUBLIC_MINI_APP_URL.replace(/\/$/, '')
-    : undefined;
-
 const nextConfig = {
   reactStrictMode: true,
-  ...(assetPrefix ? { assetPrefix } : {}),
   images: {
     unoptimized: false, // РЕФАКТОРИНГ: Включаем оптимизацию изображений для лучшей производительности
     remotePatterns: [
@@ -44,6 +37,7 @@ const nextConfig = {
       "font-src 'self' data: https://fonts.gstatic.com https://api.fontshare.com",
       "img-src 'self' data: https: blob:",
       "frame-src https://telegram.org https://*.telegram.org https://vercel.live",
+      "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
@@ -53,7 +47,6 @@ const nextConfig = {
     const securityHeaders = [
       { key: 'X-DNS-Prefetch-Control', value: 'on' },
       { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
-      { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
       { key: 'X-Content-Type-Options', value: 'nosniff' },
       { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
       { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
