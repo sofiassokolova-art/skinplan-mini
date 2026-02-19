@@ -5,8 +5,15 @@ const bundleAnalyzerConfig = withBundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
 });
 
+// В production чанки грузятся с основного домена (proskiniq), не с vercel.app
+const assetPrefix =
+  process.env.VERCEL_ENV === 'production' && process.env.NEXT_PUBLIC_MINI_APP_URL
+    ? process.env.NEXT_PUBLIC_MINI_APP_URL.replace(/\/$/, '')
+    : undefined;
+
 const nextConfig = {
   reactStrictMode: true,
+  ...(assetPrefix ? { assetPrefix } : {}),
   images: {
     unoptimized: false, // РЕФАКТОРИНГ: Включаем оптимизацию изображений для лучшей производительности
     remotePatterns: [

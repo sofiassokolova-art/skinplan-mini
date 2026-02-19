@@ -1,5 +1,11 @@
 # Размеры чанков (client)
 
+## Привязка чанков к основному домену (proskiniq)
+
+В production при заданной переменной `NEXT_PUBLIC_MINI_APP_URL` (например `https://www.proskiniq.ru`) в `next.config.mjs` включён **assetPrefix**: все URL чанков, стилей и шрифтов из `/_next/static/` собираются как абсолютные ссылки на этот домен. То есть чанки всегда запрашиваются с основного домена, а не с `*.vercel.app`. Для preview и локальной разработки assetPrefix не задаётся — используются относительные пути (текущий origin).
+
+В Vercel для Production нужно задать: `NEXT_PUBLIC_MINI_APP_URL=https://www.proskiniq.ru` (без слэша в конце).
+
 ## Как посмотреть полный отчёт
 
 ```bash
