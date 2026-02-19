@@ -11,6 +11,8 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 // Секретный токен опционален - используется только если установлен в переменных окружения
 // Для генерации токена: node -e "const crypto = require('crypto'); console.log(crypto.randomBytes(32).toString('hex'))"
 const TELEGRAM_SECRET_TOKEN = process.env.TELEGRAM_SECRET_TOKEN;
+/** Секрет для установки webhook без входа в админку (curl / CI). Задайте WEBHOOK_SET_SECRET в Vercel. */
+const WEBHOOK_SET_SECRET = process.env.WEBHOOK_SET_SECRET;
 const MINI_APP_URL = process.env.NEXT_PUBLIC_MINI_APP_URL || 'https://skinplan-mini.vercel.app';
 
 interface TelegramUpdate {
@@ -768,14 +770,25 @@ export async function GET(request: NextRequest) {
 
   console.log('🔍 GET webhook request:', { action, url: request.url });
 
-  // ИСПРАВЛЕНО (P0): Проверка админ-авторизации для админских действий
+  // Для check/set-webhook: допуск по админ-сессии ИЛИ по секрету WEBHOOK_SET_SECRET (curl без браузера)
   if (action === 'check' || action === 'set-webhook') {
-    const adminAuth = await verifyAdmin(request);
-    if (!adminAuth.valid) {
-      return NextResponse.json(
-        { error: 'Unauthorized. Admin access required.' },
-        { status: 401 }
-      );
+    const secret = searchParams.get('secret') ?? request.headers.get('x-webhook-set-secret') ?? '';
+    const expected = WEBHOOK_SET_SECRET ? Buffer.from(WEBHOOK_SET_SECRET, 'utf8') : null;
+    const actual = secret ? Buffer.from(secret, 'utf8') : null;
+    const allowedBySecret = !!(
+      expected &&
+      actual &&
+      expected.length === actual.length &&
+      crypto.timingSafeEqual(expected, actual)
+    );
+    if (!allowedBySecret) {
+      const adminAuth = await verifyAdmin(request);
+      if (!adminAuth.valid) {
+        return NextResponse.json(
+          { error: 'Unauthorized. Use admin session or ?secret=WEBHOOK_SET_SECRET (or header X-Webhook-Set-Secret).' },
+          { status: 401 }
+        );
+      }
     }
   }
 

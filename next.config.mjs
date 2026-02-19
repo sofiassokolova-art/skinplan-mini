@@ -37,7 +37,7 @@ const nextConfig = {
       "font-src 'self' data: https://fonts.gstatic.com https://api.fontshare.com",
       "img-src 'self' data: https: blob:",
       "frame-src https://telegram.org https://*.telegram.org https://vercel.live",
-      "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org",
+      "frame-ancestors *",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",

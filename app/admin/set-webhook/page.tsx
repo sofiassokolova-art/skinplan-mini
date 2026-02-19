@@ -87,6 +87,9 @@ export default function SetWebhookPage() {
         }}>
           <strong>Прод не отвечает на /start?</strong> У бота может быть только один webhook. Откройте эту страницу на <strong>продакшен-домене</strong> (например https://www.proskiniq.ru/admin/set-webhook), войдите в админку и нажмите «Установить Webhook» — тогда Telegram будет слать обновления на прод.
         </p>
+        <p style={{ color: '#475467', fontSize: '13px', marginBottom: '16px' }}>
+          Установить без браузера: задайте в Vercel переменную <code>WEBHOOK_SET_SECRET</code> и вызовите <code>GET /api/telegram/webhook?action=set-webhook&amp;secret=...</code> (curl или из скрипта). Подробнее — в docs/TELEGRAM_BOT_PRODUCTION.md.
+        </p>
 
         <button
           onClick={setWebhook}

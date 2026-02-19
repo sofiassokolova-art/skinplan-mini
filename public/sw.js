@@ -1,16 +1,14 @@
 // public/sw.js
 // Service Worker для кеширования ресурсов и улучшения производительности
 
-const CACHE_NAME = 'skinplan-mini-v1';
-const STATIC_CACHE_NAME = 'skinplan-mini-static-v1';
+const CACHE_NAME = 'skinplan-mini-v2';
+const STATIC_CACHE_NAME = 'skinplan-mini-static-v2';
 
-// Ресурсы для предварительного кеширования
+// Не кэшируем HTML (/, /quiz и т.д.) — после деплоя нужен свежий HTML с новыми хэшами чанков.
+// Иначе на кастомном домене пользователь получает старый HTML → 404 на чанки → «не удалось загрузить приложение».
 const STATIC_ASSETS = [
-  '/',
-  '/quiz',
   '/manifest.json',
   '/favicon.ico',
-  // Критические изображения
   '/quiz_welcome_image.png',
 ];
 
@@ -64,19 +62,21 @@ self.addEventListener('activate', (event) => {
 
 // Обработка запросов
 self.addEventListener('fetch', (event) => {
-  // Пропускаем не-GET запросы
   if (event.request.method !== 'GET') return;
 
-  // Пропускаем API запросы (кроме статических ресурсов)
   if (event.request.url.includes('/api/') && !event.request.url.includes('/api/static/')) return;
+
+  // Навигация (HTML) — всегда из сети, не из кэша. Иначе после деплоя отдаётся старый HTML → 404 на чанки.
+  const isNavigation = event.request.mode === 'navigate' || event.request.destination === 'document';
+  if (isNavigation) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request)
       .then((cachedResponse) => {
-        // Возвращаем кешированный ответ, если найден
-        if (cachedResponse) {
-          return cachedResponse;
-        }
+        if (cachedResponse) return cachedResponse;
 
         // Иначе делаем запрос к сети
         return fetch(event.request)

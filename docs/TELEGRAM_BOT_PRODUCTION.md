@@ -10,6 +10,7 @@
 |------------|----------|--------|
 | `TELEGRAM_BOT_TOKEN` | Токен бота для прода (от @BotFather) | Обязательно для production |
 | `NEXT_PUBLIC_MINI_APP_URL` | URL продакшен-приложения, например `https://skinplan-mini.vercel.app` | От него строятся ссылки в кнопках «Открыть SkinIQ», «Открыть админку» и т.д. |
+| `WEBHOOK_SET_SECRET` | (опционально) Секрет для установки webhook без входа в админку | Позволяет вызывать `?action=set-webhook&secret=...` из curl/CI. |
 
 Остальные переменные (БД, JWT, админка и т.д.) настраиваются как обычно для production.
 
@@ -17,14 +18,37 @@
 
 У одного бота может быть только один URL вебхука. Чтобы бот в production обрабатывал сообщения тем же кодом и логикой, что и в develop, вебхук должен указывать на **production-домен**.
 
-После деплоя **main** в production:
+После деплоя **main** в production можно установить вебхук **без перехода по ссылке**:
 
-1. Откройте админку **на production-домене**, например:  
-   `https://skinplan-mini.vercel.app/admin/set-webhook`
+### Вариант A: curl (если задан WEBHOOK_SET_SECRET)
+
+В Vercel → Production добавьте переменную `WEBHOOK_SET_SECRET` (длинная случайная строка). Затем с любой машины:
+
+```bash
+curl "https://ВАШ-ПРОД-ДОМЕН/api/telegram/webhook?action=set-webhook&secret=ВАШ_WEBHOOK_SET_SECRET"
+```
+
+Проверка текущего вебхука:
+
+```bash
+curl "https://ВАШ-ПРОД-ДОМЕН/api/telegram/webhook?action=check&secret=ВАШ_WEBHOOK_SET_SECRET"
+```
+
+### Вариант B: скрипт локально
+
+В `.env` задайте `TELEGRAM_BOT_TOKEN` и `TELEGRAM_WEBHOOK_URL=https://ВАШ-ПРОД-ДОМЕН/api/telegram/webhook`, затем:
+
+```bash
+npx tsx scripts/setup-telegram-webhook.ts
+```
+
+### Вариант C: через браузер (админка)
+
+1. Откройте **на production-домене**: `https://ваш-домен.ru/admin/set-webhook`
 2. Войдите в админку (логин/пароль админа).
 3. Нажмите **«Установить webhook»**.
 
-Запрос уйдёт с production-сервера, в Telegram будет зарегистрирован URL вида:
+В любом случае в Telegram будет зарегистрирован URL вида:
 `https://ваш-production-домен/api/telegram/webhook`.
 
 Дальше все обновления от пользователей (сообщения, команды) Telegram будет слать на этот URL — их обрабатывает тот же код, что и в develop (приветствия, кнопки, /admin, /help и т.д.).
@@ -41,7 +65,7 @@
 
 - [ ] В Vercel для **Production** заданы `TELEGRAM_BOT_TOKEN` и `NEXT_PUBLIC_MINI_APP_URL` (production-URL).
 - [ ] Деплой **main** в production выполнен.
-- [ ] Открыта production-админка → «Установка Telegram Webhook» → нажато «Установить webhook».
+- [ ] Webhook установлен (curl с `WEBHOOK_SET_SECRET`, скрипт `setup-telegram-webhook.ts` или страница /admin/set-webhook на прод-домене).
 - [ ] В production-БД при необходимости добавлены админы в `AdminWhitelist` для доступа к `/admin` и админке.
 
 После этого коммуникация и ответы бота в production будут такими же, как в develop, с подключением к той же админке (на production-домене).
