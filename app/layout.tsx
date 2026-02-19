@@ -59,6 +59,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   const isDev = process.env.NODE_ENV === 'development';
+  const isProduction = process.env.VERCEL_ENV === 'production';
 
   return (
     <html 
@@ -138,30 +139,71 @@ export default function RootLayout({
         />
         {/* Шрифты Unbounded и Inter загружаются через next/font (см. импорты выше) */}
       </head>
-      <body style={{ margin: 0, minHeight: '100vh' }}>
-        {/* Первый кадр: показываем сразу, до загрузки React (убирается при гидрации) */}
-        <div
-          id="root-loading"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-            color: '#0A5F59',
-            fontSize: 16,
-            fontFamily: 'system-ui, sans-serif',
-            zIndex: 99998,
-          }}
-        >
-          Загрузка...
-        </div>
-        {/* Таймаут без React: если чанки не загрузились, через 15 с показываем кнопку обновить (работает без JS-бандлов) */}
+      <body
+        style={{
+          margin: 0,
+          minHeight: '100vh',
+          // Первый кадр без белой вспышки: фон сразу зелёный (как экран загрузки)
+          ...(isProduction
+            ? { background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)' }
+            : {}),
+        }}
+      >
+        {/* Зелёный «Загрузка» только в production; на develop/preview — без него, сразу лоадер анкеты */}
+        {isProduction && (
+          <div
+            id="root-loading"
+            style={{
+              position: 'fixed',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+              color: '#0A5F59',
+              fontSize: 16,
+              fontFamily: 'system-ui, sans-serif',
+              zIndex: 99998,
+            }}
+          >
+            Загрузка...
+          </div>
+        )}
+        {/* При ошибке загрузки чанков (ERR_TIMED_OUT и т.д.) или через 8 с — показываем кнопку «Обновить» */}
         <div id="loading-timeout-fallback" style={{ display: 'none' }} />
         <script
           dangerouslySetInnerHTML={{
-            __html: `setTimeout(function(){var e=document.getElementById("loading-timeout-fallback");if(e){e.style.cssText="display:block;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;padding:12px 20px;background:rgba(10,95,89,0.95);color:#fff;border-radius:12px;font-family:system-ui,sans-serif;font-size:14px;box-shadow:0 4px 20px rgba(0,0,0,0.2);";e.innerHTML='Страница загружается дольше обычного. <a href="javascript:location.reload()" style="color:#fff;text-decoration:underline;font-weight:600">Обновить</a>';}},15000);`,
+            __html: `
+(function(){
+  var fallbackCss = "display:block;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;padding:12px 20px;background:rgba(10,95,89,0.95);color:#fff;border-radius:12px;font-family:system-ui,sans-serif;font-size:14px;box-shadow:0 4px 20px rgba(0,0,0,0.2);";
+  var fallbackHtml = 'Не удалось загрузить приложение. <a href="javascript:location.reload()" style="color:#fff;text-decoration:underline;font-weight:600">Обновить</a>';
+  var reloadKey = 'skinplan_chunk_reload_done';
+  function showFallback(){
+    var e = document.getElementById("loading-timeout-fallback");
+    if (e && e.style.display !== "block") { e.style.cssText = fallbackCss; e.innerHTML = fallbackHtml; }
+  }
+  function tryReloadOnce(){
+    try {
+      if (!sessionStorage.getItem(reloadKey)) {
+        sessionStorage.setItem(reloadKey, '1');
+        location.reload();
+        return;
+      }
+    } catch (err) {}
+    showFallback();
+  }
+  window.addEventListener("error", function(ev){
+    if (ev.message && (ev.message.indexOf("Loading chunk") !== -1 || ev.message.indexOf("ChunkLoadError") !== -1)) { tryReloadOnce(); return; }
+    var t = ev.target;
+    if (t && (t.tagName === "SCRIPT" || t.tagName === "LINK") && (t.src || t.href)) {
+      var u = (t.src || t.href || "").toString();
+      if (u.indexOf("/_next/") !== -1 || u.indexOf("chunks") !== -1) tryReloadOnce();
+      else showFallback();
+    }
+  }, true);
+  setTimeout(showFallback, 8000);
+})();
+            `.trim(),
           }}
         />
         {/* Показывается, если JS не загрузился (например, чанки не дошли) */}

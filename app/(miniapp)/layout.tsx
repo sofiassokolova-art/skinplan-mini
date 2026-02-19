@@ -15,6 +15,9 @@ import { useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
 import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
 import { ROOT_LOAD_TIMEOUTS } from '@/lib/config/timeouts';
+import { QuizInitialLoader } from '@/app/(miniapp)/quiz/components/QuizInitialLoader';
+
+const isProduction = process.env.VERCEL_ENV === 'production';
 
 /** Убирает статичный «Загрузка...» из корня при первом монтировании React */
 function useRemoveRootLoading() {
@@ -375,6 +378,20 @@ function LayoutFallback() {
                  pathname === '/loading' ||
                  pathname.startsWith('/loading/') ||
                  isOnRootPage;
+
+  // develop/preview: серо-чёрный лоадер как у анкеты, без зелёного экрана
+  if (!isProduction) {
+    return (
+      <>
+        <NetworkStatus />
+        <PageTransition>
+          <QuizInitialLoader />
+        </PageTransition>
+        {!hideNav && !isOnQuizPage && <BottomNavigation />}
+        {!isOnQuizPage && <ServiceFeedbackPopup />}
+      </>
+    );
+  }
 
   return (
     <>

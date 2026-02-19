@@ -26,75 +26,53 @@ const nextConfig = {
   async headers() {
     const isProduction = process.env.NODE_ENV === 'production';
 
+    // Единая CSP для production: eval разрешён (нужен частично для чанков/библиотек), стили — self + внешние
+    const cspValue = [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org https://*.telegram.org https://vercel.live data:",
+      "connect-src 'self' https://telegram.org https://api.telegram.org https://*.telegram.org https://fonts.googleapis.com https://fonts.gstatic.com https://vercel.live ws: wss:",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com https://api.fontshare.com",
+      "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com https://api.fontshare.com",
+      "style-src-attr 'self' 'unsafe-inline'",
+      "font-src 'self' data: https://fonts.gstatic.com https://api.fontshare.com",
+      "img-src 'self' data: https: blob:",
+      "frame-src https://telegram.org https://*.telegram.org https://vercel.live",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "worker-src 'self' blob:",
+    ].join('; ');
+
+    const securityHeaders = [
+      { key: 'X-DNS-Prefetch-Control', value: 'on' },
+      { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+      { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+      { key: 'X-Content-Type-Options', value: 'nosniff' },
+      { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+      { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+      ...(isProduction ? [{ key: 'Content-Security-Policy', value: cspValue }] : []),
+    ];
+
     return [
-      // HTML главной не кэшировать — иначе на кастомном домене браузер получает 304 и старую версию
       {
         source: '/',
         headers: [
           { key: 'Cache-Control', value: 'no-store, no-cache, max-age=0' },
+          ...securityHeaders,
         ],
       },
       {
         source: '/home',
         headers: [
           { key: 'Cache-Control', value: 'no-store, no-cache, max-age=0' },
+          ...securityHeaders,
         ],
       },
       {
         source: '/:path*',
         headers: [
-          {
-            key: 'X-DNS-Prefetch-Control',
-            value: 'on'
-          },
-          {
-            key: 'Strict-Transport-Security',
-            value: 'max-age=63072000; includeSubDomains; preload' // РЕФАКТОРИНГ: Добавлен preload для HSTS
-          },
-          {
-            key: 'X-Frame-Options',
-            value: 'SAMEORIGIN'
-          },
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff'
-          },
-          // УДАЛЕНО: X-XSS-Protection устарел и не поддерживается современными браузерами
-          // Защита от XSS обеспечивается через CSP
-          {
-            key: 'Referrer-Policy',
-            value: 'strict-origin-when-cross-origin'
-          },
-          {
-            key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=()'
-          },
-          // CSP только в production режиме
-          ...(isProduction ? [{
-            key: 'Content-Security-Policy',
-            value: [
-              "default-src 'self'",
-              // ИСПРАВЛЕНО: Разрешаем все необходимые источники для скриптов, включая Telegram SDK
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org https://*.telegram.org https://vercel.live data:",
-              // ИСПРАВЛЕНО: Разрешаем подключения к Telegram WebApp
-              "connect-src 'self' https://telegram.org https://api.telegram.org https://*.telegram.org https://fonts.googleapis.com https://fonts.gstatic.com https://vercel.live ws: wss:",
-              // ИСПРАВЛЕНО: Разрешаем inline стили и внешние стили
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.fontshare.com",
-              "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.fontshare.com",
-              // ИСПРАВЛЕНО: Разрешаем загрузку шрифтов из различных источников
-              "font-src 'self' data: https://fonts.gstatic.com https://api.fontshare.com",
-              // ИСПРАВЛЕНО: Разрешаем загрузку изображений из всех источников
-              "img-src 'self' data: https: blob:",
-              // ИСПРАВЛЕНО: Разрешаем подключения к API Telegram, шрифтам и другим источникам
-              // ИСПРАВЛЕНО: Разрешаем iframe для Telegram и других источников
-              "frame-src https://telegram.org https://*.telegram.org https://vercel.live",
-              "object-src 'none'",
-              "base-uri 'self'",
-              "form-action 'self'",
-              // ИСПРАВЛЕНО: Разрешаем worker-src для поддержки Service Workers (если используются)
-              "worker-src 'self' blob:",
-            ].join('; ')
-          }] : [])
+          { key: 'Cache-Control', value: 'no-store, no-cache, max-age=0, must-revalidate' },
+          ...securityHeaders,
         ],
       },
     ];
@@ -122,35 +100,41 @@ const nextConfig = {
         cacheGroups: {
           default: false,
           vendors: false,
-          // Отдельный чанк для chart.js (используется только в админке)
+          // React отдельно — реже меняется, лучше кэш
+          framework: {
+            name: 'framework',
+            test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/,
+            chunks: 'all',
+            priority: 40,
+            enforce: true,
+          },
+          // Chart.js только в админке — async
           chartjs: {
             name: 'chartjs',
             test: /[\\/]node_modules[\\/](chart\.js|react-chartjs-2|recharts)[\\/]/,
             chunks: 'async',
             priority: 20,
           },
-          // Отдельный чанк для PDF библиотек (используется для экспорта)
           pdf: {
             name: 'pdf',
             test: /[\\/]node_modules[\\/]jspdf[\\/]/,
             chunks: 'async',
             priority: 20,
           },
-          // Отдельный чанк для анимаций (используется не везде)
+          // Анимации только при заходе на страницы с Lottie (framer-motion убран из layout)
           animations: {
             name: 'animations',
             test: /[\\/]node_modules[\\/](framer-motion|lottie-react|@lottiefiles)[\\/]/,
             chunks: 'async',
             priority: 20,
           },
-          // Отдельный чанк для Prisma (большая библиотека)
           prisma: {
             name: 'prisma',
             test: /[\\/]node_modules[\\/]@prisma[\\/]/,
             chunks: 'async',
             priority: 30,
           },
-          // Общий чанк для остальных vendor библиотек
+          // Остальные node_modules — в vendor (tanstack, radix и т.д.)
           vendor: {
             name: 'vendor',
             test: /[\\/]node_modules[\\/]/,
