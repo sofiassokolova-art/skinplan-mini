@@ -14,12 +14,22 @@ import { ServiceFeedbackPopup } from '@/components/ServiceFeedbackPopup';
 import { useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
 import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
+import { ROOT_LOAD_TIMEOUTS } from '@/lib/config/timeouts';
+
+/** Убирает статичный «Загрузка...» из корня при первом монтировании React */
+function useRemoveRootLoading() {
+  useEffect(() => {
+    const el = typeof document !== 'undefined' ? document.getElementById('root-loading') : null;
+    if (el?.parentNode) el.parentNode.removeChild(el);
+  }, []);
+}
 
 function LayoutContent({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  useRemoveRootLoading();
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -349,11 +359,12 @@ function LayoutContent({
 // ИСПРАВЛЕНО: usePathname() не вызывает suspend, но для консистентности используем его безопасно
 // В fallback показываем базовую структуру без зависимостей от конкретного пути
 function LayoutFallback() {
+  useRemoveRootLoading();
   const pathname = usePathname();
   const [slowLoad, setSlowLoad] = useState(false);
 
   useEffect(() => {
-    const t = setTimeout(() => setSlowLoad(true), 12000);
+    const t = setTimeout(() => setSlowLoad(true), ROOT_LOAD_TIMEOUTS.SHOW_RELOAD_BUTTON_AFTER);
     return () => clearTimeout(t);
   }, []);
 

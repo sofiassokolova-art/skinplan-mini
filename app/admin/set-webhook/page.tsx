@@ -76,6 +76,17 @@ export default function SetWebhookPage() {
           Нажмите кнопку ниже, чтобы установить webhook для Telegram бота. 
           Это позволит боту отвечать на команды.
         </p>
+        <p style={{
+          color: '#0A5F59',
+          marginBottom: '24px',
+          lineHeight: '1.6',
+          fontSize: '14px',
+          background: 'rgba(10, 95, 89, 0.08)',
+          padding: '12px 16px',
+          borderRadius: '8px',
+        }}>
+          <strong>Прод не отвечает на /start?</strong> У бота может быть только один webhook. Откройте эту страницу на <strong>продакшен-домене</strong> (например https://www.proskiniq.ru/admin/set-webhook), войдите в админку и нажмите «Установить Webhook» — тогда Telegram будет слать обновления на прод.
+        </p>
 
         <button
           onClick={setWebhook}
