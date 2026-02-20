@@ -3,12 +3,17 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function SetWebhookPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState('');
+  const [webhookUrl, setWebhookUrl] = useState<string>('');
+
+  useEffect(() => {
+    setWebhookUrl(`${window.location.origin}/api/telegram/webhook`);
+  }, []);
 
   const setWebhook = async () => {
     setLoading(true);
@@ -87,8 +92,16 @@ export default function SetWebhookPage() {
         }}>
           <strong>Прод не отвечает на /start?</strong> У бота может быть только один webhook. Откройте эту страницу на <strong>продакшен-домене</strong> (например https://www.proskiniq.ru/admin/set-webhook), войдите в админку и нажмите «Установить Webhook» — тогда Telegram будет слать обновления на прод.
         </p>
+        <p style={{ color: '#0A5F59', fontSize: '13px', marginBottom: '16px', fontWeight: 600 }}>
+          Сейчас webhook будет установлен на: <br />
+          <code style={{ background: 'rgba(0,0,0,0.06)', padding: '4px 8px', borderRadius: 4 }}>
+            {webhookUrl || '…'}
+          </code>
+          <br />
+          Убедитесь, что открыт прод-домен (например www.proskiniq.ru), а не develop.
+        </p>
         <p style={{ color: '#475467', fontSize: '13px', marginBottom: '16px' }}>
-          Установить без браузера: задайте в Vercel переменную <code>WEBHOOK_SET_SECRET</code> и вызовите <code>GET /api/telegram/webhook?action=set-webhook&amp;secret=...</code> (curl или из скрипта). Подробнее — в docs/TELEGRAM_BOT_PRODUCTION.md.
+          Без браузера: в Vercel задайте <code>WEBHOOK_SET_SECRET</code>, затем <code>curl "…/api/telegram/webhook?action=set-webhook&amp;secret=..."</code>. См. docs/TELEGRAM_BOT_PRODUCTION.md.
         </p>
 
         <button

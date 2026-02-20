@@ -6,11 +6,13 @@
 import { useEffect } from 'react';
 import { clientLogger } from '@/lib/client-logger';
 
+/** Отключено: на проде SW отдавал старый HTML → 404 на чанки. Включить после стабилизации загрузки. */
+const SERVICE_WORKER_ENABLED = false;
+
 export function ServiceWorker() {
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !SERVICE_WORKER_ENABLED) return;
 
-    // Регистрируем Service Worker только в production
     if (process.env.NODE_ENV === 'production' && 'serviceWorker' in navigator) {
       navigator.serviceWorker
         .register('/sw.js', { scope: '/' })

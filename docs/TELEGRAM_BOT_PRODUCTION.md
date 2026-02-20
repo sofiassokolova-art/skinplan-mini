@@ -1,5 +1,21 @@
 # Telegram-бот в Production (main)
 
+## Прод бот не отвечает на /start
+
+**Причина:** у бота может быть только **один** webhook. Если он был установлен на домен develop (например `*.vercel.app`), Telegram шлёт все обновления туда, а на прод (www.proskiniq.ru) запросы не приходят — бот «молчит».
+
+**Что сделать:** заново установить webhook на **продакшен-URL** (один из способов ниже). После этого /start и остальные команды будут обрабатываться продом.
+
+| Способ | Действие |
+|--------|----------|
+| **Через админку** | Открыть **https://www.proskiniq.ru/admin/set-webhook** (обязательно на прод-домене), войти в админку, нажать «Установить Webhook». |
+| **Через curl** | В Vercel → Production задать `WEBHOOK_SET_SECRET`, затем: `curl "https://www.proskiniq.ru/api/telegram/webhook?action=set-webhook&secret=ВАШ_SECRET"` |
+| **Скрипт** | Локально: `TELEGRAM_WEBHOOK_URL=https://www.proskiniq.ru/api/telegram/webhook` в .env и `npx tsx scripts/setup-telegram-webhook.ts` |
+
+Проверить, куда сейчас смотрит webhook: `curl "https://www.proskiniq.ru/api/telegram/webhook?action=check&secret=ВАШ_SECRET"` (или после входа в админку открыть ту же ссылку без secret в браузере).
+
+---
+
 Поведение бота в production такое же, как в develop: те же команды (/start, /admin, /help, /clear, /logs, /payment), те же ответы и кнопки (Mini App, админка, очистка данных). Код один и тот же, различаются только переменные окружения и URL вебхука.
 
 ## 1. Переменные в Vercel для Production
