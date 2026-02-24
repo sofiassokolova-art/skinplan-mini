@@ -163,7 +163,6 @@ export default function AdminLogin() {
               className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white/80 focus:ring-2 focus:ring-gray-900 focus:border-transparent"
               required
               autoComplete="email"
-              readOnly={needSetCode}
             />
           </div>
 

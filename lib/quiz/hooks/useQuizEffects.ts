@@ -2,7 +2,7 @@
 // РЕФАКТОРИНГ: Хук для группировки всех useEffect из quiz/page.tsx
 // Вынесен для улучшения читаемости и поддержки
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { clientLogger } from '@/lib/client-logger';
 import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
@@ -863,6 +863,18 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
   const answersKeysCountForIndexCorrection = Object.keys(answers || {}).length;
   const savedProgressAnswersKeysCountForIndexCorrection = savedProgress ? Object.keys(savedProgress.answers || {}).length : 0;
   
+  // Исправление индекса ДО отрисовки: при выходе за границы списка вопросов (например после «Назад»
+  // на экране привычек) сразу приводим индекс к валидному, чтобы не показывать «Вопрос не найден»
+  useLayoutEffect(() => {
+    if (loading || showResumeScreen || isSubmitting || allQuestions.length === 0) return;
+    const outOfBounds = currentQuestionIndex < 0 || currentQuestionIndex >= allQuestions.length;
+    if (!outOfBounds) return;
+    const clamped = Math.max(0, Math.min(currentQuestionIndex, allQuestions.length - 1));
+    if (clamped !== currentQuestionIndex) {
+      setCurrentQuestionIndex(clamped);
+    }
+  }, [loading, showResumeScreen, isSubmitting, allQuestions.length, currentQuestionIndex, setCurrentQuestionIndex]);
+  
   useEffect(() => {
     if (loading) return;
     
@@ -1008,9 +1020,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
       // });
       
       if (correctedIndex !== currentQuestionIndex) {
-        setTimeout(() => {
-          setCurrentQuestionIndex(correctedIndex);
-        }, 0);
+        setCurrentQuestionIndex(correctedIndex);
       }
     }
     // КРИТИЧНО ИСПРАВЛЕНО: Заменяем объекты answers и savedProgress на стабильные значения

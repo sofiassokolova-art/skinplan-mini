@@ -24,6 +24,144 @@ interface QuizQuestionProps {
   showBackButton: boolean;
 }
 
+// Вынесен на уровень модуля, чтобы не пересоздаваться при ре-рендере — иначе картинки на экране «Тип кожи» мигают
+const LimeOptionCard = memo(function LimeOptionCard({
+  option,
+  index,
+  isSelected,
+  isMultiChoice: _isMultiChoice,
+  isSkinTypeQuestion,
+  imageUrl,
+  onOptionClick
+}: {
+  option: any;
+  index: number;
+  isSelected: boolean;
+  isMultiChoice: boolean;
+  isSkinTypeQuestion: boolean;
+  imageUrl: string;
+  onOptionClick: () => void;
+}) {
+  const optionText = option.label || '';
+  const optionParts = optionText.split('\n');
+  const optionTitle = optionParts[0] || '';
+  const optionDescription = optionParts.slice(1).join('\n') || '';
+
+  return (
+    <button
+      onClick={onOptionClick}
+      style={{
+        padding: '0',
+        borderRadius: '16px',
+        border: isSelected ? '2px solid #FFFFFF' : 'none',
+        backgroundColor: isSelected ? '#D5FE61' : '#FFFFFF',
+        cursor: 'pointer',
+        textAlign: 'left',
+        overflow: 'hidden',
+        transition: 'all 0.2s',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+      }}
+    >
+      <div
+        style={{
+          width: '100%',
+          height: '140px',
+          backgroundColor: '#f0f0f0',
+          overflow: 'hidden',
+          position: 'relative',
+        }}
+      >
+        <Image
+          src={imageUrl}
+          alt={option.label}
+          width={600}
+          height={140}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            display: 'block',
+          }}
+          sizes="(max-width: 768px) 100vw, 420px"
+          priority
+        />
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          flex: 1,
+          padding: '16px',
+          backgroundColor: isSelected ? '#D5FE61' : '#FFFFFF',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: optionDescription ? '8px' : '0',
+          }}
+        >
+          <span
+            style={{
+              fontSize: '16px',
+              fontWeight: 500,
+              color: '#000000',
+              fontFamily:
+                "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+            }}
+          >
+            {optionTitle}
+          </span>
+          {!isSkinTypeQuestion && (
+            <div
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '50%',
+                backgroundColor: isSelected ? '#000000' : '#D5FE61',
+                border: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                boxShadow: isSelected ? 'none' : 'inset 0 2px 4px rgba(0, 0, 0, 0.15)',
+              }}
+            >
+              {isSelected && (
+                <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
+                  <path
+                    d="M1 5L5 9L13 1"
+                    stroke="#FFFFFF"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              )}
+            </div>
+          )}
+        </div>
+        {optionDescription && (
+          <span
+            style={{
+              fontSize: '14px',
+              fontWeight: 400,
+              color: '#6B7280',
+              fontFamily:
+                "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              lineHeight: '1.4',
+            }}
+          >
+            {optionDescription}
+          </span>
+        )}
+      </div>
+    </button>
+  );
+});
+
 export const QuizQuestion = memo(function QuizQuestion({
   question,
   currentQuestionIndex,
@@ -499,152 +637,6 @@ export const QuizQuestion = memo(function QuizQuestion({
       return imageUrl;
     }, []);
 
-    // Memoized option card to prevent unnecessary re-renders of images
-    const OptionCard = memo(({
-      option,
-      index,
-      isSelected,
-      isMultiChoice: _isMultiChoice,
-      isSkinTypeQuestion,
-      getImageUrl,
-      onOptionClick
-    }: {
-      option: any;
-      index: number;
-      isSelected: boolean;
-      isMultiChoice: boolean;
-      isSkinTypeQuestion: boolean;
-      getImageUrl: (index: number) => string;
-      onOptionClick: () => void;
-    }) => {
-      // Memoize image URL to prevent re-calculations
-      const imageUrl = useMemo(() => getImageUrl(index), [getImageUrl, index]);
-
-      const optionText = option.label || '';
-      const optionParts = optionText.split('\n');
-      const optionTitle = optionParts[0] || '';
-      const optionDescription = optionParts.slice(1).join('\n') || '';
-
-      return (
-        <button
-          onClick={onOptionClick}
-          style={{
-            padding: '0',
-            borderRadius: '16px',
-            border: isSelected ? '2px solid #FFFFFF' : 'none',
-            backgroundColor: isSelected ? '#D5FE61' : '#FFFFFF',
-            cursor: 'pointer',
-            textAlign: 'left',
-            overflow: 'hidden',
-            transition: 'all 0.2s',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          }}
-        >
-          {/* Картинка */}
-          <div
-            style={{
-              width: '100%',
-              height: '140px',
-              backgroundColor: '#f0f0f0',
-              overflow: 'hidden',
-              position: 'relative',
-            }}
-          >
-            <Image
-              src={imageUrl}
-              alt={option.label}
-              width={600}
-              height={140}
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                display: 'block',
-              }}
-              sizes="(max-width: 768px) 100vw, 420px"
-            />
-          </div>
-
-          {/* Текст */}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              flex: 1,
-              padding: '16px',
-              backgroundColor: isSelected ? '#D5FE61' : '#FFFFFF',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: optionDescription ? '8px' : '0',
-              }}
-            >
-              <span
-                style={{
-                  fontSize: '16px',
-                  fontWeight: 500,
-                  color: '#000000',
-                  fontFamily:
-                    "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                }}
-              >
-                {optionTitle}
-              </span>
-
-              {/* чекбокс убираем для skin_type */}
-              {!isSkinTypeQuestion && (
-                <div
-                  style={{
-                    width: '28px',
-                    height: '28px',
-                    borderRadius: '50%',
-                    backgroundColor: isSelected ? '#000000' : '#D5FE61',
-                    border: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    boxShadow: isSelected ? 'none' : 'inset 0 2px 4px rgba(0, 0, 0, 0.15)',
-                  }}
-                >
-                  {isSelected && (
-                    <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
-                      <path
-                        d="M1 5L5 9L13 1"
-                        stroke="#FFFFFF"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {optionDescription && (
-              <span
-                style={{
-                  fontSize: '14px',
-                  fontWeight: 400,
-                  color: '#6B7280',
-                  fontFamily:
-                    "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                  lineHeight: '1.4',
-                }}
-              >
-                {optionDescription}
-              </span>
-            )}
-          </div>
-        </button>
-      );
-    });
-
     // Чтобы лайм доходил до низа экрана: отступ сверху (padding 48px + прогресс-бар ~74px) ≈ 122px
     const limeMinHeight = (isGoalsQuestion || isSkinTypeQuestion) ? 'calc(100vh - 122px)' : 'auto';
 
@@ -718,14 +710,14 @@ export const QuizQuestion = memo(function QuizQuestion({
             const isSelected = currentAnswers.includes(option.value);
 
             return (
-              <OptionCard
+              <LimeOptionCard
                 key={option.id}
                 option={option}
                 index={index}
                 isSelected={isSelected}
                 isMultiChoice={isMultiChoice}
                 isSkinTypeQuestion={isSkinTypeQuestion}
-                getImageUrl={getImageUrl}
+                imageUrl={getImageUrl(index)}
                 onOptionClick={async () => {
                   console.log('📝 [QuizQuestion] LimeStyle: option clicked', {
                     questionId: question.id,

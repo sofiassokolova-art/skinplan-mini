@@ -1038,6 +1038,7 @@ export const QuizRenderer = memo(function QuizRenderer({
         <Suspense fallback={<QuizInitialLoader />}>
           <QuestionErrorBoundary componentName="QuizQuestion">
             <QuizQuestion
+            key={safeCurrentQuestion.id}
             question={safeCurrentQuestion}
             currentQuestionIndex={currentQuestionIndex}
             allQuestionsLength={allQuestionsLength}
