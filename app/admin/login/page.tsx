@@ -144,7 +144,6 @@ export default function AdminLogin() {
       <div className="admin-card p-8 max-w-md w-full">
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">SkinIQ Admin</h1>
-          <p className="text-gray-600">Вход по email и коду доступа</p>
         </div>
 
         {error && (
@@ -234,9 +233,6 @@ export default function AdminLogin() {
           </button>
         </form>
 
-        <p className="mt-6 text-gray-500 text-xs text-center">
-          Доступ только для email из списка. Код вы задаёте сами при первом входе.
-        </p>
       </div>
     </div>
   );
