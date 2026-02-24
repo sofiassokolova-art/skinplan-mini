@@ -12,8 +12,9 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
-  const [checkingSession, setCheckingSession] = useState(true); // ИСПРАВЛЕНО (P1): Состояние проверки сессии
-  const [isTelegramReady, setIsTelegramReady] = useState(false); // ИСПРАВЛЕНО (P1): Состояние готовности Telegram
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [isTelegramReady, setIsTelegramReady] = useState(false);
+  const [autoLoginAttempted, setAutoLoginAttempted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -64,14 +65,11 @@ export default function AdminLogin() {
             return;
           }
         } else {
-          // ИСПРАВЛЕНО: Проверяем ошибки конфигурации при проверке сессии
           try {
             const data = await response.json();
             const errorMessage = data.error || '';
             const errorCode = data.code;
-            
-            // Проверяем ошибки конфигурации по коду или тексту ошибки
-            if (errorCode === 'CONFIG_ERROR' || errorCode === 'JWT_CONFIG_ERROR' || 
+            if (errorCode === 'CONFIG_ERROR' || errorCode === 'JWT_CONFIG_ERROR' ||
                 errorMessage.includes('JWT_SECRET') || errorMessage.includes('TELEGRAM_BOT_TOKEN') ||
                 errorMessage.includes('JWT configuration error')) {
               setError('Ошибка конфигурации сервера. Обратитесь к администратору для настройки JWT_SECRET или TELEGRAM_BOT_TOKEN.');
@@ -79,20 +77,27 @@ export default function AdminLogin() {
               return;
             }
           } catch (parseError) {
-            // Если не удалось распарсить JSON, игнорируем
             console.error('Error parsing error response:', parseError);
           }
         }
       } catch (error) {
         console.error('Error checking token:', error);
-        // ИСПРАВЛЕНО: Не показываем ошибку при проверке сессии, только при логине
       } finally {
         setCheckingSession(false);
       }
     };
-    
+
     checkExistingToken();
   }, [router, mounted]);
+
+  // Автовход при открытии из Telegram: если сессии нет, но есть initData — сразу пробуем войти
+  useEffect(() => {
+    if (!mounted || checkingSession || loading || autoLoginAttempted || !isTelegramReady) return;
+    const initData = window.Telegram?.WebApp?.initData;
+    if (!initData) return;
+    setAutoLoginAttempted(true);
+    handleTelegramLogin();
+  }, [mounted, checkingSession, loading, autoLoginAttempted, isTelegramReady]);
 
   const handleTelegramLogin = async () => {
     setLoading(true);
