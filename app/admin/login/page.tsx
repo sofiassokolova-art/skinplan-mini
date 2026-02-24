@@ -42,8 +42,13 @@ export default function AdminLogin() {
             return;
           }
         }
+        // Невалидный или истёкший токен — убираем из localStorage, чтобы показать форму входа
+        if (response.status === 401) {
+          try { localStorage.removeItem('admin_token'); } catch (_) {}
+        }
       } catch (err) {
         console.error('Error checking token:', err);
+        try { localStorage.removeItem('admin_token'); } catch (_) {}
       } finally {
         setCheckingSession(false);
       }

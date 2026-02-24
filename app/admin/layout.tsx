@@ -95,9 +95,13 @@ export default function AdminLayout({
             setIsAuthenticated(true);
           } else {
             setIsAuthenticated(false);
+            try { localStorage.removeItem('admin_token'); } catch (_) {}
           }
         } else {
           setIsAuthenticated(false);
+          if (response.status === 401) {
+            try { localStorage.removeItem('admin_token'); } catch (_) {}
+          }
         }
       } catch (error) {
         console.error('Auth check error:', error);

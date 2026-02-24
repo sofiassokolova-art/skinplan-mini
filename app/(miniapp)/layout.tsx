@@ -14,10 +14,7 @@ import { ServiceFeedbackPopup } from '@/components/ServiceFeedbackPopup';
 import { useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
 import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
-import { ROOT_LOAD_TIMEOUTS } from '@/lib/config/timeouts';
 import { QuizInitialLoader } from '@/app/(miniapp)/quiz/components/QuizInitialLoader';
-
-const isProduction = process.env.VERCEL_ENV === 'production';
 
 /** Убирает статичный «Загрузка...» из корня при первом монтировании React */
 function useRemoveRootLoading() {
@@ -364,12 +361,6 @@ function LayoutContent({
 function LayoutFallback() {
   useRemoveRootLoading();
   const pathname = usePathname();
-  const [slowLoad, setSlowLoad] = useState(false);
-
-  useEffect(() => {
-    const t = setTimeout(() => setSlowLoad(true), ROOT_LOAD_TIMEOUTS.SHOW_RELOAD_BUTTON_AFTER);
-    return () => clearTimeout(t);
-  }, []);
 
   const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
   const isOnQuizPage = currentPath === '/quiz' || currentPath.startsWith('/quiz/');
@@ -379,59 +370,12 @@ function LayoutFallback() {
                  pathname.startsWith('/loading/') ||
                  isOnRootPage;
 
-  // develop/preview: серо-чёрный лоадер как у анкеты, без зелёного экрана
-  if (!isProduction) {
-    return (
-      <>
-        <NetworkStatus />
-        <PageTransition>
-          <QuizInitialLoader />
-        </PageTransition>
-        {!hideNav && !isOnQuizPage && <BottomNavigation />}
-        {!isOnQuizPage && <ServiceFeedbackPopup />}
-      </>
-    );
-  }
-
+  // Один лоадер при открытии — чёрно-серый (QuizInitialLoader), без экрана «Загрузка...»
   return (
     <>
       <NetworkStatus />
       <PageTransition>
-        <div style={{
-          minHeight: 'calc(100vh - 200px)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: '#FFFFFF',
-          padding: 24,
-        }}>
-          {!slowLoad ? (
-            <div style={{ color: '#333', fontSize: '16px' }}>Загрузка...</div>
-          ) : (
-            <div style={{ textAlign: 'center', color: '#333', maxWidth: 320 }}>
-              <p style={{ fontSize: 16, marginBottom: 16 }}>
-                Страница загружается дольше обычного. Проверьте интернет или обновите страницу.
-              </p>
-              <button
-                type="button"
-                onClick={() => window.location.reload()}
-                style={{
-                  padding: '12px 24px',
-                  borderRadius: 12,
-                  border: 'none',
-                  backgroundColor: '#000',
-                  color: 'white',
-                  fontSize: 16,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
-              >
-                Обновить страницу
-              </button>
-            </div>
-          )}
-        </div>
+        <QuizInitialLoader />
       </PageTransition>
       {!hideNav && !isOnQuizPage && <BottomNavigation />}
       {!isOnQuizPage && <ServiceFeedbackPopup />}
