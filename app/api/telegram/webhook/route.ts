@@ -123,17 +123,17 @@ async function sendMessage(
 }
 
 export async function POST(request: NextRequest) {
+  let update: TelegramUpdate | null = null;
   try {
-    // ВАЖНО: Webhook должен быть доступен без аутентификации, так как Telegram отправляет запросы напрямую
-    // Проверка секретного токена опциональна и выполняется только если токен явно установлен
-    // Если нужна дополнительная безопасность, используйте секретный токен через TELEGRAM_SECRET_TOKEN
-    
     if (!TELEGRAM_BOT_TOKEN) {
       console.error('❌ TELEGRAM_BOT_TOKEN не настроен');
       return NextResponse.json({ error: 'Bot token not configured' }, { status: 500 });
     }
 
-    const update: TelegramUpdate = await request.json();
+    update = await request.json() as TelegramUpdate;
+    if (!update) {
+      return NextResponse.json({ ok: false, error: 'Empty update' }, { status: 200 });
+    }
     console.log('📥 Получено обновление от Telegram:', {
       updateId: update.update_id,
       hasMessage: !!update.message,
@@ -143,19 +143,20 @@ export async function POST(request: NextRequest) {
       fromUsername: update.message?.from?.username,
     });
 
-    // Сохраняем входящее сообщение в БД и создаем чат поддержки
+    // Сохраняем входящее сообщение в БД и создаем чат поддержки (не блокируем обработку команд при ошибке)
     if (update.message && !update.message.from.is_bot) {
-      const telegramId = update.message.from.id;
-      const userId = await getUserIdFromTelegramId(telegramId, {
-        firstName: update.message.from.first_name,
-        lastName: update.message.from.last_name,
-        username: update.message.from.username,
-        languageCode: update.message.from.language_code,
-      });
+      try {
+        const telegramId = update.message.from.id;
+        const userId = await getUserIdFromTelegramId(telegramId, {
+          firstName: update.message.from.first_name,
+          lastName: update.message.from.last_name,
+          username: update.message.from.username,
+          languageCode: update.message.from.language_code,
+        });
 
-      if (userId) {
-        const messageType = update.message.text?.startsWith('/') ? 'command' : 'text';
-        await saveBotMessage(
+        if (userId) {
+          const messageType = update.message.text?.startsWith('/') ? 'command' : 'text';
+          await saveBotMessage(
           userId,
           update.message.message_id.toString(),
           update.message.chat.id.toString(),
@@ -285,6 +286,9 @@ export async function POST(request: NextRequest) {
           }
         }
       }
+      } catch (dbError) {
+        console.error('Error saving message or support chat (continuing to process commands):', dbError);
+      }
     }
 
     // Обработка команды /start
@@ -293,13 +297,17 @@ export async function POST(request: NextRequest) {
       const firstName = update.message.from.first_name || 'друг';
       const telegramId = update.message.from.id;
       
-      // Получаем userId для сохранения исходящего сообщения
-      const userId = await getUserIdFromTelegramId(telegramId, {
-        firstName: update.message.from.first_name,
-        lastName: update.message.from.last_name,
-        username: update.message.from.username,
-        languageCode: update.message.from.language_code,
-      });
+      let userId: string | null = null;
+      try {
+        userId = await getUserIdFromTelegramId(telegramId, {
+          firstName: update.message.from.first_name,
+          lastName: update.message.from.last_name,
+          username: update.message.from.username,
+          languageCode: update.message.from.language_code,
+        });
+      } catch (e) {
+        console.error('getUserIdFromTelegramId failed (will still send welcome):', e);
+      }
 
       console.log(`📨 Processing /start command from user ${firstName} (chatId: ${chatId})`);
       console.log(`🌐 Mini App URL: ${MINI_APP_URL}`);
@@ -756,10 +764,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, processed: 'none' });
   } catch (error) {
     console.error('Webhook error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    const chatId = update?.message?.chat?.id;
+    if (chatId && TELEGRAM_BOT_TOKEN) {
+      try {
+        await sendMessage(chatId, 'Произошла временная ошибка. Попробуйте команду /start ещё раз или позже.');
+      } catch (sendErr) {
+        console.error('Failed to send error fallback to user:', sendErr);
+      }
+    }
+    return NextResponse.json({ ok: false, error: 'Internal server error' }, { status: 200 });
   }
 }
 

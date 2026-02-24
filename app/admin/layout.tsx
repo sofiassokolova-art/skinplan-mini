@@ -70,12 +70,19 @@ export default function AdminLayout({
     authCheckInProgressRef.current = true;
     let mounted = true;
 
+    const AUTH_CHECK_TIMEOUT_MS = 15000;
+
     const checkAuth = async () => {
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), AUTH_CHECK_TIMEOUT_MS);
+
         const response = await fetch('/api/admin/auth', {
           credentials: 'include',
+          signal: controller.signal,
         });
 
+        clearTimeout(timeoutId);
         if (!mounted) return;
 
         if (response.ok) {
@@ -92,6 +99,9 @@ export default function AdminLayout({
         console.error('Auth check error:', error);
         if (mounted) {
           setIsAuthenticated(false);
+          if (error instanceof Error && error.name === 'AbortError') {
+            console.warn('[AdminLayout] Auth check timed out');
+          }
         }
       } finally {
         if (mounted) {
@@ -153,8 +163,10 @@ export default function AdminLayout({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-gray-600">Загрузка...</div>
+      <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center gap-3">
+        <div className="text-gray-600">Проверка авторизации...</div>
+        <div className="text-sm text-gray-400">Если загрузка не завершается, откройте страницу входа</div>
+        <a href="/admin/login" className="text-sm text-teal-600 hover:underline">Войти в админку</a>
       </div>
     );
   }

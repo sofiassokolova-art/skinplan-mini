@@ -230,6 +230,11 @@ export class ErrorBoundary extends Component<Props, State> {
               lineHeight: '1.6',
             }}>
               Произошла неожиданная ошибка. Попробуйте обновить страницу.
+              {this.state.errorDetails?.message && (
+                <span style={{ display: 'block', marginTop: '12px', fontSize: '13px', color: '#DC2626', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                  {this.state.errorDetails.message}
+                </span>
+              )}
               {this.state.errorDetails && (
                 <span style={{ display: 'block', marginTop: '8px', fontSize: '14px', color: '#6B7280' }}>
                   Ошибка сохранена в системе. Техподдержка уже получила уведомление.

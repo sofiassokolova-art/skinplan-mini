@@ -145,16 +145,26 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
       }
     }
     
-    // ВАЖНО: Добавляем таймаут для загрузки анкеты, чтобы не ждать бесконечно
-    // ИСПРАВЛЕНО: Оборачиваем в try-catch для правильной обработки ошибок
-    let data: any;
-    try {
+    const fetchWithTimeout = () => {
       const loadPromise = api.getActiveQuestionnaire();
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('Таймаут загрузки анкеты (10 секунд)')), 10000);
       });
-      
-      data = await Promise.race([loadPromise, timeoutPromise]) as any;
+      return Promise.race([loadPromise, timeoutPromise]) as Promise<any>;
+    };
+
+    let data: any;
+    try {
+      try {
+        data = await fetchWithTimeout();
+      } catch (firstError: any) {
+        clientLogger.warn('⚠️ First questionnaire load failed, retrying once in 1.5s', {
+          message: firstError?.message,
+          status: firstError?.status || firstError?.response?.status,
+        });
+        await new Promise((r) => setTimeout(r, 1500));
+        data = await fetchWithTimeout();
+      }
     } catch (apiError: any) {
       // ИСПРАВЛЕНО: Если это 500 ошибка от API, обрабатываем её отдельно
       if (apiError?.status === 500 || apiError?.response?.status === 500) {
@@ -200,10 +210,18 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
         loadQuestionnaireInProgressRef.current = false;
         return null;
       }
-      // Для других ошибок пробрасываем дальше в основной catch блок
       throw apiError;
     }
-    
+
+    if (data === undefined || data === null) {
+      clientLogger.error('❌ loadQuestionnaire: data is undefined after fetch');
+      setError('Не удалось загрузить анкету. Попробуйте обновить страницу.');
+      setLoading(false);
+      loadQuestionnaireInProgressRef.current = false;
+      loadQuestionnaireAttemptedRef.current = false;
+      return null;
+    }
+
     // ИСПРАВЛЕНО: Логируем сырой ответ от API для диагностики
     const groupsCount = data?.groups?.length || 0;
     const questionsCount = data?.questions?.length || 0;
