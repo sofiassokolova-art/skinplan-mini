@@ -55,7 +55,15 @@ export function extractQuestionsFromQuestionnaire(questionnaire: Questionnaire |
     }
   });
 
-  const result = Array.from(questionsMap.values());
+  let result = Array.from(questionsMap.values());
+
+  // Вопрос про имя (USER_NAME) всегда первым — и после инфо-экранов пользователь сразу его видит
+  const nameCode = 'user_name';
+  const nameQuestions = result.filter((q: any) => (q?.code || '').toLowerCase() === nameCode);
+  const otherQuestions = result.filter((q: any) => (q?.code || '').toLowerCase() !== nameCode);
+  if (nameQuestions.length > 0) {
+    result = [...nameQuestions, ...otherQuestions];
+  }
   
   // ДИАГНОСТИКА: Логируем, если результат пустой, но данные есть
   if (result.length === 0 && (groups.length > 0 || questions.length > 0)) {
