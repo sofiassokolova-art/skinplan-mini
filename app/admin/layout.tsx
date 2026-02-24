@@ -73,13 +73,21 @@ export default function AdminLayout({
     const AUTH_CHECK_TIMEOUT_MS = 15000;
 
     const checkAuth = async () => {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+      if (!token) {
+        if (mounted) {
+          setIsAuthenticated(false);
+          setLoading(false);
+          authCheckInProgressRef.current = false;
+        }
+        return;
+      }
+
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), AUTH_CHECK_TIMEOUT_MS);
 
-        const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-        const headers: HeadersInit = {};
-        if (token) headers['Authorization'] = `Bearer ${token}`;
+        const headers: HeadersInit = { Authorization: `Bearer ${token}` };
         const response = await fetch('/api/admin/auth', {
           credentials: 'include',
           headers,

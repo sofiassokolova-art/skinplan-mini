@@ -2,6 +2,7 @@
 // Root layout для Next.js приложения
 
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import Script from 'next/script';
 import { Analytics } from '@vercel/analytics/react';
 import localFont from 'next/font/local';
@@ -53,13 +54,16 @@ export const metadata: Metadata = {
   description: 'Персонализированный план ухода за кожей на основе анкеты',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const isDev = process.env.NODE_ENV === 'development';
   const isProduction = process.env.VERCEL_ENV === 'production';
+  const headersList = await headers();
+  const pathname = headersList.get('x-pathname') ?? '';
+  const isAdminRoute = pathname.startsWith('/admin');
 
   return (
     <html 
@@ -68,13 +72,15 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        {/* Telegram WebApp Script - должен быть загружен до инициализации приложения */}
-        <Script
-          src="https://telegram.org/js/telegram-web-app.js"
-          strategy="beforeInteractive"
-        />
-        {/* DEV-режим: мок Telegram WebApp для локального браузера (initData в формате, принимаемом API) */}
-        {isDev && (
+        {/* Telegram WebApp Script не грузим на /admin — в обычном браузере не будет postEvent и ошибок в консоли */}
+        {!isAdminRoute && (
+          <Script
+            src="https://telegram.org/js/telegram-web-app.js"
+            strategy="beforeInteractive"
+          />
+        )}
+        {/* DEV-режим: мок Telegram WebApp для локального браузера (не на /admin) */}
+        {isDev && !isAdminRoute && (
           <Script id="telegram-dev-mock" strategy="beforeInteractive">
             {`
               (function () {

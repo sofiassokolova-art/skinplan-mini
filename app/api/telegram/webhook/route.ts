@@ -130,6 +130,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Bot token not configured' }, { status: 500 });
     }
 
+    // Если задан TELEGRAM_SECRET_TOKEN и Telegram прислал заголовок — проверяем (защита от поддельных запросов).
+    // Если заголовка нет — пропускаем, чтобы не ломать прод, где webhook мог быть установлен без secret.
+    const headerToken = request.headers.get('x-telegram-bot-api-secret-token');
+    if (TELEGRAM_SECRET_TOKEN && TELEGRAM_SECRET_TOKEN !== 'not-set' && headerToken != null && headerToken !== '') {
+      const expected = Buffer.from(TELEGRAM_SECRET_TOKEN, 'utf8');
+      const actual = Buffer.from(headerToken, 'utf8');
+      if (expected.length !== actual.length || !crypto.timingSafeEqual(expected, actual)) {
+        console.warn('⚠️ Webhook: неверный X-Telegram-Bot-Api-Secret-Token');
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+    }
+
     update = await request.json() as TelegramUpdate;
     if (!update) {
       return NextResponse.json({ ok: false, error: 'Empty update' }, { status: 200 });

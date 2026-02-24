@@ -76,9 +76,13 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Клонируем request и добавляем pathname для root layout (чтобы не грузить Telegram script на /admin)
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-pathname', pathname);
+
   // Пропускаем публичные маршруты
   if (publicRoutes.some(route => pathname.startsWith(route))) {
-    return NextResponse.next();
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
   // Для API маршрутов (кроме публичных) проверяем токен
@@ -86,7 +90,7 @@ export async function middleware(request: NextRequest) {
     // Пропускаем публичные API маршруты
     const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
     if (isPublicRoute) {
-      return NextResponse.next();
+      return NextResponse.next({ request: { headers: requestHeaders } });
     }
 
     // Для админских роутов проверяем наличие admin_token (cookie или Bearer)
@@ -107,23 +111,21 @@ export async function middleware(request: NextRequest) {
       }
 
       // Токен присутствует - пропускаем в API route, где будет полная валидация JWT
-      return NextResponse.next();
+      return NextResponse.next({ request: { headers: requestHeaders } });
     }
 
     // Для остальных API маршрутов (не публичных, не админских)
-    // В Edge Runtime не поддерживается Node.js crypto, поэтому полная валидация JWT
-    // делается в API routes (Node.js runtime)
-    // Здесь просто пропускаем запрос в API route, где будет выполнена валидация
-    return NextResponse.next();
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
-  return NextResponse.next();
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 export const config = {
   matcher: [
     '/api/:path*',
-    // Можно добавить защиту для админ-панели
-    // '/admin/:path*',
+    '/admin',
+    '/admin/:path*',
+    '/',
   ],
 };
