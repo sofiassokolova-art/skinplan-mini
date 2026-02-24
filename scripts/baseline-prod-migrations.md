@@ -38,3 +38,16 @@ npx prisma migrate status
 Должно быть: **Database schema is up to date!** и список миграций без pending.
 
 После этого деплой на Vercel не будет падать на миграциях.
+
+---
+
+## Если анкета в проде не открывается (404 «No active questionnaire found»)
+
+В прод-БД должна быть хотя бы одна анкета с `isActive: true`. Один раз засей её:
+
+```bash
+# С продовым DATABASE_URL в .env или export
+npx tsx scripts/seed-questionnaire-v2.ts
+```
+
+Или вручную в Neon SQL Editor: создай запись в `questionnaires` и поставь `is_active = true` (лучше использовать сид выше — он создаёт полную структуру с вопросами и группами).
