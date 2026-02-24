@@ -1,11 +1,10 @@
 // app/admin/login/page.tsx
-// Страница входа в админ-панель через Telegram
+// Вход в админку по email + коду. Список допущенных email — в БД (AdminEmailWhitelist), код пользователь задаёт сам.
 
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-// Тип Telegram уже объявлен в lib/telegram-client.ts
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -13,75 +12,32 @@ export default function AdminLogin() {
   const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
-  const [isTelegramReady, setIsTelegramReady] = useState(false);
-  const [autoLoginAttempted, setAutoLoginAttempted] = useState(false);
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [newCode, setNewCode] = useState('');
+  const [confirmCode, setConfirmCode] = useState('');
+  const [needSetCode, setNeedSetCode] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-
-    // ИСПРАВЛЕНО (P1): Проверяем готовность Telegram WebApp с polling
-    const checkTelegramReady = () => {
-      if (window.Telegram?.WebApp?.initData) {
-        setIsTelegramReady(true);
-        return true;
-      }
-      return false;
-    };
-
-    // Проверяем сразу
-    if (checkTelegramReady()) {
-      return;
-    }
-
-    // Polling каждые 200ms на 2 секунды
-    let attempts = 0;
-    const maxAttempts = 10;
-    const interval = setInterval(() => {
-      attempts++;
-      if (checkTelegramReady() || attempts >= maxAttempts) {
-        clearInterval(interval);
-      }
-    }, 200);
-
-    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
     if (!mounted) return;
 
-    // ИСПРАВЛЕНО (P1): Проверяем, есть ли уже валидная сессия
     const checkExistingToken = async () => {
       setCheckingSession(true);
       try {
-        const response = await fetch('/api/admin/auth', {
-          credentials: 'include',
-        });
-          
+        const response = await fetch('/api/admin/auth', { credentials: 'include' });
         if (response.ok) {
           const data = await response.json();
           if (data.valid) {
-            // ИСПРАВЛЕНО: Используем replace для более быстрого редиректа
             router.replace('/admin');
             return;
           }
-        } else {
-          try {
-            const data = await response.json();
-            const errorMessage = data.error || '';
-            const errorCode = data.code;
-            if (errorCode === 'CONFIG_ERROR' || errorCode === 'JWT_CONFIG_ERROR' ||
-                errorMessage.includes('JWT_SECRET') || errorMessage.includes('TELEGRAM_BOT_TOKEN') ||
-                errorMessage.includes('JWT configuration error')) {
-              setError('Ошибка конфигурации сервера. Обратитесь к администратору для настройки JWT_SECRET или TELEGRAM_BOT_TOKEN.');
-              setCheckingSession(false);
-              return;
-            }
-          } catch (parseError) {
-            console.error('Error parsing error response:', parseError);
-          }
         }
-      } catch (error) {
-        console.error('Error checking token:', error);
+      } catch (err) {
+        console.error('Error checking token:', err);
       } finally {
         setCheckingSession(false);
       }
@@ -90,174 +46,181 @@ export default function AdminLogin() {
     checkExistingToken();
   }, [router, mounted]);
 
-  // Автовход при открытии из Telegram: если сессии нет, но есть initData — сразу пробуем войти
-  useEffect(() => {
-    if (!mounted || checkingSession || loading || autoLoginAttempted || !isTelegramReady) return;
-    const initData = window.Telegram?.WebApp?.initData;
-    if (!initData) return;
-    setAutoLoginAttempted(true);
-    handleTelegramLogin();
-  }, [mounted, checkingSession, loading, autoLoginAttempted, isTelegramReady]);
-
-  const handleTelegramLogin = async () => {
-    setLoading(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError('');
 
-    try {
-      // Получаем initData из Telegram WebApp
-      const initData = window.Telegram?.WebApp?.initData;
-      const userData = window.Telegram?.WebApp?.initDataUnsafe?.user;
+    const emailTrim = email.trim().toLowerCase();
+    if (!emailTrim) {
+      setError('Введите email');
+      return;
+    }
 
-      // Временно логируем telegramId для отладки (можно удалить после добавления в whitelist)
-      if (userData?.id) {
-        console.log('🔍 Ваш Telegram ID:', userData.id);
-        console.log('💡 Скопируйте этот ID и запустите:');
-        console.log(`   npx tsx scripts/add-admin.ts ${userData.id} "София"`);
-      }
-
-      if (!initData) {
-        setError('Telegram WebApp не доступен. Откройте эту страницу через Telegram бота.');
-        setLoading(false);
+    if (needSetCode) {
+      if (newCode.length < 6) {
+        setError('Код должен быть не менее 6 символов');
         return;
       }
+      if (newCode !== confirmCode) {
+        setError('Коды не совпадают');
+        return;
+      }
+    } else if (!code.trim()) {
+      // Пустой код — отправим запрос; при первом входе API вернёт needSetCode
+    }
 
-      const response = await fetch('/api/admin/auth', {
+    setLoading(true);
+    try {
+      const body = needSetCode
+        ? { email: emailTrim, newCode, confirmCode }
+        : { email: emailTrim, code: code.trim() };
+
+      const response = await fetch('/api/admin/login-email', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Telegram-Init-Data': initData,
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({}), // initData передаётся только через headers
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();
 
-      if (!response.ok) {
-        const errorMessage = data.error || 'Ошибка авторизации';
-        const errorCode = data.code;
-        
-        // ИСПРАВЛЕНО: Различаем ошибки конфигурации сервера и ошибки авторизации
-        if (errorCode === 'CONFIG_ERROR' || errorCode === 'JWT_CONFIG_ERROR') {
-          setError('Ошибка конфигурации сервера. Обратитесь к администратору для настройки JWT_SECRET или TELEGRAM_BOT_TOKEN.');
-        } else if (errorMessage.includes('whitelist') || errorMessage.includes('Unauthorized') || errorCode === 'AUTH_UNAUTHORIZED') {
-          setError('Вы не в списке администраторов. Обратитесь к владельцу для добавления в whitelist.');
-        } else if (errorCode === 'DB_ERROR') {
-          setError('Ошибка подключения к базе данных. Попробуйте позже.');
-        } else {
-          setError(errorMessage);
-        }
-        setLoading(false);
+      if (response.ok && data.valid) {
+        router.replace('/admin');
+        router.refresh();
         return;
       }
 
-      // ИСПРАВЛЕНО (P0): Убрали сохранение token в localStorage - используем только cookie
-      // Токен уже установлен в httpOnly cookie на бэке
-      
-      // Перенаправляем в админ-панель
-      // ИСПРАВЛЕНО: Используем replace для более быстрого редиректа
-      router.replace('/admin');
-      router.refresh();
+      if (data.needSetCode === true) {
+        setNeedSetCode(true);
+        setError(data.error || 'Придумайте код не менее 6 символов и введите его дважды.');
+      } else {
+        setError(data.error || 'Ошибка входа');
+      }
     } catch (err) {
-      console.error('Error during login:', err);
-      setError('Ошибка соединения. Проверьте подключение к интернету.');
+      console.error('Login error:', err);
+      setError('Ошибка соединения. Проверьте интернет.');
     } finally {
       setLoading(false);
     }
   };
 
-  if (!mounted) {
-    return null;
-  }
+  if (!mounted) return null;
 
-  // ИСПРАВЛЕНО (P1): Показываем "Проверяем доступ..." при проверке сессии
   if (checkingSession) {
     return (
-      <div className="min-h-screen admin-layout flex items-center justify-center p-4" style={{ 
+      <div className="min-h-screen admin-layout flex items-center justify-center p-4" style={{
         background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 30%, #f9fafb 60%, #f3f4f6 100%)',
-        backgroundSize: '400% 400%'
+        backgroundSize: '400% 400%',
       }}>
-        <div className="admin-card p-8 max-w-md w-full">
-          <div className="text-center">
-            <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-600">Проверяем доступ...</p>
-          </div>
+        <div className="admin-card p-8 max-w-md w-full text-center">
+          <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Проверяем доступ...</p>
         </div>
       </div>
     );
   }
 
-  // ИСПРАВЛЕНО: Приведено к стилю админки с glassmorphism
   return (
-    <div className="min-h-screen admin-layout flex items-center justify-center p-4" style={{ 
+    <div className="min-h-screen admin-layout flex items-center justify-center p-4" style={{
       background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 30%, #f9fafb 60%, #f3f4f6 100%)',
-      backgroundSize: '400% 400%'
+      backgroundSize: '400% 400%',
     }}>
       <div className="admin-card p-8 max-w-md w-full">
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">SkinIQ Admin</h1>
-          <p className="text-gray-600">Вход через Telegram</p>
+          <p className="text-gray-600">Вход по email и коду доступа</p>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50/80 backdrop-blur-sm border border-red-200/50 rounded-xl text-red-700 text-sm space-y-2">
-            <p className="font-medium">{error}</p>
-            {/* ИСПРАВЛЕНО: Показываем Telegram ID только если ошибка не связана с конфигурацией */}
-            {!error.toLowerCase().includes('конфигурации') && 
-             !error.toLowerCase().includes('jwt_secret') && 
-             !error.toLowerCase().includes('telegram_bot_token') &&
-             !error.toLowerCase().includes('jwt configuration') &&
-             !error.toLowerCase().includes('configuration error') &&
-             window.Telegram?.WebApp?.initDataUnsafe?.user?.id && (
-              <div className="mt-3 p-3 bg-white/60 backdrop-blur-sm rounded-lg border border-gray-200/50">
-                <p className="text-gray-700 text-xs mb-2 font-medium">Ваш Telegram ID (для добавления в whitelist):</p>
-                <code className="text-gray-900 font-mono text-sm bg-gray-100/80 px-2 py-1 rounded block">
-                  {window.Telegram.WebApp.initDataUnsafe.user.id}
-                </code>
-                <p className="text-gray-600 text-xs mt-2">
-                  Скопируйте этот ID и запустите:<br/>
-                  <code className="bg-gray-100/80 px-1 rounded text-xs">
-                    npx tsx scripts/add-admin.ts {window.Telegram.WebApp.initDataUnsafe.user.id} "София"
-                  </code>
-                </p>
-            </div>
-            )}
+          <div className="mb-6 p-4 bg-red-50/80 border border-red-200/50 rounded-xl text-red-700 text-sm">
+            {error}
           </div>
         )}
 
-        <div className="space-y-4">
-          <div className="p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-gray-200/50">
-            <p className="text-gray-700 text-sm mb-3 font-medium">
-              Для входа в админ-панель:
-            </p>
-            <ol className="text-gray-600 text-sm space-y-2 list-decimal list-inside">
-              <li>Напишите боту @skiniq_bot команду <code className="bg-gray-100/80 px-1.5 py-0.5 rounded text-xs font-mono">/admin</code></li>
-              <li>Нажмите кнопку "Открыть админку" в ответе бота</li>
-              <li>Или убедитесь, что вы в whitelist администраторов</li>
-            </ol>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="admin@example.com"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white/80 focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              required
+              autoComplete="email"
+              readOnly={needSetCode}
+            />
           </div>
 
+          {needSetCode ? (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Придумайте код (мин. 6 символов)</label>
+                <input
+                  type="password"
+                  value={newCode}
+                  onChange={(e) => setNewCode(e.target.value)}
+                  placeholder="••••••"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white/80 focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                  autoComplete="new-password"
+                  minLength={6}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Повторите код</label>
+                <input
+                  type="password"
+                  value={confirmCode}
+                  onChange={(e) => setConfirmCode(e.target.value)}
+                  placeholder="••••••"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white/80 focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                  autoComplete="new-password"
+                  minLength={6}
+                />
+              </div>
+            </>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Код доступа</label>
+              <input
+                type="password"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="Ваш код"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white/80 focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                onClick={() => { setNeedSetCode(true); setError(''); }}
+                className="mt-2 text-sm text-gray-500 hover:text-gray-900 underline"
+              >
+                Первый вход — задать код
+              </button>
+            </div>
+          )}
+
           <button
-            onClick={handleTelegramLogin}
-            disabled={loading || !isTelegramReady}
-            className="w-full bg-gray-900 text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-800 active:bg-gray-950 transition-all duration-200 shadow-lg hover:shadow-xl"
+            type="submit"
+            disabled={loading}
+            className="w-full bg-gray-900 text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-800 transition-all"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
-                <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                Вход...
+                <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                {needSetCode ? 'Сохраняем код...' : 'Вход...'}
               </span>
+            ) : needSetCode ? (
+              'Задать код и войти'
             ) : (
-              'Войти через Telegram'
+              'Войти'
             )}
           </button>
+        </form>
 
-          {!isTelegramReady && (
-            <p className="text-gray-500 text-xs text-center">
-              Telegram WebApp не доступен. Откройте через бота.
-            </p>
-          )}
-        </div>
+        <p className="mt-6 text-gray-500 text-xs text-center">
+          Доступ только для email из списка. Код вы задаёте сами при первом входе.
+        </p>
       </div>
     </div>
   );

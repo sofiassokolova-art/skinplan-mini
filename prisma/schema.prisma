@@ -389,6 +389,17 @@ model AdminWhitelist {
   @@map("admin_whitelist")
 }
 
+// Допущенные email для входа в админку. Код (пароль) пользователь задаёт сам при первом входе.
+model AdminEmailWhitelist {
+  id           Int       @id @default(autoincrement())
+  email        String    @unique // Допущенный email (нижний регистр)
+  passwordHash String?   @map("password_hash") // Хэш кода; null = код ещё не задан
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@map("admin_email_whitelist")
+}
+
 // ============================================
 // ОТЗЫВЫ И ОЦЕНКИ ПЛАНА
 // ============================================
