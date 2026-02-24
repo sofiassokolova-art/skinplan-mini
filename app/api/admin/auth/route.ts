@@ -110,8 +110,10 @@ export async function POST(request: NextRequest) {
 // ИСПРАВЛЕНО (P1): Только cookie, убрали поддержку Authorization header
 export async function GET(request: NextRequest) {
   try {
-    // ИСПРАВЛЕНО (P1): Только cookie, убрали чтение Authorization header
-    const token = request.cookies.get('admin_token')?.value;
+    const cookieToken = request.cookies.get('admin_token')?.value;
+    const authHeader = request.headers.get('authorization');
+    const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const token = cookieToken ?? bearerToken;
 
     if (!token) {
       return NextResponse.json({ valid: false }, { status: 401 });
@@ -128,13 +130,12 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-      // ИСПРАВЛЕНО (P2): Проверяем issuer/audience при верификации
       const decoded = jwt.verify(token, jwtSecretResult.secret, {
         issuer: 'skiniq-admin',
         audience: 'skiniq-admin-ui',
       }) as {
         adminId: string;
-        telegramId: string;
+        telegramId?: string;
         role: string;
       };
 
@@ -142,7 +143,7 @@ export async function GET(request: NextRequest) {
         valid: true,
         admin: {
           id: decoded.adminId,
-          telegramId: decoded.telegramId,
+          telegramId: decoded.telegramId ?? '',
           role: decoded.role,
         },
       });

@@ -88,7 +88,8 @@ export async function POST(request: NextRequest) {
         jwtSecretResult.secret,
         { expiresIn: '7d', issuer: 'skiniq-admin', audience: 'skiniq-admin-ui' }
       );
-      const res = NextResponse.json({ valid: true, admin: { id: String(row.id), role: 'admin' } });
+      // Токен в теле — для WebView (Telegram), где куки могут не сохраняться
+      const res = NextResponse.json({ valid: true, admin: { id: String(row.id), role: 'admin' }, token });
       res.cookies.set('admin_token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -120,7 +121,7 @@ export async function POST(request: NextRequest) {
       jwtSecretResult.secret,
       { expiresIn: '7d', issuer: 'skiniq-admin', audience: 'skiniq-admin-ui' }
     );
-    const res = NextResponse.json({ valid: true, admin: { id: String(row.id), role: 'admin' } });
+    const res = NextResponse.json({ valid: true, admin: { id: String(row.id), role: 'admin' }, token });
     res.cookies.set('admin_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
