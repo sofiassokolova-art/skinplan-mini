@@ -152,8 +152,8 @@ export default async function RootLayout({
           backgroundColor: '#FFFFFF',
         }}
       >
-        {/* Единый лоадер при открытии — нейтральный фон; бирюзовый убран */}
-        {isProduction && (
+        {/* Единый лоадер при открытии — не показываем на /admin, иначе форма входа не видна */}
+        {isProduction && !isAdminRoute && (
           <div
             id="root-loading"
             style={{
