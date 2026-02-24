@@ -45,6 +45,7 @@ export interface UseQuizComputedParams {
   isLoadingQuestionnaire?: boolean; // Новое поле для загрузки анкеты
   isQuestionnaireLoading?: boolean; // Новое поле для состояния loading из quizState
   questionnaireError?: Error | null; // Ошибка загрузки анкеты
+  isQuestionnaireQueryError?: boolean; // true когда запрос анкеты в состоянии error (сохраняется при refetch)
   progressError?: Error | null; // Ошибка загрузки прогресса
 
   // Refs
@@ -84,6 +85,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     isLoadingQuestionnaire = false, // Новое поле
     isQuestionnaireLoading = false, // Новое поле
     questionnaireError,
+    isQuestionnaireQueryError = false,
     progressError,
     questionnaireRef,
     currentInfoScreenIndexRef,
@@ -437,30 +439,24 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     }
 
     // Приоритет 0: Ошибки загрузки (высший приоритет, но после резюм-экрана)
-    if (questionnaireError || progressError) {
+    // Используем isQuestionnaireQueryError чтобы показывать ERROR даже при refetch (когда error временно сброшен)
+    const hasQuestionnaireError = !!(questionnaireError || isQuestionnaireQueryError);
+    if (hasQuestionnaireError || progressError) {
       console.log('📺 [useQuizComputed] viewMode: ERROR (data loading error)', {
         questionnaireError: questionnaireError?.message,
         questionnaireErrorStatus: (questionnaireError as any)?.status,
+        isQuestionnaireQueryError,
         progressError: progressError?.message,
         progressErrorStatus: (progressError as any)?.status,
         isTelegramUser: !!(typeof window !== 'undefined' && window.Telegram?.WebApp?.initData),
       });
 
-      if (isTelegramInitDataMissing) {
-        console.log('📺 [useQuizComputed] viewMode: LOADING_PROGRESS (waiting for Telegram initData)', {
-          isTelegramInitDataMissing,
-        });
-        return 'LOADING_PROGRESS';
-      }
-
-      // Специальная обработка 403 ошибки - пользователь должен открыть через Telegram
       if ((questionnaireError as any)?.status === 403 || (progressError as any)?.status === 403) {
         console.log('🚫 [useQuizComputed] viewMode: FORBIDDEN_ERROR (403)', {
           message: 'Пользователь должен открыть приложение через Telegram Mini App'
         });
         return 'ERROR';
       }
-
       return 'ERROR';
     }
 
@@ -504,7 +500,8 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     }
 
     // Приоритет 4: Загрузка анкеты (если данные еще не получены)
-    if (isLoadingAnyQuestionnaire && !hasQuestionnaire) {
+    // Не показываем лоадер, если запрос уже завершился ошибкой (иначе бесконечный лоадер при refetch)
+    if (isLoadingAnyQuestionnaire && !hasQuestionnaire && !hasQuestionnaireError) {
       console.log('📺 [useQuizComputed] viewMode: LOADING_QUESTIONNAIRE (waiting for questionnaire data)', {
         isLoadingQuestionnaire,
         isQuestionnaireLoading,
@@ -523,9 +520,8 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     }
 
     // Приоритет 6: Загрузка внутреннего состояния (loading из quizState)
-    // ИСПРАВЛЕНО: Не показываем LOADER, если анкета уже загружена в ref
-    // Это предотвращает застревание в LOADER после успешной загрузки анкеты
-    if (isQuestionnaireLoading && !hasQuestionnaire) {
+    // ИСПРАВЛЕНО: Не показываем LOADER, если анкета уже загружена в ref или запрос завершился ошибкой
+    if (isQuestionnaireLoading && !hasQuestionnaire && !hasQuestionnaireError) {
       console.log('📺 [useQuizComputed] viewMode: LOADING_PROGRESS (waiting for internal state)', {
         isQuestionnaireLoading,
         hasQuestionnaire
@@ -534,13 +530,15 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     }
 
     // Приоритет 7: Нет анкеты - это критическая ошибка после загрузки
+    // Не показываем лоадер "waiting for Telegram", если запрос анкеты уже завершился ошибкой (500 и т.д.)
     if (!hasQuestionnaire && !isLoadingAnyQuestionnaire) {
       console.log('📺 [useQuizComputed] viewMode: ERROR (no questionnaire after loading)', {
         hasQuestionnaire,
         isLoadingQuestionnaire,
-        isQuestionnaireLoading
+        isQuestionnaireLoading,
+        hasQuestionnaireError,
       });
-      if (isTelegramInitDataMissing) {
+      if (isTelegramInitDataMissing && !hasQuestionnaireError) {
         console.log('📺 [useQuizComputed] viewMode: LOADING_PROGRESS (waiting for Telegram initData)', {
           isTelegramInitDataMissing,
         });
@@ -620,6 +618,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     isLoadingQuestionnaire, // Новое поле
     isQuestionnaireLoading, // Новое поле
     questionnaireError,
+    isQuestionnaireQueryError,
     progressError,
     savedProgressAnswersCount,
     showResumeScreen, // ИСПРАВЛЕНО: Добавлено, используется в строке 415

@@ -76,6 +76,7 @@ function QuizPageContent() {
     isLoadingQuestionnaire: isQuestionnaireLoadingStable, // ИСПРАВЛЕНО: Используем стабильное значение
     isQuestionnaireLoading: isQuestionnaireLoadingStable, // ИСПРАВЛЕНО: Используем стабильное значение
     questionnaireError: questionnaireQuery.error,
+    isQuestionnaireQueryError: questionnaireQuery.isError, // сохраняем при refetch, чтобы не переключаться в лоадер
     progressError: progressQuery.error,
     questionnaireRef,
     currentInfoScreenIndexRef,

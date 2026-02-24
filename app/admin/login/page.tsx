@@ -26,9 +26,15 @@ export default function AdminLogin() {
     if (!mounted) return;
 
     const checkExistingToken = async () => {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+      if (!token) {
+        setCheckingSession(false);
+        return;
+      }
       setCheckingSession(true);
       try {
-        const response = await fetch('/api/admin/auth', { credentials: 'include' });
+        const headers: HeadersInit = { Authorization: `Bearer ${token}` };
+        const response = await fetch('/api/admin/auth', { credentials: 'include', headers });
         if (response.ok) {
           const data = await response.json();
           if (data.valid) {
@@ -85,6 +91,11 @@ export default function AdminLogin() {
       const data = await response.json();
 
       if (response.ok && data.valid) {
+        if (typeof data.token === 'string') {
+          try {
+            localStorage.setItem('admin_token', data.token);
+          } catch (_) {}
+        }
         router.replace('/admin');
         router.refresh();
         return;

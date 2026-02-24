@@ -89,13 +89,14 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next();
     }
 
-    // Для админских роутов проверяем наличие admin_token
+    // Для админских роутов проверяем наличие admin_token (cookie или Bearer)
     // НО: /api/admin/auth (GET и POST) - публичные, они сами проверяют токен
-    // ВАЖНО: Полная валидация JWT делается в API routes (Node.js runtime), здесь только проверка наличия
-    // ИСПРАВЛЕНО (P1): Только cookie, убрали поддержку Authorization header
+    // Bearer нужен для WebView (Telegram), где куки могут не отправляться
     if (pathname.startsWith('/api/admin/') && !pathname.startsWith('/api/admin/auth')) {
-      // ИСПРАВЛЕНО (P1): Только cookie, убрали чтение Authorization header
-      const adminToken = request.cookies.get('admin_token')?.value;
+      const cookieToken = request.cookies.get('admin_token')?.value;
+      const authHeader = request.headers.get('authorization');
+      const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+      const adminToken = cookieToken ?? bearerToken;
 
       if (!adminToken) {
         // Токен отсутствует - блокируем запрос

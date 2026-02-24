@@ -77,8 +77,12 @@ export default function AdminLayout({
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), AUTH_CHECK_TIMEOUT_MS);
 
+        const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+        const headers: HeadersInit = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
         const response = await fetch('/api/admin/auth', {
           credentials: 'include',
+          headers,
           signal: controller.signal,
         });
 
@@ -126,22 +130,12 @@ export default function AdminLayout({
   useEffect(() => {
     if (authCheckInProgressRef.current) return;
     if (!loading && !isAuthenticated && !isLoginPage) {
-      console.log('[AdminLayout] Not authenticated, redirecting to login', { pathname, loading, isAuthenticated });
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[AdminLayout] Not authenticated, redirecting to login', { pathname, loading, isAuthenticated });
+      }
       router.push('/admin/login');
     }
   }, [loading, isAuthenticated, isLoginPage, router, pathname]);
-  
-  // Хук 3: Отладочное логирование
-  // ИСПРАВЛЕНО: Убрали children из зависимостей для стабильности
-  useEffect(() => {
-    console.log('[AdminLayout] State update', { 
-      pathname, 
-      loading, 
-      isAuthenticated, 
-      isLoginPage,
-      hasChildren: !!children 
-    });
-  }, [pathname, loading, isAuthenticated, isLoginPage]);
 
   const menuItems = [
     { href: '/admin', label: 'Дашборд', icon: LayoutDashboard },

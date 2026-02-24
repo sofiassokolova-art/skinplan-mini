@@ -521,12 +521,14 @@ export async function GET(request: NextRequest) {
     return responseWithCache;
   } catch (error: any) {
     const duration = Date.now() - startTime;
+    const errMsg = typeof error?.message === 'string' ? error.message : '';
     
-    // КРИТИЧНО: Проверяем, является ли это ошибкой отсутствия таблицы
-    const isTableMissingError = error?.message?.includes('does not exist') || 
-                                error?.message?.includes('table') ||
-                                error?.code === 'P2021' || // Prisma error code for table not found
-                                error?.name === 'PrismaClientKnownRequestError';
+    // КРИТИЧНО: Проверяем, является ли это ошибкой отсутствия таблицы / неинициализированной схемы
+    const isTableMissingError =
+      error?.code === 'P2021' || // Prisma: "The table does not exist in the current database"
+      error?.name === 'PrismaClientKnownRequestError' ||
+      errMsg.includes('does not exist') ||
+      errMsg.includes('table') && (errMsg.includes('current database') || errMsg.includes('questionnaires'));
     
     if (isTableMissingError) {
       logger.error('❌ КРИТИЧЕСКАЯ ОШИБКА: Таблица не существует в БД (миграции не применены)', error, {
@@ -536,25 +538,37 @@ export async function GET(request: NextRequest) {
         tableName: error?.message?.match(/table `([^`]+)`/)?.[1] || 'unknown',
         suggestion: 'Необходимо применить миграции Prisma: npx prisma migrate deploy',
       });
-      
+
       logApiError(method, path, error, userId, correlationId);
-      
-      const errorResponse = NextResponse.json(
-        { 
-          error: 'Database schema not initialized',
-          message: 'Анкета временно недоступна. Пожалуйста, попробуйте позже.',
-          // В development показываем детали для диагностики
-          ...(process.env.NODE_ENV === 'development' ? {
-            details: error?.message,
-            suggestion: 'Примените миграции: npx prisma migrate deploy',
-          } : {}),
+
+      // Возвращаем 200 с пустой анкетой, чтобы фронт не уходил в бесконечный лоадер,
+      // а показал экран «анкета недоступна» (нет вопросов → ERROR с сообщением)
+      const emptySchemaResponse = NextResponse.json({
+        id: 'schema-uninitialized',
+        name: '',
+        version: 0,
+        groups: [],
+        questions: [],
+        _meta: {
+          shouldRedirectToPlan: false,
+          isCompleted: false,
+          hasProfile: false,
+          questionnaireEmpty: true,
+          schemaError: true,
+          preferences: {
+            hasPlanProgress: false,
+            isRetakingQuiz: false,
+            fullRetakeFromHome: false,
+            paymentRetakingCompleted: false,
+            paymentFullRetakeCompleted: false,
+          },
         },
-        { status: 500 }
-      );
-      if (correlationId) {
-        addCorrelationIdToHeaders(correlationId, errorResponse.headers);
-      }
-      return errorResponse;
+      });
+      const duration = Date.now() - startTime;
+      logApiRequest(method, path, 200, duration, userId, correlationId);
+      const responseWithCache = addCacheHeaders(emptySchemaResponse, CachePresets.noCache());
+      if (correlationId) addCorrelationIdToHeaders(correlationId, responseWithCache.headers);
+      return responseWithCache;
     }
     
     logger.error('Error fetching active questionnaire', error, {
