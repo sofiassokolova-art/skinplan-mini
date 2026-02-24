@@ -32,7 +32,7 @@ export function QuizErrorScreen({
       flexDirection: 'column',
       justifyContent: 'center',
       alignItems: 'center',
-      background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+      background: '#FFFFFF'
     }}>
       <div style={{
         backgroundColor: 'rgba(255, 255, 255, 0.56)',

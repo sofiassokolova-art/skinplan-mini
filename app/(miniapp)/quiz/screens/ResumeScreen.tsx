@@ -22,7 +22,7 @@ export function ResumeScreen({
     <div style={{ 
       padding: '20px',
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+      background: '#FFFFFF',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',

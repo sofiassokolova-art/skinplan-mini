@@ -27,7 +27,7 @@ export function RetakeScreen({
     <div style={{
       minHeight: '100vh',
       padding: '20px',
-      background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+      background: '#FFFFFF',
     }}>
       {/* Заголовок */}
       <div style={{

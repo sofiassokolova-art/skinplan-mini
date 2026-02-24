@@ -147,7 +147,7 @@ export function QuizRetakeScreen({
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        background: '#FFFFFF',
         gap: '24px',
       }}>
         <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка…</div>
@@ -173,7 +173,7 @@ export function QuizRetakeScreen({
     <div style={{
       minHeight: '100vh',
       padding: '20px',
-      background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+      background: '#FFFFFF',
     }}>
       {/* Заголовок */}
       <div style={{

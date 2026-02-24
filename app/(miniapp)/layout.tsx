@@ -403,13 +403,13 @@ function LayoutFallback() {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+          background: '#FFFFFF',
           padding: 24,
         }}>
           {!slowLoad ? (
-            <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка...</div>
+            <div style={{ color: '#333', fontSize: '16px' }}>Загрузка...</div>
           ) : (
-            <div style={{ textAlign: 'center', color: '#0A5F59', maxWidth: 320 }}>
+            <div style={{ textAlign: 'center', color: '#333', maxWidth: 320 }}>
               <p style={{ fontSize: 16, marginBottom: 16 }}>
                 Страница загружается дольше обычного. Проверьте интернет или обновите страницу.
               </p>
@@ -420,7 +420,7 @@ function LayoutFallback() {
                   padding: '12px 24px',
                   borderRadius: 12,
                   border: 'none',
-                  backgroundColor: '#0A5F59',
+                  backgroundColor: '#000',
                   color: 'white',
                   fontSize: 16,
                   fontWeight: 600,

@@ -124,7 +124,9 @@ export const QuizQuestion = memo(function QuizQuestion({
     return { title, subtitle };
   };
 
-  const { title, subtitle } = splitTitleSubtitle(questionText);
+  const { title: rawTitle, subtitle } = splitTitleSubtitle(questionText);
+  // Вопрос про имя: если в БД пустой text — показываем заголовок по умолчанию
+  const title = rawTitle || (question?.code === 'user_name' ? 'Как к вам обращаться?' : '');
 
   const renderTitle = (t: string) => {
     const isAvoidIngredientsQuestion = question?.code === 'avoid_ingredients';

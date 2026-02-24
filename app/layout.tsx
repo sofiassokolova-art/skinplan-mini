@@ -201,7 +201,7 @@ export default function RootLayout({
       else showFallback();
     }
   }, true);
-  setTimeout(showFallback, 8000);
+  // Не показываем плашку по таймеру — только при реальной ошибке загрузки чанка/скрипта
 })();
             `.trim(),
           }}

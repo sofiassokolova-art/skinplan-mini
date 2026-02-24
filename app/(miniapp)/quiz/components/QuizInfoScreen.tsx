@@ -945,7 +945,7 @@ export function QuizInfoScreen({
         padding: '20px',
         paddingBottom: '100px',
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        background: '#FFFFFF',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
