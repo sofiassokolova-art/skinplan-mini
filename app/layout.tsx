@@ -143,13 +143,10 @@ export default function RootLayout({
         style={{
           margin: 0,
           minHeight: '100vh',
-          // Первый кадр без белой вспышки: фон сразу зелёный (как экран загрузки)
-          ...(isProduction
-            ? { background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)' }
-            : {}),
+          backgroundColor: '#FFFFFF',
         }}
       >
-        {/* Зелёный «Загрузка» только в production; на develop/preview — без него, сразу лоадер анкеты */}
+        {/* Единый лоадер при открытии — нейтральный фон; бирюзовый убран */}
         {isProduction && (
           <div
             id="root-loading"
@@ -159,8 +156,8 @@ export default function RootLayout({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-              color: '#0A5F59',
+              backgroundColor: '#FFFFFF',
+              color: '#333',
               fontSize: 16,
               fontFamily: 'system-ui, sans-serif',
               zIndex: 99998,
@@ -214,8 +211,8 @@ export default function RootLayout({
             alignItems: 'center',
             justifyContent: 'center',
             padding: 24,
-            background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-            color: '#0A5F59',
+            backgroundColor: '#FFFFFF',
+            color: '#333',
             fontFamily: 'system-ui, sans-serif',
             textAlign: 'center',
           }}>

@@ -120,6 +120,21 @@ async function seedQuestionnaireV2() {
   // Порядок важен - он соответствует последовательности экранов
   
   const questionsData = [
+    // 0. Имя (первый вопрос после инфо-экранов)
+    {
+      groupTitle: 'Приветствие',
+      groupPosition: 0,
+      questions: [
+        {
+          code: 'USER_NAME',
+          text: 'Как мы можем к вам обращаться?',
+          type: 'free_text',
+          position: 1,
+          isRequired: true,
+          options: [],
+        },
+      ],
+    },
     // 5. Какие ваши основные цели для кожи? (skin_goals)
     {
       groupTitle: 'Цели ухода',
