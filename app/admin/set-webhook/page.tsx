@@ -10,9 +10,29 @@ export default function SetWebhookPage() {
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState('');
   const [webhookUrl, setWebhookUrl] = useState<string>('');
+  const [currentWebhookInTelegram, setCurrentWebhookInTelegram] = useState<string | null>(null);
+  const [checkLoading, setCheckLoading] = useState(true);
 
   useEffect(() => {
     setWebhookUrl(`${window.location.origin}/api/telegram/webhook`);
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    fetch('/api/telegram/webhook?action=check', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!mounted) return;
+        const url = data?.result?.url || null;
+        setCurrentWebhookInTelegram(url);
+      })
+      .catch(() => {
+        if (mounted) setCurrentWebhookInTelegram(null);
+      })
+      .finally(() => {
+        if (mounted) setCheckLoading(false);
+      });
+    return () => { mounted = false; };
   }, []);
 
   const setWebhook = async () => {
@@ -92,8 +112,25 @@ export default function SetWebhookPage() {
         }}>
           <strong>Прод не отвечает на /start?</strong> У бота может быть только один webhook. Откройте эту страницу на <strong>продакшен-домене</strong> (например https://www.proskiniq.ru/admin/set-webhook), войдите в админку и нажмите «Установить Webhook» — тогда Telegram будет слать обновления на прод.
         </p>
+        {!checkLoading && (
+          <p style={{ color: '#374151', fontSize: '13px', marginBottom: '12px' }}>
+            <strong>Сейчас в Telegram указан webhook:</strong>{' '}
+            {currentWebhookInTelegram ? (
+              <code style={{ background: 'rgba(0,0,0,0.06)', padding: '2px 6px', borderRadius: 4, wordBreak: 'break-all' }}>
+                {currentWebhookInTelegram}
+              </code>
+            ) : (
+              <span style={{ color: '#DC2626' }}>не установлен или ошибка проверки</span>
+            )}
+            {currentWebhookInTelegram && webhookUrl && currentWebhookInTelegram !== webhookUrl && (
+              <span style={{ display: 'block', marginTop: '6px', color: '#B45309', fontWeight: 600 }}>
+                ⚠️ Не совпадает с этим доменом — бот не получает сообщения. Нажмите «Установить Webhook».
+              </span>
+            )}
+          </p>
+        )}
         <p style={{ color: '#0A5F59', fontSize: '13px', marginBottom: '16px', fontWeight: 600 }}>
-          Сейчас webhook будет установлен на: <br />
+          После нажатия кнопки webhook будет установлен на: <br />
           <code style={{ background: 'rgba(0,0,0,0.06)', padding: '4px 8px', borderRadius: 4 }}>
             {webhookUrl || '…'}
           </code>

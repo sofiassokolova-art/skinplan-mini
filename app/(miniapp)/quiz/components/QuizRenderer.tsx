@@ -86,19 +86,9 @@ interface QuizRendererProps {
 }
 
 // Preload критических ресурсов при загрузке компонента
-const preloadCriticalResources = () => {
-  // Preload основных компонентов квиза
-  if (typeof window !== 'undefined') {
-    // Preload основных шрифтов
-    const fontLink = document.createElement('link');
-    fontLink.rel = 'preload';
-    fontLink.href = '/fonts/inter-var.woff2';
-    fontLink.as = 'font';
-    fontLink.type = 'font/woff2';
-    fontLink.crossOrigin = 'anonymous';
-    document.head.appendChild(fontLink);
-  }
-};
+// Шрифт Inter уже подключается через next/font в layout (inter-regular, inter-semibold, inter-bold).
+// Файла inter-var.woff2 в public/fonts нет — не прелоадим, чтобы не было 404.
+const preloadCriticalResources = () => {};
 
 export const QuizRenderer = memo(function QuizRenderer({
   screen,

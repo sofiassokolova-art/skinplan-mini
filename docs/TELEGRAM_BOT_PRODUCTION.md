@@ -1,10 +1,18 @@
 # Telegram-бот в Production (main)
 
-## Прод бот не отвечает на /start
+## Прод бот не отвечает на сообщения
 
-**Причина:** у бота может быть только **один** webhook. Если он был установлен на домен develop (например `*.vercel.app`), Telegram шлёт все обновления туда, а на прод (www.proskiniq.ru) запросы не приходят — бот «молчит».
+**Причина:** у бота может быть только **один** webhook. Если он указывает на develop (например `*.vercel.app`) или не установлен, Telegram не шлёт обновления на прод — бот «молчит».
 
-**Что сделать:** заново установить webhook на **продакшен-URL** (один из способов ниже). После этого /start и остальные команды будут обрабатываться продом.
+**Пошагово:**
+
+1. Откройте **https://www.proskiniq.ru/admin/set-webhook** (именно прод, не develop).
+2. Войдите в админку (логин/пароль).
+3. На странице будет блок «Сейчас в Telegram указан webhook: …». Если там другой URL (vercel.app) или «не установлен» — нажмите **«Установить Webhook»**.
+4. Должно появиться «Успешно!» и в блоке проверки — URL `https://www.proskiniq.ru/api/telegram/webhook`. После этого отправьте боту /start — должен ответить.
+
+**Если страницу открыть не можете (нет доступа в админку):** в Vercel в Production задайте переменную `WEBHOOK_SET_SECRET`, затем выполните:  
+`curl "https://www.proskiniq.ru/api/telegram/webhook?action=set-webhook&secret=ВАШ_SECRET"`.
 
 | Способ | Действие |
 |--------|----------|
@@ -27,8 +35,12 @@
 | `TELEGRAM_BOT_TOKEN` | Токен бота для прода (от @BotFather) | Обязательно для production |
 | `NEXT_PUBLIC_MINI_APP_URL` | URL продакшен-приложения, например `https://skinplan-mini.vercel.app` | От него строятся ссылки в кнопках «Открыть SkinIQ», «Открыть админку» и т.д. |
 | `WEBHOOK_SET_SECRET` | (опционально) Секрет для установки webhook без входа в админку | Позволяет вызывать `?action=set-webhook&secret=...` из curl/CI. |
+| `DATABASE_URL` | URL продакшен-БД (PostgreSQL) | Обязательно. Без него и без применённых миграций API возвращает 500 «Database schema not initialized». |
+| `JWT_SECRET` | Секрет для JWT (админка, сессии) | Обязательно для админки и части API. |
 
-Остальные переменные (БД, JWT, админка и т.д.) настраиваются как обычно для production.
+**Если в логах прода видно «Database schema not initialized» или 500 на `/api/questionnaire/active`:** в продакшен-БД не применены миграции Prisma. Нужно один раз выполнить миграции (локально с `DATABASE_URL` прода или через CI): `npx prisma migrate deploy`. После этого таблицы появятся и анкета начнёт отдаваться.
+
+Остальные переменные (админка и т.д.) настраиваются как обычно для production.
 
 ## 2. Установка вебхука на production
 
@@ -79,7 +91,8 @@ npx tsx scripts/setup-telegram-webhook.ts
 
 ## 4. Краткий чеклист
 
-- [ ] В Vercel для **Production** заданы `TELEGRAM_BOT_TOKEN` и `NEXT_PUBLIC_MINI_APP_URL` (production-URL).
+- [ ] В Vercel для **Production** заданы `TELEGRAM_BOT_TOKEN`, `NEXT_PUBLIC_MINI_APP_URL`, `DATABASE_URL`, `JWT_SECRET`.
+- [ ] В продакшен-БД применены миграции: `npx prisma migrate deploy` (иначе 500 «Database schema not initialized» на анкету).
 - [ ] Деплой **main** в production выполнен.
 - [ ] Webhook установлен (curl с `WEBHOOK_SET_SECRET`, скрипт `setup-telegram-webhook.ts` или страница /admin/set-webhook на прод-домене).
 - [ ] В production-БД при необходимости добавлены админы в `AdminWhitelist` для доступа к `/admin` и админке.
