@@ -375,7 +375,7 @@ export async function handleAnswer({
   // ИСПРАВЛЕНО: Выполняем нормализацию ТОЛЬКО для фильтрующих вопросов (age, gender, budget)
   // Вопросы типа user_name (имя) НЕ должны вызывать нормализацию индекса, чтобы не пропускать вопрос
   const isFilteringQuestion = currentQuestionCode && filteringQuestionCodes.includes(currentQuestionCode);
-  const isNameQuestion = currentQuestionCode === 'user_name';
+  const isNameQuestion = currentQuestionCode?.toLowerCase() === 'user_name';
   
   // ИСПРАВЛЕНО: Нормализация выполняется ТОЛЬКО для фильтрующих вопросов
   // Это предотвращает обнуление или изменение индекса для вопроса с именем

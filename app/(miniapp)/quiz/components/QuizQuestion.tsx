@@ -76,8 +76,8 @@ export const QuizQuestion = memo(function QuizQuestion({
   // После budget показывается инфо-экран, а не отправка ответов
   const showSubmitButton = isLastQuestion && question?.code !== 'budget';
 
-  // Первый вопрос (user_name) - специальный стиль (без прогресс-бара)
-  const isNameQuestion = question?.code === 'user_name' || question?.type === 'free_text';
+  // Первый вопрос (имя): код в API может быть USER_NAME или user_name
+  const isNameQuestion = question?.code?.toLowerCase() === 'user_name' || question?.type === 'free_text';
   const hideProgressBar = isNameQuestion;
 
   // Вопрос о целях (skin_goals) - лаймовый стиль с карточками
@@ -125,8 +125,8 @@ export const QuizQuestion = memo(function QuizQuestion({
   };
 
   const { title: rawTitle, subtitle } = splitTitleSubtitle(questionText);
-  // Вопрос про имя: если в БД пустой text — показываем заголовок по умолчанию
-  const title = rawTitle || (question?.code === 'user_name' ? 'Как к вам обращаться?' : '');
+  // Вопрос про имя: если в БД пустой text — показываем заголовок по умолчанию (код может быть USER_NAME или user_name)
+  const title = rawTitle || (question?.code?.toLowerCase() === 'user_name' ? 'Как к вам обращаться?' : '');
 
   const renderTitle = (t: string) => {
     const isAvoidIngredientsQuestion = question?.code === 'avoid_ingredients';
