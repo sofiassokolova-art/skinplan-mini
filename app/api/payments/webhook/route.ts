@@ -25,28 +25,25 @@ async function looksLikeYooKassaBody(request: NextRequest): Promise<boolean> {
 }
 
 async function verifyWebhookSignature(request: NextRequest): Promise<boolean> {
-  if (process.env.NODE_ENV !== 'production') {
-    return true;
-  }
-
   const secret = process.env.PAYMENTS_WEBHOOK_SECRET;
   const provided =
     request.headers.get('x-webhook-secret') || request.headers.get('X-Webhook-Secret') || '';
 
+  // Если задан PAYMENTS_WEBHOOK_SECRET — проверяем строго
   if (secret && provided) {
     return provided === secret;
   }
 
-  // ЮKassa не позволяет задать кастомный заголовок в настройках уведомлений.
-  // Если заголовок X-Webhook-Secret не передан — принимаем запросы в формате ЮKassa
-  // (event + object.id). Задавать PAYMENTS_WEBHOOK_SECRET в Vercel для ЮKassa не обязательно.
-  if (await looksLikeYooKassaBody(request)) {
-    return true;
+  if (secret && !provided) {
+    logger.error('Webhook: secret set but header X-Webhook-Secret missing');
+    return false;
   }
 
-  if (secret) {
-    logger.error('Webhook: secret set but header X-Webhook-Secret missing or invalid');
-    return false;
+  // Если PAYMENTS_WEBHOOK_SECRET не задан (типичная конфигурация для ЮKassa,
+  // которая не поддерживает кастомные заголовки) — принимаем запрос
+  // только если тело похоже на уведомление ЮKassa (event + object.id).
+  if (await looksLikeYooKassaBody(request)) {
+    return true;
   }
 
   return false;
@@ -86,13 +83,7 @@ function mapProviderStatus(provider: string, providerStatus: string): string {
   return statusMap[provider]?.[providerStatus] || 'pending';
 }
 
-function entitlementCodeForProduct(productCode: string): string {
-  if (productCode === 'plan_access') return 'paid_access';
-  if (productCode === 'retake_topic') return 'retake_topic_access';
-  if (productCode === 'retake_full') return 'retake_full_access';
-  // По умолчанию — доступ к плану (обратная совместимость)
-  return 'paid_access';
-}
+import { entitlementCodeForProduct, calculateValidUntil } from '@/lib/payment-helpers';
 
 export async function POST(request: NextRequest) {
   try {
@@ -146,8 +137,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, processed: false });
     }
 
+    // Валидация суммы: проверяем, что сумма в вебхуке совпадает с суммой в БД
+    const webhookAmountRaw = body.object?.amount?.value;
+    if (webhookAmountRaw != null) {
+      const webhookAmountKopecks = Math.round(parseFloat(String(webhookAmountRaw)) * 100);
+      if (webhookAmountKopecks !== payment.amount) {
+        logger.error('Webhook amount mismatch', {
+          paymentId: payment.id,
+          providerPaymentId,
+          expectedAmount: payment.amount,
+          receivedAmount: webhookAmountKopecks,
+          rawValue: webhookAmountRaw,
+        });
+        return NextResponse.json({ error: 'Amount mismatch' }, { status: 400 });
+      }
+    }
+
     // Идемпотентность: если статус уже succeeded, не обрабатываем повторно
-    // Это важно, так как провайдер может отправить вебхук несколько раз
     if (payment.status === 'succeeded') {
       logger.info('Payment already succeeded, skipping webhook processing (idempotency)', {
         paymentId: payment.id,
@@ -190,24 +196,7 @@ export async function POST(request: NextRequest) {
       if (newStatus === 'succeeded') {
         const entitlementCode = entitlementCodeForProduct(payment.productCode);
 
-        // Определяем срок действия доступа в зависимости от типа продукта
-        const validUntil = new Date();
-        if (payment.productCode === 'subscription_month') {
-          // Подписка на месяц - доступ на 1 месяц
-          validUntil.setMonth(validUntil.getMonth() + 1);
-        } else if (payment.productCode === 'plan_access') {
-          // Доступ к плану: 28 дней (после этого план снова лочится)
-          validUntil.setDate(validUntil.getDate() + 28);
-        } else if (payment.productCode === 'retake_topic') {
-          // Ретейк темы — короткий доступ, "съедается" после успешного partial-update
-          validUntil.setDate(validUntil.getDate() + 1);
-        } else if (payment.productCode === 'retake_full') {
-          // Полное перепрохождение — доступ на 28 дней (после этого payment gate снова появляется)
-          validUntil.setDate(validUntil.getDate() + 28);
-        } else {
-          // Для других продуктов - по умолчанию 1 год
-          validUntil.setFullYear(validUntil.getFullYear() + 1);
-        }
+        const validUntil = calculateValidUntil(payment.productCode);
 
         // Создаем или обновляем Entitlement
         await tx.entitlement.upsert({
@@ -248,7 +237,7 @@ export async function POST(request: NextRequest) {
       const planUrl = `${miniAppUrl}/plan`;
       if (botToken && telegramId) {
         try {
-          await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -260,6 +249,15 @@ export async function POST(request: NextRequest) {
               },
             }),
           });
+          if (!tgRes.ok) {
+            const tgBody = await tgRes.text().catch(() => '');
+            logger.warn('Telegram notification failed', {
+              userId: payment.userId,
+              telegramId,
+              status: tgRes.status,
+              body: tgBody.slice(0, 200),
+            });
+          }
         } catch (e) {
           logger.warn('Failed to send payment success notification to Telegram', { userId: payment.userId, error: e });
         }
