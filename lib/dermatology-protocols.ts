@@ -483,7 +483,8 @@ export function getIngredientSchedule(
   const schedule = protocol.titrationSchedule?.find(s => s.ingredient === ingredient);
   if (schedule) {
     const weekFrequency = week === 1 ? schedule.week1 : week === 2 ? schedule.week2 : week === 3 ? schedule.week3 : schedule.week4;
-    // Если есть cycling без фиксированных дней, используем его frequency
+    // Если есть cycling без фиксированных дней, берём минимум из cycling-частоты и titration-частоты.
+    // Это обеспечивает прогрессивное увеличение (titration) с учётом верхнего предела (cycling).
     if (cycling) {
       const frequencyMap: Record<string, number> = {
         daily: 7,
@@ -491,9 +492,13 @@ export function getIngredientSchedule(
         '2x_week': 2,
         '1x_week': 1,
       };
+      const cyclingFreq = frequencyMap[cycling.frequency];
+      const effectiveFrequency = cyclingFreq != null
+        ? Math.min(cyclingFreq, weekFrequency)
+        : weekFrequency;
       return {
-        frequency: frequencyMap[cycling.frequency] || weekFrequency,
-        days: cycling.days, // может быть undefined
+        frequency: effectiveFrequency,
+        days: cycling.days,
       };
     }
     return { frequency: weekFrequency };
