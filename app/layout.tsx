@@ -12,7 +12,6 @@ import { WebVitalsTracker } from './(miniapp)/components/WebVitals';
 import { Toaster } from '@/components/Toaster';
 import { GlobalErrorHandler } from '@/components/GlobalErrorHandler';
 import { ServiceWorker } from '@/components/ServiceWorker';
-import { QueryProvider } from '@/providers/QueryProvider';
 import { TelegramScript } from '@/components/TelegramScript';
 
 // Загружаем шрифты локально из public/fonts
@@ -273,14 +272,12 @@ export default async function RootLayout({
         {/* Обёртка для React DevTools и селекторов: в App Router нет #__next по умолчанию */}
         <div id="__next">
           <ErrorBoundary>
-            <QueryProvider>
-              <GlobalErrorHandler />
-              <WebVitalsTracker />
-              <ServiceWorker />
-              {children}
-              <Toaster />
-              <Analytics />
-            </QueryProvider>
+            <GlobalErrorHandler />
+            <WebVitalsTracker />
+            <ServiceWorker />
+            {children}
+            <Toaster />
+            <Analytics />
           </ErrorBoundary>
         </div>
       </body>

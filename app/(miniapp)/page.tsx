@@ -61,21 +61,35 @@ export default function RootPage() {
       };
     }
 
-    // 2) Если Telegram недоступен: в production → /quiz; в development проверяем кэш/профиль (тестовый initData)
-    const hasTelegram = typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
+    // 2) Проверяем Telegram initData — ждём до 1.5с, т.к. telegram-web-app.js (afterInteractive)
+    //    может не успеть загрузиться к моменту первого рендера
     const isDev = typeof window !== 'undefined' && process.env.NODE_ENV === 'development';
-    if (!hasTelegram && !isDev) {
-      clientLogger.log('Telegram WebApp не доступен (production), перенаправляем на /quiz');
-      safeReplace('/quiz');
-      return () => {
-        if (cleanupTimerRef.current) {
-          clearTimeout(cleanupTimerRef.current);
-          cleanupTimerRef.current = null;
+    const hasTelegramNow = typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
+
+    if (!hasTelegramNow && !isDev) {
+      // Ждём появления initData (скрипт afterInteractive или hash-fallback)
+      const waitForTelegram = new Promise<boolean>((resolve) => {
+        let elapsed = 0;
+        const interval = setInterval(() => {
+          elapsed += 150;
+          if (window.Telegram?.WebApp?.initData) {
+            clearInterval(interval);
+            resolve(true);
+          } else if (elapsed >= 1500) {
+            clearInterval(interval);
+            resolve(false);
+          }
+        }, 150);
+      });
+
+      waitForTelegram.then((found) => {
+        if (redirectInProgressRef.current) return;
+        if (!found) {
+          clientLogger.log('Telegram WebApp не доступен, перенаправляем на /quiz');
+          safeReplace('/quiz');
         }
-      };
-    }
-    if (!hasTelegram && isDev) {
-      clientLogger.log('Telegram WebApp не доступен (localhost) — проверяем кэш и hasPlanProgress для тестового пользователя');
+        // Если found=true, продолжаем ниже (checkAndRedirect уже запущен)
+      });
     }
 
     // 3) Авторизация (не блокирующая) + проверка hasPlanProgress
