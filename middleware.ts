@@ -8,15 +8,16 @@ import { rateLimit, getIdentifier } from './lib/rate-limit';
 
 // Настройки rate limiting для разных endpoints
 const RATE_LIMITS: Record<string, { maxRequests: number; interval: number }> = {
-  '/api/plan/generate': { maxRequests: 10, interval: 60 * 1000 }, // 10 запросов в минуту
-  '/api/questionnaire/answers': { maxRequests: 10, interval: 60 * 1000 }, // 10 запросов в минуту (увеличено для избежания 429)
-  '/api/questionnaire/partial-update': { maxRequests: 5, interval: 60 * 1000 }, // 5 запросов в минуту
-  '/api/products/batch': { maxRequests: 30, interval: 60 * 1000 }, // 30 запросов в минуту
-  '/api/recommendations': { maxRequests: 20, interval: 60 * 1000 }, // 20 запросов в минуту
-  '/api/admin/login': { maxRequests: 3, interval: 15 * 60 * 1000 }, // 3 попытки за 15 минут (защита от брутфорса)
-  '/api/wishlist': { maxRequests: 30, interval: 60 * 1000 }, // 30 запросов в минуту
-  '/api/cart': { maxRequests: 30, interval: 60 * 1000 }, // 30 запросов в минуту
-  '/api/plan/progress': { maxRequests: 20, interval: 60 * 1000 }, // 20 запросов в минуту
+  '/api/plan/generate': { maxRequests: 10, interval: 60 * 1000 },
+  '/api/questionnaire/answers': { maxRequests: 15, interval: 60 * 1000 },
+  '/api/questionnaire/partial-update': { maxRequests: 10, interval: 60 * 1000 },
+  '/api/products/batch': { maxRequests: 30, interval: 60 * 1000 },
+  '/api/recommendations': { maxRequests: 20, interval: 60 * 1000 },
+  '/api/admin/login': { maxRequests: 5, interval: 15 * 60 * 1000 },
+  '/api/admin/login-email': { maxRequests: 10, interval: 60 * 1000 },
+  '/api/wishlist': { maxRequests: 30, interval: 60 * 1000 },
+  '/api/cart': { maxRequests: 30, interval: 60 * 1000 },
+  '/api/plan/progress': { maxRequests: 30, interval: 60 * 1000 },
 };
 
 // Публичные маршруты - теперь большинство пользовательских маршрутов публичные
@@ -49,10 +50,11 @@ export async function middleware(request: NextRequest) {
 
   // Rate limiting для критичных endpoints
   for (const [route, limits] of Object.entries(RATE_LIMITS)) {
-    if (pathname.startsWith(route)) {
+    // ИСПРАВЛЕНО: используем точное совпадение ИЛИ prefix + '/' вместо голого startsWith,
+    // чтобы /api/admin/login не ловил /api/admin/login-email,
+    // а /api/questionnaire/answers не ловил /api/questionnaire/answers/cleanup.
+    if (pathname === route || pathname.startsWith(route + '/')) {
       const identifier = getIdentifier(request);
-      // ИСПРАВЛЕНО: разделяем лимиты по endpoint'ам (route),
-      // чтобы /api/plan/generate и /api/plan/progress не "съедали" один общий лимит.
       const result = await rateLimit(identifier, limits, route);
       
       if (!result.success) {
@@ -73,6 +75,7 @@ export async function middleware(request: NextRequest) {
           }
         );
       }
+      break;
     }
   }
 
