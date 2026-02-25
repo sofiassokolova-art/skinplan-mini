@@ -77,6 +77,7 @@ async function createYooKassaPayment(params: {
       value: (params.amountKopecks / 100).toFixed(2),
       currency: params.currency,
     },
+    capture: true, // автоматическое подтверждение: после оплаты платёж сразу succeeded, без ручного capture
     confirmation: {
       type: 'redirect' as const,
       return_url: params.returnUrl,
@@ -258,7 +259,8 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const returnUrl = `${origin}/plan`;
+    // После оплаты ЮKassa редиректит сюда (в браузере). На странице — «Вернитесь в приложение» + уведомление в боте.
+    const returnUrl = `${origin}/payments/return?success=1`;
     let providerPaymentId: string;
     let paymentUrl: string | null;
     let providerPayload: Record<string, unknown>;
@@ -334,6 +336,7 @@ export async function POST(request: NextRequest) {
 
     return ApiResponse.success({
       paymentId: payment.id,
+      providerPaymentId: providerPaymentId ?? undefined,
       paymentUrl,
       status: 'pending',
     });

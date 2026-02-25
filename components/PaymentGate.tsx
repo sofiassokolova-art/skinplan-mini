@@ -88,6 +88,7 @@ export function PaymentGate({
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentId, setPaymentId] = useState<string | null>(null);
+  const [providerPaymentId, setProviderPaymentId] = useState<string | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // hasPaid = "уверены, что оплата есть" (проверяется через Entitlement)
@@ -379,9 +380,11 @@ export function PaymentGate({
         return;
       }
 
-      // Сохраняем paymentId для polling
       if (paymentData.paymentId) {
         setPaymentId(paymentData.paymentId);
+      }
+      if (typeof paymentData.providerPaymentId === 'string' && paymentData.providerPaymentId) {
+        setProviderPaymentId(paymentData.providerPaymentId);
       }
 
       const paymentUrl = typeof paymentData.paymentUrl === 'string' ? paymentData.paymentUrl : '';
@@ -676,13 +679,26 @@ export function PaymentGate({
           </button>
 
           {paymentId && (
-            <p style={{
-              fontSize: '12px',
-              color: '#0A5F59',
-              marginTop: '12px',
-            }}>
-              Платеж создан. Ожидаем подтверждения от платежной системы...
-            </p>
+            <>
+              <p style={{
+                fontSize: '12px',
+                color: '#0A5F59',
+                marginTop: '12px',
+              }}>
+                Платеж создан. Ожидаем подтверждения от платежной системы...
+              </p>
+              <p style={{
+                fontSize: '11px',
+                color: '#6B7280',
+                marginTop: '8px',
+                wordBreak: 'break-all',
+              }}>
+                Код платежа для поддержки: <strong>{providerPaymentId || paymentId}</strong>
+              </p>
+              <p style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '4px' }}>
+                Сохраните код и укажите его в обращении в поддержку сайта, если оплата не прошла.
+              </p>
+            </>
           )}
 
           <p style={{
