@@ -14,8 +14,6 @@ export function entitlementCodeForProduct(productCode: string): string {
       return 'retake_topic_access';
     case 'retake_full':
       return 'retake_full_access';
-    case 'subscription_month':
-      return 'subscription_active';
     default:
       return 'paid_access';
   }
