@@ -291,6 +291,8 @@ function LayoutContent({
   const isResumeScreen = searchParams?.get('resume') === 'true';
   const planState = searchParams?.get('state');
   const isPlanGenerating = pathname === '/plan' && planState === 'generating';
+  // Пейвол: после анкеты пользователь попадает на /plan?paywall=1 — навигация не показывается до оплаты
+  const isPaywallShown = pathname === '/plan' && searchParams?.get('paywall') === '1';
   
   // ИСПРАВЛЕНО: Проверяем pathname синхронно через window.location для надежности
   // Это гарантирует, что навигация не монтируется на /quiz даже при асинхронных обновлениях pathname
@@ -302,11 +304,7 @@ function LayoutContent({
   
   // Скрываем навигацию на определенных страницах и в режимах/экранах, где она мешает UX
   // ИСПРАВЛЕНО: Скрываем навигацию на главной странице для нового пользователя
-  // Это предотвращает показ навигации с лоадером "загрузка плана" для нового пользователя
-  // ТЗ: Скрываем навигацию на /quiz для чистого UX без элементов корзины
-  // КРИТИЧНО: Скрываем навигацию на главной странице ВСЕГДА, так как это только редирект
-  // Главная страница редиректит: новый пользователь → /quiz, пользователь с планом → /home
-  // Это предотвращает вызов useCart() и показ навигации на странице-редиректе
+  // ТЗ: На пейволе (план до оплаты) навигации внизу не должно быть; она появляется сразу после оплаты
   // ИСПРАВЛЕНО: Проверяем оба pathname и currentPath для надежности
   const isOnRootPage = pathname === '/' || currentPath === '/';
   const hideNav = isOnQuizPage || 
@@ -316,6 +314,7 @@ function LayoutContent({
                   currentPath.startsWith('/loading/') ||
                   isResumeScreen ||
                   isPlanGenerating ||
+                  isPaywallShown || // Скрываем навигацию на пейволе до оплаты
                   isOnRootPage; // Скрываем навигацию на главной странице всегда (это только редирект)
   
   return (

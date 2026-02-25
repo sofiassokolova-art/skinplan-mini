@@ -497,6 +497,12 @@ export function PlanPageClientNew({
         onPaymentComplete={() => {
           setNeedsFirstPayment(false);
           clientLogger.log('✅ Payment completed on plan page');
+          // Убираем paywall=1 и blur=1 из URL — тогда в layout появится нижняя навигация
+          const q = new URLSearchParams(searchParams?.toString() || '');
+          q.delete('paywall');
+          q.delete('blur');
+          const newSearch = q.toString();
+          router.replace(newSearch ? `/plan?${newSearch}` : '/plan');
         }}
         retakeCta={
           planExpired

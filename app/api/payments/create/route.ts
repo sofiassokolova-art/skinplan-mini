@@ -13,6 +13,52 @@ export const runtime = 'nodejs';
 
 const YOOKASSA_API = 'https://api.yookassa.ru/v3/payments';
 
+/** Названия товаров для чека (54-ФЗ) */
+const PRODUCT_LABELS: Record<string, string> = {
+  plan_access: 'Доступ к плану ухода',
+  retake_topic: 'Перепрохождение темы',
+  retake_full: 'Полное перепрохождение анкеты',
+  subscription_month: 'Подписка на 1 месяц',
+};
+
+/** Формирует объект receipt для ЮKassa по 54-ФЗ. Нужен email или phone покупателя. */
+function buildYooKassaReceipt(params: {
+  amountKopecks: number;
+  currency: string;
+  productCode: string;
+  customerEmail?: string | null;
+  customerPhone?: string | null;
+}): Record<string, unknown> {
+  const { amountKopecks, currency, productCode, customerEmail, customerPhone } = params;
+  const customer: Record<string, string> = {};
+  if (customerEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+    customer.email = customerEmail;
+  }
+  if (customerPhone && customerPhone.trim()) {
+    customer.phone = customerPhone.trim().replace(/^\+?7/, '7'); // нормализуем для РФ
+  }
+  if (!customer.email && !customer.phone) {
+    const fallbackEmail = process.env.YOOKASSA_RECEIPT_EMAIL?.trim();
+    if (fallbackEmail) customer.email = fallbackEmail;
+    else customer.email = 'noreply@proskiniq.ru'; // обязательное поле чека, fallback
+  }
+  const value = (amountKopecks / 100).toFixed(2);
+  return {
+    customer,
+    items: [
+      {
+        description: PRODUCT_LABELS[productCode] || productCode,
+        quantity: '1.00',
+        amount: { value, currency },
+        vat_code: 1, // без НДС
+        payment_subject: 'service',
+        payment_mode: 'full_payment',
+      },
+    ],
+    tax_system_code: parseInt(process.env.YOOKASSA_TAX_SYSTEM_CODE || '1', 10), // 1 = OSN
+  };
+}
+
 /** Создание платежа в ЮKassa, возвращает { id, confirmationUrl } или ошибку */
 async function createYooKassaPayment(params: {
   shopId: string;
@@ -23,6 +69,7 @@ async function createYooKassaPayment(params: {
   idempotencyKey: string;
   returnUrl: string;
   metadata?: Record<string, string>;
+  receipt: Record<string, unknown>;
 }): Promise<{ id: string; confirmationUrl: string | null; status: string; raw: unknown } | { error: string }> {
   const auth = Buffer.from(`${params.shopId}:${params.secretKey}`).toString('base64');
   const body = {
@@ -36,6 +83,7 @@ async function createYooKassaPayment(params: {
     },
     description: params.description,
     metadata: params.metadata ?? {},
+    receipt: params.receipt,
   };
   try {
     const res = await fetch(YOOKASSA_API, {
@@ -216,6 +264,17 @@ export async function POST(request: NextRequest) {
     let providerPayload: Record<string, unknown>;
 
     if (useRealYooKassa) {
+      const userForReceipt = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { phoneNumber: true },
+      });
+      const receipt = buildYooKassaReceipt({
+        amountKopecks: product.amount,
+        currency: product.currency,
+        productCode,
+        customerEmail: null,
+        customerPhone: userForReceipt?.phoneNumber ?? null,
+      });
       const yoo = await createYooKassaPayment({
         shopId,
         secretKey,
@@ -225,6 +284,7 @@ export async function POST(request: NextRequest) {
         idempotencyKey: finalIdempotencyKey,
         returnUrl,
         metadata: { paymentId: payment.id, userId: userId ?? '' },
+        receipt,
       });
 
       if ('error' in yoo) {
