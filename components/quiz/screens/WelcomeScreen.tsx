@@ -77,7 +77,7 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'flex-start',
-          paddingTop: 'clamp(30px, 8vh, 60px)',
+          paddingTop: 'clamp(120px, 40vh, 320px)',
           paddingBottom: '100px',
           paddingLeft: '20px',
           paddingRight: '20px',
@@ -99,7 +99,6 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
               textAlign: 'center',
               color: '#FFFFFF',
               margin: 0,
-              textShadow: '0 1px 2px rgba(0,0,0,0.3)',
             }}
           >
             Подбери уход<br />

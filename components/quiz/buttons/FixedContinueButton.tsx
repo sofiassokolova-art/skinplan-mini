@@ -9,6 +9,8 @@ export interface FixedContinueButtonProps {
   onClick: () => void;
   disabled?: boolean;
   loadingText?: string;
+  /** На инфо-экранах — зелёная (lime), на вопросах — чёрная */
+  variant?: 'lime' | 'black';
 }
 
 export function FixedContinueButton({
@@ -16,8 +18,16 @@ export function FixedContinueButton({
   onClick,
   disabled = false,
   loadingText = 'Продолжить',
+  variant = 'lime',
 }: FixedContinueButtonProps) {
-  if (!ctaText) return null;
+  const displayText = ctaText ?? loadingText ?? 'Продолжить';
+  if (variant === 'lime' && !ctaText) return null;
+
+  const isBlack = variant === 'black';
+  const bgColor = disabled
+    ? (isBlack ? '#333333' : '#CCCCCC')
+    : (isBlack ? '#000000' : '#D5FE61');
+  const fgColor = isBlack ? '#FFFFFF' : '#000000';
 
   return (
     <div style={{
@@ -45,12 +55,13 @@ export function FixedContinueButton({
           maxWidth: 300,
           height: 40,
           borderRadius: 0,
-          background: disabled ? '#CCCCCC' : '#D5FE61',
-          color: '#000000',
+          background: bgColor,
+          color: fgColor,
           border: 'none',
           fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
           fontWeight: 600,
           fontSize: 'clamp(14px, 4vw, 16px)',
+          textTransform: 'uppercase',
           cursor: disabled ? 'not-allowed' : 'pointer',
           boxShadow: '2px 2px 4px 0 #00000033',
           transition: 'transform 0.2s, box-shadow 0.2s',
@@ -68,7 +79,7 @@ export function FixedContinueButton({
           e.currentTarget.style.transform = 'scale(1)';
         }}
       >
-        {disabled ? loadingText : String(ctaText || 'Продолжить')}
+        {disabled ? (loadingText ?? 'Продолжить') : String(displayText)}
       </button>
     </div>
   );

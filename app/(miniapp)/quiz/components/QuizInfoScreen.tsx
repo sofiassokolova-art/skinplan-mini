@@ -368,37 +368,12 @@ export function QuizInfoScreen({
           )}
         </div>
         
-        {/* Фиксированная кнопка "Продолжить" внизу экрана */}
-        <div style={{
-          position: 'fixed',
-          bottom: '40px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '100%',
-          maxWidth: '320px',
-          padding: '0 20px',
-          boxSizing: 'border-box',
-          zIndex: 100,
-        }}>
-          <button
-            onClick={handleNext}
-            style={{
-              width: '100%',
-              height: '56px',
-              borderRadius: '20px',
-              background: '#D5FE61',
-              color: '#000000',
-              border: 'none',
-              fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 600,
-              fontSize: '16px',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(213, 254, 97, 0.3)',
-            }}
-          >
-            Продолжить
-          </button>
-        </div>
+        <FixedContinueButton
+          ctaText={screen.ctaText}
+          onClick={handleNext}
+          disabled={isHandlingNext}
+          loadingText="Продолжить"
+        />
       </div>
       </>
     );
@@ -513,37 +488,12 @@ export function QuizInfoScreen({
           )}
         </div>
         
-        {/* Фиксированная кнопка "Продолжить" внизу экрана */}
-        <div style={{
-          position: 'fixed',
-          bottom: '40px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '100%',
-          maxWidth: '320px',
-          padding: '0 20px',
-          boxSizing: 'border-box',
-          zIndex: 100,
-        }}>
-          <button
-            onClick={handleNext}
-            style={{
-              width: '100%',
-              height: '56px',
-              borderRadius: '20px',
-              background: '#D5FE61',
-              color: '#000000',
-              border: 'none',
-              fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 600,
-              fontSize: '16px',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(213, 254, 97, 0.3)',
-            }}
-          >
-            Продолжить
-          </button>
-        </div>
+        <FixedContinueButton
+          ctaText={screen.ctaText}
+          onClick={handleNext}
+          disabled={isHandlingNext}
+          loadingText="Продолжить"
+        />
       </div>
       </>
     );
@@ -642,37 +592,12 @@ export function QuizInfoScreen({
           )}
         </div>
 
-        {/* Фиксированная кнопка "Продолжить" внизу экрана */}
-        <div style={{
-          position: 'fixed',
-          bottom: '40px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '100%',
-          maxWidth: '320px',
-          padding: '0 20px',
-          boxSizing: 'border-box',
-          zIndex: 100,
-        }}>
-          <button
-            onClick={handleNext}
-            style={{
-              width: '100%',
-              height: '56px',
-              borderRadius: '20px',
-              background: '#D5FE61',
-              color: '#000000',
-              border: 'none',
-              fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 600,
-              fontSize: '16px',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(213, 254, 97, 0.3)',
-            }}
-          >
-            Продолжить
-          </button>
-        </div>
+        <FixedContinueButton
+          ctaText={screen.ctaText}
+          onClick={handleNext}
+          disabled={isHandlingNext}
+          loadingText="Продолжить"
+        />
       </div>
       </>
     );
@@ -771,37 +696,12 @@ export function QuizInfoScreen({
           )}
         </div>
         
-        {/* Фиксированная кнопка "Продолжить" внизу экрана */}
-        <div style={{
-          position: 'fixed',
-          bottom: '40px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '100%',
-          maxWidth: '320px',
-          padding: '0 20px',
-          boxSizing: 'border-box',
-          zIndex: 100,
-        }}>
-          <button
-            onClick={handleNext}
-            style={{
-              width: '100%',
-              height: '56px',
-              borderRadius: '20px',
-              background: '#D5FE61',
-              color: '#000000',
-              border: 'none',
-              fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 600,
-              fontSize: '16px',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(213, 254, 97, 0.3)',
-            }}
-          >
-            Продолжить
-          </button>
-        </div>
+        <FixedContinueButton
+          ctaText={screen.ctaText}
+          onClick={handleNext}
+          disabled={isHandlingNext}
+          loadingText="Продолжить"
+        />
       </div>
       </>
     );
@@ -900,37 +800,12 @@ export function QuizInfoScreen({
           )}
         </div>
         
-        {/* Фиксированная кнопка "Продолжить" внизу экрана */}
-        <div style={{
-          position: 'fixed',
-          bottom: '40px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '100%',
-          maxWidth: '320px',
-          padding: '0 20px',
-          boxSizing: 'border-box',
-          zIndex: 100,
-        }}>
-          <button
-            onClick={handleNext}
-            style={{
-              width: '100%',
-              height: '56px',
-              borderRadius: '20px',
-              background: '#D5FE61',
-              color: '#000000',
-              border: 'none',
-              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 600,
-              fontSize: '16px',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(213, 254, 97, 0.3)',
-            }}
-          >
-            Продолжить
-          </button>
-        </div>
+        <FixedContinueButton
+          ctaText={screen.ctaText}
+          onClick={handleNext}
+          disabled={isHandlingNext}
+          loadingText="Продолжить"
+        />
       </div>
       </>
     );

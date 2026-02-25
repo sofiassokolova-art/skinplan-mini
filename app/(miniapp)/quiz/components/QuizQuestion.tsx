@@ -8,6 +8,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useCallback, useRef, useEffect, useMemo, memo } from 'react';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
+import { FixedContinueButton } from '@/components/quiz/buttons';
 import type { Question } from '@/lib/quiz/types';
 
 interface QuizQuestionProps {
@@ -423,51 +424,22 @@ export const QuizQuestion = memo(function QuizQuestion({
 
         {/* Навигация */}
         {showSubmitButton && hasAnswer(question.id) ? (
-          <div style={{ marginTop: '24px' }}>
-            <button
-              onClick={onSubmit}
-              disabled={isSubmitting}
-              style={{
-                width: '100%',
-                padding: '18px',
-                borderRadius: '20px',
-                backgroundColor: '#000000',
-                color: '#FFFFFF',
-                border: 'none',
-                cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                fontSize: '16px',
-                fontWeight: 600,
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-                transition: 'all 0.2s',
-                opacity: isSubmitting ? 0.7 : 1,
-                fontFamily:
-                  "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-              }}
-            >
-              {isSubmitting ? 'Отправка...' : 'Получить план'}
-            </button>
+          <div style={{ marginTop: '24px', paddingBottom: '100px' }}>
             {renderSubmitOrContinueDisclaimer()}
+            <FixedContinueButton
+              variant="black"
+              ctaText="Получить план"
+              loadingText="Отправка..."
+              disabled={isSubmitting}
+              onClick={onSubmit}
+            />
           </div>
         ) : hasAnswer(question.id) && isRetakingQuiz ? (
-          <button
+          <FixedContinueButton
+            variant="black"
+            ctaText="Продолжить"
             onClick={onNext}
-            style={{
-              marginTop: '24px',
-              width: '100%',
-              padding: '16px',
-              borderRadius: '20px',
-              backgroundColor: '#D5FE61',
-              color: '#000000',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '16px',
-              fontWeight: 600,
-              fontFamily:
-                "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-            }}
-          >
-            Продолжить
-          </button>
+          />
         ) : null}
       </div>
     );
@@ -572,7 +544,9 @@ export const QuizQuestion = memo(function QuizQuestion({
         />
 
         {String(localValue).trim().length > 0 && (
-          <button
+          <FixedContinueButton
+            variant="black"
+            ctaText="Далее"
             onClick={async () => {
               console.log('➡️ [QuizQuestion] FreeText: "Далее" clicked', {
                 questionId: question.id,
@@ -582,23 +556,7 @@ export const QuizQuestion = memo(function QuizQuestion({
               await syncIfNeeded();
               onNext();
             }}
-            style={{
-              marginTop: '12px',
-              width: '100%',
-              padding: '16px',
-              borderRadius: '20px',
-              backgroundColor: '#D5FE61',
-              color: '#000000',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '16px',
-              fontWeight: 600,
-              fontFamily:
-                "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-            }}
-          >
-            Далее
-          </button>
+          />
         )}
       </div>
     );
@@ -762,39 +720,19 @@ export const QuizQuestion = memo(function QuizQuestion({
 
           {/* Кнопка продолжить/получить план только для multi_choice */}
           {question?.type === 'multi_choice' && hasAnswer(question.id) && (
-            <button
+            <FixedContinueButton
+              variant="black"
+              ctaText={showSubmitButton ? 'Получить план' : 'Продолжить'}
+              loadingText="Отправка..."
+              disabled={isSubmitting}
               onClick={() => {
-                console.log('➡️ [QuizQuestion] LimeStyle: continue/submit button clicked', {
-                  questionId: question.id,
-                  showSubmitButton,
-                  isLastQuestion,
-                  answersCount: Object.keys(answers).length
-                });
                 if (showSubmitButton) {
                   onSubmit();
                 } else {
                   onNext();
                 }
               }}
-              disabled={isSubmitting}
-              style={{
-                marginTop: isGoalsQuestion ? 'auto' : '8px',
-                width: '100%',
-                padding: '18px',
-                borderRadius: '20px',
-                backgroundColor: '#000000',
-                color: '#FFFFFF',
-                border: 'none',
-                cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                fontSize: '16px',
-                fontWeight: 600,
-                opacity: isSubmitting ? 0.7 : 1,
-                fontFamily:
-                  "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-              }}
-            >
-              {showSubmitButton ? (isSubmitting ? 'Отправка...' : 'Получить план') : 'Продолжить'}
-            </button>
+            />
           )}
         </div>
       </div>
@@ -959,49 +897,22 @@ export const QuizQuestion = memo(function QuizQuestion({
         {/* Навигация */}
         {hasAnswer(question.id) ? (
           showSubmitButton ? (
-            <div style={{ marginTop: '24px' }}>
-              <button
-                onClick={onSubmit}
-                disabled={isSubmitting}
-                style={{
-                  width: '100%',
-                  padding: '18px',
-                  borderRadius: '20px',
-                  backgroundColor: '#000000',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                  fontSize: '16px',
-                  fontWeight: 600,
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-                  opacity: isSubmitting ? 0.7 : 1,
-                  transition: 'all 0.2s',
-                  fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                }}
-              >
-                {isSubmitting ? 'Отправка...' : 'Получить план'}
-              </button>
+            <div style={{ marginTop: '24px', paddingBottom: '100px' }}>
               {renderSubmitOrContinueDisclaimer()}
+              <FixedContinueButton
+                variant="black"
+                ctaText="Получить план"
+                loadingText="Отправка..."
+                disabled={isSubmitting}
+                onClick={onSubmit}
+              />
             </div>
           ) : (
-            <button
+            <FixedContinueButton
+              variant="black"
+              ctaText="Продолжить"
               onClick={onNext}
-              style={{
-                marginTop: '24px',
-                width: '100%',
-                padding: '16px',
-                borderRadius: '20px',
-                backgroundColor: '#D5FE61',
-                color: '#000000',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '16px',
-                fontWeight: 600,
-                fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-              }}
-            >
-              Продолжить
-            </button>
+            />
           )
         ) : null}
       </div>
@@ -1046,49 +957,22 @@ export const QuizQuestion = memo(function QuizQuestion({
 
         {hasAnswer(question.id) ? (
           showSubmitButton ? (
-            <div style={{ marginTop: '24px' }}>
-              <button
-                onClick={onSubmit}
-                disabled={isSubmitting}
-                style={{
-                  width: '100%',
-                  padding: '18px',
-                  borderRadius: '20px',
-                  backgroundColor: '#000000',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                  fontSize: '16px',
-                  fontWeight: 600,
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-                  opacity: isSubmitting ? 0.7 : 1,
-                  transition: 'all 0.2s',
-                  fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                }}
-              >
-                {isSubmitting ? 'Отправка...' : 'Получить план'}
-              </button>
+            <div style={{ marginTop: '24px', paddingBottom: '100px' }}>
               {renderSubmitOrContinueDisclaimer()}
+              <FixedContinueButton
+                variant="black"
+                ctaText="Получить план"
+                loadingText="Отправка..."
+                disabled={isSubmitting}
+                onClick={onSubmit}
+              />
             </div>
           ) : (
-            <button
+            <FixedContinueButton
+              variant="black"
+              ctaText="Продолжить"
               onClick={onNext}
-              style={{
-                marginTop: '24px',
-                width: '100%',
-                padding: '16px',
-                borderRadius: '20px',
-                backgroundColor: '#D5FE61',
-                color: '#000000',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '16px',
-                fontWeight: 600,
-                fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-              }}
-            >
-              Продолжить
-            </button>
+            />
           )
         ) : null}
       </div>
@@ -1105,6 +989,7 @@ export const QuizQuestion = memo(function QuizQuestion({
           maxWidth: useLimeStyle ? '100%' : '640px',
           margin: useLimeStyle ? '0' : '0 auto',
           padding: useLimeStyle ? '0' : '0 20px',
+          paddingBottom: '100px',
           boxSizing: 'border-box',
         }}
       >
