@@ -90,12 +90,12 @@ export async function POST(request: NextRequest) {
       console.error('Failed to send Telegram message:', result.error);
     }
 
-    // Обновляем чат
+    // Обновляем чат: увеличиваем счетчик непрочитанных сообщений от админа (для пользователя)
     await prisma.supportChat.update({
       where: { id: chatId },
       data: {
         lastMessage: text.trim(),
-        unreadAdmin: { increment: 1 }, // Увеличиваем счетчик непрочитанных для пользователя
+        unreadAdmin: { increment: 1 },
         updatedAt: new Date(),
       },
     });

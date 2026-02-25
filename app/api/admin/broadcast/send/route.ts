@@ -298,11 +298,13 @@ async function getUsersByFilters(filters: any) {
   }
 
   if (filters.excludePregnant) {
-      where.skinProfiles = {
-        some: {
-          hasPregnancy: false,
-        },
-      };
+    // Добавляем условие к существующему skinProfiles фильтру, а не перезаписываем его
+    const existingCondition = where.skinProfiles?.some;
+    where.skinProfiles = {
+      some: existingCondition
+        ? { AND: [existingCondition, { hasPregnancy: false }] }
+        : { hasPregnancy: false },
+    };
   }
 
   return await prisma.user.findMany({

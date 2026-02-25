@@ -4,42 +4,43 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-
 export async function GET(request: NextRequest) {
   try {
-    // Получаем токен из заголовка Authorization или из Cookie
+    const cookieToken = request.cookies.get('admin_token')?.value;
     const authHeader = request.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '') || 
-                  request.cookies.get('admin_token')?.value;
+    const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const token = cookieToken ?? bearerToken;
 
     if (!token) {
-      console.log('⚠️ No token provided in /api/admin/verify');
       return NextResponse.json(
         { error: 'No token provided' },
         { status: 401 }
       );
     }
 
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      );
+    }
+
     try {
-      const decoded = jwt.verify(token, JWT_SECRET) as {
+      const decoded = jwt.verify(token, secret, {
+        issuer: 'skiniq-admin',
+        audience: 'skiniq-admin-ui',
+      }) as {
         adminId: string | number;
         role?: string;
       };
 
-      // Проверка роли опциональна - просто проверяем, что токен валидный
-      console.log('✅ Token verified successfully:', {
-        adminId: decoded.adminId,
-        role: decoded.role,
-      });
-
-      return NextResponse.json({ 
-        valid: true, 
+      return NextResponse.json({
+        valid: true,
         adminId: decoded.adminId,
         role: decoded.role || 'admin',
       });
-    } catch (error) {
-      console.warn('⚠️ Token verification failed:', error);
+    } catch {
       return NextResponse.json(
         { error: 'Invalid token' },
         { status: 401 }
@@ -53,4 +54,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

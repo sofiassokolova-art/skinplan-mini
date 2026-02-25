@@ -127,8 +127,16 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    const brandId = parseInt(id, 10);
+    if (isNaN(brandId) || brandId <= 0) {
+      return NextResponse.json(
+        { error: 'Invalid brand ID' },
+        { status: 400 }
+      );
+    }
+
     const brand = await prisma.brand.update({
-      where: { id: parseInt(id) },
+      where: { id: brandId },
       data: { isActive },
     });
 
@@ -163,9 +171,16 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Soft delete - делаем неактивным
+    const brandId = parseInt(id, 10);
+    if (isNaN(brandId) || brandId <= 0) {
+      return NextResponse.json(
+        { error: 'Invalid brand ID' },
+        { status: 400 }
+      );
+    }
+
     const brand = await prisma.brand.update({
-      where: { id: parseInt(id) },
+      where: { id: brandId },
       data: { isActive: false },
     });
 
