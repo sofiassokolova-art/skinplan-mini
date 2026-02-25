@@ -69,7 +69,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const isDev = process.env.NODE_ENV === 'development';
-  const isProduction = process.env.VERCEL_ENV === 'production';
+  const isVercel = !!process.env.VERCEL;
   const headersList = await headers();
   const pathname = headersList.get('x-pathname') ?? '';
   const isAdminRoute = pathname.startsWith('/admin');
@@ -177,12 +177,8 @@ export default async function RootLayout({
             `}
           </Script>
         )}
-        {/* Шрифты для админки 2025 */}
-        <link
-          href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap"
-          rel="stylesheet"
-        />
         {/* Шрифты Unbounded и Inter загружаются через next/font (см. импорты выше) */}
+        {/* Шрифты Manrope / Space Grotesk для админки загружаются в admin/layout.tsx */}
       </head>
       <body
         style={{
@@ -191,8 +187,8 @@ export default async function RootLayout({
           backgroundColor: '#FFFFFF',
         }}
       >
-        {/* Единый лоадер при открытии — не показываем на /admin, иначе форма входа не видна */}
-        {isProduction && !isAdminRoute && (
+        {/* Единый лоадер при открытии — показываем на всех деплоях Vercel (prod + preview), не на /admin */}
+        {isVercel && !isAdminRoute && (
           <div
             id="root-loading"
             style={{

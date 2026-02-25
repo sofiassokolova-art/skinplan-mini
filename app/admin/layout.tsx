@@ -22,6 +22,20 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+function AdminFonts() {
+  return (
+    <>
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+      <link
+        href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap"
+        rel="stylesheet"
+      />
+    </>
+  );
+}
+
 export default function AdminLayout({
   children,
 }: {
@@ -164,12 +178,13 @@ export default function AdminLayout({
 
   // Условные return'ы ПОСЛЕ всех хуков
   if (isLoginPage) {
-    return <>{children}</>;
+    return <><AdminFonts />{children}</>;
   }
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center gap-3">
+        <AdminFonts />
         <div className="text-gray-600">Проверка авторизации...</div>
         <div className="text-sm text-gray-400">Если загрузка не завершается, откройте страницу входа</div>
         <a href="/admin/login" className="text-sm text-teal-600 hover:underline">Войти в админку</a>
@@ -177,10 +192,10 @@ export default function AdminLayout({
     );
   }
   
-  // Если не авторизован и не на странице логина, показываем сообщение
   if (!loading && !isAuthenticated && !isLoginPage) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <AdminFonts />
         <div className="text-gray-600">Перенаправление на страницу входа...</div>
       </div>
     );
@@ -191,6 +206,7 @@ export default function AdminLayout({
       background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 30%, #f9fafb 60%, #f3f4f6 100%)',
       backgroundSize: '400% 400%'
     }}>
+      <AdminFonts />
       {/* ИСПРАВЛЕНО (P2): Глобальные стили вынесены в globals.css */}
       
       {/* Mobile overlay - только на мобильных, не перекрывает контент на десктопе */}

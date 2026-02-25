@@ -11,8 +11,8 @@
   --font-inter: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* Шрифты для админки 2025 */
-html {
+/* Шрифты для админки 2025 — применяются только внутри .admin-layout */
+.admin-layout {
   font-family: 'Manrope', system-ui, sans-serif;
 }
 
@@ -51,7 +51,7 @@ html {
 /* PageTransition: лёгкая анимация смены страниц без framer-motion */
 @keyframes pageTransitionFadeIn {
   from {
-    opacity: 0;
+    opacity: 0.01;
   }
   to {
     opacity: 1;
@@ -60,7 +60,8 @@ html {
 .page-transition-enter {
   width: 100%;
   min-height: 100%;
-  animation: pageTransitionFadeIn 0.3s ease-out forwards;
+  opacity: 1;
+  animation: pageTransitionFadeIn 0.25s ease-out;
 }
 
 .glass-hover {

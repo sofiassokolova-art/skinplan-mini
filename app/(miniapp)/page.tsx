@@ -166,8 +166,23 @@ export default function RootPage() {
     };
   }, []);
 
-  // Во время загрузки/редиректа ничего не показываем
-  if (isLoading || isRedirecting) return null;
-
-  return null;
+  return (
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#FFFFFF',
+    }}>
+      <div style={{
+        width: 48,
+        height: 48,
+        border: '3px solid rgba(0,0,0,0.08)',
+        borderTop: '3px solid #000',
+        borderRadius: '50%',
+        animation: 'spin 0.8s linear infinite',
+      }} />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
 }
