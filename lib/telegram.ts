@@ -98,68 +98,34 @@ export function validateTelegramInitData(
       .update(dataCheckString)
       .digest('hex');
 
-    // Проверяем подпись
+    // Проверяем подпись: вариант 1 — raw значения (как пришли)
     if (calculatedHash !== hash) {
-      // Пробуем альтернативные варианты, если оригинальный не подошел
-      
-      // Вариант 2: Декодировать значения (если они пришли закодированными)
+      // Вариант 2: декодированные значения (initData может прийти URL-encoded)
       const dataCheckStringDecoded = sortedKeys
         .map(key => {
           const value = params.get(key) || '';
           try {
-            const decoded = decodeURIComponent(value);
-            return `${key}=${decoded}`;
+            return `${key}=${decodeURIComponent(value)}`;
           } catch {
             return `${key}=${value}`;
           }
         })
         .join('\n');
-      
+
       const calculatedHashDecoded = crypto
         .createHmac('sha256', secretKey)
         .update(dataCheckStringDecoded)
         .digest('hex');
-      
+
       if (calculatedHashDecoded === hash) {
-        calculatedHash = calculatedHashDecoded; // Используем этот вариант
+        calculatedHash = calculatedHashDecoded;
       } else {
-        // Вариант 3: Закодировать значения обратно (если они пришли декодированными)
-        const dataCheckStringEncoded = sortedKeys
-          .map(key => {
-            const value = params.get(key) || '';
-            // Если значение уже содержит %XX, значит оно уже закодировано
-            if (value.includes('%')) {
-              return `${key}=${value}`;
-            }
-            // Иначе кодируем
-            try {
-              return `${key}=${encodeURIComponent(value)}`;
-            } catch {
-              return `${key}=${value}`;
-            }
-          })
-          .join('\n');
-        
-        const calculatedHashEncoded = crypto
-          .createHmac('sha256', secretKey)
-          .update(dataCheckStringEncoded)
-          .digest('hex');
-        
-        if (calculatedHashEncoded === hash) {
-          calculatedHash = calculatedHashEncoded; // Используем этот вариант
-        } else {
-          // Все варианты не подошли
-          console.error('❌ Hash validation failed (all attempts):', {
-            receivedHash: hash,
-            calculatedHash,
-            calculatedHashDecoded,
-            calculatedHashEncoded,
-            dataCheckStringSample: dataCheckString.substring(0, 150),
-            paramsCount: params.size,
-            sortedKeys: sortedKeys.slice(0, 5), // Первые 5 ключей для отладки
-          });
-      return { valid: false, error: 'Invalid hash' };
-        }
+        console.error('❌ Hash validation failed:', {
+          receivedHash: hash,
+          paramsCount: params.size,
+          sortedKeys: sortedKeys.slice(0, 5),
+        });
+        return { valid: false, error: 'Invalid hash' };
       }
     }
 

@@ -91,17 +91,6 @@ export default function HomePage() {
         return;
       }
 
-      // ИСПРАВЛЕНО: Проверяем авторизацию
-      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
-        try {
-          await api.authTelegram(window.Telegram.WebApp.initData);
-          clientLogger.log('✅ Authorization successful');
-        } catch (authError: any) {
-          // Не блокируем приложение при ошибке авторизации
-          clientLogger.warn('⚠️ Authorization failed, but continuing (non-blocking):', authError?.message);
-        }
-      }
-
       // Устанавливаем loading = true для загрузки контента
       setLoading(true);
 

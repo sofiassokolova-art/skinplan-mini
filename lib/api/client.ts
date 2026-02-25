@@ -3,6 +3,7 @@
 
 import { fetchWithTimeout, handleNetworkError } from '../network-utils';
 import { shouldBlockApiRequest } from '../route-utils';
+import { DEV_TELEGRAM } from '../config/timeouts';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 const DEFAULT_TIMEOUT = 30000; // 30 секунд по умолчанию
@@ -28,64 +29,22 @@ const DEFAULT_PREFERENCES_RESPONSE = {
  * Ждет готовности initData, если он еще не доступен
  */
 async function getInitData(): Promise<string | null> {
-  // ИСПРАВЛЕНО: В development режиме используем тестовый initData, если реальный недоступен
   if (process.env.NODE_ENV === 'development') {
-    // Тестовый Telegram ID: 987654321 (можно заменить на любой другой)
-    const TEST_TELEGRAM_ID = '987654321';
-    const TEST_INIT_DATA = `user=%7B%22id%22%3A${TEST_TELEGRAM_ID}%2C%22first_name%22%3A%22Test%22%2C%22last_name%22%3A%22User%22%2C%22username%22%3A%22testuser%22%2C%22language_code%22%3A%22ru%22%7D&auth_date=${Math.floor(Date.now() / 1000)}&hash=test_hash_for_development_only`;
-    
-    if (typeof window === 'undefined') {
-      return TEST_INIT_DATA;
-    }
-    
-    // Инициализируем window.Telegram.WebApp, если его нет
+    if (typeof window === 'undefined') return DEV_TELEGRAM.buildInitData();
+
+    const existing = window.Telegram?.WebApp?.initData;
+    if (existing) return existing;
+
+    // Мокаем WebApp для локальной разработки
+    const testData = DEV_TELEGRAM.buildInitData();
     if (!window.Telegram) {
-      (window as any).Telegram = {
-        WebApp: {
-          initData: TEST_INIT_DATA,
-          ready: () => {},
-          expand: () => {},
-        },
-      };
-      return TEST_INIT_DATA;
+      (window as any).Telegram = { WebApp: { initData: testData, ready() {}, expand() {} } };
+    } else if (!window.Telegram.WebApp) {
+      (window as any).Telegram.WebApp = { initData: testData, ready() {}, expand() {} };
+    } else {
+      try { (window.Telegram.WebApp as any).initData = testData; } catch (_) {}
     }
-    
-    if (!window.Telegram.WebApp) {
-      (window as any).Telegram.WebApp = {
-        initData: TEST_INIT_DATA,
-        ready: () => {},
-        expand: () => {},
-      };
-      return TEST_INIT_DATA;
-    }
-    
-    // Если реальный initData есть, используем его
-    const existingInitData = window.Telegram.WebApp.initData;
-    if (existingInitData) {
-      return existingInitData;
-    }
-    
-    // ИСПРАВЛЕНО: Безопасная установка тестового initData (может быть read-only)
-    try {
-      // Пробуем установить через Object.defineProperty, если обычная установка не работает
-      const descriptor = Object.getOwnPropertyDescriptor(window.Telegram.WebApp, 'initData');
-      if (descriptor && !descriptor.writable && !descriptor.set) {
-        // Свойство read-only, используем defineProperty для переопределения
-        Object.defineProperty(window.Telegram.WebApp, 'initData', {
-          value: TEST_INIT_DATA,
-          writable: true,
-          configurable: true,
-        });
-      } else {
-        // Обычная установка
-        (window.Telegram.WebApp as any).initData = TEST_INIT_DATA;
-      }
-      return TEST_INIT_DATA;
-    } catch (err) {
-      // Если не удалось установить, возвращаем тестовый initData напрямую
-      // (не устанавливаем в объект, но используем для запросов)
-      return TEST_INIT_DATA;
-    }
+    return testData;
   }
   
   if (typeof window === 'undefined' || !window.Telegram?.WebApp) {
@@ -122,17 +81,8 @@ function createHeaders(initData: string | null, customHeaders?: Record<string, s
     ...(customHeaders || {}),
   };
 
-  // Добавляем initData в заголовки для идентификации пользователя
   if (initData) {
     headers['X-Telegram-Init-Data'] = initData;
-    headers['x-telegram-init-data'] = initData;
-    if (process.env.NODE_ENV === 'development') {
-      console.log('✅ initData добавлен в заголовки, длина:', initData.length);
-    }
-  } else {
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('⚠️ initData not available in Telegram WebApp');
-    }
   }
 
   return headers;
@@ -308,120 +258,82 @@ async function handleHttpError(response: Response, endpoint: string, initData: s
   throw apiError;
 }
 
+const MAX_RETRIES = 2;
+const RETRY_DELAYS = [1000, 3000]; // 1с, 3с
+
+function isRetryable(status: number): boolean {
+  return status === 502 || status === 503 || status === 504 || status === 0;
+}
+
 /**
- * Базовый HTTP запрос
+ * Базовый HTTP запрос с retry для сетевых ошибок
  */
 export async function request<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  // Блокируем cart и preferences на /quiz
   if (shouldBlockApiRequest(endpoint)) {
     const isCartEndpoint = endpoint === '/cart' || endpoint.includes('/cart');
-    console.log('🚫 Blocking API request on /quiz:', endpoint);
-    
-    if (isCartEndpoint) {
-      return Promise.resolve(DEFAULT_CART_RESPONSE as T);
-    }
+    if (isCartEndpoint) return Promise.resolve(DEFAULT_CART_RESPONSE as T);
     return Promise.resolve(DEFAULT_PREFERENCES_RESPONSE as T);
   }
-  
-  // На сервере (SSR) также блокируем cart и preferences
+
   if (typeof window === 'undefined') {
     const isCartEndpoint = endpoint === '/cart' || endpoint.includes('/cart');
     const isPreferencesEndpoint = endpoint === '/user/preferences' || endpoint.includes('/user/preferences');
-    
-    if (isCartEndpoint) {
-      return Promise.resolve(DEFAULT_CART_RESPONSE as T);
-    }
-    if (isPreferencesEndpoint) {
-      return Promise.resolve(DEFAULT_PREFERENCES_RESPONSE as T);
-    }
+    if (isCartEndpoint) return Promise.resolve(DEFAULT_CART_RESPONSE as T);
+    if (isPreferencesEndpoint) return Promise.resolve(DEFAULT_PREFERENCES_RESPONSE as T);
   }
 
-  // Получаем initData
   const isQuestionnaireProgressEndpoint = endpoint.includes('/questionnaire/progress');
   const initData = await getInitData();
 
-  // Не дергаем /questionnaire/progress, если initData недоступен
   if (isQuestionnaireProgressEndpoint && !initData) {
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('⚠️ Skipping request to /questionnaire/progress: Telegram initData not available, returning empty progress');
-    }
-    return {
-      progress: null,
-      isCompleted: false,
-    } as T;
+    return { progress: null, isCompleted: false } as T;
   }
 
-  // Создаем заголовки
   const headers = createHeaders(initData, options.headers as Record<string, string>);
-
-  // Определяем таймаут
   const timeout = endpoint.includes('/plan/generate') ? 60000 : DEFAULT_TIMEOUT;
-  
-  // Логируем перед отправкой запроса (только для критичных endpoints)
-  if (endpoint.includes('/questionnaire/answers') || endpoint.includes('/plan/generate')) {
-    if (typeof window !== 'undefined') {
-      console.log('📤 Sending request to:', `${API_BASE}${endpoint}`, {
-        method: options.method || 'GET',
-        hasInitData: !!initData,
-        initDataLength: initData?.length || 0,
-        timeout,
-      });
-    }
-  }
-  
-  let response: Response;
-  try {
-    response = await fetchWithTimeout(`${API_BASE}${endpoint}`, {
-      ...options,
-      headers,
-    }, timeout);
-    
-    // Логируем ответ (только для критичных endpoints)
-    if (endpoint.includes('/questionnaire/answers') || endpoint.includes('/plan/generate')) {
-      if (typeof window !== 'undefined') {
-        console.log('📥 Received response from:', `${API_BASE}${endpoint}`, {
-          status: response.status,
-          statusText: response.statusText,
-          ok: response.ok,
-        });
-      }
-    }
-  } catch (error) {
-    // Логируем ошибку сети (только для критичных endpoints)
-    if (endpoint.includes('/questionnaire/answers') || endpoint.includes('/plan/generate')) {
-      if (typeof window !== 'undefined') {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        const errorName = error instanceof Error ? error.name : undefined;
-        const errorStack = error instanceof Error ? error.stack?.substring(0, 200) : undefined;
-        console.error('❌ Network error for:', `${API_BASE}${endpoint}`, {
-          error: errorMessage,
-          errorType: typeof error,
-          errorName,
-          stack: errorStack,
-        });
-      }
-    }
-    const errorMessage = handleNetworkError(error);
-    throw new Error(errorMessage);
-  }
+  const isWrite = options.method && options.method !== 'GET';
 
-  if (!response.ok) {
-    // Обрабатываем специальные случаи для cart/wishlist (401 - это нормально)
-    if (response.status === 401) {
-      if (endpoint.includes('/cart') || endpoint.includes('/wishlist')) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('ℹ️ 401 for cart/wishlist (user may not be authorized), returning empty result');
+  let lastError: Error | null = null;
+  const attempts = isWrite ? 1 : MAX_RETRIES + 1; // не ретраим мутации
+
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    try {
+      const response = await fetchWithTimeout(`${API_BASE}${endpoint}`, {
+        ...options,
+        headers,
+      }, timeout);
+
+      if (!response.ok) {
+        if (response.status === 401 && (endpoint.includes('/cart') || endpoint.includes('/wishlist'))) {
+          return { items: [] } as T;
         }
-        return { items: [] } as T;
+        if (isRetryable(response.status) && attempt < attempts - 1) {
+          await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt] || 3000));
+          continue;
+        }
+        await handleHttpError(response, endpoint, initData);
       }
+
+      return await response.json() as T;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      const isNetwork = lastError.message.includes('timeout') ||
+                        lastError.message.includes('fetch') ||
+                        lastError.message.includes('network') ||
+                        lastError.message.includes('Failed to fetch');
+      if (isNetwork && attempt < attempts - 1) {
+        await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt] || 3000));
+        continue;
+      }
+      if (isNetwork) {
+        throw new Error(handleNetworkError(error));
+      }
+      throw lastError;
     }
-    
-    await handleHttpError(response, endpoint, initData);
   }
 
-  const data = await response.json() as T;
-  return data;
+  throw lastError || new Error('Request failed');
 }

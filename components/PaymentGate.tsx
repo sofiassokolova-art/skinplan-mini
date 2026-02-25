@@ -117,8 +117,9 @@ export function PaymentGate({
       return;
     }
 
-    // Подождём до 2.5 секунд (Telegram иногда отдаёт initData не мгновенно)
+    // Ждём до 5 секунд — на медленном мобильном скрипт telegram-web-app.js грузится дольше
     const start = Date.now();
+    const INIT_DATA_TIMEOUT = 5000;
     const intervalId = setInterval(() => {
       if (cancelled) return;
       const initData =
@@ -128,15 +129,12 @@ export function PaymentGate({
         setInitDataReady(true);
         return;
       }
-      if (Date.now() - start > 2500) {
+      if (Date.now() - start > INIT_DATA_TIMEOUT) {
         clearInterval(intervalId);
         setInitDataReady(false);
-        // Если initData так и не появилось — считаем, что "проверка" невозможна
-        // и не держим пользователя на бесконечном "Проверяем доступ..."
-        // Устанавливаем checkedOnce, чтобы показать paywall
         setCheckedOnce(true);
       }
-    }, 100);
+    }, 150);
 
     return () => {
       cancelled = true;

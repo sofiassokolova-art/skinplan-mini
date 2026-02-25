@@ -1,17 +1,21 @@
 // lib/quiz/extractQuestions.ts
-// Единая функция для извлечения вопросов из questionnaire
-// Убирает дублирование логики извлечения вопросов
+// Единая функция для извлечения вопросов из questionnaire с кешированием
 
-// Используем any для типов, так как в разных местах используются разные интерфейсы Questionnaire
 type Questionnaire = any;
 type Question = any;
 
+// WeakMap кеш: один и тот же объект questionnaire → один и тот же результат.
+// Не утекает память: как только questionnaire GC-ится, запись удаляется.
+const _cache = new WeakMap<object, Question[]>();
+
 /**
- * Извлекает все вопросы из questionnaire (из groups и questions)
- * @param questionnaire - объект анкеты с groups и questions
- * @returns массив всех вопросов без дубликатов
+ * Извлекает все вопросы из questionnaire (из groups и questions).
+ * Результат кешируется по ссылке объекта (WeakMap).
  */
 export function extractQuestionsFromQuestionnaire(questionnaire: Questionnaire | null): Question[] {
+  if (questionnaire && _cache.has(questionnaire)) {
+    return _cache.get(questionnaire)!;
+  }
   if (!questionnaire) {
     return [];
   }
@@ -65,24 +69,17 @@ export function extractQuestionsFromQuestionnaire(questionnaire: Questionnaire |
     result = [...nameQuestions, ...otherQuestions];
   }
   
-  // ДИАГНОСТИКА: Логируем, если результат пустой, но данные есть
   if (result.length === 0 && (groups.length > 0 || questions.length > 0)) {
     console.warn('⚠️ extractQuestionsFromQuestionnaire: No questions extracted but data exists', {
       questionnaireId: questionnaire?.id,
       groupsCount: groups.length,
       questionsCount: questions.length,
-      questionsFromGroupsCount: questionsFromGroups.length,
-      questionsFromRootCount: questionsFromRoot.length,
-      groupsSample: groups.slice(0, 2).map((g: any) => ({
-        id: g?.id,
-        hasQuestions: !!g?.questions,
-        questionsCount: Array.isArray(g?.questions) ? g.questions.length : 0,
-        questionsSample: Array.isArray(g?.questions) ? g.questions.slice(0, 2).map((q: any) => ({ id: q?.id, code: q?.code })) : [],
-      })),
-      questionsSample: questions.slice(0, 2).map((q: any) => ({ id: q?.id, code: q?.code })),
     });
   }
-  
+
+  if (questionnaire) {
+    _cache.set(questionnaire, result);
+  }
   return result;
 }
 

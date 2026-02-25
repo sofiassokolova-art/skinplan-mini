@@ -13,7 +13,7 @@ import { QueryProvider } from '@/providers/QueryProvider';
 import { PaywallVisibilityProvider, usePaywallVisibility } from '@/providers/PaywallVisibilityContext';
 import { ServiceFeedbackPopup } from '@/components/ServiceFeedbackPopup';
 import { useTelegram } from '@/lib/telegram-client';
-import { api } from '@/lib/api';
+import { DEV_TELEGRAM } from '@/lib/config/timeouts';
 import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
 import { QuizInitialLoader } from '@/app/(miniapp)/quiz/components/QuizInitialLoader';
 
@@ -36,257 +36,54 @@ function LayoutContent({
   const searchParams = useSearchParams();
   const { initData, initialize } = useTelegram();
   const [isAuthorized, setIsAuthorized] = useState(false);
-  const [isNewUser, setIsNewUser] = useState<boolean | null>(null); // null = еще не проверено
-
-  // ИСПРАВЛЕНО: Ref для предотвращения множественных попыток авторизации
-  const authInProgressRef = useRef(false);
-  const authAttemptedRef = useRef(false);
+  const [isNewUser, setIsNewUser] = useState<boolean | null>(null);
   
-  // ИСПРАВЛЕНО: В development режиме устанавливаем тестовый Telegram ID
   useEffect(() => {
     if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
-      // Тестовый Telegram ID: 987654321
-      const TEST_TELEGRAM_ID = '987654321';
-      const TEST_INIT_DATA = `user=%7B%22id%22%3A${TEST_TELEGRAM_ID}%2C%22first_name%22%3A%22Test%22%2C%22last_name%22%3A%22User%22%2C%22username%22%3A%22testuser%22%2C%22language_code%22%3A%22ru%22%7D&auth_date=${Math.floor(Date.now() / 1000)}&hash=test_hash_for_development_only`;
-      
+      const testData = DEV_TELEGRAM.buildInitData();
       try {
-        // Инициализируем window.Telegram.WebApp, если его нет
         if (!window.Telegram) {
-          (window as any).Telegram = {
-            WebApp: {
-              initData: TEST_INIT_DATA,
-              ready: () => {},
-              expand: () => {},
-            },
-          };
+          (window as any).Telegram = { WebApp: { initData: testData, ready() {}, expand() {} } };
         } else if (!window.Telegram.WebApp) {
-          (window as any).Telegram.WebApp = {
-            initData: TEST_INIT_DATA,
-            ready: () => {},
-            expand: () => {},
-          };
+          (window as any).Telegram.WebApp = { initData: testData, ready() {}, expand() {} };
         } else if (!window.Telegram.WebApp.initData) {
-          // ИСПРАВЛЕНО: Проверяем, можно ли установить initData (может быть read-only)
-          try {
-            // Пробуем установить через Object.defineProperty, если обычная установка не работает
-            const descriptor = Object.getOwnPropertyDescriptor(window.Telegram.WebApp, 'initData');
-            if (descriptor && !descriptor.writable && !descriptor.set) {
-              // Свойство read-only, используем defineProperty для переопределения
-              Object.defineProperty(window.Telegram.WebApp, 'initData', {
-                value: TEST_INIT_DATA,
-                writable: true,
-                configurable: true,
-              });
-            } else {
-              // Обычная установка
-              (window.Telegram.WebApp as any).initData = TEST_INIT_DATA;
-            }
-          } catch (err) {
-            // Если не удалось установить, создаем новый объект WebApp
-            const originalWebApp = window.Telegram.WebApp;
-            (window as any).Telegram.WebApp = {
-              ...originalWebApp,
-              initData: TEST_INIT_DATA,
-            };
-          }
+          try { (window.Telegram.WebApp as any).initData = testData; } catch (_) {}
         }
-      } catch (err) {
-        // Игнорируем ошибки при установке тестового initData
-        console.warn('⚠️ Не удалось установить тестовый initData в development режиме:', err);
-      }
+      } catch (_) {}
     }
   }, []);
   
   useEffect(() => {
-    // ИСПРАВЛЕНО: Инициализация Telegram только один раз
     initialize();
-
-    // ИСПРАВЛЕНО: Авторизация через Telegram - однократная, без циклов
-    // Убрали isAuthorized из зависимостей, чтобы избежать бесконечных циклов
-    if (!initData) return; // Ждем initData
-    
-    // Guard против множественных попыток авторизации
-    if (authInProgressRef.current || authAttemptedRef.current || isAuthorized) {
-      return; // Уже авторизованы или авторизация в процессе
+    if (initData && !isAuthorized) {
+      setIsAuthorized(true);
     }
-    
-    let aborted = false;
-    authInProgressRef.current = true;
-    authAttemptedRef.current = true;
-    
-    const authorize = async () => {
-      try {
-        await api.authTelegram(initData);
-        if (!aborted) {
-          setIsAuthorized(true);
-        }
-      } catch (error) {
-        console.error('Auth error:', error);
-        // Не блокируем приложение при ошибке авторизации
-        // Не пытаемся повторно - ошибка авторизации не должна блокировать UI
-      } finally {
-        if (!aborted) {
-          authInProgressRef.current = false;
-        }
-      }
-    };
+  }, [initData, initialize, isAuthorized]);
 
-    authorize();
-    
-    return () => {
-      aborted = true;
-      authInProgressRef.current = false;
-    };
-  }, [initData, initialize]); // ИСПРАВЛЕНО: Убрали isAuthorized из зависимостей!
+  const newUserCheckedRef = useRef(false);
 
-  // ИСПРАВЛЕНО: Ref для предотвращения множественных проверок isNewUser
-  const newUserCheckInProgressRef = useRef(false);
-  const newUserCheckAttemptedRef = useRef(false);
-  
-  // ИСПРАВЛЕНО: Проверяем, является ли пользователь новым (нет hasPlanProgress)
-  // Это нужно для скрытия навигации на главной странице для нового пользователя
-  // ВАЖНО: Не делаем запросы, пока Telegram WebApp не готов или мы на /quiz
-  // ТЗ: На /quiz не должны выполняться запросы к /api/user/preferences
   useEffect(() => {
-    // КРИТИЧНО: Проверяем pathname на /quiz ПЕРЕД любыми проверками
-    // Это предотвращает вызовы getUserPreferences на /quiz
-    // ИСПРАВЛЕНО: Проверяем синхронно через window.location для надежности
-    const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
-    const isOnQuizPage = currentPath === '/quiz' || currentPath.startsWith('/quiz/') ||
-                         pathname === '/quiz' || pathname.startsWith('/quiz/');
-    
-    if (isOnQuizPage) {
-      // На /quiz не проверяем нового пользователя - это лишний запрос
-      setIsNewUser(null);
+    if (pathname !== '/' || !initData || newUserCheckedRef.current) {
+      if (pathname !== '/') setIsNewUser(null);
       return;
     }
-    
-    // ИСПРАВЛЕНО: Проверяем готовность Telegram WebApp перед вызовом API
-    // Используем initData из useTelegram, так как он уже проверяет готовность
-    const isTelegramReady = Boolean(
-      initData && 
-      typeof initData === 'string' &&
-      initData.length > 0
-    );
-    
-    // Не делаем запросы, если Telegram не готов
-    if (!isTelegramReady) {
-      setIsNewUser(null);
-      return;
-    }
-    
-    // ИСПРАВЛЕНО: Проверяем только на главной странице и только один раз
-    // ИСПРАВЛЕНО: Также проверяем, что мы не на /quiz (дополнительная защита)
-    if (pathname !== '/' || isOnQuizPage) {
-      setIsNewUser(null);
-      return;
-    }
-    
-    // Guard против множественных проверок
-    if (newUserCheckInProgressRef.current || newUserCheckAttemptedRef.current || isNewUser !== null) {
-      return; // Уже проверяли или проверка в процессе
-    }
-    
-    let aborted = false;
-    newUserCheckInProgressRef.current = true;
-    newUserCheckAttemptedRef.current = true;
-    
-    const checkNewUser = async () => {
-      try {
-        // КРИТИЧНО: Проверяем pathname еще раз внутри async функции
-        // Это защита от race condition, если пользователь перешел на /quiz во время выполнения
-        // КРИТИЧНО: Проверяем pathname еще раз внутри async функции
-        // Это защита от race condition, если пользователь перешел на /quiz во время выполнения
-        const checkPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
-        const stillOnQuiz = checkPath === '/quiz' || checkPath.startsWith('/quiz/');
-        if (stillOnQuiz || aborted) {
-          if (!aborted) {
-            setIsNewUser(null);
-          }
-          return;
-        }
-        
-        // КРИТИЧНО: Проверяем pathname еще раз ПЕРЕД импортом и вызовом getHasPlanProgress
-        // Это дополнительная защита от race condition
-        const finalCheckPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
-        const stillOnQuizFinal = finalCheckPath === '/quiz' || finalCheckPath.startsWith('/quiz/');
-        if (stillOnQuizFinal || aborted) {
-          if (!aborted) {
-            setIsNewUser(null);
-          }
-          return;
-        }
-        
-        const { getHasPlanProgress } = await import('@/lib/user-preferences');
-        // КРИТИЧНО: Проверяем pathname еще раз ПЕРЕД вызовом getHasPlanProgress
-        // Это финальная защита от race condition
-        const preCallCheckPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
-        const preCallStillOnQuiz = preCallCheckPath === '/quiz' || preCallCheckPath.startsWith('/quiz/');
-        if (preCallStillOnQuiz || aborted) {
-          if (!aborted) {
-            setIsNewUser(null);
-          }
-          return;
-        }
-        
-        const hasPlanProgress = await getHasPlanProgress();
-        if (!aborted && !stillOnQuiz) {
-          setIsNewUser(!hasPlanProgress);
-        }
-      } catch {
-        if (!aborted) {
-          setIsNewUser(false);
-        }
-      } finally {
-        if (!aborted) {
-          newUserCheckInProgressRef.current = false;
-        }
-      }
-    };
-    
-    checkNewUser();
-    
-    return () => {
-      aborted = true;
-      newUserCheckInProgressRef.current = false;
-    };
-  }, [pathname, initData, isNewUser]); // Добавляем isNewUser в зависимости
 
-  // УДАЛЕНО: Старая проверка профиля, которая вызывала множественные запросы
-  /* useEffect(() => {
-    if (pathname === '/' && initData) {
-      setIsCheckingProfile(true);
-      // Проверяем профиль асинхронно
-      const checkProfile = async () => {
-        try {
-          const profile = await api.getCurrentProfile();
-          if (profile && (profile as any).id) {
-            // Профиль есть - показываем навигацию после небольшой задержки
-            setTimeout(() => setIsCheckingProfile(false), 100);
-          } else {
-            // Профиля нет - скрываем навигацию (будет редирект на анкету)
-            setIsCheckingProfile(false);
-          }
-        } catch (err: any) {
-          // Профиля нет (404) - скрываем навигацию
-          const isNotFound = err?.status === 404 || 
-                            err?.message?.includes('404') || 
-                            err?.message?.includes('No profile') ||
-                            err?.message?.includes('Profile not found');
-          if (isNotFound) {
-            setIsCheckingProfile(false);
-          } else {
-            // Другая ошибка - через небольшую задержку показываем навигацию
-            setTimeout(() => setIsCheckingProfile(false), 500);
-          }
-        }
-      };
-      checkProfile();
-    } else if (pathname !== '/') {
-      // Не на главной странице - не проверяем профиль
-      setIsCheckingProfile(false);
-    }
-  }, [pathname, initData]); */
+    newUserCheckedRef.current = true;
+    let aborted = false;
+
+    (async () => {
+      try {
+        const { getHasPlanProgress } = await import('@/lib/user-preferences');
+        if (aborted) return;
+        const has = await getHasPlanProgress();
+        if (!aborted) setIsNewUser(!has);
+      } catch {
+        if (!aborted) setIsNewUser(false);
+      }
+    })();
+
+    return () => { aborted = true; };
+  }, [pathname, initData]);
 
   // Проверяем, показывается ли экран "Вы не завершили анкету" (через query параметр)
   const isResumeScreen = searchParams?.get('resume') === 'true';
@@ -350,32 +147,10 @@ function LayoutContent({
   );
 }
 
-// Fallback компонент, который сохраняет всю структуру layout
-// ИСПРАВЛЕНО: usePathname() не вызывает suspend, но для консистентности используем его безопасно
-// В fallback показываем базовую структуру без зависимостей от конкретного пути
+/** Минимальный fallback во время Suspense — только спиннер, без тяжёлых компонентов */
 function LayoutFallback() {
   useRemoveRootLoading();
-  const pathname = usePathname();
-
-  const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
-  const isOnQuizPage = currentPath === '/quiz' || currentPath.startsWith('/quiz/');
-  const isOnRootPage = pathname === '/' || currentPath === '/';
-  const hideNav = isOnQuizPage ||
-                 pathname === '/loading' ||
-                 pathname.startsWith('/loading/') ||
-                 isOnRootPage;
-
-  // Один лоадер при открытии — чёрно-серый (QuizInitialLoader), без экрана «Загрузка...»
-  return (
-    <>
-      <NetworkStatus />
-      <PageTransition>
-        <QuizInitialLoader />
-      </PageTransition>
-      {!hideNav && !isOnQuizPage && <BottomNavigation />}
-      {!isOnQuizPage && <ServiceFeedbackPopup />}
-    </>
-  );
+  return <QuizInitialLoader />;
 }
 
 export default function MiniappLayout({
@@ -383,43 +158,9 @@ export default function MiniappLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // ИСПРАВЛЕНО: Используем usePathname() для SSR-совместимости
-  // Это предотвращает hydration mismatch, так как usePathname() работает одинаково на сервере и клиенте
-  const pathname = usePathname();
-  
-  // ИСПРАВЛЕНО: Инициализируем state на основе pathname для SSR-совместимости
-  // На сервере pathname будет доступен, что гарантирует одинаковое дерево рендеринга
-  const [isOnQuizPage, setIsOnQuizPage] = useState(() => {
-    // ИСПРАВЛЕНО: Используем pathname из usePathname() для инициализации
-    // Это гарантирует, что на сервере и клиенте будет одинаковое начальное значение
-    return pathname === '/quiz' || pathname.startsWith('/quiz/');
-  });
-  
-  useEffect(() => {
-    // ИСПРАВЛЕНО: Обновляем state при изменении pathname на клиенте
-    // Это предотвращает проблемы с SSR и гарантирует правильную проверку
-    setIsOnQuizPage(pathname === '/quiz' || pathname.startsWith('/quiz/'));
-  }, [pathname]);
-  
-  // ИСПРАВЛЕНО: На /quiz монтируем только минимальную структуру без QueryProvider
-  // QueryProvider может инициализировать запросы через React Query, поэтому на /quiz не монтируем его
-  // ВАЖНО: Это критично для предотвращения любых глобальных запросов на /quiz
-  // ИСПРАВЛЕНО: Используем только pathname из usePathname() для SSR-совместимости
-  // Это предотвращает hydration mismatch, так как usePathname() работает одинаково на сервере и клиенте
-  const isOnQuizPageFromPathname = pathname === '/quiz' || pathname.startsWith('/quiz/');
-  
-  // ИСПРАВЛЕНО: Используем pathname для серверного рендеринга и state для клиентского
-  // Это гарантирует одинаковое дерево на сервере и клиенте
-  if (isOnQuizPageFromPathname || isOnQuizPage) {
-    return (
-      <PaywallVisibilityProvider>
-        <Suspense fallback={<LayoutFallback />}>
-          <LayoutContent>{children}</LayoutContent>
-        </Suspense>
-      </PaywallVisibilityProvider>
-    );
-  }
-
+  // QueryProvider всегда смонтирован — он не делает запросов сам по себе.
+  // Раньше на /quiz он не монтировался, что приводило к полному remount
+  // дерева при навигации quiz → home (уничтожая весь кеш и state).
   return (
     <QueryProvider>
       <PaywallVisibilityProvider>

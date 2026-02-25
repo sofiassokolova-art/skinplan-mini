@@ -183,21 +183,33 @@ export async function rateLimit(
 }
 
 /**
- * Получить IP адрес из запроса
+ * Извлекает Telegram ID из initData (быстрый regex, без криптопроверки —
+ * это только для rate-limit ключа, не для авторизации).
+ */
+function extractTelegramIdFromInitData(initData: string | null): string | null {
+  if (!initData) return null;
+  const match = initData.match(/user=%7B%22id%22%3A(\d+)/) ||
+                decodeURIComponent(initData).match(/"id"\s*:\s*(\d+)/);
+  return match ? `tg:${match[1]}` : null;
+}
+
+/**
+ * Возвращает идентификатор для rate limiting.
+ * Приоритет: Telegram ID > IP > user-agent.
  */
 export function getIdentifier(request: NextRequest): string {
-  // Пробуем получить IP из заголовков (Vercel проксирует через x-forwarded-for)
+  // Telegram ID — самый точный идентификатор (в WebView все IP могут совпадать)
+  const initData = request.headers.get('x-telegram-init-data') ||
+                   request.headers.get('X-Telegram-Init-Data');
+  const tgId = extractTelegramIdFromInitData(initData);
+  if (tgId) return tgId;
+
   const forwarded = request.headers.get('x-forwarded-for');
-  if (forwarded) {
-    return forwarded.split(',')[0].trim();
-  }
+  if (forwarded) return forwarded.split(',')[0].trim();
 
   const realIp = request.headers.get('x-real-ip');
-  if (realIp) {
-    return realIp;
-  }
+  if (realIp) return realIp;
 
-  // Fallback на user agent (менее надежно, но лучше чем ничего)
   const userAgent = request.headers.get('user-agent') || 'unknown';
   return userAgent.substring(0, 50);
 }

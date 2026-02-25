@@ -4,7 +4,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { api } from '@/lib/api';
 import { clientLogger } from '@/lib/client-logger';
 import { REDIRECT_TIMEOUTS, ROOT_LOAD_TIMEOUTS } from '@/lib/config/timeouts';
 
@@ -62,21 +61,35 @@ export default function RootPage() {
       };
     }
 
-    // 2) Если Telegram недоступен: в production → /quiz; в development проверяем кэш/профиль (тестовый initData)
-    const hasTelegram = typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
+    // 2) Проверяем Telegram initData — ждём до 1.5с, т.к. telegram-web-app.js (afterInteractive)
+    //    может не успеть загрузиться к моменту первого рендера
     const isDev = typeof window !== 'undefined' && process.env.NODE_ENV === 'development';
-    if (!hasTelegram && !isDev) {
-      clientLogger.log('Telegram WebApp не доступен (production), перенаправляем на /quiz');
-      safeReplace('/quiz');
-      return () => {
-        if (cleanupTimerRef.current) {
-          clearTimeout(cleanupTimerRef.current);
-          cleanupTimerRef.current = null;
+    const hasTelegramNow = typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
+
+    if (!hasTelegramNow && !isDev) {
+      // Ждём появления initData (скрипт afterInteractive или hash-fallback)
+      const waitForTelegram = new Promise<boolean>((resolve) => {
+        let elapsed = 0;
+        const interval = setInterval(() => {
+          elapsed += 150;
+          if (window.Telegram?.WebApp?.initData) {
+            clearInterval(interval);
+            resolve(true);
+          } else if (elapsed >= 1500) {
+            clearInterval(interval);
+            resolve(false);
+          }
+        }, 150);
+      });
+
+      waitForTelegram.then((found) => {
+        if (redirectInProgressRef.current) return;
+        if (!found) {
+          clientLogger.log('Telegram WebApp не доступен, перенаправляем на /quiz');
+          safeReplace('/quiz');
         }
-      };
-    }
-    if (!hasTelegram && isDev) {
-      clientLogger.log('Telegram WebApp не доступен (localhost) — проверяем кэш и hasPlanProgress для тестового пользователя');
+        // Если found=true, продолжаем ниже (checkAndRedirect уже запущен)
+      });
     }
 
     // 3) Авторизация (не блокирующая) + проверка hasPlanProgress
@@ -114,28 +127,10 @@ export default function RootPage() {
         return;
       }
 
-      // Нет свежего кэша: запросы auth и hasPlanProgress параллельно (не подряд)
+      // Проверяем hasPlanProgress (авторизация через initData в заголовках автоматическая)
       try {
-        const initData = window.Telegram?.WebApp?.initData;
-        const authPromise = initData
-          ? api.authTelegram(initData).then(() => true).catch((e: any) => {
-              clientLogger.warn('⚠️ Authorization failed (non-blocking):', e?.message);
-              return false;
-            })
-          : Promise.resolve(false);
-        const planPromise = (async () => {
-          try {
-            const { getHasPlanProgress } = await import('@/lib/user-preferences');
-            return await getHasPlanProgress();
-          } catch (e) {
-            clientLogger.warn('⚠️ Error getHasPlanProgress, assume new user:', e);
-            return false;
-          }
-        })();
-
-        const [authOk, planProgress] = await Promise.all([authPromise, planPromise]);
-        hasPlanProgress = planProgress;
-        if (initData && authOk) clientLogger.log('✅ Authorization successful');
+        const { getHasPlanProgress } = await import('@/lib/user-preferences');
+        hasPlanProgress = await getHasPlanProgress();
       } catch (error) {
         clientLogger.warn('⚠️ Root check error:', error);
         hasPlanProgress = false;
@@ -166,8 +161,23 @@ export default function RootPage() {
     };
   }, []);
 
-  // Во время загрузки/редиректа ничего не показываем
-  if (isLoading || isRedirecting) return null;
-
-  return null;
+  return (
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#FFFFFF',
+    }}>
+      <div style={{
+        width: 48,
+        height: 48,
+        border: '3px solid rgba(0,0,0,0.08)',
+        borderTop: '3px solid #000',
+        borderRadius: '50%',
+        animation: 'spin 0.8s linear infinite',
+      }} />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
 }
