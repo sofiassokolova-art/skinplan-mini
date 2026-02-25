@@ -287,8 +287,8 @@ export async function POST(request: NextRequest) {
         const initData = getTelegramInitDataFromHeaders(request);
         if (initData) {
         // Вызываем генерацию плана асинхронно (не ждем завершения)
-        // Это улучшает UX - пользователь не ждет долгой генерации
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/plan/generate`, {
+        const origin = request.nextUrl.origin;
+        fetch(`${origin}/api/plan/generate`, {
           method: 'GET',
           headers: {
             'X-Telegram-Init-Data': initData,

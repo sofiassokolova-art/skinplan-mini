@@ -20,8 +20,16 @@ export async function GET(
       );
     }
 
+    const productId = parseInt(params.id, 10);
+    if (isNaN(productId) || productId <= 0) {
+      return NextResponse.json(
+        { error: 'Invalid product ID' },
+        { status: 400 }
+      );
+    }
+
     const product = await prisma.product.findUnique({
-      where: { id: parseInt(params.id) },
+      where: { id: productId },
       include: {
         brand: true,
       },
@@ -82,9 +90,16 @@ export async function PUT(
       published,
     } = body;
 
-    // Проверяем существование продукта
+    const productId = parseInt(params.id, 10);
+    if (isNaN(productId) || productId <= 0) {
+      return NextResponse.json(
+        { error: 'Invalid product ID' },
+        { status: 400 }
+      );
+    }
+
     const existingProduct = await prisma.product.findUnique({
-      where: { id: parseInt(params.id) },
+      where: { id: productId },
     });
 
     if (!existingProduct) {
@@ -94,7 +109,6 @@ export async function PUT(
       );
     }
 
-    // Проверяем бренд, если изменяется
     if (brandId && parseInt(brandId) !== existingProduct.brandId) {
       const brand = await prisma.brand.findUnique({
         where: { id: parseInt(brandId) },
@@ -109,7 +123,7 @@ export async function PUT(
     }
 
     const product = await prisma.product.update({
-      where: { id: parseInt(params.id) },
+      where: { id: productId },
       data: {
         ...(brandId && { brandId: parseInt(brandId) }),
         ...(name && { name }),
@@ -169,8 +183,16 @@ export async function DELETE(
       );
     }
 
+    const productId = parseInt(params.id, 10);
+    if (isNaN(productId) || productId <= 0) {
+      return NextResponse.json(
+        { error: 'Invalid product ID' },
+        { status: 400 }
+      );
+    }
+
     const product = await prisma.product.findUnique({
-      where: { id: parseInt(params.id) },
+      where: { id: productId },
     });
 
     if (!product) {
@@ -181,7 +203,7 @@ export async function DELETE(
     }
 
     await prisma.product.delete({
-      where: { id: parseInt(params.id) },
+      where: { id: productId },
     });
 
     return NextResponse.json({ success: true });

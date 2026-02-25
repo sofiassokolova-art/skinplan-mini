@@ -57,22 +57,13 @@ export async function GET(request: NextRequest) {
       })),
     };
 
-    // ИСПРАВЛЕНО: совместимость со старым фронтом, который ожидает обертку { data: ... }.
-    // ApiResponse.success() исторически возвращает payload напрямую, поэтому отдаем оба формата.
-    return ApiResponse.success({
-      ...payload,
-      data: payload,
-    });
+    return ApiResponse.success(payload);
   } catch (error: unknown) {
     const duration = Date.now() - startTime;
     logApiError(method, path, error, userId);
     return ApiResponse.internalError(error, { userId, method, path, duration });
   }
 }
-
-
-
-
 
 
 

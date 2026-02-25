@@ -10,13 +10,7 @@ import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 
 export const runtime = 'nodejs';
 
-function entitlementCodeForProduct(productCode: string): string {
-  if (productCode === 'plan_access') return 'paid_access';
-  if (productCode === 'retake_topic') return 'retake_topic_access';
-  if (productCode === 'retake_full') return 'retake_full_access';
-  // По умолчанию — доступ к плану (обратная совместимость)
-  return 'paid_access';
-}
+import { entitlementCodeForProduct, calculateValidUntil } from '@/lib/payment-helpers';
 
 /**
  * Тестовый endpoint для симуляции успешного платежа через вебхук ЮKassa
@@ -124,19 +118,7 @@ export async function POST(request: NextRequest) {
 
       // Создаем или обновляем Entitlement
       const entitlementCode = entitlementCodeForProduct(payment.productCode);
-      const validUntil = new Date();
-      if (payment.productCode === 'subscription_month') {
-        validUntil.setMonth(validUntil.getMonth() + 1);
-      } else if (payment.productCode === 'plan_access') {
-        validUntil.setDate(validUntil.getDate() + 28);
-      } else if (payment.productCode === 'retake_topic') {
-        validUntil.setDate(validUntil.getDate() + 1);
-      } else if (payment.productCode === 'retake_full') {
-        // Полное перепрохождение — доступ на 28 дней (после этого payment gate снова появляется)
-        validUntil.setDate(validUntil.getDate() + 28);
-      } else {
-        validUntil.setFullYear(validUntil.getFullYear() + 1);
-      }
+      const validUntil = calculateValidUntil(payment.productCode);
 
       await tx.entitlement.upsert({
         where: {

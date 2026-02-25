@@ -767,26 +767,16 @@ export async function generate28DayPlan(
     });
   }
 
-  // ИСПРАВЛЕНО: Применяем дополнительную фильтрацию продуктов из RecommendationSession
-  // на основе текущего профиля пользователя для гарантии персонализации
-  // Это важно, если RecommendationSession был создан для другого профиля (например, при retake)
-  let filteredProducts: any[];
-  
-  if (recommendationProducts.length > 0) {
-    // ИСПРАВЛЕНО: Применяем фильтрацию на основе текущего профиля для персонализации
-    // Это гарантирует, что продукты соответствуют текущему профилю пользователя
-    const { filterProductsBasic } = await import('./unified-product-filter');
-    
-    // Нормализуем продукты к ProductWithBrand перед фильтрацией
-    const normalizedProducts = recommendationProducts.map((product: any) => {
-      const productBrand = product.brand as any;
+  // Адаптер для нормализации продуктов к единому типу ProductWithBrand
+  const normalizeToProductWithBrand = (product: any): ProductWithBrand => {
+    if (product.brand && typeof product.brand === 'object' && 'name' in product.brand) {
       return {
         id: product.id,
         name: product.name,
         brand: {
-          id: productBrand?.id || 0,
-          name: productBrand?.name || '',
-          isActive: productBrand?.isActive ?? true,
+          id: product.brand.id,
+          name: product.brand.name,
+          isActive: product.brand.isActive ?? true,
         },
         step: product.step || '',
         category: product.category || null,
@@ -797,10 +787,16 @@ export async function generate28DayPlan(
         skinTypes: product.skinTypes || [],
         published: product.published ?? true,
         activeIngredients: product.activeIngredients || [],
-      } as ProductWithBrand;
-    });
-    
-    // Применяем фильтрацию на основе текущего профиля
+      };
+    }
+    throw new Error(`Cannot normalize product to ProductWithBrand: missing or invalid brand structure for product ${product.id}`);
+  };
+
+  let filteredProducts: any[];
+  const { filterProductsBasic } = await import('./unified-product-filter');
+  
+  if (recommendationProducts.length > 0) {
+    const normalizedProducts = recommendationProducts.map(normalizeToProductWithBrand);
     filteredProducts = await filterProductsBasic(normalizedProducts, profileClassification, 'soft');
     
     logger.info('Products from RecommendationSession filtered by current profile', {
@@ -811,32 +807,7 @@ export async function generate28DayPlan(
       profileBudget: profileClassification.budget,
     });
   } else {
-    // ИСПРАВЛЕНО: Используем единый фильтр продуктов вместо дублирующейся логики
-    const { filterProductsBasic } = await import('./unified-product-filter');
-    
-    // Нормализуем продукты к ProductWithBrand перед фильтрацией
-    const normalizedProducts = allProducts.map((product: any) => {
-      const productBrand = product.brand as any;
-      return {
-        id: product.id,
-        name: product.name,
-        brand: {
-          id: productBrand?.id || 0,
-          name: productBrand?.name || '',
-          isActive: productBrand?.isActive ?? true,
-        },
-        step: product.step || '',
-        category: product.category || null,
-        price: product.price ?? null,
-        imageUrl: product.imageUrl || null,
-        isHero: product.isHero ?? false,
-        priority: product.priority ?? 0,
-        skinTypes: product.skinTypes || [],
-        published: product.published ?? true,
-        activeIngredients: product.activeIngredients || [],
-      } as ProductWithBrand;
-    });
-    
+    const normalizedProducts = allProducts.map(normalizeToProductWithBrand);
     logger.info('No RecommendationSession - filtering products from scratch using unified filter', { userId });
     filteredProducts = await filterProductsBasic(normalizedProducts, profileClassification, 'soft');
   }
@@ -858,33 +829,6 @@ export async function generate28DayPlan(
     const bPriority = (b as any).priority || 0;
     return bPriority - aPriority;
   });
-
-  // ИСПРАВЛЕНО: Адаптер для нормализации продуктов к единому типу ProductWithBrand
-  const normalizeToProductWithBrand = (product: any): ProductWithBrand => {
-    // Если продукт уже в правильном формате, возвращаем как есть
-    if (product.brand && typeof product.brand === 'object' && 'name' in product.brand) {
-      return {
-        id: product.id,
-        name: product.name,
-        brand: {
-          id: product.brand.id,
-          name: product.brand.name,
-          isActive: product.brand.isActive ?? true,
-        },
-        step: product.step || '',
-        category: product.category || null,
-        price: product.price ?? null,
-        imageUrl: product.imageUrl || null,
-        isHero: product.isHero ?? false,
-        priority: product.priority ?? 0,
-        skinTypes: product.skinTypes || [],
-        published: product.published ?? true,
-        activeIngredients: product.activeIngredients || [],
-      };
-    }
-    // Если бренд в другом формате, пытаемся адаптировать
-    throw new Error(`Cannot normalize product to ProductWithBrand: missing or invalid brand structure for product ${product.id}`);
-  };
 
   // ВАЖНО: Если используем продукты из RecommendationSession, используем их ВСЕ без ограничений
   // Это гарантирует, что план будет содержать те же продукты, что и главная страница
@@ -1033,221 +977,6 @@ export async function generate28DayPlan(
         });
       }
     }
-  };
-
-  // Функция для преобразования старого формата step/category в StepCategory
-  // NOTE: оставляем legacy-реализацию как reference, но в генерации используем
-  // единую функцию из '@/lib/step-matching' (покрытую тестами).
-  const mapStepToStepCategoryLegacy = (step: string | null | undefined, category: string | null | undefined): StepCategory[] => {
-    const stepStr = (step || category || '').toLowerCase();
-    const categoryStr = (category || '').toLowerCase();
-    const categories: StepCategory[] = [];
-    const isCleanserContext = stepStr.includes('cleanser') || categoryStr === 'cleanser';
-    const isTonerContext = stepStr.includes('toner') || categoryStr === 'toner';
-    const isSerumContext = stepStr.includes('serum') || categoryStr === 'serum';
-    const isMoisturizerContext =
-      stepStr.includes('moisturizer') ||
-      stepStr.includes('cream') ||
-      categoryStr === 'moisturizer' ||
-      categoryStr === 'cream';
-    
-    // Маппинг старого формата в StepCategory
-    // Проверяем и step, и category для более точного маппинга
-    // ИСПРАВЛЕНО: Ужесточаем проверку 'oil' - используем regex с границами слова
-    // чтобы избежать ложных срабатываний на "spoiler", "boil", "oily" и т.п.
-    const oilPattern = /\b(oil|масло)\b/i;
-    if (stepStr === 'cleanser_oil' || 
-        stepStr.includes('_oil') || 
-        oilPattern.test(stepStr) ||
-        (categoryStr === 'oil' || categoryStr.includes('_oil') || oilPattern.test(categoryStr))) {
-      categories.push('cleanser_oil');
-      // Также ищем по ключевым словам: гидрофильное, масло, oil, double cleans
-      categories.push('cleanser_gentle'); // Базовый поиск для совместимости
-    } else if (stepStr.startsWith('cleanser_gentle') || (isCleanserContext && stepStr.includes('gentle'))) {
-      categories.push('cleanser_gentle');
-    } else if (stepStr.startsWith('cleanser_balancing') || (isCleanserContext && stepStr.includes('balancing'))) {
-      categories.push('cleanser_balancing');
-    } else if (stepStr.startsWith('cleanser_deep') || (isCleanserContext && stepStr.includes('deep'))) {
-      categories.push('cleanser_deep');
-    } else if (stepStr.startsWith('cleanser') || categoryStr === 'cleanser' || stepStr === 'cleanser') {
-      // Если просто 'cleanser' без уточнения, пробуем все варианты для максимальной совместимости
-      categories.push('cleanser_gentle');
-      categories.push('cleanser_balancing');
-      categories.push('cleanser_deep');
-    }
-    
-    // ВАЖНО: не маппим по "hydrating/soothing" без контекста шага — иначе один продукт попадает в toner/serum/moisturizer одновременно
-    if (stepStr.startsWith('toner_hydrating') || (isTonerContext && stepStr.includes('hydrating'))) {
-      categories.push('toner_hydrating');
-    } else if (stepStr.startsWith('toner_soothing') || (isTonerContext && stepStr.includes('soothing'))) {
-      categories.push('toner_soothing');
-    } else if (stepStr.startsWith('toner_exfoliant') || stepStr.startsWith('toner_acid') || (isTonerContext && (stepStr.includes('exfoliant') || stepStr.includes('acid') || stepStr.includes('aha') || stepStr.includes('bha') || stepStr.includes('pha')))) {
-      categories.push('toner_exfoliant');
-      categories.push('toner_acid');
-    } else if (stepStr.startsWith('toner_aha') || (isTonerContext && stepStr.includes('aha'))) {
-      categories.push('toner_aha');
-    } else if (stepStr.startsWith('toner_bha') || (isTonerContext && stepStr.includes('bha'))) {
-      categories.push('toner_bha');
-    } else if (stepStr === 'toner' || categoryStr === 'toner') {
-      // Если просто 'toner' без уточнения, пробуем основные варианты
-      categories.push('toner_hydrating');
-      categories.push('toner_soothing');
-      categories.push('toner_exfoliant');
-    }
-    
-    if (stepStr.startsWith('serum_hydrating') || (isSerumContext && stepStr.includes('hydrating'))) {
-      categories.push('serum_hydrating');
-    } else if (stepStr.startsWith('serum_niacinamide') || (isSerumContext && stepStr.includes('niacinamide'))) {
-      categories.push('serum_niacinamide');
-    } else if (stepStr.startsWith('serum_vitc') || (isSerumContext && (stepStr.includes('vitamin c') || stepStr.includes('vitc')))) {
-      categories.push('serum_vitc');
-    } else if (stepStr.startsWith('serum_anti_redness') || (isSerumContext && stepStr.includes('anti-redness'))) {
-      categories.push('serum_anti_redness');
-    } else if (stepStr.startsWith('serum_brightening') || (isSerumContext && stepStr.includes('brightening'))) {
-      categories.push('serum_brightening_soft');
-    } else if (stepStr.startsWith('serum_peptide') || (isSerumContext && (stepStr.includes('peptide') || stepStr.includes('copper peptide')))) {
-      categories.push('serum_peptide');
-    } else if (stepStr.startsWith('serum_antiage') || (isSerumContext && (stepStr.includes('antiage') || stepStr.includes('anti-age')))) {
-      categories.push('serum_antiage');
-    } else if (stepStr.startsWith('serum_exfoliant') || (isSerumContext && (stepStr.includes('lactic') || stepStr.includes('mandelic') || stepStr.includes('exfoliant')))) {
-      categories.push('serum_exfoliant');
-    } else if (stepStr === 'serum' || categoryStr === 'serum') {
-      // Если просто 'serum' без уточнения, пробуем основные варианты
-      categories.push('serum_hydrating');
-      categories.push('serum_niacinamide');
-      categories.push('serum_vitc');
-      categories.push('serum_brightening_soft');
-      categories.push('serum_peptide');
-      categories.push('serum_antiage');
-    }
-    
-    if (stepStr.startsWith('treatment_acne_bpo') || stepStr.includes('benzoyl peroxide')) {
-      categories.push('treatment_acne_bpo');
-    } else if (stepStr.startsWith('treatment_acne_azelaic') || stepStr.includes('azelaic')) {
-      categories.push('treatment_acne_azelaic');
-    } else if (stepStr.startsWith('treatment_acne_local') || stepStr.includes('spot treatment')) {
-      categories.push('treatment_acne_local');
-    } else if (stepStr.startsWith('treatment_exfoliant_mild') || (stepStr.includes('exfoliant') && !stepStr.includes('strong'))) {
-      categories.push('treatment_exfoliant_mild');
-    } else if (stepStr.startsWith('treatment_exfoliant_strong') || stepStr.includes('strong exfoliant')) {
-      categories.push('treatment_exfoliant_strong');
-    } else if (stepStr.startsWith('treatment_pigmentation') || stepStr.includes('pigmentation')) {
-      categories.push('treatment_pigmentation');
-    } else if (stepStr.startsWith('treatment_antiage') || stepStr.includes('antiage') || stepStr.includes('anti-age')) {
-      categories.push('treatment_antiage');
-    } else if (stepStr.startsWith('treatment_acid') || (stepStr.includes('treatment') && stepStr.includes('acid'))) {
-      categories.push('treatment_acid');
-    } else if (stepStr.startsWith('spot_treatment') || stepStr.includes('spot treatment')) {
-      categories.push('spot_treatment');
-    } else if (stepStr === 'treatment' || categoryStr === 'treatment') {
-      // Если просто 'treatment' без уточнения, пробуем основные варианты
-      // ВАЖНО: Эти категории должны соответствовать тем, что используются в активной фазе плана
-      // Это обеспечивает согласованность между правилами, сессиями рекомендаций и планом
-      categories.push('treatment_acne_azelaic');
-      categories.push('treatment_acne_bpo');
-      categories.push('treatment_exfoliant_mild');
-      categories.push('treatment_exfoliant_strong');
-      categories.push('treatment_pigmentation');
-      categories.push('treatment_antiage');
-      categories.push('treatment_acid');
-    }
-    
-    if (stepStr.startsWith('moisturizer_light') || (isMoisturizerContext && stepStr.includes('light'))) {
-      categories.push('moisturizer_light');
-    } else if (stepStr.startsWith('moisturizer_balancing') || (isMoisturizerContext && stepStr.includes('balancing'))) {
-      categories.push('moisturizer_balancing');
-    } else if (stepStr.startsWith('moisturizer_barrier') || (isMoisturizerContext && stepStr.includes('barrier'))) {
-      categories.push('moisturizer_barrier');
-    } else if (stepStr.startsWith('moisturizer_soothing') || (isMoisturizerContext && stepStr.includes('soothing'))) {
-      categories.push('moisturizer_soothing');
-    } else if (stepStr === 'moisturizer' || stepStr === 'cream' || categoryStr === 'moisturizer' || categoryStr === 'cream') {
-      // ИСПРАВЛЕНО: Если просто 'moisturizer' или 'cream' без уточнения, пробуем варианты в зависимости от типа кожи
-      // Для dry кожи приоритет - moisturizer_barrier, для других - moisturizer_light
-      if (profile.skinType === 'dry' || profile.skinType === 'combination_dry') {
-        categories.push('moisturizer_barrier');
-        categories.push('moisturizer_soothing');
-        categories.push('moisturizer_light');
-      } else {
-        categories.push('moisturizer_light');
-        categories.push('moisturizer_balancing');
-        categories.push('moisturizer_barrier');
-      }
-    }
-    
-    // ИСПРАВЛЕНО: Проверяем специфичные варианты SPF ПЕРВЫМИ, чтобы не маппить sensitive/oily на face
-    // Используем более точные проверки с границами слова для 'spf'
-    const spfPattern = /\b(spf|sunscreen|защит)\b/i;
-    if (stepStr.startsWith('spf_50_sensitive') || (spfPattern.test(stepStr) && /\bsensitive\b/i.test(stepStr))) {
-      categories.push('spf_50_sensitive');
-    } else if (stepStr.startsWith('spf_50_oily') || (spfPattern.test(stepStr) && /\boily\b/i.test(stepStr))) {
-      categories.push('spf_50_oily');
-    } else if (stepStr.startsWith('spf_50_face') || stepStr === 'spf' || categoryStr === 'spf' || spfPattern.test(stepStr)) {
-      categories.push('spf_50_face');
-    }
-    
-    // Маски - ИСПРАВЛЕНО: Проверяем, что это именно mask, а не toner/moisturizer с тем же суффиксом
-    if (stepStr.startsWith('mask_clay') || (stepStr.includes('mask') && stepStr.includes('clay'))) {
-      categories.push('mask_clay');
-    } else if (stepStr.startsWith('mask_hydrating') || (stepStr.includes('mask') && stepStr.includes('hydrating'))) {
-      categories.push('mask_hydrating');
-    } else if (stepStr.startsWith('mask_soothing') || (stepStr.includes('mask') && stepStr.includes('soothing'))) {
-      categories.push('mask_soothing');
-    } else if (stepStr.startsWith('mask_sleeping') || (stepStr.includes('mask') && stepStr.includes('sleeping'))) {
-      categories.push('mask_sleeping');
-    } else if (stepStr.startsWith('mask_enzyme') || (stepStr.includes('mask') && (stepStr.includes('enzyme') || stepStr.includes('papain') || stepStr.includes('bromelain')))) {
-      categories.push('mask_enzyme');
-    } else if (stepStr.startsWith('mask_acid') || stepStr.startsWith('mask_peel') || (stepStr.includes('mask') && (stepStr.includes('acid') || stepStr.includes('peel') || stepStr.includes('lactic') || stepStr.includes('mandelic')))) {
-      categories.push('mask_acid');
-      categories.push('mask_peel');
-    } else if (stepStr === 'mask' || categoryStr === 'mask') {
-      // Если просто 'mask' без уточнения, пробуем все варианты
-      categories.push('mask_clay', 'mask_hydrating', 'mask_soothing', 'mask_sleeping', 'mask_enzyme', 'mask_acid');
-    }
-    
-    // ИСПРАВЛЕНО: Если ничего не найдено, добавляем жесткий fallback
-    // Это критично важно - без этого продукты не попадают в productsByStepMap
-    if (categories.length === 0) {
-      // Жесткий fallback на основе базового шага
-      const baseStep = stepStr || categoryStr || '';
-      
-      if (baseStep.includes('cleanser') || baseStep.includes('очищ')) {
-        categories.push('cleanser_gentle');
-      } else if (baseStep.includes('toner') || baseStep.includes('тоник')) {
-        categories.push('toner_hydrating');
-      } else if (baseStep.includes('serum') || baseStep.includes('сыворотк')) {
-        categories.push('serum_hydrating');
-      } else if (baseStep.includes('treatment') || baseStep.includes('лечени') || baseStep.includes('активн')) {
-        categories.push('treatment_antiage');
-      } else if (baseStep.includes('moisturizer') || baseStep.includes('cream') || baseStep.includes('крем') || baseStep.includes('увлажн')) {
-        categories.push('moisturizer_light');
-      } else if (baseStep.includes('spf') || baseStep.includes('sunscreen') || baseStep.includes('защит')) {
-        categories.push('spf_50_face');
-      } else if (baseStep.includes('mask') || baseStep.includes('маск')) {
-        categories.push('mask_hydrating');
-      }
-      
-      // Если все еще пусто, логируем предупреждение
-      if (categories.length === 0) {
-        logger.warn('mapStepToStepCategory: Could not map step/category to any StepCategory, using generic fallback', {
-          step: stepStr,
-          category: categoryStr,
-          userId,
-        }, { saveToDb: true, userId });
-        // Последний fallback - пробуем использовать как есть
-        if (stepStr) {
-          categories.push(stepStr as StepCategory);
-        }
-      } else {
-        logger.info('mapStepToStepCategory: Used hard fallback for unmapped step', {
-          step: stepStr,
-          category: categoryStr,
-          fallbackCategories: categories,
-          userId,
-        }, { saveToDb: true, userId });
-      }
-    }
-    
-    return categories;
   };
 
   const mapProductToStepCategories = (step: string | null | undefined, category: string | null | undefined): StepCategory[] => {
@@ -2379,21 +2108,7 @@ export async function generate28DayPlan(
   });
 
   // Шаг 3: Генерация плана (28 дней, 4 недели)
-  // ИСПРАВЛЕНО: Генерируем plan28Days напрямую, weeks используется только для legacy формата
   const plan28Days: DayPlan[] = [];
-  
-  // ИСПРАВЛЕНО: weeks используется только для обратной совместимости (legacy формат)
-  const weeks: Array<{
-    week: number;
-    days?: Array<{
-      morning: number[];
-      evening: number[];
-    }>;
-    summary: {
-      focus: GoalKey[];
-      productsCount: number;
-    };
-  }> = [];
   
   // ИСПРАВЛЕНО (P1): Кэшируем результаты canApplyStep для всех возможных шагов
   // Шаги одинаковые для всех дней (шаблон не меняется), поэтому проверяем один раз
@@ -2433,556 +2148,17 @@ export async function generate28DayPlan(
   logger.info('Step allowance cache populated', {
     userId,
     cachedCount: stepAllowanceCache.size,
-    allowedCount: Array.from(stepAllowanceCache.values()).filter(Boolean).length,
+    allowedCount: Array.from(stepAllowanceCache.values()).filter(v => v.allowed).length,
   });
   
-  for (let weekNum = 1; weekNum <= PLAN_WEEKS_TOTAL; weekNum++) {
-    // ИСПРАВЛЕНО: Используем PlanDayLegacy из api-types.ts
-    const days: Array<{
-      morning: number[];
-      evening: number[];
-    }> = [];
-    
-    for (let dayNum = 1; dayNum <= PLAN_DAYS_PER_WEEK; dayNum++) {
-      const day = (weekNum - 1) * 7 + dayNum;
-      
-      // Используем скорректированные шаги вместо оригинальных из шаблона
-      const templateMorningBase = adjustedMorning;
-      const templateEveningBase = adjustedEvening;
-
-      // ВАЖНО: Все средства показываются с первого дня (прогрессия убрана)
-      // Это обеспечивает полную рутину сразу, а не постепенное добавление средств
-      const progressionFactor = Math.min(1, (weekNum - 1) / 3); // Используется для других параметров, но не для количества средств
-
-      const baseMorningCleanser =
-        templateMorningBase.find(isCleanserStep) ?? CLEANER_FALLBACK_STEP;
-      const baseMorningSPF = templateMorningBase.find(isSPFStep) ?? SPF_FALLBACK_STEP;
-      const templateMorningAdditional = templateMorningBase.filter(
-        (step) => !isCleanserStep(step) && !isSPFStep(step)
-      );
-      // ВАЖНО: Всегда показываем все дополнительные средства с первого дня
-      // Прогрессия больше не ограничивает количество средств
-      const rawMorningSteps = dedupeSteps([
-        baseMorningCleanser,
-        ...templateMorningAdditional, // Всегда все средства с первого дня
-        baseMorningSPF,
-      ]);
-
-      const baseEveningCleanser =
-        templateEveningBase.find(isCleanserStep) ?? CLEANER_FALLBACK_STEP;
-      const templateEveningAdditional = templateEveningBase.filter(
-        (step) => !isCleanserStep(step) && !isSPFStep(step)
-      );
-      // ВАЖНО: Всегда показываем все дополнительные средства вечером с первого дня
-      // Проверяем, использует ли пользователь макияж ежедневно
-      // Если да, добавляем гидрофильное масло первым этапом очищения вечером
-      const makeupFrequency = medicalMarkers?.makeupFrequency as string | undefined;
-      const needsOilCleansing = makeupFrequency === 'daily';
-      
-      const rawEveningSteps = dedupeSteps([
-        // Если используется макияж ежедневно, добавляем гидрофильное масло первым
-        ...(needsOilCleansing ? ['cleanser_oil' as StepCategory] : []),
-        baseEveningCleanser,
-        ...templateEveningAdditional, // Всегда все средства с первого дня
-      ]);
-
-      // ИСПРАВЛЕНО (P1): Используем кэш вместо повторных вызовов canApplyStep
-      const allowedMorningSteps = rawMorningSteps.filter((step) => {
-        const result = stepAllowanceCache.get(step);
-        const isAllowed = result?.allowed ?? true; // По умолчанию разрешено, если не в кэше
-        if (!isAllowed) {
-          logger.debug('Step filtered out by canApplyStep (morning, from cache)', {
-            step,
-            reason: result?.reason,
-            userId,
-            day,
-          });
-        }
-        return isAllowed;
-      });
-      
-      // ИСПРАВЛЕНО (P1): Используем кэш вместо повторных вызовов canApplyStep
-      const allowedEveningSteps = rawEveningSteps.filter((step) => {
-        const result = stepAllowanceCache.get(step);
-        const isAllowed = result?.allowed ?? true; // По умолчанию разрешено, если не в кэше
-        if (!isAllowed) {
-          logger.debug('Step filtered out by canApplyStep (evening, from cache)', {
-            step,
-            reason: result?.reason,
-            userId,
-            day,
-          });
-        }
-        return isAllowed;
-      });
-      
-      // ИСПРАВЛЕНО: Если после фильтрации осталось только 2 шага (cleanser и SPF), логируем предупреждение
-      if (allowedMorningSteps.length <= 2 && allowedEveningSteps.length <= 1) {
-        logger.warn('CRITICAL: Only minimal steps after filtering', {
-          userId,
-          day,
-          rawMorningSteps,
-          rawEveningSteps,
-          allowedMorningSteps,
-          allowedEveningSteps,
-          stepProfile: {
-            skinType: stepProfile.skinType,
-            sensitivity: stepProfile.sensitivity,
-            diagnoses: stepProfile.diagnoses,
-          },
-        });
-      }
-
-      const morningSteps = ensureStepPresence(
-        ensureStepPresence(allowedMorningSteps, isCleanserStep, CLEANER_FALLBACK_STEP),
-        isSPFStep,
-        SPF_FALLBACK_STEP
-      );
-      const eveningSteps = ensureStepPresence(
-        allowedEveningSteps.filter((step) => !isSPFStep(step)),
-        isCleanserStep,
-        CLEANER_FALLBACK_STEP
-      );
-
-      const dayProducts: Record<string, any> = {};
-      const stepsForDay = [...morningSteps, ...eveningSteps];
-      
-      // Собираем уже выбранные продукты для проверки совместимости
-      const selectedProductsForDay: ProductWithBrand[] = [];
-      
-      // Сначала обрабатываем утренние шаги
-      for (const step of morningSteps) {
-        let stepProducts = getProductsForStep(step);
-        
-        // КРИТИЧНО: Если продуктов нет, ищем fallback
-        if (stepProducts.length === 0) {
-          logger.warn('No products found for step, searching fallback (morning)', {
-            step,
-            day,
-            week: weekNum,
-            userId,
-            productsByStepMapSize: productsByStepMap.size,
-            productsByStepMapKeys: Array.from(productsByStepMap.keys()),
-          });
-          
-          const baseStep = getBaseStepFromStepCategory(step);
-          const fallbackProduct = await findFallbackProduct(baseStep, profileClassification, { userId });
-          
-          if (fallbackProduct) {
-            // Регистрируем fallback продукт для этого шага
-            registerProductForStep(step, fallbackProduct);
-            stepProducts = [fallbackProduct];
-            logger.info('Fallback product found and registered (morning)', {
-              step,
-              baseStep,
-              productId: fallbackProduct.id,
-              productName: fallbackProduct.name,
-              userId,
-            });
-          } else {
-            // ИСПРАВЛЕНО: Если даже fallback не найден, пробуем найти ЛЮБОЙ продукт для этого шага
-            logger.error('CRITICAL: No products available for step, even after fallback search', {
-              step,
-              baseStep,
-              day,
-              week: weekNum,
-              userId,
-            });
-            
-            // Последняя попытка: ищем любой опубликованный продукт с этим step
-            const anyProduct = await prisma.product.findFirst({
-              where: {
-                published: true as any,
-                step: { startsWith: baseStep },
-                brand: { isActive: true },
-              } as any,
-              include: { brand: true },
-            });
-            
-            if (anyProduct) {
-              const anyProductWithBrand: ProductWithBrand = {
-                id: anyProduct.id,
-                name: anyProduct.name,
-                brand: {
-                  id: anyProduct.brand.id,
-                  name: anyProduct.brand.name,
-                  isActive: anyProduct.brand.isActive,
-                },
-                step: anyProduct.step || '',
-                category: anyProduct.category,
-                price: anyProduct.price,
-                imageUrl: anyProduct.imageUrl,
-                isHero: (anyProduct as any).isHero || false,
-                priority: (anyProduct as any).priority || 0,
-                skinTypes: (anyProduct.skinTypes as string[]) || [],
-                published: anyProduct.published || false,
-              };
-              
-              registerProductForStep(step, anyProductWithBrand);
-              stepProducts = [anyProductWithBrand];
-              logger.warn('Using ANY available product as last resort fallback', {
-                step,
-                productId: anyProduct.id,
-                productName: anyProduct.name,
-                userId,
-              });
-            } else {
-              // ИСПРАВЛЕНО: Не пропускаем шаг, даже если продукт не найден
-              // Шаг должен быть добавлен в план, даже без продукта (productId будет null в plan28)
-              logger.warn('CRITICAL: Could not find ANY product for step, but keeping step in plan with null productId', {
-                step,
-                baseStep,
-                day,
-                week: weekNum,
-                userId,
-              });
-              // Продолжаем выполнение - шаг будет добавлен в days.push() ниже, но без продукта
-              // stepProducts остается пустым, но шаг все равно будет в morningSteps
-            }
-          }
-        }
-        
-        // ИСПРАВЛЕНО: Проверяем, есть ли продукты перед использованием
-        // Если продуктов нет, шаг все равно должен быть добавлен в план (без продукта)
-        if (stepProducts.length === 0) {
-          // Шаг без продукта - не добавляем в dayProducts, но шаг остается в morningSteps массиве
-          logger.warn('Step has no products, but keeping step in plan', {
-            step,
-            day,
-            week: weekNum,
-            userId,
-          });
-        } else if (isCleanserStep(step) || isSPFStep(step)) {
-          // ВАЖНО: Для очищения и SPF не применяем строгую дерматологическую фильтрацию
-          // Они должны быть всегда доступны
-          // Для обязательных шагов используем первый доступный продукт без фильтрации
-          const selectedProduct = stepProducts[0];
-          selectedProductsForDay.push(selectedProduct);
-          
-          dayProducts[step] = {
-            id: selectedProduct.id,
-            name: selectedProduct.name,
-            brand: selectedProduct.brand.name,
-            step,
-          };
-        } else {
-          // Для остальных шагов применяем дерматологическую фильтрацию
-          const context: ProductSelectionContext = {
-            timeOfDay: 'morning',
-            day,
-            week: weekNum,
-            alreadySelected: selectedProductsForDay,
-            protocol: dermatologyProtocol,
-            profileClassification,
-            stepCategory: step, // ИСПРАВЛЕНО (P1): Передаем stepCategory для точного определения типа шага
-          };
-          
-          const filteredResults = filterProductsWithDermatologyLogic(stepProducts, context);
-          const compatibleProducts = filteredResults.filter(r => r.allowed);
-          
-          // Логируем для диагностики, если нет совместимых продуктов
-          if (compatibleProducts.length === 0 && stepProducts.length > 0) {
-            logger.warn('No compatible products after dermatology filter (morning)', {
-              step,
-              day,
-              week: weekNum,
-              totalProducts: stepProducts.length,
-              filteredReasons: filteredResults.filter(r => !r.allowed).map(r => r.reason).slice(0, 3),
-              userId,
-            });
-          }
-          
-          // ИСПРАВЛЕНО: Если нет совместимых продуктов после фильтрации, используем первый доступный продукт
-          // Это гарантирует, что шаги из шаблона не пропускаются из-за строгой фильтрации
-          if (compatibleProducts.length > 0) {
-            const selectedProduct = compatibleProducts[0].product;
-            selectedProductsForDay.push(selectedProduct);
-            
-            const justification = generateProductJustification(
-              selectedProduct,
-              dermatologyProtocol,
-              profileClassification
-            );
-            const warnings = generateProductWarnings(
-              selectedProduct,
-              dermatologyProtocol,
-              profileClassification
-            );
-            
-            dayProducts[step] = {
-              id: selectedProduct.id,
-              name: selectedProduct.name,
-              brand: selectedProduct.brand.name,
-              step,
-              justification,
-              warnings: warnings.length > 0 ? warnings : undefined,
-            };
-          } else if (stepProducts.length > 0) {
-            // ИСПРАВЛЕНО: Если продукты есть, но они отфильтрованы, используем первый доступный
-            // Это лучше, чем пропускать шаг из шаблона
-            logger.warn('Using first available product despite dermatology filter (morning)', {
-              step,
-              day,
-              week: weekNum,
-              totalProducts: stepProducts.length,
-              selectedProductId: stepProducts[0].id,
-              userId,
-            });
-            
-            const selectedProduct = stepProducts[0];
-            selectedProductsForDay.push(selectedProduct);
-            
-            const justification = generateProductJustification(
-              selectedProduct,
-              dermatologyProtocol,
-              profileClassification
-            );
-            const warnings = generateProductWarnings(
-              selectedProduct,
-              dermatologyProtocol,
-              profileClassification
-            );
-            
-            dayProducts[step] = {
-              id: selectedProduct.id,
-              name: selectedProduct.name,
-              brand: selectedProduct.brand.name,
-              step,
-              justification,
-              warnings: warnings.length > 0 ? warnings : undefined,
-            };
-          }
-        }
-      }
-      
-      // Затем обрабатываем вечерние шаги
-      for (const step of eveningSteps) {
-        let stepProducts = getProductsForStep(step);
-        
-        // КРИТИЧНО: Если продуктов нет, ищем fallback
-        if (stepProducts.length === 0) {
-          logger.warn('No products found for step, searching fallback (evening)', {
-            step,
-            day,
-            week: weekNum,
-            userId,
-            productsByStepMapSize: productsByStepMap.size,
-            productsByStepMapKeys: Array.from(productsByStepMap.keys()),
-          });
-          
-          const baseStep = getBaseStepFromStepCategory(step);
-          const fallbackProduct = await findFallbackProduct(baseStep, profileClassification, { userId });
-          
-          if (fallbackProduct) {
-            // Регистрируем fallback продукт для этого шага
-            registerProductForStep(step, fallbackProduct);
-            stepProducts = [fallbackProduct];
-            logger.info('Fallback product found and registered (evening)', {
-              step,
-              baseStep,
-              productId: fallbackProduct.id,
-              productName: fallbackProduct.name,
-              userId,
-            });
-          } else {
-            // ИСПРАВЛЕНО: Если даже fallback не найден, пробуем найти ЛЮБОЙ продукт для этого шага
-            logger.error('CRITICAL: No products available for step, even after fallback search', {
-              step,
-              baseStep,
-              day,
-              week: weekNum,
-              userId,
-            });
-            
-            // Последняя попытка: ищем любой опубликованный продукт с этим step
-            const anyProduct = await prisma.product.findFirst({
-              where: {
-                published: true as any,
-                step: { startsWith: baseStep },
-                brand: { isActive: true },
-              } as any,
-              include: { brand: true },
-            });
-            
-            if (anyProduct) {
-              const anyProductWithBrand: ProductWithBrand = {
-                id: anyProduct.id,
-                name: anyProduct.name,
-                brand: {
-                  id: anyProduct.brand.id,
-                  name: anyProduct.brand.name,
-                  isActive: anyProduct.brand.isActive,
-                },
-                step: anyProduct.step || '',
-                category: anyProduct.category,
-                price: anyProduct.price,
-                imageUrl: anyProduct.imageUrl,
-                isHero: (anyProduct as any).isHero || false,
-                priority: (anyProduct as any).priority || 0,
-                skinTypes: (anyProduct.skinTypes as string[]) || [],
-                published: anyProduct.published || false,
-              };
-              
-              registerProductForStep(step, anyProductWithBrand);
-              stepProducts = [anyProductWithBrand];
-              logger.warn('Using ANY available product as last resort fallback', {
-                step,
-                productId: anyProduct.id,
-                productName: anyProduct.name,
-                userId,
-              });
-            } else {
-              // ИСПРАВЛЕНО: Не пропускаем шаг, даже если продукт не найден
-              // Шаг должен быть добавлен в план, даже без продукта (productId будет null в plan28)
-              logger.warn('CRITICAL: Could not find ANY product for step, but keeping step in plan with null productId', {
-                step,
-                baseStep,
-                day,
-                week: weekNum,
-                userId,
-              });
-              // Продолжаем выполнение - шаг будет добавлен в days.push() ниже, но без продукта
-              // stepProducts остается пустым, но шаг все равно будет в eveningSteps
-            }
-          }
-        }
-        
-        // ИСПРАВЛЕНО: Проверяем, есть ли продукты перед использованием
-        // Если продуктов нет, шаг все равно должен быть добавлен в план (без продукта)
-        if (stepProducts.length === 0) {
-          // Шаг без продукта - добавляем в dayProducts как null, но шаг остается в eveningSteps
-          logger.warn('Step has no products, but keeping step in plan', {
-            step,
-            day,
-            week: weekNum,
-            userId,
-          });
-          // Не добавляем в dayProducts, но шаг останется в eveningSteps массиве
-        } else if (isCleanserStep(step)) {
-          // ВАЖНО: Для очищения не применяем строгую дерматологическую фильтрацию
-          // Оно должно быть всегда доступно
-          // Для обязательных шагов используем первый доступный продукт без фильтрации
-          const selectedProduct = stepProducts[0];
-          selectedProductsForDay.push(selectedProduct);
-          
-          dayProducts[step] = {
-            id: selectedProduct.id,
-            name: selectedProduct.name,
-            brand: selectedProduct.brand.name,
-            step,
-          };
-        } else {
-          // Для остальных шагов применяем дерматологическую фильтрацию
-          const context: ProductSelectionContext = {
-            timeOfDay: 'evening',
-            day,
-            week: weekNum,
-            alreadySelected: selectedProductsForDay,
-            protocol: dermatologyProtocol,
-            profileClassification,
-          };
-          
-          const filteredResults = filterProductsWithDermatologyLogic(stepProducts, context);
-          const compatibleProducts = filteredResults.filter(r => r.allowed);
-          
-          // Логируем для диагностики, если нет совместимых продуктов
-          if (compatibleProducts.length === 0 && stepProducts.length > 0) {
-            logger.warn('No compatible products after dermatology filter (evening)', {
-              step,
-              day,
-              week: weekNum,
-              totalProducts: stepProducts.length,
-              filteredReasons: filteredResults.filter(r => !r.allowed).map(r => r.reason).slice(0, 3),
-              userId,
-            });
-          }
-          
-          if (compatibleProducts.length > 0) {
-            const selectedProduct = compatibleProducts[0].product;
-            selectedProductsForDay.push(selectedProduct);
-            
-            const justification = generateProductJustification(
-              selectedProduct,
-              dermatologyProtocol,
-              profileClassification
-            );
-            const warnings = generateProductWarnings(
-              selectedProduct,
-              dermatologyProtocol,
-              profileClassification
-            );
-            
-            dayProducts[step] = {
-              id: selectedProduct.id,
-              name: selectedProduct.name,
-              brand: selectedProduct.brand.name,
-              step,
-              justification,
-              warnings: warnings.length > 0 ? warnings : undefined,
-            };
-          } else if (stepProducts.length > 0) {
-            // Если нет совместимых, используем первый доступный (fallback)
-            // Это важно, чтобы план не был пустым
-            const fallbackProduct = stepProducts[0];
-            selectedProductsForDay.push(fallbackProduct);
-            
-            logger.info('Using fallback product (no compatible after filter)', {
-              step,
-              day,
-              productId: fallbackProduct.id,
-              productName: fallbackProduct.name,
-              userId,
-            });
-            
-            dayProducts[step] = {
-              id: fallbackProduct.id,
-              name: fallbackProduct.name,
-              brand: fallbackProduct.brand.name,
-              step,
-              warning: 'Продукт может требовать дополнительной проверки совместимости',
-            };
-          }
-        }
-      }
-
-      // ИСПРАВЛЕНО: Не фильтруем шаги по наличию продуктов - оставляем все шаги
-      // Продукты будут найдены позже при создании plan28 через fallback логику
-      // Фильтрация приводит к тому, что дни остаются без шагов, и plan28Days становится пустым
-      // ИСПРАВЛЕНО: Преобразуем шаги в productIds для PlanDayLegacy формата
-      const morningProductIds = morningSteps
-        .map(step => {
-          const product = dayProducts[step];
-          return product?.id;
-        })
-        .filter((id): id is number => id !== undefined);
-      
-      const eveningProductIds = eveningSteps
-        .map(step => {
-          const product = dayProducts[step];
-          return product?.id;
-        })
-        .filter((id): id is number => id !== undefined);
-      
-      days.push({
-        morning: morningProductIds,
-        evening: eveningProductIds,
-      });
-    }
-    
-    // ИСПРАВЛЕНО: Подсчитываем продукты из всех дней недели
-    const weekProducts = days.reduce((sum, day) => {
-      return sum + day.morning.length + day.evening.length;
-    }, 0);
-    
-    weeks.push({
-      week: weekNum,
-      days,
-      summary: {
-        focus: [primaryFocus as GoalKey], // ИСПРАВЛЕНО: Приводим к GoalKey
-        productsCount: weekProducts,
-      },
-    });
-  }
+  // Определяем, нужно ли двойное очищение (гидрофильное масло вечером) для пользователей с ежедневным макияжем
+  const makeupFrequency = medicalMarkers?.makeupFrequency as string | undefined;
+  const needsOilCleansing = makeupFrequency === 'daily';
+  
+  // [REMOVED] ~530 lines of legacy weeks generation loop.
+  // The loop duplicated product selection, dermatology filtering, and step-building logic
+  // that the plan28Days loop (below) already performs.
+  // `weeks` is now derived from plan28Days after generation (see below).
 
   // Шаг 4: Генерация инфографики (динамическая на основе дерматологических осей)
   // Используем дерматологические skin scores для инфографики
@@ -3129,16 +2305,6 @@ export async function generate28DayPlan(
     routineComplexity = (medicalMarkers as any).routineComplexity;
   }
   
-  // ИСПРАВЛЕНО: Проверяем, что weeks не пустой перед генерацией plan28
-  if (weeks.length === 0) {
-    logger.error('CRITICAL: weeks array is empty, cannot generate plan28', {
-      userId,
-      profileId: profile.id,
-      weeksLength: weeks.length,
-    });
-    throw new Error('Plan generation failed: weeks array is empty');
-  }
-  
   for (let dayIndex = 1; dayIndex <= 28; dayIndex++) {
     const weekNum = Math.ceil(dayIndex / 7);
     
@@ -3153,7 +2319,11 @@ export async function generate28DayPlan(
     
     // ИСПРАВЛЕНО: Используем шаги из шаблона напрямую, а не из weeks
     const rawMorningSteps = adjustedMorning;
-    const rawEveningSteps = adjustedEvening;
+    // Если пользователь ежедневно использует макияж, добавляем гидрофильное масло первым этапом вечернего очищения
+    const rawEveningSteps = dedupeSteps([
+      ...(needsOilCleansing ? ['cleanser_oil' as StepCategory] : []),
+      ...adjustedEvening,
+    ]);
     
     // Фильтруем шаги по правилам профиля
     const allowedMorningSteps = rawMorningSteps.filter((step) => {
@@ -3847,6 +3017,46 @@ export async function generate28DayPlan(
     stepsWithoutProducts: stepsWithoutProducts.length > 0 ? stepsWithoutProducts : undefined,
   });
   
+  // Формируем legacy weeks из plan28Days для обратной совместимости
+  const weeks: Array<{
+    week: number;
+    days: Array<{ morning: number[]; evening: number[] }>;
+    summary: { focus: GoalKey[]; productsCount: number };
+  }> = [];
+  
+  for (let w = 1; w <= PLAN_WEEKS_TOTAL; w++) {
+    const startDay = (w - 1) * PLAN_DAYS_PER_WEEK + 1;
+    const endDay = w * PLAN_DAYS_PER_WEEK;
+    const weekDays = plan28Days.filter(d => d.dayIndex >= startDay && d.dayIndex <= endDay);
+    
+    const legacyDays = weekDays.map(day => ({
+      morning: day.morning
+        .map(step => step.productId ? Number(step.productId) : null)
+        .filter((id): id is number => id !== null && !isNaN(id)),
+      evening: day.evening
+        .map(step => step.productId ? Number(step.productId) : null)
+        .filter((id): id is number => id !== null && !isNaN(id)),
+    }));
+    
+    // Дополняем до 7 дней пустыми, если plan28Days пропустил какие-то дни
+    while (legacyDays.length < PLAN_DAYS_PER_WEEK) {
+      legacyDays.push({ morning: [], evening: [] });
+    }
+    
+    const weekProductsCount = legacyDays.reduce(
+      (sum, d) => sum + d.morning.length + d.evening.length, 0
+    );
+    
+    weeks.push({
+      week: w,
+      days: legacyDays,
+      summary: {
+        focus: [primaryFocus as GoalKey],
+        productsCount: weekProductsCount,
+      },
+    });
+  }
+  
   let plan28: Plan28 = {
     userId,
     skinProfileId: profile.id,
@@ -4091,12 +3301,13 @@ export async function generate28DayPlan(
 
   const invariantsCheck = await assertPlanInvariants(plan28);
   if (!invariantsCheck.isValid) {
-    // Логируем предупреждения, но не прерываем генерацию (safe fallback)
     logger.warn('Plan generated with invariant violations, but continuing', {
       userId,
       warnings: invariantsCheck.warnings,
       note: 'Plan will be returned with violations - UI should handle gracefully',
     });
+    // Добавляем инвариантные предупреждения в общий массив, чтобы они попали в API-ответ
+    warnings.push(...invariantsCheck.warnings);
   }
 
   // ИСПРАВЛЕНО: Валидация плана на совместимость ингредиентов и протоколы

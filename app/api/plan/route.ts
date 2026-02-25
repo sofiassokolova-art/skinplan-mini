@@ -8,7 +8,6 @@ import { ApiResponse } from '@/lib/api-response';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { getCurrentProfile } from '@/lib/get-current-profile';
-import { logDbFingerprint } from '@/lib/db-fingerprint';
 import type { Plan28 } from '@/lib/plan-types';
 import type { PlanResponse } from '@/lib/api-types';
 
@@ -22,12 +21,6 @@ export async function GET(request: NextRequest) {
   let userId: string | undefined;
   
   try {
-    // DEBUG: Логируем DB fingerprint для диагностики разных БД
-    // Используем console.warn для гарантированного вывода в Vercel logs
-    console.warn('🔍 [PLAN] Starting DB fingerprint check...');
-    const fingerprint = await logDbFingerprint('/api/plan');
-    console.warn('🔍 [PLAN] DB fingerprint:', JSON.stringify(fingerprint, null, 2));
-    
     const auth = await requireTelegramAuth(request, { ensureUser: true });
     if (!auth.ok) {
       const duration = Date.now() - startTime;
@@ -37,19 +30,6 @@ export async function GET(request: NextRequest) {
     userId = auth.ctx.userId;
 
     logger.info('User identified from initData', { userId });
-    
-    // DEBUG: Проверяем идентичность БД
-    try {
-      const dbIdentity = await prisma.$queryRaw<Array<{ current_database: string; current_schema: string }>>`
-        SELECT current_database() as current_database, current_schema() as current_schema
-      `;
-      logger.warn('DEBUG: DB identity in /api/plan', { 
-        userId,
-        dbIdentity: dbIdentity[0],
-      });
-    } catch (dbIdentityError) {
-      logger.warn('DEBUG: Failed to get DB identity in /api/plan', { error: (dbIdentityError as any)?.message });
-    }
     
     // ИСПРАВЛЕНО: Поддержка read-your-write через ?profileId= параметр
     // Это решает проблему read-after-write неконсистентности при использовании реплик/accelerate

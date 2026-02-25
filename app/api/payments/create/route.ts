@@ -8,6 +8,7 @@ import { ApiResponse } from '@/lib/api-response';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { randomBytes } from 'crypto';
+import { rateLimit } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -137,12 +138,8 @@ const PRODUCTS: Record<string, { amount: number; currency: string }> = {
   },
 };
 
-function entitlementCodeForProduct(productCode: string): string {
-  if (productCode === 'plan_access') return 'paid_access';
-  if (productCode === 'retake_topic') return 'retake_topic_access';
-  // По умолчанию — доступ к плану (обратная совместимость)
-  return 'paid_access';
-}
+// ИСПРАВЛЕНО: Используем единую функцию из shared модуля
+import { entitlementCodeForProduct } from '@/lib/payment-helpers';
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
@@ -176,6 +173,17 @@ export async function POST(request: NextRequest) {
     if (!auth.ok) return auth.response;
     userId = auth.ctx.userId;
 
+    // Rate limit: макс. 5 создание платежей в минуту на пользователя
+    const rl = await rateLimit(`payment:create:${userId}`, {
+      maxRequests: 5,
+      interval: 60_000,
+    }, 'payment_create');
+    if (!rl.success) {
+      const duration = Date.now() - startTime;
+      logApiRequest(method, path, 429, duration, userId);
+      return ApiResponse.error('Слишком много запросов. Попробуйте через минуту.', 429);
+    }
+
     const body = await request.json();
     const { productCode, idempotencyKey } = body;
 
@@ -190,6 +198,38 @@ export async function POST(request: NextRequest) {
       const duration = Date.now() - startTime;
       logApiRequest(method, path, 400, duration, userId);
       return ApiResponse.error(`Unknown productCode: ${productCode}`, 400);
+    }
+
+    // Проверяем, нет ли уже succeeded-платежа для этого продукта (защита от повторной покупки)
+    const existingSucceeded = await prisma.payment.findFirst({
+      where: {
+        userId,
+        productCode,
+        status: 'succeeded',
+      },
+      select: { id: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (existingSucceeded) {
+      const entCode = entitlementCodeForProduct(productCode);
+      const entitlement = await prisma.entitlement.findUnique({
+        where: { userId_code: { userId, code: entCode } },
+        select: { active: true, validUntil: true },
+      });
+      const stillActive = entitlement?.active === true &&
+        (!entitlement.validUntil || entitlement.validUntil > new Date());
+
+      if (stillActive) {
+        const duration = Date.now() - startTime;
+        logApiRequest(method, path, 200, duration, userId);
+        return ApiResponse.success({
+          paymentId: existingSucceeded.id,
+          status: 'succeeded',
+          hasAccess: true,
+          message: 'У вас уже есть активный доступ',
+        });
+      }
     }
 
     // Генерируем idempotencyKey если не передан
