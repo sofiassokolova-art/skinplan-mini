@@ -15,27 +15,37 @@ function createSlug(name: string): string {
     .substring(0, 50);
 }
 
-// Бренды (если их нет, будут созданы)
+// Бренды (все, что используются в списке продуктов ниже)
 const brands = [
   'Акрихин',
-  'Bayer',
-  'Galderma',
-  'La Roche-Posay',
-  'Vichy',
-  'Bioderma',
+  'Astellas',
   'Avene',
-  'The Ordinary',
-  'Glenmark',
-  'Uriage',
-  'Topicrem',
-  'Noreva',
+  'Avon',
+  'Bayer',
+  'Bioderma',
   'CeraVe',
-  'Purito',
   'Cosrx',
+  'Eucerin',
+  'Galderma',
+  'Gedeon Richter',
   'Geek & Gorgeous',
-  'Sesderma',
+  'Glenmark',
   'Isdin',
+  "L'Oreal Paris",
+  'La Roche-Posay',
   'LRP',
+  'Neutrogena',
+  'Noreva',
+  'Pfizer',
+  'Purito',
+  'RoC',
+  'Rohto',
+  'Sesderma',
+  'Stiefel',
+  'The Ordinary',
+  'Topicrem',
+  'Uriage',
+  'Vichy',
 ];
 
 // Продукты
@@ -225,7 +235,11 @@ async function main() {
       }
 
       const slug = createSlug(p.name);
-      
+      const rawSkinTypes = p.skinTypes || ['normal'];
+      const skinTypes = rawSkinTypes.includes('all')
+        ? ['dry', 'normal', 'combo', 'oily', 'sensitive']
+        : rawSkinTypes;
+
       const productData: any = {
         name: p.name,
         slug,
@@ -233,8 +247,9 @@ async function main() {
         price: p.price,
         volume: p.volume || null,
         description: null,
-        imageUrl: `/products/${slug}.jpg`, // Потом зальёшь фото
-        skinTypes: p.skinTypes || ['normal'],
+        descriptionUser: p.activeIngredients?.slice(0, 2).join(', ') || null,
+        imageUrl: `/products/${slug}.jpg`,
+        skinTypes,
         concerns: p.concerns || [],
         activeIngredients: p.activeIngredients || [],
         avoidIf: p.avoidIf || [],

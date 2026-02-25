@@ -104,12 +104,14 @@ export async function GET(request: NextRequest) {
   }
 
   const totalDuration = Date.now() - startTime;
-  const allOk = Object.values(checks).every(check => check.status === 'ok');
-  const status = allOk ? 200 : 503;
+  // Критичные проверки: БД, схема, env. Кэш не критичен — без него приложение работает.
+  const criticalKeys = ['database', 'schema', 'environment'];
+  const criticalOk = criticalKeys.every(key => checks[key]?.status === 'ok');
+  const status = criticalOk ? 200 : 503;
 
   return new Response(
     JSON.stringify({
-      status: allOk ? 'healthy' : 'unhealthy',
+      status: criticalOk ? 'healthy' : 'unhealthy',
       timestamp: new Date().toISOString(),
       duration: totalDuration,
       checks,

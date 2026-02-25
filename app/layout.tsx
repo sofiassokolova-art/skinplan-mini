@@ -13,6 +13,7 @@ import { Toaster } from '@/components/Toaster';
 import { GlobalErrorHandler } from '@/components/GlobalErrorHandler';
 import { ServiceWorker } from '@/components/ServiceWorker';
 import { QueryProvider } from '@/providers/QueryProvider';
+import { TelegramScript } from '@/components/TelegramScript';
 
 // Загружаем шрифты локально из public/fonts
 // Файлы шрифтов загружены в public/fonts/
@@ -72,13 +73,43 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        {/* Telegram WebApp Script не грузим на /admin — в обычном браузере не будет postEvent и ошибок в консоли */}
+        {/* На мобильном Telegram передаёт initData в hash (#tgWebAppData=...). Подставляем WebApp сразу, чтобы не ждать скрипт с telegram.org */}
         {!isAdminRoute && (
-          <Script
-            src="https://telegram.org/js/telegram-web-app.js"
-            strategy="beforeInteractive"
-          />
+          <Script id="telegram-hash-fallback" strategy="beforeInteractive">
+            {`
+(function(){
+  if (typeof window === 'undefined') return;
+  var h = window.location.hash.slice(1);
+  if (!h) return;
+  try {
+    var p = new URLSearchParams(h);
+    var raw = p.get('tgWebAppData');
+    if (!raw) return;
+    var initData = decodeURIComponent(raw);
+    if (!window.Telegram) window.Telegram = {};
+    if (!window.Telegram.WebApp || !window.Telegram.WebApp.initData) {
+      var w = window.Telegram.WebApp = window.Telegram.WebApp || {};
+      w.initData = initData;
+      w.initDataUnsafe = w.initDataUnsafe || {};
+      try {
+        var userMatch = initData.match(/user=([^&]+)/);
+        if (userMatch) w.initDataUnsafe.user = JSON.parse(decodeURIComponent(userMatch[1]));
+      } catch (_) {}
+      w.ready = w.ready || function(){};
+      w.expand = w.expand || function(){};
+      w.close = w.close || function(){};
+      w.sendData = w.sendData || function(){};
+      w.showPopup = w.showPopup || function(){};
+      w.openLink = w.openLink || function(url){ window.open(url); };
+      w.openTelegramLink = w.openTelegramLink || function(url){ window.open(url); };
+    }
+  } catch (e) {}
+})();
+            `}
+          </Script>
         )}
+        {/* Telegram WebApp: после первого рендера, чтобы в WebView не зависало на загрузке telegram.org */}
+        {!isAdminRoute && <TelegramScript />}
         {/* DEV-режим: мок Telegram WebApp для локального браузера (не на /admin) */}
         {isDev && !isAdminRoute && (
           <Script id="telegram-dev-mock" strategy="beforeInteractive">

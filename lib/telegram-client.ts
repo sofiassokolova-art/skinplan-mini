@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export interface TelegramWebApp {
   ready: () => void;
@@ -39,6 +39,20 @@ export const tg: TelegramWebApp | null =
     ? window.Telegram.WebApp
     : null;
 
+/** На мобильном Telegram часто передаёт initData в URL hash (tgWebAppData), если скрипт с telegram.org не успел загрузиться */
+function getInitDataFromHash(): string {
+  if (typeof window === 'undefined') return '';
+  try {
+    const hash = window.location.hash.slice(1);
+    if (!hash) return '';
+    const params = new URLSearchParams(hash);
+    const raw = params.get('tgWebAppData');
+    return raw ? decodeURIComponent(raw) : '';
+  } catch {
+    return '';
+  }
+}
+
 export function sendToTG(payload: unknown): { ok: boolean; reason?: string } {
   try {
     if (!tg) return { ok: false, reason: 'tg-not-available' };
@@ -58,16 +72,50 @@ export function sendToTG(payload: unknown): { ok: boolean; reason?: string } {
 
 /**
  * Хук для работы с Telegram WebApp
+ * После загрузки скрипта (strategy afterInteractive) Telegram может появиться с задержкой — подписываемся и обновляем state
  */
 export function useTelegram() {
-  // Безопасное получение initData и user
+  const [initDataFromScript, setInitDataFromScript] = useState<string | null>(null);
+
+  // 1) Сразу пробуем взять initData из URL hash (на мобильном Telegram передаёт tgWebAppData туда)
+  // 2) Когда скрипт telegram-web-app.js загрузится, подхватим window.Telegram
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const fromHash = getInitDataFromHash();
+    if (fromHash) setInitDataFromScript(fromHash);
+
+    const read = () => {
+      try {
+        const data = window.Telegram?.WebApp?.initData || '';
+        if (data) setInitDataFromScript(data);
+      } catch (_) {}
+    };
+    read();
+    const t = setInterval(read, 300);
+    const done = () => {
+      clearInterval(t);
+      read();
+    };
+    const onReady = () => {
+      done();
+      window.removeEventListener('telegram-webapp-ready', onReady);
+    };
+    window.addEventListener('telegram-webapp-ready', onReady);
+    const timeout = setTimeout(done, 8000);
+    return () => {
+      clearInterval(t);
+      clearTimeout(timeout);
+      window.removeEventListener('telegram-webapp-ready', onReady);
+    };
+  }, []);
+
   let initData = '';
-  let user = undefined;
-  
+  let user: TelegramWebApp['initDataUnsafe']['user'] = undefined;
+
   try {
-    if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
-      initData = window.Telegram.WebApp.initData || '';
-      user = window.Telegram.WebApp.initDataUnsafe?.user;
+    if (typeof window !== 'undefined') {
+      initData = initDataFromScript ?? window.Telegram?.WebApp?.initData ?? getInitDataFromHash() ?? '';
+      user = window.Telegram?.WebApp?.initDataUnsafe?.user;
     }
   } catch (err) {
     console.warn('⚠️ Error accessing Telegram WebApp:', err);

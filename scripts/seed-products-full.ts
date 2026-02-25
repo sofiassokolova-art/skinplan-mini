@@ -30,6 +30,7 @@ const brands = [
   { name: 'Noreva', slug: 'noreva', country: 'France' },
   { name: 'Uriage', slug: 'uriage', country: 'France' },
   { name: 'Natura Siberica', slug: 'natura-siberica', country: 'Russia' },
+  { name: 'SUPERBANKA', slug: 'superbanka', country: 'Russia' },
 ];
 
 // Базовый набор продуктов (40+ штук) - можно расширить до 120+
