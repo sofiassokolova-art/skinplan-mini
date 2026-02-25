@@ -22,10 +22,10 @@ export function FixedContinueButton({
   return (
     <div style={{
       position: 'fixed',
-      bottom: 'clamp(40px, 6vh, 60px)',
+      bottom: 'clamp(24px, 5vh, 60px)',
       left: 0,
       right: 0,
-      padding: '0 clamp(20px, 5vw, 40px)',
+      padding: '0 clamp(19px, 5vw, 38px)',
       background: 'transparent',
       zIndex: 100,
       display: 'flex',
@@ -42,9 +42,9 @@ export function FixedContinueButton({
         disabled={disabled}
         style={{
           width: '100%',
-          maxWidth: 'clamp(224px, 60vw, 320px)',
-          height: 'clamp(56px, 8vh, 64px)',
-          borderRadius: '20px',
+          maxWidth: 300,
+          height: 40,
+          borderRadius: 0,
           background: disabled ? '#CCCCCC' : '#D5FE61',
           color: '#000000',
           border: 'none',
@@ -52,7 +52,7 @@ export function FixedContinueButton({
           fontWeight: 600,
           fontSize: 'clamp(14px, 4vw, 16px)',
           cursor: disabled ? 'not-allowed' : 'pointer',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+          boxShadow: '2px 2px 4px 0 #00000033',
           transition: 'transform 0.2s, box-shadow 0.2s',
           opacity: disabled ? 0.6 : 1,
         }}

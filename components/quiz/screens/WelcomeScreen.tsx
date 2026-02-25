@@ -20,14 +20,7 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
     <div style={{
       padding: 0,
       margin: 0,
-      marginTop: 0,
-      marginLeft: 0,
-      marginRight: 0,
-      marginBottom: 0,
       minHeight: '100vh',
-      background: '#FFFFFF',
-      display: 'flex',
-      flexDirection: 'column',
       position: 'fixed',
       top: 0,
       left: 0,
@@ -36,28 +29,22 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
       width: '100vw',
       maxWidth: '100vw',
       boxSizing: 'border-box',
-      overflowX: 'hidden',
+      overflow: 'hidden',
       zIndex: 1,
     }}>
-      {/* Картинка */}
+      {/* Картинка на весь экран */}
       {screen.image && (
-        <div style={{
-          width: '100%',
-          height: '60vh',
-          minHeight: '400px',
-          maxHeight: '500px',
-          position: 'relative',
-          margin: 0,
-          padding: 0,
-          marginTop: 0,
-          marginLeft: 0,
-          marginRight: 0,
-          marginBottom: 0,
-          borderBottomRightRadius: '40px',
-          borderBottomLeftRadius: '40px',
-          overflow: 'hidden',
-          boxSizing: 'border-box',
-        }}>
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100%',
+            height: '100%',
+          }}
+        >
           <img
             src={screen.image}
             alt={screen.title}
@@ -65,10 +52,10 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
               width: '100%',
               height: '100%',
               objectFit: 'cover',
-              display: 'block', // ФИКС: Предотвращает "пиксельную полоску" из-за baseline
+              objectPosition: 'center',
+              display: 'block',
               margin: 0,
               padding: 0,
-              boxSizing: 'border-box',
             }}
           />
         </div>
@@ -79,29 +66,27 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
         onClick={onBack ?? (() => {})}
       />
 
-      {/* Контент (текст) с анимацией */}
+      {/* Текст поверх картинки — белый */}
       <div
         className="animate-fade-in"
         style={{
+          position: 'relative',
+          zIndex: 2,
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'flex-start',
           paddingTop: 'clamp(30px, 8vh, 60px)',
-          paddingBottom: '100px', // Отступ снизу для фиксированной кнопки
+          paddingBottom: '100px',
           paddingLeft: '20px',
           paddingRight: '20px',
           width: '100%',
           boxSizing: 'border-box',
+          pointerEvents: 'none',
         }}
       >
-        {/* Текст */}
-        <div style={{
-          width: '100%',
-          maxWidth: '320px',
-          textAlign: 'center',
-        }}>
+        <div style={{ width: '100%', maxWidth: '320px', textAlign: 'center', pointerEvents: 'auto' }}>
           <h1
             className="quiz-welcome-title"
             style={{
@@ -112,9 +97,11 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
               lineHeight: '140%',
               letterSpacing: '0px',
               textAlign: 'center',
-              color: '#000000',
+              color: '#FFFFFF',
               margin: 0,
-            }}>
+              textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+            }}
+          >
             Подбери уход<br />
             для своей кожи<br />
             со <span style={{ fontWeight: 700, fontStyle: 'normal' }}>SkinIQ</span>
@@ -122,13 +109,14 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
         </div>
       </div>
 
-      {/* Фиксированная кнопка "Продолжить" внизу экрана */}
-      <FixedContinueButton
-        ctaText={screen.ctaText}
-        onClick={onContinue}
-        disabled={isHandlingNext}
-        loadingText="Загрузка..."
-      />
+      <div style={{ position: 'relative', zIndex: 2, pointerEvents: 'auto' }}>
+        <FixedContinueButton
+          ctaText={screen.ctaText}
+          onClick={onContinue}
+          disabled={isHandlingNext}
+          loadingText="Загрузка..."
+        />
+      </div>
     </div>
   );
 }
