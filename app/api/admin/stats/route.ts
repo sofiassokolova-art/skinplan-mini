@@ -95,23 +95,16 @@ export async function GET(request: NextRequest) {
       }),
       // Считаем пользователей, которые действительно перепрошли анкету:
       // у пользователя должно быть больше одного профиля (несколько версий).
-      // Это не зависит от номера версии анкеты (questionnaire.version).
-      prisma.skinProfile.groupBy({
-        by: ['userId'],
-        _count: {
-          _all: true,
-        },
-        having: {
-          _count: {
-            _all: {
-              gt: 1,
-            },
-          },
-        },
-      }).then(groups => groups.length).catch(err => {
-        console.error('❌ Error counting retaking users:', err);
-        return 0;
-      }),
+      prisma.skinProfile
+        .groupBy({
+          by: ['userId'],
+          _count: { _all: true },
+        })
+        .then((groups) => groups.filter((g) => g._count._all > 1).length)
+        .catch((err) => {
+          console.error('❌ Error counting retaking users:', err);
+          return 0;
+        }),
     ]);
 
 
