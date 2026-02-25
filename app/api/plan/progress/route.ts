@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireTelegramAuth(request, { ensureUser: true });
     if (!auth.ok) return auth.response;
-    const userId = auth.ctx.userId;
+    userId = auth.ctx.userId;
 
     let progress;
     try {
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireTelegramAuth(request, { ensureUser: true });
     if (!auth.ok) return auth.response;
-    const userId = auth.ctx.userId;
+    userId = auth.ctx.userId;
 
     const body = await request.json().catch(() => ({}));
     const currentDay = Number(body.currentDay) || 1;

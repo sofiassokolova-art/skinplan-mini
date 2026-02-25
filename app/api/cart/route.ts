@@ -82,7 +82,9 @@ export async function POST(request: NextRequest) {
     if (!auth.ok) return auth.response;
     userId = auth.ctx.userId;
 
-    const { productId, quantity = 1 } = await request.json();
+    const body = await request.json();
+    const productId = body.productId;
+    const quantity = Math.max(1, Math.min(99, Math.floor(Number(body.quantity) || 1)));
 
     if (!productId) {
       return NextResponse.json(
@@ -192,16 +194,24 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    const productIdNum = parseInt(productId, 10);
+    if (isNaN(productIdNum) || productIdNum <= 0) {
+      return NextResponse.json(
+        { error: 'Invalid productId' },
+        { status: 400 }
+      );
+    }
+
     await prisma.cart.deleteMany({
       where: {
         userId,
-        productId: parseInt(productId),
+        productId: productIdNum,
       },
     });
 
     logger.info('Product removed from cart', {
       userId,
-      productId: parseInt(productId),
+      productId: productIdNum,
     });
 
     const duration = Date.now() - startTime;
