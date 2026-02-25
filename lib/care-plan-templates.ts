@@ -57,8 +57,8 @@ export const CARE_PLAN_TEMPLATES: CarePlanTemplate[] = [
       mainGoals: ['acne'],
       routineComplexity: ['medium', 'maximal'],
     },
-    morning: ['cleanser_balancing', 'serum_niacinamide', 'moisturizer_balancing', 'spf_50_oily'],
-    evening: ['cleanser_balancing', 'treatment_acne_azelaic', 'moisturizer_balancing'],
+    morning: ['cleanser_balancing', 'toner_hydrating', 'serum_niacinamide', 'moisturizer_balancing', 'spf_50_oily'],
+    evening: ['cleanser_balancing', 'toner_soothing', 'treatment_acne_azelaic', 'moisturizer_balancing'],
     weekly: ['mask_clay'],
   },
   {
@@ -69,8 +69,8 @@ export const CARE_PLAN_TEMPLATES: CarePlanTemplate[] = [
       sensitivityLevels: ['medium', 'high', 'very_high'],
       routineComplexity: ['medium', 'maximal'],
     },
-    morning: ['cleanser_gentle', 'serum_hydrating', 'moisturizer_barrier', 'spf_50_sensitive'],
-    evening: ['cleanser_gentle', 'moisturizer_barrier'],
+    morning: ['cleanser_gentle', 'toner_hydrating', 'serum_hydrating', 'moisturizer_barrier', 'spf_50_sensitive'],
+    evening: ['cleanser_gentle', 'toner_soothing', 'moisturizer_barrier'],
     weekly: ['mask_soothing'],
   },
   {
@@ -79,8 +79,8 @@ export const CARE_PLAN_TEMPLATES: CarePlanTemplate[] = [
       mainGoals: ['pigmentation'],
       routineComplexity: ['medium', 'maximal'],
     },
-    morning: ['cleanser_gentle', 'serum_vitc', 'spf_50_face'],
-    evening: ['cleanser_gentle', 'treatment_pigmentation', 'moisturizer_light'],
+    morning: ['cleanser_gentle', 'toner_hydrating', 'serum_vitc', 'spf_50_face'],
+    evening: ['cleanser_gentle', 'toner_soothing', 'treatment_pigmentation', 'moisturizer_light'],
     weekly: ['mask_hydrating'],
   },
   {
@@ -94,8 +94,8 @@ export const CARE_PLAN_TEMPLATES: CarePlanTemplate[] = [
   {
     id: 'default_balanced',
     conditions: {},
-    morning: ['cleanser_gentle', 'serum_hydrating', 'moisturizer_light', 'spf_50_face'],
-    evening: ['cleanser_gentle', 'treatment_antiage', 'moisturizer_light'], // treatment_antiage будет заменено на подходящее лечение в зависимости от mainGoals
+    morning: ['cleanser_gentle', 'toner_hydrating', 'serum_hydrating', 'moisturizer_light', 'spf_50_face'],
+    evening: ['cleanser_gentle', 'toner_hydrating', 'treatment_antiage', 'moisturizer_light'], // treatment_antiage будет заменено на подходящее лечение в зависимости от mainGoals
   },
   // ДОБАВЛЕНО: Новые шаблоны с учетом дополнительных факторов
   {
@@ -106,8 +106,8 @@ export const CARE_PLAN_TEMPLATES: CarePlanTemplate[] = [
       acneLevels: [3, 4, 5], // Средний и высокий уровень акне
       routineComplexity: ['medium', 'maximal'],
     },
-    morning: ['cleanser_balancing', 'serum_niacinamide', 'treatment_acne_bpo', 'moisturizer_balancing', 'spf_50_oily'],
-    evening: ['cleanser_balancing', 'treatment_acne_azelaic', 'moisturizer_balancing'],
+    morning: ['cleanser_balancing', 'toner_hydrating', 'serum_niacinamide', 'treatment_acne_bpo', 'moisturizer_balancing', 'spf_50_oily'],
+    evening: ['cleanser_balancing', 'toner_soothing', 'treatment_acne_azelaic', 'moisturizer_balancing'],
     weekly: ['mask_clay', 'treatment_exfoliant_strong'],
   },
   {
@@ -118,8 +118,8 @@ export const CARE_PLAN_TEMPLATES: CarePlanTemplate[] = [
       acneLevels: [1, 2], // Низкий уровень акне
       routineComplexity: ['medium', 'maximal'],
     },
-    morning: ['cleanser_balancing', 'serum_niacinamide', 'moisturizer_balancing', 'spf_50_oily'],
-    evening: ['cleanser_balancing', 'treatment_acne_azelaic', 'moisturizer_balancing'],
+    morning: ['cleanser_balancing', 'toner_hydrating', 'serum_niacinamide', 'moisturizer_balancing', 'spf_50_oily'],
+    evening: ['cleanser_balancing', 'toner_soothing', 'treatment_acne_azelaic', 'moisturizer_balancing'],
     weekly: ['mask_clay'],
   },
   {
@@ -139,8 +139,8 @@ export const CARE_PLAN_TEMPLATES: CarePlanTemplate[] = [
       sensitivityLevels: ['medium', 'high', 'very_high'],
       routineComplexity: ['medium', 'maximal'],
     },
-    morning: ['cleanser_gentle', 'serum_anti_redness', 'moisturizer_barrier', 'spf_50_sensitive'],
-    evening: ['cleanser_gentle', 'serum_anti_redness', 'moisturizer_barrier'],
+    morning: ['cleanser_gentle', 'toner_soothing', 'serum_anti_redness', 'moisturizer_barrier', 'spf_50_sensitive'],
+    evening: ['cleanser_gentle', 'toner_soothing', 'serum_anti_redness', 'moisturizer_barrier'],
     weekly: ['mask_soothing'],
   },
   {
@@ -150,8 +150,8 @@ export const CARE_PLAN_TEMPLATES: CarePlanTemplate[] = [
       mainGoals: ['pigmentation'],
       routineComplexity: ['medium', 'maximal'],
     },
-    morning: ['cleanser_gentle', 'serum_vitc', 'serum_niacinamide', 'spf_50_face'],
-    evening: ['cleanser_gentle', 'treatment_pigmentation', 'moisturizer_light'],
+    morning: ['cleanser_gentle', 'toner_hydrating', 'serum_vitc', 'serum_niacinamide', 'spf_50_face'],
+    evening: ['cleanser_gentle', 'toner_soothing', 'treatment_pigmentation', 'moisturizer_light'],
     weekly: ['mask_hydrating', 'treatment_exfoliant_mild'],
   },
   {
@@ -161,8 +161,8 @@ export const CARE_PLAN_TEMPLATES: CarePlanTemplate[] = [
       mainGoals: ['antiage'],
       routineComplexity: ['medium', 'maximal'],
     },
-    morning: ['cleanser_gentle', 'serum_vitc', 'serum_antiage', 'moisturizer_barrier', 'spf_50_face'],
-    evening: ['cleanser_gentle', 'treatment_antiage', 'treatment_exfoliant_mild', 'moisturizer_barrier'],
+    morning: ['cleanser_gentle', 'toner_hydrating', 'serum_vitc', 'serum_antiage', 'moisturizer_barrier', 'spf_50_face'],
+    evening: ['cleanser_gentle', 'toner_soothing', 'treatment_antiage', 'treatment_exfoliant_mild', 'moisturizer_barrier'],
     weekly: ['mask_hydrating', 'mask_sleeping'],
   },
   {
@@ -173,8 +173,8 @@ export const CARE_PLAN_TEMPLATES: CarePlanTemplate[] = [
       acneLevels: [2, 3, 4],
       routineComplexity: ['medium', 'maximal'],
     },
-    morning: ['cleanser_balancing', 'serum_niacinamide', 'moisturizer_balancing', 'spf_50_oily'],
-    evening: ['cleanser_balancing', 'treatment_acne_azelaic', 'moisturizer_balancing'],
+    morning: ['cleanser_balancing', 'toner_hydrating', 'serum_niacinamide', 'moisturizer_balancing', 'spf_50_oily'],
+    evening: ['cleanser_balancing', 'toner_soothing', 'treatment_acne_azelaic', 'moisturizer_balancing'],
     weekly: ['mask_clay'],
   },
   {
@@ -184,8 +184,8 @@ export const CARE_PLAN_TEMPLATES: CarePlanTemplate[] = [
       dehydrationLevels: [2, 3, 4, 5],
       routineComplexity: ['medium', 'maximal'],
     },
-    morning: ['cleanser_gentle', 'serum_hydrating', 'moisturizer_barrier', 'spf_50_face'],
-    evening: ['cleanser_gentle', 'moisturizer_barrier'],
+    morning: ['cleanser_gentle', 'toner_hydrating', 'serum_hydrating', 'moisturizer_barrier', 'spf_50_face'],
+    evening: ['cleanser_gentle', 'toner_soothing', 'moisturizer_barrier'],
     weekly: ['mask_hydrating'],
   },
   // ДОБАВЛЕНО: Частые комбинации для лучшего покрытия
@@ -196,8 +196,8 @@ export const CARE_PLAN_TEMPLATES: CarePlanTemplate[] = [
       mainGoals: ['acne'],
       routineComplexity: ['medium', 'maximal'],
     },
-    morning: ['cleanser_gentle', 'serum_niacinamide', 'moisturizer_light', 'spf_50_face'],
-    evening: ['cleanser_gentle', 'treatment_acne_azelaic', 'moisturizer_light'],
+    morning: ['cleanser_gentle', 'toner_hydrating', 'serum_niacinamide', 'moisturizer_light', 'spf_50_face'],
+    evening: ['cleanser_gentle', 'toner_soothing', 'treatment_acne_azelaic', 'moisturizer_light'],
     weekly: ['mask_clay'],
   },
   {
@@ -207,8 +207,8 @@ export const CARE_PLAN_TEMPLATES: CarePlanTemplate[] = [
       mainGoals: ['antiage', 'wrinkles'],
       routineComplexity: ['medium', 'maximal'],
     },
-    morning: ['cleanser_balancing', 'serum_vitc', 'serum_niacinamide', 'moisturizer_balancing', 'spf_50_oily'],
-    evening: ['cleanser_balancing', 'treatment_antiage', 'moisturizer_balancing'],
+    morning: ['cleanser_balancing', 'toner_hydrating', 'serum_vitc', 'serum_niacinamide', 'moisturizer_balancing', 'spf_50_oily'],
+    evening: ['cleanser_balancing', 'toner_soothing', 'treatment_antiage', 'moisturizer_balancing'],
     weekly: ['mask_hydrating'],
   },
   {
@@ -218,8 +218,8 @@ export const CARE_PLAN_TEMPLATES: CarePlanTemplate[] = [
       mainGoals: ['pigmentation'],
       routineComplexity: ['medium', 'maximal'],
     },
-    morning: ['cleanser_gentle', 'serum_vitc', 'moisturizer_barrier', 'spf_50_face'],
-    evening: ['cleanser_gentle', 'treatment_pigmentation', 'moisturizer_barrier'],
+    morning: ['cleanser_gentle', 'toner_hydrating', 'serum_vitc', 'moisturizer_barrier', 'spf_50_face'],
+    evening: ['cleanser_gentle', 'toner_soothing', 'treatment_pigmentation', 'moisturizer_barrier'],
     weekly: ['mask_hydrating', 'mask_soothing'],
   },
   {
@@ -229,8 +229,8 @@ export const CARE_PLAN_TEMPLATES: CarePlanTemplate[] = [
       mainGoals: ['acne'],
       routineComplexity: ['medium', 'maximal'],
     },
-    morning: ['cleanser_gentle', 'serum_niacinamide', 'moisturizer_light', 'spf_50_face'],
-    evening: ['cleanser_gentle', 'treatment_acne_azelaic', 'moisturizer_light'],
+    morning: ['cleanser_gentle', 'toner_hydrating', 'serum_niacinamide', 'moisturizer_light', 'spf_50_face'],
+    evening: ['cleanser_gentle', 'toner_soothing', 'treatment_acne_azelaic', 'moisturizer_light'],
     weekly: ['mask_hydrating'],
   },
 ];

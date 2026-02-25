@@ -138,6 +138,7 @@ export default function PlanPage() {
   // ФИКС P0: Централизованное управление таймерами loadPlan
   const loadPlanInFlightRef = useRef<Promise<void> | null>(null);
   const scheduledRetryRef = useRef<NodeJS.Timeout | null>(null);
+  const progressCheckInProgressRef = useRef(false);
 
   const MAX_RETRIES = 5;
 
@@ -749,9 +750,7 @@ export default function PlanPage() {
 
           // При ошибке не показываем экран ошибки - показываем лоадер
           // Проверяем, есть ли профиль или прогресс - если есть, план должен существовать
-          // ФИКС P0: Защита от множественных вызовов через ref
-          const progressCheckInProgressRef = useRef(false);
-
+          // ФИКС P0: Защита от множественных вызовов через ref (ref объявлен на верхнем уровне)
           if (progressCheckInProgressRef.current) {
             clientLogger.warn('⏸️ Progress check already in progress, skipping');
             return;

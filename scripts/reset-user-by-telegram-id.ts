@@ -1,11 +1,13 @@
 // scripts/reset-user-by-telegram-id.ts
 // Сброс всех данных пользователя по telegramId до состояния нового пользователя
+// Использование: npx tsx scripts/reset-user-by-telegram-id.ts <telegramId> [--keep-payment]
+// --keep-payment: не удалять Payment и Entitlement (пройти как новый, но не платить снова)
 
 import { prisma } from '../lib/db';
 import { invalidateAllUserCache } from '../lib/cache';
 
-async function resetUserByTelegramId(telegramId: string) {
-  console.log(`\n🔄 Сброс данных пользователя с telegramId: ${telegramId}\n`);
+async function resetUserByTelegramId(telegramId: string, keepPayment: boolean) {
+  console.log(`\n🔄 Сброс данных пользователя с telegramId: ${telegramId}${keepPayment ? ' (оплата сохраняется)' : ''}\n`);
 
   try {
     // 1. Находим пользователя
@@ -132,24 +134,32 @@ async function resetUserByTelegramId(telegramId: string) {
       console.warn('   ⚠️  QuestionnaireProgress не удален (не критично)');
     }
 
-    // Payment
-    try {
-      results.payments = (await prisma.payment.deleteMany({
-        where: { userId: user.id },
-      })).count;
-      console.log(`   ✅ Payment: ${results.payments}`);
-    } catch (e: any) {
-      console.warn('   ⚠️  Payment не удален (не критично)');
+    // Payment — пропускаем при --keep-payment
+    if (!keepPayment) {
+      try {
+        results.payments = (await prisma.payment.deleteMany({
+          where: { userId: user.id },
+        })).count;
+        console.log(`   ✅ Payment: ${results.payments}`);
+      } catch (e: any) {
+        console.warn('   ⚠️  Payment не удален (не критично)');
+      }
+    } else {
+      console.log('   ⏭️  Payment: не удаляю (--keep-payment)');
     }
 
-    // Entitlement
-    try {
-      results.entitlements = (await prisma.entitlement.deleteMany({
-        where: { userId: user.id },
-      })).count;
-      console.log(`   ✅ Entitlement: ${results.entitlements}`);
-    } catch (e: any) {
-      console.warn('   ⚠️  Entitlement не удален (не критично)');
+    // Entitlement — пропускаем при --keep-payment
+    if (!keepPayment) {
+      try {
+        results.entitlements = (await prisma.entitlement.deleteMany({
+          where: { userId: user.id },
+        })).count;
+        console.log(`   ✅ Entitlement: ${results.entitlements}`);
+      } catch (e: any) {
+        console.warn('   ⚠️  Entitlement не удален (не критично)');
+      }
+    } else {
+      console.log('   ⏭️  Entitlement: не удаляю (--keep-payment)');
     }
 
     // ProductReplacement
@@ -242,5 +252,7 @@ async function resetUserByTelegramId(telegramId: string) {
 }
 
 // Запускаем скрипт
-const telegramId = process.argv[2] || '643160759';
-resetUserByTelegramId(telegramId);
+const args = process.argv.slice(2);
+const telegramId = args.find((a) => a !== '--keep-payment') || '643160759';
+const keepPayment = args.includes('--keep-payment');
+resetUserByTelegramId(telegramId, keepPayment);
