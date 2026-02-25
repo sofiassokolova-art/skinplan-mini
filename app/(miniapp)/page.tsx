@@ -4,7 +4,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { api } from '@/lib/api';
 import { clientLogger } from '@/lib/client-logger';
 import { REDIRECT_TIMEOUTS, ROOT_LOAD_TIMEOUTS } from '@/lib/config/timeouts';
 
@@ -114,28 +113,10 @@ export default function RootPage() {
         return;
       }
 
-      // Нет свежего кэша: запросы auth и hasPlanProgress параллельно (не подряд)
+      // Проверяем hasPlanProgress (авторизация через initData в заголовках автоматическая)
       try {
-        const initData = window.Telegram?.WebApp?.initData;
-        const authPromise = initData
-          ? api.authTelegram(initData).then(() => true).catch((e: any) => {
-              clientLogger.warn('⚠️ Authorization failed (non-blocking):', e?.message);
-              return false;
-            })
-          : Promise.resolve(false);
-        const planPromise = (async () => {
-          try {
-            const { getHasPlanProgress } = await import('@/lib/user-preferences');
-            return await getHasPlanProgress();
-          } catch (e) {
-            clientLogger.warn('⚠️ Error getHasPlanProgress, assume new user:', e);
-            return false;
-          }
-        })();
-
-        const [authOk, planProgress] = await Promise.all([authPromise, planPromise]);
-        hasPlanProgress = planProgress;
-        if (initData && authOk) clientLogger.log('✅ Authorization successful');
+        const { getHasPlanProgress } = await import('@/lib/user-preferences');
+        hasPlanProgress = await getHasPlanProgress();
       } catch (error) {
         clientLogger.warn('⚠️ Root check error:', error);
         hasPlanProgress = false;

@@ -108,11 +108,6 @@ async function request<T>(
 }
 
 export const api = {
-  // Устаревшая функция - больше не нужна, initData передается автоматически
-  async authTelegram(initData: string) {
-    return { success: true };
-  },
-
   // Анкета
   async getActiveQuestionnaire() {
     return request('/questionnaire/active');

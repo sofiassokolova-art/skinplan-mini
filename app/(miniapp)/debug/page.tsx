@@ -215,13 +215,8 @@ export default function DebugPage() {
                 try {
                   setAuthStatus('Попытка авторизации...');
                   if (initData) {
-                    try {
-                      await api.authTelegram(initData);
-                      setAuthStatus('✅ Пользователь идентифицирован');
-                      window.location.reload();
-                    } catch (err: any) {
-                      setAuthStatus(`❌ Ошибка: ${err?.message || 'Неизвестная ошибка'}`);
-                    }
+                    setAuthStatus('✅ initData доступен, авторизация через заголовки');
+                    window.location.reload();
                   } else {
                     setAuthStatus('❌ initData не доступен');
                   }

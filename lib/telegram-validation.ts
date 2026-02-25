@@ -35,7 +35,7 @@ export interface TelegramValidationResult {
 export async function validateTelegramInitDataUnified(
   initData: string | null
 ): Promise<TelegramValidationResult> {
-  if (!initData) {
+  if (!initData || !initData.trim()) {
     return { valid: false, error: 'No initData provided' };
   }
 

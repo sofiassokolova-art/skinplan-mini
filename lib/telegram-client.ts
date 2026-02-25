@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface TelegramWebApp {
   ready: () => void;
@@ -39,7 +39,7 @@ export const tg: TelegramWebApp | null =
     ? window.Telegram.WebApp
     : null;
 
-/** На мобильном Telegram часто передаёт initData в URL hash (tgWebAppData), если скрипт с telegram.org не успел загрузиться */
+/** Извлекает initData из URL hash (#tgWebAppData=...) — мобильный Telegram передаёт данные так, если скрипт ещё не загрузился */
 function getInitDataFromHash(): string {
   if (typeof window === 'undefined') return '';
   try {
@@ -52,6 +52,15 @@ function getInitDataFromHash(): string {
     return '';
   }
 }
+
+/** Извлекает auth_date из initData строки */
+function getAuthDate(initData: string): number {
+  if (!initData) return 0;
+  const match = initData.match(/auth_date=(\d+)/);
+  return match ? parseInt(match[1], 10) : 0;
+}
+
+const INIT_DATA_MAX_AGE_SEC = 82800; // 23 часа (с запасом от серверных 24ч)
 
 export function sendToTG(payload: unknown): { ok: boolean; reason?: string } {
   try {
@@ -71,55 +80,73 @@ export function sendToTG(payload: unknown): { ok: boolean; reason?: string } {
 }
 
 /**
- * Хук для работы с Telegram WebApp
- * После загрузки скрипта (strategy afterInteractive) Telegram может появиться с задержкой — подписываемся и обновляем state
+ * Хук для работы с Telegram WebApp.
+ *
+ * Приоритет источников initData:
+ * 1. window.Telegram.WebApp.initData — основной (после загрузки скрипта)
+ * 2. URL hash (#tgWebAppData=...) — fallback на мобильном до загрузки скрипта
+ *
+ * Оптимизировано: вместо polling каждые 300мс используем событие telegram-webapp-ready
+ * с единственным fallback setTimeout.
  */
 export function useTelegram() {
-  const [initDataFromScript, setInitDataFromScript] = useState<string | null>(null);
+  const [resolvedInitData, setResolvedInitData] = useState<string>('');
+  const [expired, setExpired] = useState(false);
+  const expiryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 1) Сразу пробуем взять initData из URL hash (на мобильном Telegram передаёт tgWebAppData туда)
-  // 2) Когда скрипт telegram-web-app.js загрузится, подхватим window.Telegram
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const fromHash = getInitDataFromHash();
-    if (fromHash) setInitDataFromScript(fromHash);
 
-    const read = () => {
-      try {
-        const data = window.Telegram?.WebApp?.initData || '';
-        if (data) setInitDataFromScript(data);
-      } catch (_) {}
+    const resolve = () => {
+      // Приоритет: скрипт Telegram > hash
+      const fromScript = window.Telegram?.WebApp?.initData || '';
+      const fromHash = getInitDataFromHash();
+      const best = fromScript || fromHash;
+      if (best) {
+        setResolvedInitData(best);
+        setExpired(false);
+
+        // Планируем проверку истечения
+        if (expiryTimerRef.current) clearTimeout(expiryTimerRef.current);
+        const authDate = getAuthDate(best);
+        if (authDate > 0) {
+          const nowSec = Math.floor(Date.now() / 1000);
+          const remainingSec = INIT_DATA_MAX_AGE_SEC - (nowSec - authDate);
+          if (remainingSec <= 0) {
+            setExpired(true);
+          } else {
+            expiryTimerRef.current = setTimeout(() => setExpired(true), remainingSec * 1000);
+          }
+        }
+      }
     };
-    read();
-    const t = setInterval(read, 300);
-    const done = () => {
-      clearInterval(t);
-      read();
-    };
+
+    // Сразу пробуем
+    resolve();
+
+    // Слушаем событие загрузки скрипта
     const onReady = () => {
-      done();
+      resolve();
       window.removeEventListener('telegram-webapp-ready', onReady);
     };
     window.addEventListener('telegram-webapp-ready', onReady);
-    const timeout = setTimeout(done, 8000);
+
+    // Один fallback-таймер (3с) вместо бесконечного polling
+    const fallback = setTimeout(resolve, 3000);
+
     return () => {
-      clearInterval(t);
-      clearTimeout(timeout);
       window.removeEventListener('telegram-webapp-ready', onReady);
+      clearTimeout(fallback);
+      if (expiryTimerRef.current) clearTimeout(expiryTimerRef.current);
     };
   }, []);
 
-  let initData = '';
   let user: TelegramWebApp['initDataUnsafe']['user'] = undefined;
-
   try {
     if (typeof window !== 'undefined') {
-      initData = initDataFromScript ?? window.Telegram?.WebApp?.initData ?? getInitDataFromHash() ?? '';
       user = window.Telegram?.WebApp?.initDataUnsafe?.user;
     }
-  } catch (err) {
-    console.warn('⚠️ Error accessing Telegram WebApp:', err);
-  }
+  } catch (_) {}
 
   const initialize = useCallback(() => {
     try {
@@ -138,10 +165,12 @@ export function useTelegram() {
 
   return {
     tg,
-    initData,
+    initData: resolvedInitData,
     user,
     initialize,
     sendData,
     isAvailable: !!tg,
+    /** true если initData истёк (>23ч) — покажите пользователю кнопку «Обновить» */
+    expired,
   };
 }
