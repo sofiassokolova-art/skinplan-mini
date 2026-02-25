@@ -4,10 +4,12 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { clientLogger } from '@/lib/client-logger';
 import { REDIRECT_TIMEOUTS, ROOT_LOAD_TIMEOUTS } from '@/lib/config/timeouts';
 
 export default function RootPage() {
+  const router = useRouter();
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -17,16 +19,20 @@ export default function RootPage() {
   useEffect(() => {
     if (redirectInProgressRef.current) return;
 
+    // Используем router.replace для SPA-навигации (сохраняем Telegram контекст и initData).
+    // Fallback на window.location.replace, если router недоступен.
     const safeReplace = (url: string) => {
       redirectInProgressRef.current = true;
       setIsRedirecting(true);
       setIsLoading(false);
-      if (typeof window !== 'undefined') {
-        window.location.replace(url);
-        cleanupTimerRef.current = setTimeout(() => {
-          redirectInProgressRef.current = false;
-        }, REDIRECT_TIMEOUTS.RESET_FLAG);
+      try {
+        router.replace(url);
+      } catch (_) {
+        if (typeof window !== 'undefined') window.location.replace(url);
       }
+      cleanupTimerRef.current = setTimeout(() => {
+        redirectInProgressRef.current = false;
+      }, REDIRECT_TIMEOUTS.RESET_FLAG);
     };
 
     // 1) quiz_just_submitted → /plan?state=generating
@@ -61,18 +67,23 @@ export default function RootPage() {
       };
     }
 
-    // 2) Проверяем Telegram initData — ждём до 1.5с, т.к. telegram-web-app.js (afterInteractive)
-    //    может не успеть загрузиться к моменту первого рендера
+    // 2) Проверяем Telegram initData — ждём до 1.5с
+    //    Проверяем SDK, hash и sessionStorage (данные сохраняются hash-fallback скриптом)
     const isDev = typeof window !== 'undefined' && process.env.NODE_ENV === 'development';
-    const hasTelegramNow = typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
+
+    const hasInitData = (): boolean => {
+      if (window.Telegram?.WebApp?.initData) return true;
+      try { return !!sessionStorage.getItem('tg_init_data'); } catch { return false; }
+    };
+
+    const hasTelegramNow = typeof window !== 'undefined' && hasInitData();
 
     if (!hasTelegramNow && !isDev) {
-      // Ждём появления initData (скрипт afterInteractive или hash-fallback)
       const waitForTelegram = new Promise<boolean>((resolve) => {
         let elapsed = 0;
         const interval = setInterval(() => {
           elapsed += 150;
-          if (window.Telegram?.WebApp?.initData) {
+          if (hasInitData()) {
             clearInterval(interval);
             resolve(true);
           } else if (elapsed >= 1500) {
@@ -88,7 +99,6 @@ export default function RootPage() {
           clientLogger.log('Telegram WebApp не доступен, перенаправляем на /quiz');
           safeReplace('/quiz');
         }
-        // Если found=true, продолжаем ниже (checkAndRedirect уже запущен)
       });
     }
 
@@ -119,7 +129,6 @@ export default function RootPage() {
         // ignore
       }
 
-      // Если по кэшу уже знаем — редиректим сразу, авторизацию догоним на целевой странице
       if (hasPlanProgress) {
         clearTimeout(timeoutId);
         clientLogger.log('ℹ️ Has plan_progress (from cache) → /home');
@@ -127,7 +136,6 @@ export default function RootPage() {
         return;
       }
 
-      // Проверяем hasPlanProgress (авторизация через initData в заголовках автоматическая)
       try {
         const { getHasPlanProgress } = await import('@/lib/user-preferences');
         hasPlanProgress = await getHasPlanProgress();
@@ -159,7 +167,7 @@ export default function RootPage() {
         cleanupTimerRef.current = null;
       }
     };
-  }, []);
+  }, [router]);
 
   return (
     <div style={{

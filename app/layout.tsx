@@ -80,37 +80,52 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        {/* На мобильном Telegram передаёт initData в hash (#tgWebAppData=...). Подставляем WebApp сразу, чтобы не ждать скрипт с telegram.org */}
+        {/* На мобильном Telegram передаёт initData в hash (#tgWebAppData=...). Парсим и сохраняем в sessionStorage. Stub-объект WebApp создаётся только для данных, ready() НЕ подменяем — его должен вызвать настоящий SDK. */}
         {!isAdminRoute && (
           <Script id="telegram-hash-fallback" strategy="beforeInteractive">
             {`
 (function(){
   if (typeof window === 'undefined') return;
+
+  var initData = '';
+
+  // 1. Пробуем hash
   var h = window.location.hash.slice(1);
-  if (!h) return;
-  try {
-    var p = new URLSearchParams(h);
-    var raw = p.get('tgWebAppData');
-    if (!raw) return;
-    var initData = decodeURIComponent(raw);
-    if (!window.Telegram) window.Telegram = {};
-    if (!window.Telegram.WebApp || !window.Telegram.WebApp.initData) {
-      var w = window.Telegram.WebApp = window.Telegram.WebApp || {};
-      w.initData = initData;
-      w.initDataUnsafe = w.initDataUnsafe || {};
-      try {
-        var userMatch = initData.match(/user=([^&]+)/);
-        if (userMatch) w.initDataUnsafe.user = JSON.parse(decodeURIComponent(userMatch[1]));
-      } catch (_) {}
-      w.ready = w.ready || function(){};
-      w.expand = w.expand || function(){};
-      w.close = w.close || function(){};
-      w.sendData = w.sendData || function(){};
-      w.showPopup = w.showPopup || function(){};
-      w.openLink = w.openLink || function(url){ window.open(url); };
-      w.openTelegramLink = w.openTelegramLink || function(url){ window.open(url); };
-    }
-  } catch (e) {}
+  if (h) {
+    try {
+      var p = new URLSearchParams(h);
+      var raw = p.get('tgWebAppData');
+      if (raw) initData = decodeURIComponent(raw);
+    } catch (_) {}
+  }
+
+  // 2. Fallback — sessionStorage (после редиректа hash теряется)
+  if (!initData) {
+    try { initData = sessionStorage.getItem('tg_init_data') || ''; } catch (_) {}
+  }
+
+  if (!initData) return;
+
+  // Сохраняем/обновляем в sessionStorage
+  try { sessionStorage.setItem('tg_init_data', initData); } catch (_) {}
+
+  if (!window.Telegram) window.Telegram = {};
+  if (!window.Telegram.WebApp || !window.Telegram.WebApp.initData) {
+    var w = window.Telegram.WebApp = window.Telegram.WebApp || {};
+    w.initData = initData;
+    w.initDataUnsafe = w.initDataUnsafe || {};
+    try {
+      var userMatch = initData.match(/user=([^&]+)/);
+      if (userMatch) w.initDataUnsafe.user = JSON.parse(decodeURIComponent(userMatch[1]));
+    } catch (_) {}
+    w.ready = w.ready || function(){};
+    w.expand = w.expand || function(){};
+    w.close = w.close || function(){};
+    w.sendData = w.sendData || function(){};
+    w.showPopup = w.showPopup || function(){};
+    w.openLink = w.openLink || function(url){ window.open(url); };
+    w.openTelegramLink = w.openTelegramLink || function(url){ window.open(url); };
+  }
 })();
             `}
           </Script>
