@@ -4,12 +4,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { clientLogger } from '@/lib/client-logger';
 import { REDIRECT_TIMEOUTS, ROOT_LOAD_TIMEOUTS } from '@/lib/config/timeouts';
 
 export default function RootPage() {
-  const router = useRouter();
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -19,20 +17,19 @@ export default function RootPage() {
   useEffect(() => {
     if (redirectInProgressRef.current) return;
 
-    // Используем router.replace для SPA-навигации (сохраняем Telegram контекст и initData).
-    // Fallback на window.location.replace, если router недоступен.
+    // initData сохранён в sessionStorage hash-fallback скриптом,
+    // поэтому window.location.replace() безопасен — данные не теряются.
     const safeReplace = (url: string) => {
+      if (redirectInProgressRef.current) return;
       redirectInProgressRef.current = true;
       setIsRedirecting(true);
       setIsLoading(false);
-      try {
-        router.replace(url);
-      } catch (_) {
-        if (typeof window !== 'undefined') window.location.replace(url);
+      if (typeof window !== 'undefined') {
+        window.location.replace(url);
+        cleanupTimerRef.current = setTimeout(() => {
+          redirectInProgressRef.current = false;
+        }, REDIRECT_TIMEOUTS.RESET_FLAG);
       }
-      cleanupTimerRef.current = setTimeout(() => {
-        redirectInProgressRef.current = false;
-      }, REDIRECT_TIMEOUTS.RESET_FLAG);
     };
 
     // 1) quiz_just_submitted → /plan?state=generating
@@ -68,7 +65,7 @@ export default function RootPage() {
     }
 
     // 2) Проверяем Telegram initData — ждём до 1.5с
-    //    Проверяем SDK, hash и sessionStorage (данные сохраняются hash-fallback скриптом)
+    //    Проверяем SDK и sessionStorage (hash-fallback сохраняет туда)
     const isDev = typeof window !== 'undefined' && process.env.NODE_ENV === 'development';
 
     const hasInitData = (): boolean => {
@@ -167,7 +164,7 @@ export default function RootPage() {
         cleanupTimerRef.current = null;
       }
     };
-  }, [router]);
+  }, []);
 
   return (
     <div style={{

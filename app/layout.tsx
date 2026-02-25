@@ -80,58 +80,56 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        {/* На мобильном Telegram передаёт initData в hash (#tgWebAppData=...). Парсим и сохраняем в sessionStorage. Stub-объект WebApp создаётся только для данных, ready() НЕ подменяем — его должен вызвать настоящий SDK. */}
+        {/* 1) Парсим initData из hash и сохраняем в sessionStorage.
+              НЕ создаём stub window.Telegram.WebApp — он мешает настоящему SDK
+              инициализироваться и перехватывает вызов ready() (noop вместо postEvent). */}
         {!isAdminRoute && (
           <Script id="telegram-hash-fallback" strategy="beforeInteractive">
             {`
 (function(){
-  if (typeof window === 'undefined') return;
-
-  var initData = '';
-
-  // 1. Пробуем hash
-  var h = window.location.hash.slice(1);
-  if (h) {
-    try {
-      var p = new URLSearchParams(h);
-      var raw = p.get('tgWebAppData');
-      if (raw) initData = decodeURIComponent(raw);
-    } catch (_) {}
-  }
-
-  // 2. Fallback — sessionStorage (после редиректа hash теряется)
-  if (!initData) {
-    try { initData = sessionStorage.getItem('tg_init_data') || ''; } catch (_) {}
-  }
-
-  if (!initData) return;
-
-  // Сохраняем/обновляем в sessionStorage
-  try { sessionStorage.setItem('tg_init_data', initData); } catch (_) {}
-
-  if (!window.Telegram) window.Telegram = {};
-  if (!window.Telegram.WebApp || !window.Telegram.WebApp.initData) {
-    var w = window.Telegram.WebApp = window.Telegram.WebApp || {};
-    w.initData = initData;
-    w.initDataUnsafe = w.initDataUnsafe || {};
-    try {
-      var userMatch = initData.match(/user=([^&]+)/);
-      if (userMatch) w.initDataUnsafe.user = JSON.parse(decodeURIComponent(userMatch[1]));
-    } catch (_) {}
-    w.ready = w.ready || function(){};
-    w.expand = w.expand || function(){};
-    w.close = w.close || function(){};
-    w.sendData = w.sendData || function(){};
-    w.showPopup = w.showPopup || function(){};
-    w.openLink = w.openLink || function(url){ window.open(url); };
-    w.openTelegramLink = w.openTelegramLink || function(url){ window.open(url); };
-  }
+  if(typeof window==='undefined')return;
+  var d='';
+  try{
+    var h=window.location.hash.slice(1);
+    if(h){var p=new URLSearchParams(h);var r=p.get('tgWebAppData');if(r)d=decodeURIComponent(r);}
+  }catch(_){}
+  if(!d){try{d=sessionStorage.getItem('tg_init_data')||'';}catch(_){}}
+  if(d){try{sessionStorage.setItem('tg_init_data',d);}catch(_){}}
 })();
             `}
           </Script>
         )}
-        {/* Telegram WebApp: после первого рендера, чтобы в WebView не зависало на загрузке telegram.org */}
+        {/* 2) Загружаем настоящий telegram-web-app.js (afterInteractive) */}
         {!isAdminRoute && <TelegramScript />}
+        {/* 3) Поллер: как только настоящий Telegram SDK создаст
+              window.Telegram.WebApp — вызываем ready()/expand(), чтобы
+              Telegram убрал свой лоадер (4 квадратика). Stub больше
+              не создаётся, поэтому если WebApp существует — это настоящий SDK.
+              Таймаут 5с: если SDK не загрузился — диспатчим событие, чтобы
+              приложение не зависло в ожидании. */}
+        {!isAdminRoute && (
+          <Script id="telegram-ready-poller" strategy="beforeInteractive">
+            {`
+(function(){
+  if(typeof window==='undefined')return;
+  var done=false;
+  function go(){
+    if(done)return false;
+    var w=window.Telegram&&window.Telegram.WebApp;
+    if(!w||typeof w.ready!=='function')return false;
+    done=true;
+    try{w.ready();}catch(_){}
+    try{w.expand();}catch(_){}
+    window.dispatchEvent(new Event('telegram-webapp-ready'));
+    return true;
+  }
+  if(go())return;
+  var iv=setInterval(function(){if(go())clearInterval(iv);},120);
+  setTimeout(function(){clearInterval(iv);if(!done){done=true;window.dispatchEvent(new Event('telegram-webapp-ready'));}},5000);
+})();
+            `}
+          </Script>
+        )}
         {/* DEV-режим: мок Telegram WebApp для локального браузера (не на /admin) */}
         {isDev && !isAdminRoute && (
           <Script id="telegram-dev-mock" strategy="beforeInteractive">
