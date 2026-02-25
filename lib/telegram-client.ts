@@ -4,6 +4,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { TELEGRAM_TIMEOUTS } from '@/lib/config/timeouts';
 
 export interface TelegramWebApp {
   ready: () => void;
@@ -60,8 +61,6 @@ function getAuthDate(initData: string): number {
   return match ? parseInt(match[1], 10) : 0;
 }
 
-const INIT_DATA_MAX_AGE_SEC = 82800; // 23 часа (с запасом от серверных 24ч)
-
 export function sendToTG(payload: unknown): { ok: boolean; reason?: string } {
   try {
     if (!tg) return { ok: false, reason: 'tg-not-available' };
@@ -111,7 +110,7 @@ export function useTelegram() {
         const authDate = getAuthDate(best);
         if (authDate > 0) {
           const nowSec = Math.floor(Date.now() / 1000);
-          const remainingSec = INIT_DATA_MAX_AGE_SEC - (nowSec - authDate);
+          const remainingSec = TELEGRAM_TIMEOUTS.INIT_DATA_MAX_AGE_SEC - (nowSec - authDate);
           if (remainingSec <= 0) {
             setExpired(true);
           } else {
@@ -132,7 +131,7 @@ export function useTelegram() {
     window.addEventListener('telegram-webapp-ready', onReady);
 
     // Один fallback-таймер (3с) вместо бесконечного polling
-    const fallback = setTimeout(resolve, 3000);
+    const fallback = setTimeout(resolve, TELEGRAM_TIMEOUTS.INIT_DATA_FALLBACK);
 
     return () => {
       window.removeEventListener('telegram-webapp-ready', onReady);

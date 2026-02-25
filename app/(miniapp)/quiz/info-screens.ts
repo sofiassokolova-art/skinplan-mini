@@ -330,24 +330,6 @@ export function getNextInfoScreenAfterScreen(screenId: string): InfoScreen | und
 }
 
 /**
- * Проходит всю цепочку инфо-экранов, начиная от startScreen.
- * Возвращает массив экранов в порядке показа (включая startScreen).
- */
-export function walkInfoScreenChain(startScreen: InfoScreen): InfoScreen[] {
-  const chain: InfoScreen[] = [startScreen];
-  const visited = new Set<string>([startScreen.id]);
-  let current = startScreen;
-  while (true) {
-    const next = getNextInfoScreenAfterScreen(current.id);
-    if (!next || visited.has(next.id)) break;
-    chain.push(next);
-    visited.add(next.id);
-    current = next;
-  }
-  return chain;
-}
-
-/**
  * Находит первый экран в цепочке — тот, у которого есть showAfterQuestionCode.
  * Полезно для определения, после какого вопроса началась цепочка.
  */

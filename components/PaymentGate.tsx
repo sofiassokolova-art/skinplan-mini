@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { usePaywallVisibility } from '@/providers/PaywallVisibilityContext';
+import { TELEGRAM_TIMEOUTS } from '@/lib/config/timeouts';
 
 interface PaymentGateProps {
   price?: number;
@@ -119,7 +120,6 @@ export function PaymentGate({
 
     // Ждём до 5 секунд — на медленном мобильном скрипт telegram-web-app.js грузится дольше
     const start = Date.now();
-    const INIT_DATA_TIMEOUT = 5000;
     const intervalId = setInterval(() => {
       if (cancelled) return;
       const initData =
@@ -129,7 +129,7 @@ export function PaymentGate({
         setInitDataReady(true);
         return;
       }
-      if (Date.now() - start > INIT_DATA_TIMEOUT) {
+      if (Date.now() - start > TELEGRAM_TIMEOUTS.PAYMENT_GATE_INIT_DATA) {
         clearInterval(intervalId);
         setInitDataReady(false);
         setCheckedOnce(true);

@@ -188,9 +188,15 @@ export async function rateLimit(
  */
 function extractTelegramIdFromInitData(initData: string | null): string | null {
   if (!initData) return null;
-  const match = initData.match(/user=%7B%22id%22%3A(\d+)/) ||
-                decodeURIComponent(initData).match(/"id"\s*:\s*(\d+)/);
-  return match ? `tg:${match[1]}` : null;
+  const match = initData.match(/user=%7B%22id%22%3A(\d+)/);
+  if (match) return `tg:${match[1]}`;
+  
+  try {
+    const decodedMatch = decodeURIComponent(initData).match(/"id"\s*:\s*(\d+)/);
+    return decodedMatch ? `tg:${decodedMatch[1]}` : null;
+  } catch {
+    return null;
+  }
 }
 
 /**

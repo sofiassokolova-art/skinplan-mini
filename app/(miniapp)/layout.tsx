@@ -36,7 +36,6 @@ function LayoutContent({
   const searchParams = useSearchParams();
   const { initData, initialize } = useTelegram();
   const [isAuthorized, setIsAuthorized] = useState(false);
-  const [isNewUser, setIsNewUser] = useState<boolean | null>(null);
   
   useEffect(() => {
     if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
@@ -59,31 +58,6 @@ function LayoutContent({
       setIsAuthorized(true);
     }
   }, [initData, initialize, isAuthorized]);
-
-  const newUserCheckedRef = useRef(false);
-
-  useEffect(() => {
-    if (pathname !== '/' || !initData || newUserCheckedRef.current) {
-      if (pathname !== '/') setIsNewUser(null);
-      return;
-    }
-
-    newUserCheckedRef.current = true;
-    let aborted = false;
-
-    (async () => {
-      try {
-        const { getHasPlanProgress } = await import('@/lib/user-preferences');
-        if (aborted) return;
-        const has = await getHasPlanProgress();
-        if (!aborted) setIsNewUser(!has);
-      } catch {
-        if (!aborted) setIsNewUser(false);
-      }
-    })();
-
-    return () => { aborted = true; };
-  }, [pathname, initData]);
 
   // Проверяем, показывается ли экран "Вы не завершили анкету" (через query параметр)
   const isResumeScreen = searchParams?.get('resume') === 'true';
