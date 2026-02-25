@@ -59,11 +59,11 @@ export function FixedContinueButton({
           color: fgColor,
           border: 'none',
           fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-          fontWeight: 600,
+          fontWeight: 400,
           fontSize: 'clamp(14px, 4vw, 16px)',
           textTransform: 'uppercase',
           cursor: disabled ? 'not-allowed' : 'pointer',
-          boxShadow: '2px 2px 4px 0 #00000033',
+          boxShadow: 'none',
           transition: 'transform 0.2s, box-shadow 0.2s',
           opacity: disabled ? 0.6 : 1,
         }}

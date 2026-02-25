@@ -77,7 +77,7 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'flex-start',
-          paddingTop: 'clamp(120px, 40vh, 320px)',
+          paddingTop: 'clamp(180px, 52vh, 400px)',
           paddingBottom: '100px',
           paddingLeft: '20px',
           paddingRight: '20px',
