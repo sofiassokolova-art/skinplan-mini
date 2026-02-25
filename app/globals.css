@@ -391,6 +391,21 @@ body {
   box-sizing: border-box;
 }
 
+html, body {
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@supports (padding: env(safe-area-inset-top)) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
 /* ИСПРАВЛЕНО (P2): Глобальные стили для админ-лейаута (вынесены из layout.tsx) */
 @keyframes gradientShift {
   0%, 100% { background-position: 0% 50%; }
