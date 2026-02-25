@@ -111,15 +111,12 @@ export async function submitAnswers(params: SubmitAnswersParams): Promise<void> 
   }
   params.isSubmittingRef.current = true;
 
-  // 2) показываем финальный лоадер ОДИН РАЗ
+  // 2) только блокируем кнопку; один лоадер — страница /loading после редиректа
   if (params.isMountedRef.current) {
     params.setError(null);
     params.setLoading(false); // скрываем "инициализационный" лоадер анкеты
     params.setIsSubmitting(true);
-
-    params.setFinalizing(true);
-    params.setFinalizingStep('answers');
-    params.setFinalizeError(null);
+    // Не показываем QuizFinalizingLoader — между анкетой и планом один лоадер (/loading)
   }
 
   try {
@@ -174,11 +171,6 @@ export async function submitAnswers(params: SubmitAnswersParams): Promise<void> 
       success: result?.success,
     });
 
-    // 6) гарантируем profileId (или через getCurrentProfile)
-    if (params.isMountedRef.current) {
-      params.setFinalizingStep('plan');
-    }
-
     const profileId = await ensureProfileId(result);
     if (!profileId) {
       // очень важно: не оставляем "just_submitted" если профиля нет
@@ -229,9 +221,7 @@ export async function submitAnswers(params: SubmitAnswersParams): Promise<void> 
 
     // показываем ошибку только если НЕ ушли в редирект
     if (!params.redirectInProgressRef.current && params.isMountedRef.current) {
-      params.setFinalizeError(err?.message || 'Ошибка отправки ответов');
       params.setError(err?.message || 'Ошибка отправки ответов');
-      params.setFinalizing(false);
       params.setIsSubmitting(false);
     }
 
@@ -244,7 +234,6 @@ export async function submitAnswers(params: SubmitAnswersParams): Promise<void> 
   if (!params.redirectInProgressRef.current) {
     params.isSubmittingRef.current = false;
     if (params.isMountedRef.current) {
-      params.setFinalizing(false);
       params.setIsSubmitting(false);
     }
   }

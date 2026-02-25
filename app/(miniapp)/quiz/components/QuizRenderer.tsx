@@ -16,7 +16,6 @@ const QuizRetakeScreen = lazy(() => import('./QuizRetakeScreen').then(mod => ({ 
 // Не ленивые импорты для часто используемых компонентов
 import { QuizInitialLoader } from './QuizInitialLoader';
 import { QuizErrorScreen } from './QuizErrorScreen';
-import { QuizFinalizingLoader } from './QuizFinalizingLoader';
 
 import {
   getQuizBackgroundColor,
@@ -748,17 +747,7 @@ export const QuizRenderer = memo(function QuizRenderer({
     );
   }
 
-  // Finalizing loader — ОДИН лоадер перед отправкой ответов и планом
-  // Проверяем ПЕРЕД LOADER, чтобы никогда не показывать два лоадера
-  if (finalizing) {
-    return (
-      <QuizFinalizingLoader
-        finalizing={true}
-        finalizingStep={finalizingStep}
-        finalizeError={finalizeError}
-      />
-    );
-  }
+  // Между анкетой и планом — один лоадер (страница /loading); finalizing overlay не показываем
 
   // Loader screen - показывается когда данные еще загружаются
   if (screen === 'LOADER') {
@@ -980,17 +969,25 @@ export const QuizRenderer = memo(function QuizRenderer({
         currentQuestionIndex,
         allQuestionsLength,
       });
-      // Запускаем финализацию автоматически
       if (onSubmit && !isSubmitting) {
         onSubmit();
       }
-      // Показываем лоадер финализации
+      // Один лоадер: тот же вид, что и страница /loading (без второго экрана)
       return (
-        <QuizFinalizingLoader
-          finalizing={true}
-          finalizingStep="answers"
-          finalizeError={null}
-        />
+        <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-purple-50 to-white p-4">
+          <div className="w-full max-w-md">
+            <div className="mb-8">
+              <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500 ease-out"
+                  style={{ width: '10%' }}
+                />
+              </div>
+              <p className="text-center mt-4 text-gray-600 text-lg font-medium">Сохраняем ответы...</p>
+              <p className="text-center mt-2 text-gray-400 text-sm">Это может занять до 1 минуты</p>
+            </div>
+          </div>
+        </div>
       );
     }
     

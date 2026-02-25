@@ -32,7 +32,17 @@ export class ErrorBoundary extends Component<Props, State> {
   static getDerivedStateFromError(error: Error): State {
     // Игнорируем известные "некритичные" ошибки, которые могут возникать при редиректах
     const errorMessage = error.message || error.toString();
-    
+    const errorName = (error as any).name || '';
+
+    // DOMException NotFoundError ("The object can not be found") — показываем дружественный экран, не пускаем в Next overlay
+    const isNotFoundDomError =
+      errorName === 'NotFoundError' ||
+      (typeof errorMessage === 'string' && /object can not be found/i.test(errorMessage));
+    if (isNotFoundDomError) {
+      console.warn('⚠️ ErrorBoundary: перехвачена NotFoundError (браузер/ресурс), показываем fallback:', errorMessage);
+      return { hasError: true, error };
+    }
+
     // Игнорируем ошибки, связанные с редиректами или размонтированием компонентов
     // ИСПРАВЛЕНО: Добавляем обработку ошибки #310 (hooks order) - она может возникать при race conditions
     if (
@@ -47,7 +57,7 @@ export class ErrorBoundary extends Component<Props, State> {
       console.warn('⚠️ Известная некритичная ошибка, игнорируем:', errorMessage);
       return { hasError: false, error: undefined };
     }
-    
+
     return { hasError: true, error };
   }
 

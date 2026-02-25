@@ -80,13 +80,17 @@ export async function GET(
           skinType: true,
           ageGroup: true,
           notes: true,
-          medicalMarkers: true, // mainGoals хранится в medicalMarkers как JSON
+          medicalMarkers: true, // mainGoals / маркеры из профиля
         },
       });
       
-      // Извлекаем mainGoals из medicalMarkers
+      // Источник истины для целей:
+      // 1) mainGoals из самого плана (planData.mainGoals)
+      // 2) fallback — mainGoals из medicalMarkers в профиле, если по каким‑то причинам в плане нет mainGoals
+      const planMainGoals = Array.isArray(planData?.mainGoals) ? planData.mainGoals : [];
       const medicalMarkers = fullProfile?.medicalMarkers as any;
-      const mainGoals = medicalMarkers?.mainGoals || (Array.isArray(medicalMarkers?.mainGoals) ? medicalMarkers.mainGoals : []);
+      const markersMainGoals = Array.isArray(medicalMarkers?.mainGoals) ? medicalMarkers.mainGoals : [];
+      const mainGoals = planMainGoals.length > 0 ? planMainGoals : markersMainGoals;
       
       return NextResponse.json({
         plan: {
@@ -94,9 +98,9 @@ export async function GET(
           profile: {
             version: plan28Record.profileVersion,
             skinType: fullProfile?.skinType || null,
-            primaryFocus: Array.isArray(mainGoals) && mainGoals.length > 0 ? mainGoals[0] : null,
+            primaryFocus: mainGoals.length > 0 ? mainGoals[0] : null,
             ageGroup: fullProfile?.ageGroup || null,
-            concerns: Array.isArray(mainGoals) ? mainGoals : [],
+            concerns: mainGoals,
           },
           products: allProducts,
           weeks: weeks,

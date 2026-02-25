@@ -60,8 +60,9 @@ export function PlanInfographic({
   };
 
   const categoryMap = new Map<string, CategoryData>();
-  
-  plan28.days.forEach(day => {
+  const days = Array.isArray(plan28?.days) ? plan28.days : [];
+
+  days.forEach(day => {
     [...day.morning, ...day.evening, ...day.weekly].forEach(step => {
       if (step.productId) {
         const product = products.get(Number(step.productId));

@@ -62,7 +62,8 @@ export default function ProductsAdmin() {
     try {
       setLoading(true);
       // ИСПРАВЛЕНО (P0): Убрали localStorage и Authorization - cookie-only подход
-      const response = await fetch('/api/admin/products', {
+      // ИСПРАВЛЕНО (P2): Явно запрашиваем больше продуктов (до 500), чтобы в админке отображались все, а не первые 50
+      const response = await fetch('/api/admin/products?page=1&limit=500', {
         headers: {
           'Content-Type': 'application/json',
         },
@@ -151,31 +152,47 @@ export default function ProductsAdmin() {
     try {
       setShowExportMenu(false);
       setExportLoading(true);
-      // ИСПРАВЛЕНО (P0): Убрали localStorage и Authorization - cookie-only подход
-      
-      // Отправляем запрос на экспорт в Telegram
-      const response = await fetch('/api/admin/products/export', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+
+      const response = await fetch(`/api/admin/products/export?format=${format}`, {
+        method: 'GET',
         credentials: 'include',
-        body: JSON.stringify({ format }),
       });
 
-      // ИСПРАВЛЕНО (P0): Редирект на login при 401
       if (response.status === 401) {
         router.push('/admin/login');
         return;
       }
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json().catch(() => ({}));
         throw new Error(error.error || 'Ошибка экспорта');
       }
 
-      const data = await response.json();
-      alert(`✅ ${data.message || 'Файл успешно отправлен в Telegram!'}`);
+      const blob = await response.blob();
+      const disposition = response.headers.get('Content-Disposition');
+      const match = disposition?.match(/filename\*=(?:UTF-8'')?([^;]+)/i) || disposition?.match(/filename="([^"]+)"/);
+      let suggestedName: string | null = null;
+      if (match) {
+        const raw = match[1].trim().replace(/^"|"$/g, '');
+        try {
+          suggestedName = raw.includes('%') ? decodeURIComponent(raw) : raw;
+        } catch {
+          suggestedName = raw;
+        }
+      }
+      const date = new Date().toISOString().split('T')[0];
+      const filename = suggestedName || `products-export-${date}.${format === 'json' ? 'json' : 'csv'}`;
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      alert('✅ Файл скачан');
     } catch (err) {
       console.error('Ошибка экспорта:', err);
       alert('❌ Ошибка экспорта: ' + (err instanceof Error ? err.message : 'Неизвестная ошибка'));
@@ -410,7 +427,7 @@ export default function ProductsAdmin() {
               )}
             >
               <Download size={18} />
-              {exportLoading ? 'Отправка...' : 'Экспорт'} {/* ИСПРАВЛЕНО (P1): Индикация процесса */}
+              {exportLoading ? 'Скачивание...' : 'Экспорт'}
               <ChevronDown
                 size={16}
                 className={cn(
@@ -426,14 +443,14 @@ export default function ProductsAdmin() {
                   disabled={exportLoading}
                   className="w-full px-4 py-3 text-left text-sm hover:bg-gray-50 transition-colors rounded-t-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {exportLoading ? '⏳ Отправка...' : '📊 Экспорт в CSV'}
+                  {exportLoading ? '⏳ Скачивание...' : '📊 Экспорт в CSV'}
                 </button>
                 <button
                   onClick={() => handleExport('json')}
                   disabled={exportLoading}
                   className="w-full px-4 py-3 text-left text-sm hover:bg-gray-50 transition-colors rounded-b-lg border-t border-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {exportLoading ? '⏳ Отправка...' : '📄 Экспорт в JSON'}
+                  {exportLoading ? '⏳ Скачивание...' : '📄 Экспорт в JSON'}
                 </button>
               </div>
             )}

@@ -23,6 +23,7 @@ const DotLottieReact = dynamic(
 );
 import { PLAN_TIMEOUTS } from '@/lib/config/timeouts';
 import { safeSessionStorageRemove } from '@/lib/storage-utils';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 // РЕФАКТОРИНГ P2: Локальный тип данных для страницы плана
 // TODO: В будущем полностью унифицировать с PlanPageData из lib/plan-types.ts
@@ -1096,10 +1097,13 @@ export default function PlanPage() {
         });
 
         if (productsResponse.ok) {
-          const productsData = await productsResponse.json();
-          clientLogger.log('✅ Products loaded from batch:', productsData.products?.length || 0);
+          const productsData = await productsResponse.json().catch((parseErr: any) => {
+            clientLogger.warn('Batch response JSON parse failed, using empty products', parseErr);
+            return { products: [] };
+          });
+          clientLogger.log('✅ Products loaded from batch:', productsData?.products?.length ?? 0);
 
-          if (productsData.products && Array.isArray(productsData.products)) {
+          if (productsData?.products && Array.isArray(productsData.products)) {
             productsData.products.forEach((p: any) => {
               if (p && p.id) {
                 productsMap.set(p.id, {
@@ -1114,13 +1118,14 @@ export default function PlanPage() {
             });
           }
         } else {
-          console.error('❌ Failed to load products from batch endpoint:', {
+          // 404/5xx — не бросаем, возвращаем пустую карту; processPlanData подставит fallback из плана
+          clientLogger.warn('Batch endpoint non-OK:', {
             status: productsResponse.status,
             statusText: productsResponse.statusText,
           });
         }
       } catch (err: any) {
-        console.error('❌ Error loading products from batch endpoint:', err);
+        clientLogger.warn('Error loading products from batch (using empty map):', err?.message || err);
       }
     }
 
@@ -1561,40 +1566,76 @@ export default function PlanPage() {
     );
   }
 
+  // Экран «Обновить» для ErrorBoundary и повторной загрузки
+  const planErrorFallback = (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '100vh',
+      padding: '20px',
+      background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+    }}>
+      <p style={{ fontSize: '18px', color: '#D32F2F', marginBottom: '20px', textAlign: 'center' }}>
+        Не удалось загрузить план. Пожалуйста, попробуйте обновить страницу.
+      </p>
+      <button
+        onClick={() => { setError(null); setLoading(true); loadPlan(0); }}
+        style={{
+          padding: '12px 24px',
+          background: '#0A5F59',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          fontSize: '16px',
+          fontWeight: 600,
+          cursor: 'pointer',
+        }}
+      >
+        Обновить
+      </button>
+    </div>
+  );
+
   // Рендерим план
   // Используем новый компонент, если есть plan28
   if (planData.plan28) {
     return (
-      <Suspense fallback={<PlanLoadingView message="Загружаем план..." />}>
-        <PlanPageClientNew
-          plan28={planData.plan28}
-          products={planData.productsMap || planData.products || new Map()}
-          wishlist={planData.wishlist || []}
-          currentDay={planData.currentDay || 1}
-          completedDays={planData.progress?.completedDays || []}
-          planExpired={planData.planExpired || false}
-        />
-      </Suspense>
+      <ErrorBoundary fallback={planErrorFallback}>
+        <Suspense fallback={<PlanLoadingView message="Загружаем план..." />}>
+          <PlanPageClientNew
+            plan28={planData.plan28}
+            products={planData.productsMap || planData.products || new Map()}
+            wishlist={planData.wishlist || []}
+            currentDay={planData.currentDay || 1}
+            completedDays={planData.progress?.completedDays || []}
+            planExpired={planData.planExpired || false}
+          />
+        </Suspense>
+      </ErrorBoundary>
     );
   }
 
   // Используем старый компонент для обратной совместимости
   if (planData.user && planData.profile && planData.plan) {
     return (
-      <Suspense fallback={<PlanLoadingView message="Загружаем план..." />}>
-        <PlanPageClient
-          user={planData.user}
-          profile={planData.profile}
-          plan={planData.plan}
-          progress={planData.progress || { currentDay: 1, completedDays: [] }}
-          wishlist={planData.wishlist || []}
-          currentDay={planData.currentDay || 1}
-          currentWeek={planData.currentWeek || 1}
-          todayProducts={planData.todayProducts || []}
-          todayMorning={planData.todayMorning || []}
-          todayEvening={planData.todayEvening || []}
-        />
-      </Suspense>
+      <ErrorBoundary fallback={planErrorFallback}>
+        <Suspense fallback={<PlanLoadingView message="Загружаем план..." />}>
+          <PlanPageClient
+            user={planData.user}
+            profile={planData.profile}
+            plan={planData.plan}
+            progress={planData.progress || { currentDay: 1, completedDays: [] }}
+            wishlist={planData.wishlist || []}
+            currentDay={planData.currentDay || 1}
+            currentWeek={planData.currentWeek || 1}
+            todayProducts={planData.todayProducts || []}
+            todayMorning={planData.todayMorning || []}
+            todayEvening={planData.todayEvening || []}
+          />
+        </Suspense>
+      </ErrorBoundary>
     );
   }
 

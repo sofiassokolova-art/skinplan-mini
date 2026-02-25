@@ -200,19 +200,23 @@ export function PlanPageClientNew({
   const [isRetaking, setIsRetaking] = useState(false);
 
   const currentDayPlan = useMemo(() => {
-    // ИСПРАВЛЕНО: Ищем день по dayIndex, с защитой от undefined
-    const day = plan28.days.find(d => d.dayIndex === selectedDay);
+    // Защита от отсутствия days (избегаем NotFoundError/краша при неполных данных)
+    const days = plan28?.days;
+    if (!Array.isArray(days) || days.length === 0) {
+      clientLogger.warn('Plan28 days missing or empty', { hasPlan28: !!plan28, daysLength: days?.length });
+      return null;
+    }
+    const day = days.find(d => d.dayIndex === selectedDay);
     if (!day) {
       clientLogger.warn('Day not found for selectedDay:', {
         selectedDay,
-        availableDays: plan28.days.map(d => d.dayIndex).slice(0, 10),
-        totalDays: plan28.days.length,
+        availableDays: days.map(d => d.dayIndex).slice(0, 10),
+        totalDays: days.length,
       });
-      // Возвращаем первый день как fallback
-      return plan28.days[0] || null;
+      return days[0] || null;
     }
     return day;
-  }, [plan28.days, selectedDay]);
+  }, [plan28?.days, selectedDay]);
 
   // Обновляем выбранный день при изменении параметра в URL
   // ВАЖНО: Обрабатываем searchParams в useEffect, а не в useState, чтобы избежать проблем с порядком хуков

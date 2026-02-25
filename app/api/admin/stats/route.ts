@@ -93,12 +93,19 @@ export async function GET(request: NextRequest) {
         console.error('❌ Error fetching recent feedback:', err);
         return [];
       }),
-      // Считаем пользователей, которые перепрошли анкету (профили с version > 1)
+      // Считаем пользователей, которые действительно перепрошли анкету:
+      // у пользователя должно быть больше одного профиля (несколько версий).
+      // Это не зависит от номера версии анкеты (questionnaire.version).
       prisma.skinProfile.groupBy({
         by: ['userId'],
-        where: {
-          version: {
-            gt: 1, // Версия больше 1 означает перепрохождение
+        _count: {
+          _all: true,
+        },
+        having: {
+          _count: {
+            _all: {
+              gt: 1,
+            },
           },
         },
       }).then(groups => groups.length).catch(err => {

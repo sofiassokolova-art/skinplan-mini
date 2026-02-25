@@ -34,6 +34,7 @@
     "seed:admin": "tsx scripts/seed-admin.ts",
     "seed:admin-telegram": "tsx scripts/seed-admin-telegram.ts",
     "seed:all": "tsx scripts/seed-all.ts",
+    "backfill:main-goals": "tsx scripts/backfill-main-goals-from-plan28.ts",
     "reset:all-users": "tsx scripts/reset-all-users-to-new.ts --confirm",
     "telegram:webhook": "tsx scripts/setup-telegram-webhook.ts",
     "generate:webhook-secret": "tsx scripts/generate-webhook-secret.ts",
