@@ -1,7 +1,7 @@
 // app/layout.tsx
 // Root layout для Next.js приложения
 
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
 import Script from 'next/script';
 import { Analytics } from '@vercel/analytics/react';
@@ -49,6 +49,14 @@ const inter = localFont({
   fallback: ['-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
   adjustFontFallback: false,
 });
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+};
 
 export const metadata: Metadata = {
   title: 'SkinIQ - Умный уход за кожей',
@@ -215,6 +223,8 @@ export default async function RootLayout({
   function showFallback(){
     var e = document.getElementById("loading-timeout-fallback");
     if (e && e.style.display !== "block") { e.style.cssText = fallbackCss; e.innerHTML = fallbackHtml; }
+    var rl = document.getElementById("root-loading");
+    if (rl && rl.parentNode) rl.parentNode.removeChild(rl);
   }
   function tryReloadOnce(){
     try {
@@ -235,7 +245,10 @@ export default async function RootLayout({
       else showFallback();
     }
   }, true);
-  // Не показываем плашку по таймеру — только при реальной ошибке загрузки чанка/скрипта
+  setTimeout(function(){
+    var rl = document.getElementById("root-loading");
+    if (rl && rl.parentNode) { rl.parentNode.removeChild(rl); showFallback(); }
+  }, 15000);
 })();
             `.trim(),
           }}
