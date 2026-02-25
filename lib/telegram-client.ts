@@ -53,6 +53,22 @@ function getInitDataFromHash(): string {
   }
 }
 
+/** Извлекает initData из sessionStorage (переживает полные перезагрузки и window.location.replace) */
+function getInitDataFromStorage(): string {
+  if (typeof window === 'undefined') return '';
+  try {
+    return sessionStorage.getItem('tg_init_data') || '';
+  } catch {
+    return '';
+  }
+}
+
+/** Сохраняет initData в sessionStorage */
+function persistInitData(data: string): void {
+  if (!data || typeof window === 'undefined') return;
+  try { sessionStorage.setItem('tg_init_data', data); } catch (_) {}
+}
+
 /** Извлекает auth_date из initData строки */
 function getAuthDate(initData: string): number {
   if (!initData) return 0;
@@ -98,11 +114,13 @@ export function useTelegram() {
     if (typeof window === 'undefined') return;
 
     const resolve = () => {
-      // Приоритет: скрипт Telegram > hash
+      // Приоритет: SDK → hash → sessionStorage
       const fromScript = window.Telegram?.WebApp?.initData || '';
       const fromHash = getInitDataFromHash();
-      const best = fromScript || fromHash;
+      const fromStorage = getInitDataFromStorage();
+      const best = fromScript || fromHash || fromStorage;
       if (best) {
+        persistInitData(best);
         setResolvedInitData(best);
         setExpired(false);
 
@@ -124,9 +142,18 @@ export function useTelegram() {
     // Сразу пробуем
     resolve();
 
-    // Слушаем событие загрузки скрипта
+    // Слушаем событие загрузки настоящего SDK.
+    // Когда SDK загрузится — вызываем ready()/expand() на реальном объекте
+    // (stub из hash-fallback не отправляет web_app_ready в Telegram).
     const onReady = () => {
       resolve();
+      try {
+        const wa = window.Telegram?.WebApp;
+        if (wa) {
+          wa.ready();
+          wa.expand();
+        }
+      } catch (_) {}
       window.removeEventListener('telegram-webapp-ready', onReady);
     };
     window.addEventListener('telegram-webapp-ready', onReady);

@@ -26,6 +26,7 @@ const DEFAULT_PREFERENCES_RESPONSE = {
 
 /**
  * Получает initData из Telegram WebApp
+ * Приоритет: SDK → sessionStorage (переживает редиректы)
  * Ждет готовности initData, если он еще не доступен
  */
 async function getInitData(): Promise<string | null> {
@@ -47,20 +48,27 @@ async function getInitData(): Promise<string | null> {
     return testData;
   }
   
-  if (typeof window === 'undefined' || !window.Telegram?.WebApp) {
-    return null;
-  }
+  if (typeof window === 'undefined') return null;
 
-  let initData: string | null = window.Telegram.WebApp.initData || null;
+  // Быстрый путь: SDK уже готов
+  let initData: string | null = window.Telegram?.WebApp?.initData || null;
+
+  // Fallback: sessionStorage (данные сохраняются hash-fallback скриптом и TelegramScript)
+  if (!initData) {
+    try { initData = sessionStorage.getItem('tg_init_data') || null; } catch (_) {}
+  }
   
-  // Если initData еще не готов, ждем немного
+  // Если initData еще не готов — ждём SDK (до 1с)
   if (!initData) {
     await new Promise((resolve) => {
       let attempts = 0;
-      const maxAttempts = 10; // 10 * 100ms = 1 секунда
+      const maxAttempts = 10;
       const checkInterval = setInterval(() => {
         attempts++;
         initData = window.Telegram?.WebApp?.initData || null;
+        if (!initData) {
+          try { initData = sessionStorage.getItem('tg_init_data') || null; } catch (_) {}
+        }
         if (initData || attempts >= maxAttempts) {
           clearInterval(checkInterval);
           resolve(undefined);
