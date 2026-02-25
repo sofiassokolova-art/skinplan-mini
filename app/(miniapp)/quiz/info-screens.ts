@@ -31,15 +31,12 @@ export interface InfoScreen {
 
 // ИСПРАВЛЕНО: Единая функция для получения начальных инфо-экранов
 // Начальные экраны - это те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
+let _initialScreensCache: InfoScreen[] | null = null;
+
 export function getInitialInfoScreens(): InfoScreen[] {
-  const allScreens = INFO_SCREENS;
-  const initialScreens = allScreens.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId);
-  console.log('📊 [getInitialInfoScreens]', {
-    totalScreens: allScreens.length,
-    initialScreens: initialScreens.length,
-    initialScreenIds: initialScreens.map(s => s.id)
-  });
-  return initialScreens;
+  if (_initialScreensCache) return _initialScreensCache;
+  _initialScreensCache = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId);
+  return _initialScreensCache;
 }
 
 export const INFO_SCREENS: InfoScreen[] = [
@@ -188,7 +185,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'current_care_intro',
     title: 'Расскажите о вашем текущем уходе',
     subtitle: 'Это поможет нам понять, какие средства вы уже используете и как реагирует ваша кожа',
-    showAfterQuestionCode: 'health_trust',
+    showAfterInfoScreenId: 'health_trust', // FIX: было showAfterQuestionCode — но health_trust это info screen, не question
     ctaText: 'Продолжить',
   },
   // 21) Ретинол - вопрос в БД (retinoid_usage) - если Да, показывается доп. вопрос (retinoid_reaction)
@@ -327,9 +324,44 @@ export function getInfoScreenAfterQuestion(questionCode: string): InfoScreen | u
   return INFO_SCREENS.find(screen => screen.showAfterQuestionCode === questionCode);
 }
 
-// ИСПРАВЛЕНО: Функция для получения следующего инфо-экрана в цепочке (после другого инфо-экрана)
+/** Следующий инфо-экран в цепочке (имеет showAfterInfoScreenId === screenId) */
 export function getNextInfoScreenAfterScreen(screenId: string): InfoScreen | undefined {
   return INFO_SCREENS.find(screen => screen.showAfterInfoScreenId === screenId);
+}
+
+/**
+ * Проходит всю цепочку инфо-экранов, начиная от startScreen.
+ * Возвращает массив экранов в порядке показа (включая startScreen).
+ */
+export function walkInfoScreenChain(startScreen: InfoScreen): InfoScreen[] {
+  const chain: InfoScreen[] = [startScreen];
+  const visited = new Set<string>([startScreen.id]);
+  let current = startScreen;
+  while (true) {
+    const next = getNextInfoScreenAfterScreen(current.id);
+    if (!next || visited.has(next.id)) break;
+    chain.push(next);
+    visited.add(next.id);
+    current = next;
+  }
+  return chain;
+}
+
+/**
+ * Находит первый экран в цепочке — тот, у которого есть showAfterQuestionCode.
+ * Полезно для определения, после какого вопроса началась цепочка.
+ */
+export function findChainOriginQuestionCode(screen: InfoScreen): string | undefined {
+  const visited = new Set<string>();
+  let current: InfoScreen | undefined = screen;
+  while (current) {
+    if (current.showAfterQuestionCode) return current.showAfterQuestionCode;
+    if (visited.has(current.id)) break;
+    visited.add(current.id);
+    if (!current.showAfterInfoScreenId) break;
+    current = INFO_SCREENS.find(s => s.id === current!.showAfterInfoScreenId);
+  }
+  return undefined;
 }
 
 // Функция для получения инфо-экрана, который должен показываться перед указанным вопросом

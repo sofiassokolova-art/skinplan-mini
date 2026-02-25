@@ -5,7 +5,7 @@ import type React from 'react';
 import { clientLogger } from '@/lib/client-logger';
 import { safeSessionStorageGet } from '@/lib/storage-utils';
 import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
-import { INFO_SCREENS, getInitialInfoScreens, getNextInfoScreenAfterScreen, getInfoScreenAfterQuestion } from '@/app/(miniapp)/quiz/info-screens';
+import { INFO_SCREENS, getInitialInfoScreens, getNextInfoScreenAfterScreen, getInfoScreenAfterQuestion, findChainOriginQuestionCode } from '@/app/(miniapp)/quiz/info-screens';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 import type { Questionnaire, Question } from '@/lib/quiz/types';
 
@@ -166,24 +166,6 @@ const ensureQuestionsReady = async (
 export { getTotalQuestionsCount };
 
 export async function handleNext(params: HandleNextParams): Promise<void> {
-  console.log('🚀 [handleNext] START - called from QuizRenderer', {
-    currentInfoScreenIndex: params.currentInfoScreenIndex,
-    currentQuestionIndex: params.currentQuestionIndex,
-    allQuestionsLength: params.allQuestions.length,
-    handleNextInProgressRef: params.handleNextInProgressRef.current,
-  });
-  console.log('➡️ [handleNext] called', {
-    currentQuestionIndex: params.currentQuestionIndex,
-    currentInfoScreenIndex: params.currentInfoScreenIndex,
-    allQuestionsLength: params.allQuestions.length,
-    answersCount: Object.keys(params.answers).length,
-    isRetakingQuiz: params.isRetakingQuiz,
-    showRetakeScreen: params.showRetakeScreen,
-    hasResumed: params.hasResumed,
-    pendingInfoScreen: !!params.pendingInfoScreen,
-    loading: params.loading,
-    handleNextInProgress: params.handleNextInProgressRef.current
-  });
 
   const {
     handleNextInProgressRef,
@@ -233,10 +215,6 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
   // Если handleNextInProgressRef.current === true, значит предыдущий вызов еще не завершился
   // В этом случае validateAndGetPendingInfoScreen вернет null, и мы должны вернуться
   if (handleNextInProgressRef.current) {
-    console.log('⏸️ [handleNext] уже выполняется, пропускаем', {
-      handleNextInProgressRef: handleNextInProgressRef.current,
-      currentPendingInfoScreen: currentPendingInfoScreen?.id || null,
-    });
     return; // Уже выполняется
   }
 
@@ -254,15 +232,6 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
   // И мы не на вопросах (где pendingInfoScreen также может быть null)
   // ВАЖНО: Для вопросов pendingInfoScreen === null это нормально, не блокируем
   if (currentPendingInfoScreen === null && !handleNextInProgressRef.current && !isOnInitialInfoScreens && !isOnQuestions) {
-    console.log('⏸️ [handleNext] валидация не прошла', {
-      handleNextInProgressRef: handleNextInProgressRef.current,
-      currentPendingInfoScreen: null,
-      isOnInitialInfoScreens,
-      isOnQuestions,
-      currentInfoScreenIndex,
-      currentQuestionIndex,
-      initialInfoScreensLength: initialInfoScreens.length,
-    });
     return; // Валидация не прошла
   }
 
@@ -282,11 +251,6 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     // Для начальных инфо-экранов анкета не нужна - они должны показываться независимо от загрузки анкеты
     const isOnInitialInfoScreens = currentInfoScreenIndex < initialInfoScreens.length;
     
-    console.log('🔍 [handleNext] проверка начальных экранов', {
-      currentInfoScreenIndex,
-      initialInfoScreensLength: initialInfoScreens.length,
-      isOnInitialInfoScreens,
-    });
     
     // ИСПРАВЛЕНО: Не очищаем pendingInfoScreen сразу — сначала проверяем цепочку (showAfterInfoScreenId)
     // Если есть следующий инфо-экран в цепочке (например habits_matter после ai_showcase),
@@ -410,22 +374,10 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     // но он еще на инфо-экранах, а не на вопросах
     const isAlreadyOnQuestions = currentInfoScreenIndex >= initialInfoScreens.length;
     
-    console.log('🔍 [handleNext] проверка условий для перехода', {
-      isOnInitialInfoScreens,
-      isAlreadyOnQuestions,
-      currentInfoScreenIndex,
-      initialInfoScreensLength: initialInfoScreens.length,
-      condition: currentInfoScreenIndex < initialInfoScreens.length - 1,
-    });
     
     if (isOnInitialInfoScreens && !isAlreadyOnQuestions && currentInfoScreenIndex < initialInfoScreens.length - 1) {
       const newIndex = currentInfoScreenIndex + 1;
       // ФИКС: Логируем переход на следующий экран
-      console.log('✅ [handleNext] переход на следующий инфо-экран', {
-        currentInfoScreenIndex,
-        newIndex,
-        initialInfoScreensLength: initialInfoScreens.length,
-      });
       clientLogger.warn('🔄 handleNext: переход на следующий инфо-экран', {
         currentInfoScreenIndex,
         newIndex,
@@ -433,10 +385,6 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       });
       // КРИТИЧНО: Обновляем ref СИНХРОННО перед установкой state
       updateInfoScreenIndex(newIndex, currentInfoScreenIndexRef, setCurrentInfoScreenIndex);
-      console.log('✅ [handleNext] обновлен currentInfoScreenIndex', {
-        newIndex,
-        currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
-      });
       // ИСПРАВЛЕНО: БАГ #3 - используем QUIZ_CONFIG.STORAGE_KEYS со скоупированием
       // ФИКС: Сохраняем newIndex в sessionStorage для восстановления при перемонтировании
       const scopedInfoScreenKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN, qid);
@@ -454,31 +402,14 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         }
       }
       await saveProgressSafely(saveProgress, answers, currentQuestionIndex, newIndex);
-      console.log('✅ [handleNext] сохранен прогресс, возвращаемся');
       return;
     }
 
     // ИСПРАВЛЕНО: Добавлено логирование для диагностики перехода от последнего начального экрана
-    console.log('🔍 [handleNext] проверка последнего начального экрана', {
-      currentInfoScreenIndex,
-      initialInfoScreensLength: initialInfoScreens.length,
-      isLastInitialScreen: currentInfoScreenIndex === initialInfoScreens.length - 1,
-      isOnInitialInfoScreens,
-      isAlreadyOnQuestions,
-    });
     
     if (currentInfoScreenIndex === initialInfoScreens.length - 1) {
       // ИСПРАВЛЕНО: Используем extractQuestionsFromQuestionnaire для логирования правильного количества вопросов
       const questionsForLog = extractQuestionsFromQuestionnaire(questionnaireRef.current);
-      console.log('✅ [handleNext] ПОСЛЕДНИЙ НАЧАЛЬНЫЙ ЭКРАН - переходим к вопросам', {
-        currentInfoScreenIndex,
-        initialInfoScreensLength: initialInfoScreens.length,
-        hasQuestionnaire: !!questionnaire,
-        hasQuestionnaireRef: !!questionnaireRef.current,
-        questionnaireQuestionsLength: questionsForLog.length,
-        loading,
-        initCompleted: initCompletedRef.current,
-      });
       clientLogger.warn('🔄 handleNext: последний начальный экран, переходим к вопросам', {
         currentInfoScreenIndex,
         initialInfoScreensLength: initialInfoScreens.length,
@@ -840,36 +771,15 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       setPendingInfoScreen(null);
       
       if (isLastQuestion) {
-        // ИСПРАВЛЕНО: После закрытия последнего инфо-экрана (но не want_improve) увеличиваем индекс для запуска автоотправки
-        // ВАЖНО: Сначала сохраняем прогресс, потом увеличиваем индекс, чтобы избежать проблем с редиректом
         await saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
-        // ИСПРАВЛЕНО: Устанавливаем индекс синхронно, но с небольшой задержкой для безопасности
-        // Это гарантирует, что автоотправка сработает после закрытия инфо-экрана
-        setTimeout(() => {
-          clientLogger.log('🔄 Закрыт последний инфо-экран, устанавливаем currentQuestionIndex для автоотправки', {
-            currentIndex: currentQuestionIndex,
-            targetIndex: allQuestions.length,
-          });
-          setCurrentQuestionIndex(allQuestions.length);
-        }, 100); // Небольшая задержка, чтобы состояния успели обновиться
+        // Устанавливаем индекс за пределы массива — это сигнал для auto-submit
+        // React обработает оба setState (setPendingInfoScreen(null) и setCurrentQuestionIndex)
+        // в одном батче, поэтому setTimeout не нужен.
+        setCurrentQuestionIndex(allQuestions.length);
         return;
       }
       
-      // ИСПРАВЛЕНО: Находим первый инфо-экран в цепочке, чтобы получить showAfterQuestionCode
-      // Это необходимо, когда последний инфо-экран в цепочке имеет только showAfterInfoScreenId
-      let firstInfoScreenInChain: InfoScreen | null = effectivePendingInfoScreen;
-      let showAfterQuestionCode: string | undefined = effectivePendingInfoScreen.showAfterQuestionCode;
-      
-      // Проходим по цепочке назад, пока не найдем инфо-экран с showAfterQuestionCode
-      while (firstInfoScreenInChain && !showAfterQuestionCode && firstInfoScreenInChain.showAfterInfoScreenId) {
-        const prevScreen = INFO_SCREENS.find(s => s.id === firstInfoScreenInChain!.showAfterInfoScreenId);
-        if (prevScreen) {
-          firstInfoScreenInChain = prevScreen;
-          showAfterQuestionCode = prevScreen.showAfterQuestionCode;
-        } else {
-          break;
-        }
-      }
+      const showAfterQuestionCode = findChainOriginQuestionCode(effectivePendingInfoScreen);
       
       // ИСПРАВЛЕНО: Специальная обработка для habits_matter - после него должен показываться вопрос lifestyle_habits
       // Это необходимо, потому что habits_matter показывается после ai_showcase (который после oral_medications),
@@ -910,7 +820,6 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
             questionAfterInfoScreenIndex,
             newIndex,
             currentQuestionIndex,
-            firstInfoScreenInChainId: firstInfoScreenInChain?.id,
           });
         }
       }
@@ -1432,96 +1341,22 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       let nextQuestion = newIndex < allQuestions.length ? allQuestions[newIndex] : null;
       const isNextQuestionBudget = nextQuestion && nextQuestion.code === 'budget';
       
-      // ИСПРАВЛЕНО: Если следующий вопрос - 'budget' и на него уже есть ответ,
-      // показываем инфо-экран вместо перехода к нему
-      // Это предотвращает переход к индексу, который выходит за границы отфильтрованного массива
       if (isNextQuestionBudget && hasAnsweredBudget) {
-        // Пользователь уже ответил на 'budget' - показываем инфо-экран после него
-        const infoScreen = getInfoScreenAfterQuestion('budget');
-        if (infoScreen) {
-          if (pendingInfoScreenRef) {
-            pendingInfoScreenRef.current = infoScreen;
-          }
-          setPendingInfoScreen(infoScreen);
-          const budgetIndex = budgetQuestion ? allQuestions.findIndex(q => q.code === 'budget') : newIndex;
-          // ИСПРАВЛЕНО: Устанавливаем индекс на валидный индекс вопроса budget
-          // Это предотвращает ошибку, когда индекс выходит за границы отфильтрованного массива
-          const validIndex = budgetIndex >= 0 ? budgetIndex : Math.min(currentQuestionIndex, allQuestions.length - 1);
-          if (setCurrentQuestionIndex && currentQuestionIndexRef) {
-            setCurrentQuestionIndex(validIndex);
-            currentQuestionIndexRef.current = validIndex;
-          }
-          await saveProgressSafely(saveProgress, answers, validIndex, currentInfoScreenIndex);
-          clientLogger.log('✅ Показан инфо-экран после вопроса budget (следующий вопрос уже отвечен):', {
-            questionCode: 'budget',
-            infoScreenId: infoScreen.id,
-            currentQuestionIndex,
-            newIndex,
-            budgetIndex,
-            validIndex,
-            allQuestionsLength: allQuestions.length,
-          });
-          return;
-        }
+        const r = tryShowBudgetInfoScreen(allQuestions, effectiveAnswers, pendingInfoScreenRef, setPendingInfoScreen, currentQuestionIndexRef, setCurrentQuestionIndex, saveProgress, answers, currentInfoScreenIndex);
+        if (r.handled) { if (r.promise) await r.promise; return; }
       }
       
       // ИСПРАВЛЕНО: Если текущий вопрос - 'budget' и пользователь ответил на него,
       // проверяем инфо-экраны после него вместо перехода к следующему вопросу
       if (isCurrentQuestionBudget && hasAnsweredCurrentQuestion) {
-        // Пользователь ответил на 'budget' - проверяем инфо-экраны после него
-        const infoScreen = getInfoScreenAfterQuestion('budget');
-        if (infoScreen) {
-          if (pendingInfoScreenRef) {
-            pendingInfoScreenRef.current = infoScreen;
-          }
-          setPendingInfoScreen(infoScreen);
-          const budgetIndex = budgetQuestion ? allQuestions.findIndex(q => q.code === 'budget') : currentQuestionIndex;
-          // ИСПРАВЛЕНО: Устанавливаем индекс на валидный индекс вопроса budget
-          // Это предотвращает ошибку, когда индекс выходит за границы отфильтрованного массива
-          const validIndex = budgetIndex >= 0 ? budgetIndex : Math.min(currentQuestionIndex, allQuestions.length - 1);
-          if (setCurrentQuestionIndex && currentQuestionIndexRef) {
-            setCurrentQuestionIndex(validIndex);
-            currentQuestionIndexRef.current = validIndex;
-          }
-          await saveProgressSafely(saveProgress, answers, validIndex, currentInfoScreenIndex);
-          clientLogger.log('✅ Показан инфо-экран после вопроса budget:', {
-            questionCode: 'budget',
-            infoScreenId: infoScreen.id,
-            currentQuestionIndex,
-            budgetIndex,
-            validIndex,
-          });
-          return;
-        }
+        const r = tryShowBudgetInfoScreen(allQuestions, effectiveAnswers, pendingInfoScreenRef, setPendingInfoScreen, currentQuestionIndexRef, setCurrentQuestionIndex, saveProgress, answers, currentInfoScreenIndex);
+        if (r.handled) { if (r.promise) await r.promise; return; }
       }
       
-      // Если мы уже на последнем вопросе и закрыли инфо-экран, не переходим дальше
       if (newIndex >= allQuestions.length) {
-        clientLogger.warn('⚠️ handleNext: не переходим к следующему вопросу - уже на последнем', {
-          currentQuestionIndex,
-          newIndex,
-          allQuestionsLength: allQuestions.length,
-          shouldSkipToNextQuestion,
-          isCurrentQuestionBudget,
-        });
-        // ИСПРАВЛЕНО: Если это был вопрос 'budget', проверяем инфо-экраны после него
         if (isCurrentQuestionBudget || (budgetQuestion && effectiveAnswers[budgetQuestion.id] !== undefined)) {
-          const infoScreen = getInfoScreenAfterQuestion('budget');
-          if (infoScreen) {
-            if (pendingInfoScreenRef) {
-              pendingInfoScreenRef.current = infoScreen;
-            }
-            setPendingInfoScreen(infoScreen);
-            const budgetIndex = budgetQuestion ? allQuestions.findIndex(q => q.code === 'budget') : currentQuestionIndex;
-            await saveProgressSafely(saveProgress, answers, budgetIndex >= 0 ? budgetIndex : currentQuestionIndex, currentInfoScreenIndex);
-            clientLogger.log('✅ Показан инфо-экран после вопроса budget (fallback):', {
-              questionCode: 'budget',
-              infoScreenId: infoScreen.id,
-              currentQuestionIndex,
-              budgetIndex,
-            });
-            return;
-          }
+          const r = tryShowBudgetInfoScreen(allQuestions, effectiveAnswers, pendingInfoScreenRef, setPendingInfoScreen, currentQuestionIndexRef, setCurrentQuestionIndex, saveProgress, answers, currentInfoScreenIndex);
+          if (r.handled) { if (r.promise) await r.promise; return; }
         }
         return;
       }
@@ -1545,28 +1380,10 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
           })),
           shouldSkipToNextQuestion,
         });
-        // ИСПРАВЛЕНО: Если следующий вопрос не найден, но это был вопрос 'budget' и на него есть ответ,
-        // показываем инфо-экран вместо ошибки
         if (budgetQuestion && effectiveAnswers[budgetQuestion.id] !== undefined) {
-          const infoScreen = getInfoScreenAfterQuestion('budget');
-          if (infoScreen) {
-            if (pendingInfoScreenRef) {
-              pendingInfoScreenRef.current = infoScreen;
-            }
-            setPendingInfoScreen(infoScreen);
-            const budgetIndex = budgetQuestion ? allQuestions.findIndex(q => q.code === 'budget') : currentQuestionIndex;
-            await saveProgressSafely(saveProgress, answers, budgetIndex >= 0 ? budgetIndex : currentQuestionIndex, currentInfoScreenIndex);
-            clientLogger.log('✅ Показан инфо-экран после вопроса budget (следующий вопрос не найден):', {
-              questionCode: 'budget',
-              infoScreenId: infoScreen.id,
-              currentQuestionIndex,
-              newIndex,
-              budgetIndex,
-            });
-            return;
-          }
+          const r = tryShowBudgetInfoScreen(allQuestions, effectiveAnswers, pendingInfoScreenRef, setPendingInfoScreen, currentQuestionIndexRef, setCurrentQuestionIndex, saveProgress, answers, currentInfoScreenIndex);
+          if (r.handled) { if (r.promise) await r.promise; return; }
         }
-        // НЕ переходим к следующему вопросу, если его нет
         return;
       }
       
