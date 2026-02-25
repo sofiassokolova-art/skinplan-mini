@@ -10,6 +10,7 @@ import BottomNavigation from '@/components/BottomNavigation';
 import PageTransition from '@/components/PageTransition';
 import { NetworkStatus } from '@/components/NetworkStatus';
 import { QueryProvider } from '@/providers/QueryProvider';
+import { PaywallVisibilityProvider, usePaywallVisibility } from '@/providers/PaywallVisibilityContext';
 import { ServiceFeedbackPopup } from '@/components/ServiceFeedbackPopup';
 import { useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
@@ -291,21 +292,16 @@ function LayoutContent({
   const isResumeScreen = searchParams?.get('resume') === 'true';
   const planState = searchParams?.get('state');
   const isPlanGenerating = pathname === '/plan' && planState === 'generating';
-  // Пейвол: после анкеты пользователь попадает на /plan?paywall=1 — навигация не показывается до оплаты
-  const isPaywallShown = pathname === '/plan' && searchParams?.get('paywall') === '1';
+  // Пейвол: скрываем навигацию, когда PaymentGate показывает экран оплаты (на /plan или /home)
+  const { paywallVisible } = usePaywallVisibility();
   
   // ИСПРАВЛЕНО: Проверяем pathname синхронно через window.location для надежности
-  // Это гарантирует, что навигация не монтируется на /quiz даже при асинхронных обновлениях pathname
-  // КРИТИЧНО: Проверяем оба варианта для максимальной надежности
-  // ТЗ: Скрываем навигацию на /quiz для чистого UX
   const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
   const isOnQuizPage = (currentPath === '/quiz' || currentPath.startsWith('/quiz/')) ||
                        (pathname === '/quiz' || pathname.startsWith('/quiz/'));
   
   // Скрываем навигацию на определенных страницах и в режимах/экранах, где она мешает UX
-  // ИСПРАВЛЕНО: Скрываем навигацию на главной странице для нового пользователя
-  // ТЗ: На пейволе (план до оплаты) навигации внизу не должно быть; она появляется сразу после оплаты
-  // ИСПРАВЛЕНО: Проверяем оба pathname и currentPath для надежности
+  // ТЗ: На пейволе навигации внизу не должно быть (ни на плане, ни на главной); появляется после оплаты
   const isOnRootPage = pathname === '/' || currentPath === '/';
   const hideNav = isOnQuizPage || 
                   pathname === '/loading' ||
@@ -314,7 +310,7 @@ function LayoutContent({
                   currentPath.startsWith('/loading/') ||
                   isResumeScreen ||
                   isPlanGenerating ||
-                  isPaywallShown || // Скрываем навигацию на пейволе до оплаты
+                  paywallVisible || // Скрываем навигацию, когда виден пейвол (plan или home)
                   isOnRootPage; // Скрываем навигацию на главной странице всегда (это только редирект)
   
   return (
@@ -416,17 +412,21 @@ export default function MiniappLayout({
   // Это гарантирует одинаковое дерево на сервере и клиенте
   if (isOnQuizPageFromPathname || isOnQuizPage) {
     return (
-      <Suspense fallback={<LayoutFallback />}>
-        <LayoutContent>{children}</LayoutContent>
-      </Suspense>
+      <PaywallVisibilityProvider>
+        <Suspense fallback={<LayoutFallback />}>
+          <LayoutContent>{children}</LayoutContent>
+        </Suspense>
+      </PaywallVisibilityProvider>
     );
   }
-  
+
   return (
     <QueryProvider>
-      <Suspense fallback={<LayoutFallback />}>
-        <LayoutContent>{children}</LayoutContent>
-      </Suspense>
+      <PaywallVisibilityProvider>
+        <Suspense fallback={<LayoutFallback />}>
+          <LayoutContent>{children}</LayoutContent>
+        </Suspense>
+      </PaywallVisibilityProvider>
     </QueryProvider>
   );
 }

@@ -125,15 +125,14 @@ export default function LoadingPage() {
 
         if (cancelled) return;
 
-        // Шаг 5: Готово - редирект на план
+        // Шаг 5: Готово — редирект на страницу плана с пейволлом
+        // Поток: лоадер → план → пейволл (без навигации) → после оплаты план разблокируется и появляется навигация
         setStep('done');
-        
-        // Небольшая задержка для показа "Готово"
+
         await new Promise((resolve) => setTimeout(resolve, 500));
 
         if (cancelled) return;
 
-        // Редирект на план с параметрами
         router.replace(`/plan?profileId=${resolvedProfileId}&paywall=1&blur=1`);
       } catch (e: any) {
         if (cancelled) return;

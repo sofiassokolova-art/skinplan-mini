@@ -497,7 +497,7 @@ export function PlanPageClientNew({
         onPaymentComplete={() => {
           setNeedsFirstPayment(false);
           clientLogger.log('✅ Payment completed on plan page');
-          // Убираем paywall=1 и blur=1 из URL — тогда в layout появится нижняя навигация
+          // После оплаты: план уже разблокирован (PaymentGate отдаёт children), убираем paywall/blur из URL → появляется навигация
           const q = new URLSearchParams(searchParams?.toString() || '');
           q.delete('paywall');
           q.delete('blur');

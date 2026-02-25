@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
+import { usePaywallVisibility } from '@/providers/PaywallVisibilityContext';
 
 interface PaymentGateProps {
   price?: number;
@@ -95,6 +96,13 @@ export function PaymentGate({
   const [refreshTick, setRefreshTick] = useState(0);
   const [checkedOnce, setCheckedOnce] = useState(false);
   const [initDataReady, setInitDataReady] = useState(false);
+  const { setPaywallVisible } = usePaywallVisibility();
+
+  // Сообщаем layout, что пейвол виден — скрыть нижнюю навигацию (на /plan и /home)
+  useEffect(() => {
+    setPaywallVisible(!hasPaid);
+    return () => setPaywallVisible(false);
+  }, [hasPaid, setPaywallVisible]);
 
   // Ждем появления Telegram initData (иначе paywall может "мигать" при повторном входе в приложение)
   useEffect(() => {
