@@ -23,6 +23,38 @@ import {
 } from './shared-utils';
 import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
 
+/** Проверяет budget-вопрос и показывает инфо-экран после него, если нужно. Возвращает true если обработано. */
+function tryShowBudgetInfoScreen(
+  allQuestions: Question[],
+  effectiveAnswers: Record<number, string | string[]>,
+  pendingInfoScreenRef: React.MutableRefObject<any | null> | undefined,
+  setPendingInfoScreen: React.Dispatch<React.SetStateAction<any | null>>,
+  currentQuestionIndexRef: React.MutableRefObject<number> | undefined,
+  setCurrentQuestionIndex: React.Dispatch<React.SetStateAction<number>>,
+  saveProgress: (answers: Record<number, string | string[]>, qi: number, ii: number) => Promise<void>,
+  answers: Record<number, string | string[]>,
+  currentInfoScreenIndex: number,
+): { handled: boolean; promise?: Promise<void> } {
+  const budgetQuestion = allQuestions.find(q => q.code === 'budget');
+  if (!budgetQuestion || effectiveAnswers[budgetQuestion.id] === undefined) return { handled: false };
+
+  const infoScreen = getInfoScreenAfterQuestion('budget');
+  if (!infoScreen) return { handled: false };
+
+  if (pendingInfoScreenRef) pendingInfoScreenRef.current = infoScreen;
+  setPendingInfoScreen(infoScreen);
+
+  const budgetIndex = allQuestions.findIndex(q => q.code === 'budget');
+  const validIndex = budgetIndex >= 0 ? budgetIndex : 0;
+  if (currentQuestionIndexRef) currentQuestionIndexRef.current = validIndex;
+  setCurrentQuestionIndex(validIndex);
+
+  return {
+    handled: true,
+    promise: saveProgressSafely(saveProgress, answers, validIndex, currentInfoScreenIndex),
+  };
+}
+
 export interface HandleNextParams {
   // Refs
   handleNextInProgressRef: React.MutableRefObject<boolean>;
@@ -93,14 +125,11 @@ const ensureQuestionsReady = async (
     }
   }
 
-  // 2) Если загрузка уже идёт — просто ждём немного
   if (initInProgressRef.current) {
-    let attempts = 0;
-    while (attempts < 30) { // ~3s
-      const len = getTotalQuestionsCount(questionnaireRef.current);
-      if (len > 0) return true;
-      await new Promise(r => setTimeout(r, 100));
-      attempts++;
+    const waitEnd = Date.now() + 3000;
+    while (Date.now() < waitEnd) {
+      if (getTotalQuestionsCount(questionnaireRef.current) > 0) return true;
+      await new Promise(r => setTimeout(r, 200));
     }
     return false;
   }
