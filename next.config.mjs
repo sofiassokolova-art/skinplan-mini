@@ -7,6 +7,7 @@ const bundleAnalyzerConfig = withBundleAnalyzer({
 
 const nextConfig = {
   reactStrictMode: true,
+  productionBrowserSourceMaps: false,
   images: {
     unoptimized: false, // РЕФАКТОРИНГ: Включаем оптимизацию изображений для лучшей производительности
     remotePatterns: [
