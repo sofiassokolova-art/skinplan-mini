@@ -257,8 +257,8 @@ export default async function RootLayout({
     var t = ev.target;
     if (t && (t.tagName === "SCRIPT" || t.tagName === "LINK") && (t.src || t.href)) {
       var u = (t.src || t.href || "").toString();
+      // Реагируем только на ошибки загрузки наших чанков, не внешних скриптов (аналитика, CDN)
       if (u.indexOf("/_next/") !== -1 || u.indexOf("chunks") !== -1) tryReloadOnce();
-      else showFallback();
     }
   }, true);
   // Убираем root-loading через 8с если React ещё не смонтировался —
