@@ -191,7 +191,6 @@ export default function RootPage() {
         animation: 'spin 0.8s linear infinite',
       }} />
       <p style={{ marginTop: 16, fontWeight: 500 }}>Загрузка...</p>
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 }
