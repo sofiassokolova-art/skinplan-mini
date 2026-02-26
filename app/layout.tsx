@@ -63,12 +63,6 @@ export const metadata: Metadata = {
   icons: { icon: '/icons/icon_sparkles.svg', apple: '/icons/icon_sparkles.svg' },
 };
 
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-};
-
 export default async function RootLayout({
   children,
 }: {
