@@ -50,6 +50,8 @@ const nextConfig = {
       { key: 'X-Content-Type-Options', value: 'nosniff' },
       { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
       { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+      // Vercel Edge: отключаем HTTP/2 server push — вызывает ERR_CONNECTION_CLOSED на больших чанках
+      { key: 'Link', value: '' },
       ...(isProduction ? [{ key: 'Content-Security-Policy', value: cspValue }] : []),
     ];
 
