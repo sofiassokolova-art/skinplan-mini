@@ -165,7 +165,21 @@ const nextConfig = {
             chunks: 'async',
             priority: 30,
           },
-          // Остальные node_modules — в vendor (tanstack, radix и т.д.)
+          // TanStack Query отдельно — используется везде, но меняется редко
+          tanstack: {
+            name: 'tanstack',
+            test: /[\\/]node_modules[\\/](@tanstack)[\\/]/,
+            chunks: 'all',
+            priority: 15,
+          },
+          // Radix UI компоненты отдельно
+          radix: {
+            name: 'radix',
+            test: /[\\/]node_modules[\\/](@radix-ui)[\\/]/,
+            chunks: 'all',
+            priority: 15,
+          },
+          // Остальные node_modules — в vendor (небольшие утилиты)
           vendor: {
             name: 'vendor',
             test: /[\\/]node_modules[\\/]/,
