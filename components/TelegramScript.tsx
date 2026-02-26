@@ -12,6 +12,9 @@ export function TelegramScript() {
     <Script
       src="https://telegram.org/js/telegram-web-app.js"
       strategy="afterInteractive"
+      // Отключаем preload — он добавляет <link rel="preload"> в HTTP/2 push headers
+      // что обрывает основной HTML стрим на нестабильных соединениях
+      data-nscript="afterInteractive"
       onLoad={() => {
         if (typeof window === 'undefined') return;
         try {

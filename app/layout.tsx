@@ -32,6 +32,7 @@ const unbounded = localFont({
   ],
   variable: '--font-unbounded',
   display: 'swap',
+  preload: false, // отключаем HTTP/2 preload push — обрывает соединение на кастомном домене
   fallback: ['-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
   adjustFontFallback: false,
 });
@@ -45,6 +46,7 @@ const inter = localFont({
   ],
   variable: '--font-inter',
   display: 'swap',
+  preload: false, // отключаем HTTP/2 preload push — обрывает соединение на кастомном домене
   fallback: ['-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
   adjustFontFallback: false,
 });
@@ -260,12 +262,14 @@ export default async function RootLayout({
       else showFallback();
     }
   }, true);
+  // Убираем root-loading через 8с если React ещё не смонтировался —
+  // чтобы не блокировать контент на медленных соединениях.
+  // Fallback (кнопка Обновить) — только при реальной ошибке чанка (см. error listener выше).
   setTimeout(function(){
     if (window.__skiniq_mounted) return;
     var rl = document.getElementById("root-loading");
     if (rl && rl.parentNode) rl.parentNode.removeChild(rl);
-    showFallback();
-  }, 15000);
+  }, 8000);
 })();
             `.trim(),
           }}
