@@ -240,7 +240,7 @@ export default async function RootLayout({
   function showFallback(){
     var e = document.getElementById("loading-timeout-fallback");
     if (e && e.style.display !== "block") { e.style.cssText = fallbackCss; e.innerHTML = fallbackHtml; }
-    try { var rl = document.getElementById("root-loading"); if (rl) rl.remove(); } catch(_) {}
+    try { var rl = document.getElementById("root-loading"); if (rl) rl.style.display = 'none'; } catch(_) {}
   }
   function tryReloadOnce(){
     try {
@@ -266,7 +266,7 @@ export default async function RootLayout({
   // Fallback (кнопка Обновить) — только при реальной ошибке чанка (см. error listener выше).
   setTimeout(function(){
     if (window.__skiniq_mounted) return;
-    try { var rl = document.getElementById("root-loading"); if (rl) rl.remove(); } catch(_) {}
+    try { var rl = document.getElementById("root-loading"); if (rl) rl.style.display = 'none'; } catch(_) {}
   }, 8000);
 })();
             `.trim(),

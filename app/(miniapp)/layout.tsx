@@ -19,13 +19,15 @@ import { DEV_TELEGRAM } from '@/lib/config/timeouts';
 // Обновить если изменится кол-во начальных экранов в info-screens.ts.
 const INFO_INITIAL_SCREENS_COUNT = 4;
 
-/** Убирает статичный «Загрузка...» из корня при первом монтировании React */
+/** Скрывает статичный «Загрузка...» при первом монтировании React.
+ * Используем display:none вместо remove() — прямое удаление DOM-ноды,
+ * которую знает React, ломает reconciliation (insertBefore crash). */
 function useRemoveRootLoading() {
   useEffect(() => {
     (window as any).__skiniq_mounted = true;
     try {
       const el = document.getElementById('root-loading');
-      el?.remove();
+      if (el) el.style.display = 'none';
     } catch (_) {}
   }, []);
 }
