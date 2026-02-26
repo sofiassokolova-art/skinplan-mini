@@ -163,6 +163,111 @@ const LimeOptionCard = memo(function LimeOptionCard({
   );
 });
 
+interface FreeTextProps {
+  question: Question;
+  answers: Record<number, string | string[]>;
+  onAnswer: (questionId: number, value: string | string[]) => Promise<void>;
+  onNext: () => void;
+}
+
+const FreeTextInput = memo(function FreeTextInput({ question, answers, onAnswer, onNext }: FreeTextProps) {
+  const questionIdRef = useRef<number>(question.id);
+
+  useEffect(() => {
+    if (question?.id && question.id > 0) {
+      questionIdRef.current = question.id;
+    }
+  }, [question?.id]);
+
+  const initialValue = (answers[questionIdRef.current] as string) || '';
+  const [localValue, setLocalValue] = useState(initialValue);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const lastSyncedValueRef = useRef<string>(initialValue);
+  const isDirtyRef = useRef<boolean>(false);
+  const isTypingRef = useRef<boolean>(false);
+
+  const currentAnswerValue = (answers[questionIdRef.current] as string) || '';
+
+  useEffect(() => {
+    if (!isDirtyRef.current && !isTypingRef.current && currentAnswerValue !== localValue) {
+      lastSyncedValueRef.current = currentAnswerValue;
+      setLocalValue(currentAnswerValue);
+    }
+  }, [currentAnswerValue, localValue]);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    isTypingRef.current = true;
+    isDirtyRef.current = true;
+    setLocalValue(newValue);
+  }, []);
+
+  const syncIfNeeded = useCallback(async () => {
+    const stableQuestionId = questionIdRef.current;
+    const currentAnswer = (answers[stableQuestionId] as string) || '';
+    if (!isDirtyRef.current || currentAnswer === localValue) {
+      isDirtyRef.current = false;
+      return;
+    }
+    if (stableQuestionId > 0) {
+      lastSyncedValueRef.current = localValue;
+      isDirtyRef.current = false;
+      await onAnswer(stableQuestionId, localValue);
+    } else {
+      console.error('❌ [QuizQuestion] FreeText: Invalid questionId in sync', {
+        questionId: stableQuestionId,
+        currentQuestionId: question?.id,
+      });
+    }
+  }, [answers, localValue, onAnswer, question?.id]);
+
+  const handleBlur = useCallback(() => {
+    isTypingRef.current = false;
+    void syncIfNeeded();
+  }, [syncIfNeeded]);
+
+  const inputStyle = useMemo(() => ({
+    padding: '16px',
+    borderRadius: '16px',
+    border: '1px solid #000000',
+    backgroundColor: '#FFFFFF',
+    fontSize: '16px',
+    color: '#000000',
+    fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+    outline: 'none',
+    transition: 'all 0.2s',
+  }), []);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <input
+        ref={inputRef}
+        type="text"
+        value={localValue}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        placeholder="Введите ваше имя"
+        style={inputStyle}
+      />
+      {String(localValue).trim().length > 0 && (
+        <FixedContinueButton
+          variant="black"
+          ctaText="Далее"
+          onClick={async () => {
+            console.log('➡️ [QuizQuestion] FreeText: "Далее" clicked', {
+              questionId: question.id,
+              valueLength: localValue.length,
+              valuePreview: localValue.substring(0, 50)
+            });
+            await syncIfNeeded();
+            onNext();
+          }}
+        />
+      )}
+    </div>
+  );
+});
+
 export const QuizQuestion = memo(function QuizQuestion({
   question,
   currentQuestionIndex,
@@ -445,130 +550,12 @@ export const QuizQuestion = memo(function QuizQuestion({
     );
   };
 
-  const FreeText = () => {
-    if (question?.type !== 'free_text') return null;
-
-    // Use local state to prevent keyboard reset
-    // ИСПРАВЛЕНО: Используем questionIdRef для стабильного доступа к question.id
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const questionIdRef = useRef<number>(question.id);
-
-    // Обновляем ref при изменении question.id
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    useEffect(() => {
-      if (question?.id && question.id > 0) {
-        questionIdRef.current = question.id;
-      }
-    }, [question?.id]);
-
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const initialValue = (answers[questionIdRef.current] as string) || '';
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const [localValue, setLocalValue] = useState(initialValue);
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const inputRef = useRef<HTMLInputElement>(null);
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const lastSyncedValueRef = useRef<string>(initialValue);
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const isDirtyRef = useRef<boolean>(false);
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const isTypingRef = useRef<boolean>(false);
-
-    const currentAnswerValue = (answers[questionIdRef.current] as string) || '';
-
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    useEffect(() => {
-      if (!isDirtyRef.current && !isTypingRef.current && currentAnswerValue !== localValue) {
-        lastSyncedValueRef.current = currentAnswerValue;
-        setLocalValue(currentAnswerValue);
-      }
-    }, [currentAnswerValue, localValue]);
-
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-      const newValue = e.target.value;
-      isTypingRef.current = true;
-      isDirtyRef.current = true;
-      setLocalValue(newValue);
-    }, []);
-
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const syncIfNeeded = useCallback(async () => {
-      const stableQuestionId = questionIdRef.current;
-      const currentAnswer = (answers[stableQuestionId] as string) || '';
-      if (!isDirtyRef.current || currentAnswer === localValue) {
-        isDirtyRef.current = false;
-        return;
-      }
-      if (stableQuestionId > 0) {
-        lastSyncedValueRef.current = localValue;
-        isDirtyRef.current = false;
-        await onAnswer(stableQuestionId, localValue);
-      } else {
-        console.error('❌ [QuizQuestion] FreeText: Invalid questionId in sync', {
-          questionId: stableQuestionId,
-          currentQuestionId: question?.id,
-        });
-      }
-    }, [answers, localValue, onAnswer, question?.id]);
-
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const handleBlur = useCallback(() => {
-      isTypingRef.current = false;
-      void syncIfNeeded();
-    }, [syncIfNeeded]);
-
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const inputStyle = useMemo(() => ({
-      padding: '16px',
-      borderRadius: '16px',
-      border: '1px solid #000000',
-      backgroundColor: '#FFFFFF',
-      fontSize: '16px',
-      color: '#000000',
-      fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-      outline: 'none',
-      transition: 'all 0.2s',
-    }), []);
-
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        <input
-          ref={inputRef}
-          type="text"
-          value={localValue}
-          onChange={handleChange}
-          onBlur={handleBlur}
-          placeholder="Введите ваше имя"
-          style={inputStyle}
-        />
-
-        {String(localValue).trim().length > 0 && (
-          <FixedContinueButton
-            variant="black"
-            ctaText="Далее"
-            onClick={async () => {
-              console.log('➡️ [QuizQuestion] FreeText: "Далее" clicked', {
-                questionId: question.id,
-                valueLength: localValue.length,
-                valuePreview: localValue.substring(0, 50)
-              });
-              await syncIfNeeded();
-              onNext();
-            }}
-          />
-        )}
-      </div>
-    );
-  };
-
   const LimeStyle = () => {
     if (!question?.options || !useLimeStyle) return null;
 
     const isMultiChoice = question?.type === 'multi_choice';
 
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const getImageUrl = useCallback((index: number) => {
+    const getImageUrl = (index: number) => {
       let imageUrl = '/tone6.jpeg';
 
       if (isGoalsQuestion) {
@@ -593,7 +580,7 @@ export const QuizQuestion = memo(function QuizQuestion({
       }
 
       return imageUrl;
-    }, []);
+    };
 
     // Чтобы лайм доходил до низа экрана: отступ сверху (padding 48px + прогресс-бар ~74px) ≈ 122px
     const limeMinHeight = (isGoalsQuestion || isSkinTypeQuestion) ? 'calc(100vh - 122px)' : 'auto';
@@ -1040,7 +1027,14 @@ export const QuizQuestion = memo(function QuizQuestion({
         {/* Рендеры */}
         <LimeStyle />
         <SingleChoiceDefault />
-        <FreeText />
+        {question?.type === 'free_text' && (
+          <FreeTextInput
+            question={question}
+            answers={answers}
+            onAnswer={onAnswer}
+            onNext={onNext}
+          />
+        )}
         <LifestyleHabits />
         <MultiChoiceDefault />
       </div>

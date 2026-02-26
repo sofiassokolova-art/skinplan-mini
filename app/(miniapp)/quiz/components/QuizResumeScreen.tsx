@@ -29,27 +29,7 @@ export function QuizResumeScreen({
   onStartOver,
   isBusy = false,
 }: QuizResumeScreenProps) {
-  // ИСПРАВЛЕНО: Ранняя проверка на наличие savedProgress для предотвращения ошибок
-  // ВАЖНО: Проверка должна быть ДО всех хуков, чтобы не нарушать правила хуков
-  if (!savedProgress) {
-    clientLogger.warn('⚠️ QuizResumeScreen: savedProgress is missing');
-    // Возвращаем fallback UI вместо null для предотвращения ошибок рендеринга
-    return (
-      <div style={{ 
-        padding: '20px',
-        minHeight: '100vh',
-        background: '#FFFFFF',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
-        <p style={{ color: '#000000', textAlign: 'center' }}>Загрузка...</p>
-      </div>
-    );
-  }
-  
-  // ИСПРАВЛЕНО: Защита от двойного клика на мобильных устройствах
+  // Все хуки должны вызываться безусловно — до любых ранних return (Rules of Hooks)
   const [clickedButton, setClickedButton] = useState<'resume' | 'startOver' | null>(null);
   const resumeInProgressRef = useRef(false);
   
@@ -236,6 +216,24 @@ export function QuizResumeScreen({
       }
     }
   }, [isMounted, computedQuestionNumber]);
+
+  // Ранний return ПОСЛЕ всех хуков — иначе нарушаются Rules of Hooks
+  if (!savedProgress) {
+    clientLogger.warn('⚠️ QuizResumeScreen: savedProgress is missing');
+    return (
+      <div style={{ 
+        padding: '20px',
+        minHeight: '100vh',
+        background: '#FFFFFF',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <p style={{ color: '#000000', textAlign: 'center' }}>Загрузка...</p>
+      </div>
+    );
+  }
 
   // ИСПРАВЛЕНО: Рендерим одинаковый контент на сервере и клиенте для избежания гидратационных ошибок
   // Используем suppressHydrationWarning только для динамических частей (номер вопроса)
