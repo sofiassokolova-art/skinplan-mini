@@ -3,7 +3,7 @@
 // Поток: главная → "Перепройти" → /quiz?retakeFromHome=1 → экран выбора тем → payment → вопросы без инфо → план
 // Отдельно от перепрохождения с резюм-экрана (startOver — "Начать заново" → первый инфо-экран → полная анкета)
 
-import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { clientLogger } from '@/lib/client-logger';
 
@@ -43,8 +43,8 @@ export function useQuizRetake() {
     isStartingOverRef.current = isStartingOver;
   }, [isStartingOver]);
 
-  // useLayoutEffect — читаем URL ВНУТРИ эффекта (window.location надёжнее useSearchParams на localhost)
-  useLayoutEffect(() => {
+  // useEffect — читаем URL после гидрации, не useLayoutEffect (иначе hydration mismatch)
+  useEffect(() => {
     const retakeFromHome = getRetakeFromUrl();
     clientLogger.log('🔍 useQuizRetake: проверка retakeFromHome', {
       retakeFromHome,

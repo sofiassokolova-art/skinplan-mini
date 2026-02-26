@@ -3,7 +3,7 @@
 // Вынесен из quiz/page.tsx для улучшения читаемости и поддержки
 // ИСПРАВЛЕНО: Использует специализированные хуки useQuizNavigation и useQuizUI
 
-import { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { Questionnaire } from '@/lib/quiz/types';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 import { useQuizNavigation } from './useQuizNavigation';
@@ -181,211 +181,16 @@ export function useQuizStateExtended(): UseQuizStateExtendedReturn {
   // Ответы
   const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
   
-  // Прогресс
-  // ИСПРАВЛЕНО: Инициализируем savedProgress из sessionStorage синхронно, чтобы он был доступен при первом рендере
-  // Это необходимо для показа резюм-экрана сразу, даже до выполнения useLayoutEffect
+  // Прогресс — всегда null при инициализации (одинаково на сервере и клиенте, нет hydration mismatch)
+  // Восстановление из sessionStorage происходит в useEffect после гидрации
   const [savedProgress, setSavedProgress] = useState<{
     answers: Record<number, string | string[]>;
     questionIndex: number;
     infoScreenIndex: number;
-  } | null>(() => {
-    // Инициализируем из sessionStorage синхронно
-    console.log('🔍 [useQuizStateExtended] Инициализация savedProgress', {
-      isWindowDefined: typeof window !== 'undefined',
-      isServer: typeof window === 'undefined',
-    });
-    
-    if (typeof window !== 'undefined') {
-      try {
-        // ИСПРАВЛЕНО: Проверяем флаг quiz_progress_cleared перед восстановлением прогресса из sessionStorage
-        // Флаг устанавливается при "Начать заново" на резюм-экране и блокирует восстановление из sessionStorage (локальный прогресс)
-        // НО: флаг НЕ блокирует установку savedProgress из серверного прогресса (обрабатывается в useQuizRestorePipeline и useQuizEffects)
-        // НО: если есть сохраненные ответы в sessionStorage, это означает, что пользователь начал новую сессию
-        // и флаг можно удалить, чтобы разрешить восстановление при следующей загрузке
-        let progressCleared = sessionStorage.getItem('quiz_progress_cleared') || 
-                             sessionStorage.getItem('default:quiz_progress_cleared');
-        
-        // ИСПРАВЛЕНО: Проверяем, есть ли сохраненные ответы ПЕРЕД проверкой флага
-        // Если есть ответы, но флаг установлен - это означает, что пользователь начал новую сессию
-        // и флаг можно удалить
-        let hasSavedAnswers = false;
-        const storageKeys = Object.keys(sessionStorage);
-        for (const key of storageKeys) {
-          if (key.includes(':quiz_answers_backup') || key.endsWith(':quiz_answers_backup') || key === 'quiz_answers_backup') {
-            const savedAnswersStr = sessionStorage.getItem(key);
-            if (savedAnswersStr && savedAnswersStr !== '{}' && savedAnswersStr !== 'null') {
-              try {
-                const savedAnswers = JSON.parse(savedAnswersStr);
-                if (savedAnswers && Object.keys(savedAnswers).length >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN) {
-                  hasSavedAnswers = true;
-                  break;
-                }
-              } catch (e) {
-                // Игнорируем ошибки парсинга
-              }
-            }
-          }
-        }
-        
-        console.log('🔍 [useQuizStateExtended] Проверка quiz_progress_cleared', {
-          progressCleared,
-          isCleared: progressCleared === 'true',
-          hasSavedAnswers,
-        });
-        
-        // ИСПРАВЛЕНО: Если есть сохраненные ответы, но флаг установлен - удаляем флаг
-        // Это означает, что пользователь начал новую сессию после startOver
-        if (progressCleared === 'true' && hasSavedAnswers) {
-          console.log('🔧 [useQuizStateExtended] Удаляем флаг quiz_progress_cleared - есть сохраненные ответы (новая сессия начата)');
-          try {
-            sessionStorage.removeItem('quiz_progress_cleared');
-            sessionStorage.removeItem('default:quiz_progress_cleared');
-            // Также удаляем scoped ключи
-            for (const key of storageKeys) {
-              if (key.includes(':quiz_progress_cleared') || key.endsWith(':quiz_progress_cleared')) {
-                sessionStorage.removeItem(key);
-              }
-            }
-            progressCleared = null; // Сбрасываем флаг, чтобы продолжить восстановление
-          } catch (err) {
-            console.warn('⚠️ [useQuizStateExtended] Ошибка при удалении quiz_progress_cleared', err);
-          }
-        }
-        
-        if (progressCleared === 'true') {
-          console.log('⏸️ [useQuizStateExtended] savedProgress НЕ восстановлен - прогресс был очищен (quiz_progress_cleared)');
-          return null; // Прогресс был очищен, не восстанавливаем
-        }
-        
-        console.log('🔍 [useQuizStateExtended] Начинаем восстановление savedProgress из sessionStorage');
-        
-        // ИСПРАВЛЕНО: Пробуем найти questionnaireId из sessionStorage или используем дефолтный ключ
-        // Сначала пробуем найти scoped ключи (с questionnaireId)
-        let savedAnswersStr: string | null = null;
-        for (const key of storageKeys) {
-          if (key.includes(':quiz_answers_backup') || key.endsWith(':quiz_answers_backup')) {
-            savedAnswersStr = sessionStorage.getItem(key);
-            console.log('🔍 [useQuizStateExtended] Найден scoped ключ для answers', { key, hasValue: !!savedAnswersStr });
-            break;
-          }
-        }
-        
-        // Если не нашли scoped ключ, пробуем без scope (для обратной совместимости)
-        if (!savedAnswersStr || savedAnswersStr === '{}' || savedAnswersStr === 'null') {
-          savedAnswersStr = sessionStorage.getItem('quiz_answers_backup');
-          console.log('🔍 [useQuizStateExtended] Проверяем unscoped ключ quiz_answers_backup', { 
-            hasValue: !!savedAnswersStr,
-            value: savedAnswersStr ? (savedAnswersStr.length > 100 ? savedAnswersStr.substring(0, 100) + '...' : savedAnswersStr) : null
-          });
-        }
-        
-        console.log('🔍 [useQuizStateExtended] Результат поиска savedAnswersStr', {
-          found: !!savedAnswersStr,
-          isEmpty: savedAnswersStr === '{}' || savedAnswersStr === 'null',
-          length: savedAnswersStr?.length || 0,
-        });
-        
-        if (savedAnswersStr && savedAnswersStr !== '{}' && savedAnswersStr !== 'null') {
-          try {
-            const savedAnswers = JSON.parse(savedAnswersStr);
-            console.log('🔍 [useQuizStateExtended] Парсинг savedAnswers', {
-              parsed: !!savedAnswers,
-              keysCount: savedAnswers ? Object.keys(savedAnswers).length : 0,
-              keys: savedAnswers ? Object.keys(savedAnswers).slice(0, 5) : [],
-            });
-            
-            if (savedAnswers && Object.keys(savedAnswers).length > 0) {
-              const savedAnswersCount = Object.keys(savedAnswers).length;
-              
-              console.log('🔍 [useQuizStateExtended] Проверка количества ответов', {
-                savedAnswersCount,
-                minRequired: QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN,
-                shouldRestore: savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN,
-              });
-              
-              // Восстанавливаем только если >= 2 ответов (для резюм-экрана)
-              if (savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN) {
-                // Пробуем найти индексы из sessionStorage
-                let savedQuestionIndex = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
-                let savedInfoScreenIndex = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
-                
-                // Если не нашли, пробуем найти scoped ключи
-                if (!savedQuestionIndex) {
-                  const keys = Object.keys(sessionStorage);
-                  for (const key of keys) {
-                    if (key.includes(':quiz_currentQuestionIndex') || key.endsWith(':quiz_currentQuestionIndex')) {
-                      savedQuestionIndex = sessionStorage.getItem(key);
-                      break;
-                    }
-                  }
-                }
-                
-                if (!savedInfoScreenIndex) {
-                  const keys = Object.keys(sessionStorage);
-                  for (const key of keys) {
-                    if (key.includes(':quiz_currentInfoScreenIndex') || key.endsWith(':quiz_currentInfoScreenIndex')) {
-                      savedInfoScreenIndex = sessionStorage.getItem(key);
-                      break;
-                    }
-                  }
-                }
-                
-                const questionIndex = savedQuestionIndex ? parseInt(savedQuestionIndex, 10) : 0;
-                const infoScreenIndex = savedInfoScreenIndex ? parseInt(savedInfoScreenIndex, 10) : 0;
-                
-                const restoredProgress = {
-                  answers: savedAnswers,
-                  questionIndex: !isNaN(questionIndex) && questionIndex >= 0 ? questionIndex : 0,
-                  infoScreenIndex: !isNaN(infoScreenIndex) && infoScreenIndex >= 0 ? infoScreenIndex : 0,
-                };
-                
-                // ИСПРАВЛЕНО: Добавлено логирование для диагностики
-                console.log('✅ [useQuizStateExtended] savedProgress восстановлен из sessionStorage', {
-                  savedAnswersCount,
-                  questionIndex: restoredProgress.questionIndex,
-                  infoScreenIndex: restoredProgress.infoScreenIndex,
-                  minRequired: QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN,
-                  shouldShowResume: savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN,
-                });
-                
-                return restoredProgress;
-              } else {
-                console.log('⏸️ [useQuizStateExtended] savedProgress НЕ восстановлен - недостаточно ответов', {
-                  savedAnswersCount,
-                  minRequired: QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN,
-                });
-                return null;
-              }
-            } else {
-              console.log('⏸️ [useQuizStateExtended] savedProgress НЕ восстановлен - savedAnswers пустой или невалидный', {
-                hasSavedAnswers: !!savedAnswers,
-                keysCount: savedAnswers ? Object.keys(savedAnswers).length : 0,
-              });
-              return null;
-            }
-          } catch (e) {
-            console.warn('⚠️ [useQuizStateExtended] Ошибка парсинга savedAnswers', e);
-            return null;
-          }
-        } else {
-          console.log('⏸️ [useQuizStateExtended] savedProgress НЕ восстановлен - нет savedAnswersStr в sessionStorage', {
-            hasSavedAnswersStr: !!savedAnswersStr,
-            isEmpty: savedAnswersStr === '{}' || savedAnswersStr === 'null',
-          });
-        }
-      } catch (err) {
-        console.warn('⚠️ [useQuizStateExtended] Ошибка при восстановлении savedProgress из sessionStorage', err);
-        // Игнорируем ошибки sessionStorage
-      }
-    }
-    console.log('⏸️ [useQuizStateExtended] savedProgress инициализирован как null');
-    return null;
-  });
+  } | null>(null);
   
-  // ИСПРАВЛЕНО: Восстанавливаем savedProgress на клиенте, если он был null при инициализации
-  // Это необходимо, потому что useState с функцией-инициализатором вызывается только один раз
-  // и на сервере window === undefined, поэтому savedProgress всегда null на сервере
-  useLayoutEffect(() => {
+  // Восстанавливаем savedProgress из sessionStorage после гидрации (useEffect, не useLayoutEffect)
+  useEffect(() => {
     console.log('🔍 [useQuizStateExtended] useLayoutEffect: ВХОД', {
       savedProgressIsNull: savedProgress === null,
       isWindowDefined: typeof window !== 'undefined',
