@@ -60,6 +60,13 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: 'SkinIQ - Умный уход за кожей',
   description: 'Персонализированный план ухода за кожей на основе анкеты',
+  icons: { icon: '/icons/icon_sparkles.svg', apple: '/icons/icon_sparkles.svg' },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default async function RootLayout({
@@ -191,6 +198,14 @@ export default async function RootLayout({
             `}
           </Script>
         )}
+        {/* Шрифты для админки — грузим только на /admin, чтобы не блокировать рендер мини-аппа
+            (Google Fonts может быть недоступен в Telegram WebView в некоторых регионах) */}
+        {isAdminRoute && (
+          <link
+            href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap"
+            rel="stylesheet"
+          />
+        )}
         {/* Шрифты Unbounded и Inter загружаются через next/font (см. импорты выше) */}
         {/* Шрифты Manrope / Space Grotesk для админки загружаются в admin/layout.tsx */}
       </head>
@@ -255,10 +270,16 @@ export default async function RootLayout({
       else showFallback();
     }
   }, true);
+
+  // Защита для Telegram WebView и медленных сетей: через 5 с убираем «Загрузка...» и показываем «Обновить», если React ещё не смонтировался
   setTimeout(function(){
-    var rl = document.getElementById("root-loading");
-    if (rl && rl.parentNode) { rl.parentNode.removeChild(rl); showFallback(); }
-  }, 15000);
+    var loading = document.getElementById("root-loading");
+    if (loading && loading.parentNode) {
+      loading.parentNode.removeChild(loading);
+      var next = document.getElementById("__next");
+      if (next && !next.querySelector("*")) showFallback();
+    }
+  }, 5000);
 })();
             `.trim(),
           }}

@@ -16,8 +16,8 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
             staleTime: 5 * 60 * 1000,
             // Время хранения данных в кэше после того, как они перестали использоваться (10 минут)
             gcTime: 10 * 60 * 1000, // ранее называлось cacheTime
-            // Автоматически обновлять данные при фокусе окна
-            refetchOnWindowFocus: false,
+            // При возврате на вкладку — refetch (восстановление после Chrome throttle в фоне)
+            refetchOnWindowFocus: true,
             // Автоматически обновлять данные при переподключении
             refetchOnReconnect: true,
             // Не повторять запрос при ошибке (можно настроить per-query)

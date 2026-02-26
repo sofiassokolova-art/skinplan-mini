@@ -173,18 +173,24 @@ export default function RootPage() {
     <div style={{
       minHeight: '100vh',
       display: 'flex',
+      flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
+      padding: 24,
       backgroundColor: '#FFFFFF',
+      color: '#0A5F59',
+      fontFamily: 'var(--font-inter), system-ui, sans-serif',
+      fontSize: 16,
     }}>
       <div style={{
         width: 48,
         height: 48,
-        border: '3px solid rgba(0,0,0,0.08)',
-        borderTop: '3px solid #000',
+        border: '3px solid #E8F5F3',
+        borderTopColor: '#0A5F59',
         borderRadius: '50%',
         animation: 'spin 0.8s linear infinite',
       }} />
+      <p style={{ marginTop: 16, fontWeight: 500 }}>Загрузка...</p>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );

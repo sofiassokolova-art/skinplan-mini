@@ -301,7 +301,14 @@ export async function request<T>(
   }
 
   const headers = createHeaders(initData, options.headers as Record<string, string>);
-  const timeout = endpoint.includes('/plan/generate') ? 60000 : DEFAULT_TIMEOUT;
+
+  // Короткий таймаут для profile/preferences — меньше «very slow» и быстрее отказ при throttle в фоне (Chrome)
+  const isCriticalRead = endpoint.includes('/profile/current') || endpoint.includes('/user/preferences');
+  const timeout = endpoint.includes('/plan/generate')
+    ? 60000
+    : isCriticalRead
+      ? 8000
+      : DEFAULT_TIMEOUT;
   const isWrite = options.method && options.method !== 'GET';
 
   let lastError: Error | null = null;

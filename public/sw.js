@@ -8,8 +8,6 @@ const STATIC_CACHE_NAME = 'skinplan-mini-static-v2';
 // Иначе на кастомном домене пользователь получает старый HTML → 404 на чанки → «не удалось загрузить приложение».
 const STATIC_ASSETS = [
   '/manifest.json',
-  '/favicon.ico',
-  '/quiz_welcome_image.png',
 ];
 
 // Установка Service Worker

@@ -2,11 +2,9 @@
 // Получение текущего профиля пользователя
 
 import { NextRequest, NextResponse } from 'next/server';
-import { logger, logApiRequest, logApiError } from '@/lib/logger';
+import { logApiRequest, logApiError } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { getCurrentProfile } from '@/lib/get-current-profile';
-import { prisma } from '@/lib/db';
-import { logDbFingerprint } from '@/lib/db-fingerprint';
 import { getCorrelationId, addCorrelationIdToHeaders } from '@/lib/utils/correlation-id';
 import { addCacheHeaders, CachePresets } from '@/lib/utils/api-cache';
 
@@ -21,37 +19,13 @@ export async function GET(request: NextRequest) {
   const correlationId = getCorrelationId(request) || undefined;
 
   try {
-    // DEBUG: Логируем DB fingerprint для диагностики разных БД
-    // Используем console.warn для гарантированного вывода в Vercel logs
-    console.warn('🔍 [PROFILE/CURRENT] Starting DB fingerprint check...');
-    const fingerprint = await logDbFingerprint('/api/profile/current');
-    console.warn('🔍 [PROFILE/CURRENT] DB fingerprint:', JSON.stringify(fingerprint, null, 2));
-    
     const auth = await requireTelegramAuth(request, { ensureUser: true });
     if (!auth.ok) {
       return auth.response;
     }
     userId = auth.ctx.userId;
 
-    // DEBUG: Проверяем идентичность БД
-    try {
-      const dbIdentity = await prisma.$queryRaw<Array<{ current_database: string; current_schema: string }>>`
-        SELECT current_database() as current_database, current_schema() as current_schema
-      `;
-      logger.warn('DEBUG: DB identity in profile/current', { 
-        userId,
-        dbIdentity: dbIdentity[0],
-        databaseUrl: process.env.DATABASE_URL ? 'set' : 'not set',
-      });
-    } catch (dbIdentityError) {
-      logger.warn('DEBUG: Failed to get DB identity in profile/current', { error: (dbIdentityError as any)?.message });
-    }
-
-    // DEBUG: Проверяем количество профилей до вызова getCurrentProfile
-    const profilesCountBefore = await prisma.skinProfile.count({ where: { userId } });
-    logger.warn('DEBUG: profiles count before getCurrentProfile', { userId, profilesCountBefore });
-
-    // ИСПРАВЛЕНО: Используем единый резолвер активного профиля
+    // Единый резолвер активного профиля (без лишних debug-запросов к БД — уменьшает very_slow API)
     // Это обеспечивает консистентность с /api/plan и правильно обрабатывает отсутствие current_profile_id
     const profile = await getCurrentProfile(userId);
 

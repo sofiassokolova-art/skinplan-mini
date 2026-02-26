@@ -129,6 +129,5 @@ export const config = {
     '/api/:path*',
     '/admin',
     '/admin/:path*',
-    '/',
   ],
 };

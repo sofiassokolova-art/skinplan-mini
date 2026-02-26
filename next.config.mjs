@@ -77,6 +77,13 @@ const nextConfig = {
       },
     ];
   },
+  // Убираем 404 для favicon (браузеры и Telegram запрашивают /favicon.ico и /favicon.png)
+  async rewrites() {
+    return [
+      { source: '/favicon.ico', destination: '/icons/icon_sparkles.svg' },
+      { source: '/favicon.png', destination: '/icons/icon_sparkles.svg' },
+    ];
+  },
   // ИСПРАВЛЕНО: Добавлен пустой turbopack конфиг для совместимости с Next.js 16
   // Next.js 16 использует Turbopack по умолчанию, но у нас есть webpack конфигурация
   // Пустой конфиг позволяет использовать webpack без ошибок
