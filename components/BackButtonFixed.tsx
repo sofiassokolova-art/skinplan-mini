@@ -6,6 +6,7 @@
  * (transform у предков, например в PageTransition, ломает position: fixed у потомков).
  */
 import { createPortal } from 'react-dom';
+import { useState, useEffect } from 'react';
 
 const BACK_BUTTON_SVG = (
   <svg width="12" height="20" viewBox="0 0 12 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -25,7 +26,10 @@ function getBackButtonPortalRoot(): HTMLElement | null {
 }
 
 export function BackButtonFixed({ onClick, show = true }: BackButtonFixedProps) {
-  if (!show || typeof window === 'undefined') return null;
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
+  if (!show || !mounted) return null;
 
   const portalTarget = getBackButtonPortalRoot() || document.body;
 
