@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { QuizProvider } from './components/QuizProvider';
 import { QuizRenderer } from './components/QuizRenderer';
 import { useQuizContext } from './components/QuizProvider';
@@ -15,6 +15,24 @@ function QuizPageContent() {
   // Debug state - currently unused but kept for future debugging
   const [debugLogs] = useState<Array<{ time: string; message: string; data?: any }>>([]);
   const [showDebugPanel] = useState(false);
+
+  // Читаем initData только на клиенте после монтирования — не в useMemo/render
+  const [hasTelegramInitData, setHasTelegramInitData] = useState(false);
+  useEffect(() => {
+    const check = () => {
+      const has = !!(window.Telegram?.WebApp?.initData) ||
+        !!((() => { try { return sessionStorage.getItem('tg_init_data'); } catch { return null; } })());
+      setHasTelegramInitData(has);
+    };
+    check();
+    window.addEventListener('telegram-webapp-ready', check);
+    // Повторная проверка через 2с на случай если SDK загрузился позже
+    const t = setTimeout(check, 2000);
+    return () => {
+      window.removeEventListener('telegram-webapp-ready', check);
+      clearTimeout(t);
+    };
+  }, []);
 
   // Refs for computed hook - используем правильные refs вместо пустых объектов
   const allQuestionsRawPrevRef = useRef<Question[]>([]);
@@ -78,6 +96,7 @@ function QuizPageContent() {
     questionnaireError: questionnaireQuery.error,
     isQuestionnaireQueryError: questionnaireQuery.isError, // сохраняем при refetch, чтобы не переключаться в лоадер
     progressError: progressQuery.error,
+    hasTelegramInitData,
     questionnaireRef,
     currentInfoScreenIndexRef,
     allQuestionsRawPrevRef,

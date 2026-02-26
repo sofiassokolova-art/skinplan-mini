@@ -3,16 +3,32 @@
 
 'use client';
 
+import { useEffect, useState } from 'react';
+
 interface QuizInitialLoaderProps {
-  // Параметры оставлены для обратной совместимости, но не используются
   message?: string;
   subMessage?: string;
+  // Если передан onTimeout — вызывается через timeoutMs если лоадер всё ещё показывается
+  onTimeout?: () => void;
+  timeoutMs?: number;
 }
 
 export function QuizInitialLoader({
   message: _message,
-  subMessage: _subMessage
+  subMessage: _subMessage,
+  onTimeout,
+  timeoutMs = 8000,
 }: QuizInitialLoaderProps) {
+  const [showReload, setShowReload] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setShowReload(true);
+      onTimeout?.();
+    }, timeoutMs);
+    return () => clearTimeout(t);
+  }, [onTimeout, timeoutMs]);
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -22,9 +38,7 @@ export function QuizInitialLoader({
       justifyContent: 'center',
       backgroundColor: '#FFFFFF',
       padding: '40px 20px',
-      position: 'relative',
     }}>
-      {/* Лоадер в центре экрана - черный */}
       <div style={{
         width: '60px',
         height: '60px',
@@ -32,17 +46,28 @@ export function QuizInitialLoader({
         borderTop: '4px solid #000000',
         borderRadius: '50%',
         animation: 'spin 1s linear infinite',
-      }}></div>
-      <style jsx>{`
-        @keyframes spin {
-          0% {
-            transform: rotate(0deg);
-          }
-          100% {
-            transform: rotate(360deg);
-          }
-        }
-      `}</style>
+      }} />
+      {showReload && (
+        <div style={{ marginTop: 24, textAlign: 'center' }}>
+          <p style={{ color: '#666', fontSize: 14, marginBottom: 12 }}>
+            Загрузка занимает больше времени, чем обычно
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              padding: '10px 24px',
+              background: '#0A5F59',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              fontSize: 14,
+              cursor: 'pointer',
+            }}
+          >
+            Обновить
+          </button>
+        </div>
+      )}
     </div>
   );
 }

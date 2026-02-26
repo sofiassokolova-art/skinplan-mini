@@ -47,6 +47,7 @@ export interface UseQuizComputedParams {
   questionnaireError?: Error | null; // Ошибка загрузки анкеты
   isQuestionnaireQueryError?: boolean; // true когда запрос анкеты в состоянии error (сохраняется при refetch)
   progressError?: Error | null; // Ошибка загрузки прогресса
+  hasTelegramInitData?: boolean; // передаётся снаружи через useState+useEffect, не читается из window в useMemo
 
   // Refs
   questionnaireRef: React.MutableRefObject<Questionnaire | null>;
@@ -87,6 +88,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     questionnaireError,
     isQuestionnaireQueryError = false,
     progressError,
+    hasTelegramInitData = false,
     questionnaireRef,
     currentInfoScreenIndexRef,
     allQuestionsRawPrevRef,
@@ -384,8 +386,6 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       allQuestionsHash
     });
 
-    const hasTelegramInitData = typeof window !== 'undefined' &&
-      !!window.Telegram?.WebApp?.initData;
     const isTelegramInitDataMissing = !hasTelegramInitData;
 
     // ИСПРАВЛЕНО: Проверяем резюм-экран ДО проверки ошибок, чтобы он показывался сразу
@@ -633,6 +633,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     allQuestions.length, // Добавлено для логирования
     answersRevision, // ИСПРАВЛЕНО: Добавлено для отслеживания изменений answers (используется в строке 358)
     savedProgressRevision, // ИСПРАВЛЕНО: Добавлено для отслеживания изменений savedProgress (используется в строке 357)
+    hasTelegramInitData,
   ]);
   
   // ФИКС: isShowingInitialInfoScreen теперь просто проверяет viewMode
