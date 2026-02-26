@@ -23,8 +23,10 @@ const INFO_INITIAL_SCREENS_COUNT = 4;
 function useRemoveRootLoading() {
   useEffect(() => {
     (window as any).__skiniq_mounted = true;
-    const el = typeof document !== 'undefined' ? document.getElementById('root-loading') : null;
-    if (el?.parentNode) el.parentNode.removeChild(el);
+    try {
+      const el = document.getElementById('root-loading');
+      el?.remove();
+    } catch (_) {}
   }, []);
 }
 
