@@ -6,9 +6,7 @@
 import { useEffect, useState } from 'react';
 
 export function NetworkStatus() {
-  const [isOnline, setIsOnline] = useState(
-    typeof window !== 'undefined' ? navigator.onLine : true
-  );
+  const [isOnline, setIsOnline] = useState(true);
   const [showOffline, setShowOffline] = useState(false);
 
   useEffect(() => {

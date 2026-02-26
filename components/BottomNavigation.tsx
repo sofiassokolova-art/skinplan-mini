@@ -12,25 +12,11 @@ export default function BottomNavigation() {
   const pathname = usePathname();
   const [scrollY, setScrollY] = useState(0);
   
-  // ТЗ: НЕ вызываем useCart на /quiz, чтобы предотвратить лишние запросы
-  // Проверяем pathname синхронно через window.location для надежности
-  // КРИТИЧНО: Проверяем ПЕРЕД вызовом useCart, чтобы предотвратить любые запросы
-  const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
-  const isOnQuizPage = currentPath === '/quiz' || currentPath.startsWith('/quiz/') ||
-                       pathname === '/quiz' || pathname.startsWith('/quiz/');
+  const isOnQuizPage = pathname === '/quiz' || pathname.startsWith('/quiz/');
   
   // ТЗ: Если на /quiz, не вызываем useCart вообще (возвращаем null для компонента)
-  // Это предотвращает любые запросы к API корзины на странице анкеты
   if (isOnQuizPage) {
-    // ИСПРАВЛЕНО: Логируем для диагностики (только в dev режиме)
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🚫 BottomNavigation: returning null on /quiz', {
-        currentPath,
-        pathname,
-        isOnQuizPage,
-      });
-    }
-    return null; // КРИТИЧНО: Не рендерим компонент на /quiz
+    return null;
   }
   
   // ИСПРАВЛЕНО: Используем React Query для кэширования корзины
