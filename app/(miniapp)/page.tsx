@@ -67,8 +67,7 @@ export default function RootPage() {
       };
     }
 
-    // 2) Проверяем Telegram initData — ждём до 1.5с
-    //    Проверяем SDK, hash и sessionStorage (данные сохраняются hash-fallback скриптом)
+    // 2) Ждём Telegram initData (до 2с), затем проверяем hasPlanProgress
     const isDev = typeof window !== 'undefined' && process.env.NODE_ENV === 'development';
 
     const hasInitData = (): boolean => {
@@ -76,31 +75,22 @@ export default function RootPage() {
       try { return !!sessionStorage.getItem('tg_init_data'); } catch { return false; }
     };
 
-    const hasTelegramNow = typeof window !== 'undefined' && hasInitData();
-
-    if (!hasTelegramNow && !isDev) {
-      const waitForTelegram = new Promise<boolean>((resolve) => {
+    const waitForTelegram = (): Promise<boolean> => {
+      if (hasInitData() || isDev) return Promise.resolve(true);
+      return new Promise<boolean>((resolve) => {
         let elapsed = 0;
         const interval = setInterval(() => {
-          elapsed += 150;
+          elapsed += 100;
           if (hasInitData()) {
             clearInterval(interval);
             resolve(true);
-          } else if (elapsed >= 1500) {
+          } else if (elapsed >= 2000) {
             clearInterval(interval);
             resolve(false);
           }
-        }, 150);
+        }, 100);
       });
-
-      waitForTelegram.then((found) => {
-        if (redirectInProgressRef.current) return;
-        if (!found) {
-          clientLogger.log('Telegram WebApp не доступен, перенаправляем на /quiz');
-          safeReplace('/quiz');
-        }
-      });
-    }
+    };
 
     // 3) Авторизация (не блокирующая) + проверка hasPlanProgress
     const maxWait = ROOT_LOAD_TIMEOUTS.ROOT_PAGE_MAX_WAIT;
@@ -133,6 +123,17 @@ export default function RootPage() {
         clearTimeout(timeoutId);
         clientLogger.log('ℹ️ Has plan_progress (from cache) → /home');
         safeReplace('/home');
+        return;
+      }
+
+      // Ждём Telegram initData перед API-запросом
+      const telegramReady = await waitForTelegram();
+      if (redirectInProgressRef.current) return;
+
+      if (!telegramReady) {
+        clientLogger.log('Telegram WebApp не доступен, перенаправляем на /quiz');
+        clearTimeout(timeoutId);
+        safeReplace('/quiz');
         return;
       }
 
