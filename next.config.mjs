@@ -50,8 +50,6 @@ const nextConfig = {
       { key: 'X-Content-Type-Options', value: 'nosniff' },
       { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
       { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-      // Keep-alive помогает при нестабильном HTTP/2 (ERR_HTTP2_PING_FAILED на кастомном домене)
-      { key: 'Connection', value: 'keep-alive' },
       ...(isProduction ? [{ key: 'Content-Security-Policy', value: cspValue }] : []),
     ];
 

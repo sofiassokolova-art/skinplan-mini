@@ -3,6 +3,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "installCommand": "npm install && npx prisma generate",
+  "regions": ["fra1"],
   "rewrites": [
     {
       "source": "/api/(.*)",
