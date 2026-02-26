@@ -69,7 +69,6 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const isDev = process.env.NODE_ENV === 'development';
-  const isVercel = !!process.env.VERCEL;
   const headersList = await headers();
   const pathname = headersList.get('x-pathname') ?? '';
   const isAdminRoute = pathname.startsWith('/admin');
@@ -192,16 +191,10 @@ export default async function RootLayout({
             `}
           </Script>
         )}
-        {/* Шрифты для админки — грузим только на /admin, чтобы не блокировать рендер мини-аппа
-            (Google Fonts может быть недоступен в Telegram WebView в некоторых регионах) */}
-        {isAdminRoute && (
-          <link
-            href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap"
-            rel="stylesheet"
-          />
-        )}
-        {/* Шрифты Unbounded и Inter загружаются через next/font (см. импорты выше) */}
-        {/* Шрифты Manrope / Space Grotesk для админки загружаются в admin/layout.tsx */}
+        {/* Шрифты Unbounded и Inter загружаются через next/font (см. импорты выше).
+            Manrope / Space Grotesk для админки загружаются ТОЛЬКО в admin/layout.tsx.
+            НЕ грузим Google Fonts в root layout — это render-blocking ресурс,
+            который блокирует отрисовку в Telegram WebView (fonts.googleapis.com может быть недоступен). */}
       </head>
       <body
         style={{
@@ -210,8 +203,10 @@ export default async function RootLayout({
           backgroundColor: '#FFFFFF',
         }}
       >
-        {/* Единый лоадер при открытии — показываем на всех деплоях Vercel (prod + preview), не на /admin */}
-        {isVercel && !isAdminRoute && (
+        {/* Лоадер при открытии — показываем ВСЕГДА (кроме /admin).
+            React удалит его при монтировании через useRemoveRootLoading().
+            Не зависим от process.env.VERCEL — Vercel build cache может не подставлять его. */}
+        {!isAdminRoute && (
           <div
             id="root-loading"
             style={{
@@ -230,7 +225,7 @@ export default async function RootLayout({
             Загрузка...
           </div>
         )}
-        {/* При ошибке загрузки чанков (ERR_TIMED_OUT и т.д.) или через 8 с — показываем кнопку «Обновить» */}
+        {/* При ошибке загрузки чанков или таймауте — показываем кнопку «Обновить» */}
         <div id="loading-timeout-fallback" style={{ display: 'none' }} />
         <script
           dangerouslySetInnerHTML={{
@@ -239,6 +234,7 @@ export default async function RootLayout({
   var fallbackCss = "display:block;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;padding:12px 20px;background:rgba(10,95,89,0.95);color:#fff;border-radius:12px;font-family:system-ui,sans-serif;font-size:14px;box-shadow:0 4px 20px rgba(0,0,0,0.2);";
   var fallbackHtml = 'Не удалось загрузить приложение. <a href="javascript:location.reload()" style="color:#fff;text-decoration:underline;font-weight:600">Обновить</a>';
   var reloadKey = 'skinplan_chunk_reload_done';
+  window.__skiniq_mounted = false;
   function showFallback(){
     var e = document.getElementById("loading-timeout-fallback");
     if (e && e.style.display !== "block") { e.style.cssText = fallbackCss; e.innerHTML = fallbackHtml; }
@@ -264,16 +260,12 @@ export default async function RootLayout({
       else showFallback();
     }
   }, true);
-
-  // Защита для Telegram WebView и медленных сетей: через 5 с убираем «Загрузка...» и показываем «Обновить», если React ещё не смонтировался
   setTimeout(function(){
-    var loading = document.getElementById("root-loading");
-    if (loading && loading.parentNode) {
-      loading.parentNode.removeChild(loading);
-      var next = document.getElementById("__next");
-      if (next && !next.querySelector("*")) showFallback();
-    }
-  }, 5000);
+    if (window.__skiniq_mounted) return;
+    var rl = document.getElementById("root-loading");
+    if (rl && rl.parentNode) rl.parentNode.removeChild(rl);
+    showFallback();
+  }, 6000);
 })();
             `.trim(),
           }}

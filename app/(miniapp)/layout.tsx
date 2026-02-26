@@ -20,6 +20,7 @@ import { QuizInitialLoader } from '@/app/(miniapp)/quiz/components/QuizInitialLo
 /** Убирает статичный «Загрузка...» из корня при первом монтировании React */
 function useRemoveRootLoading() {
   useEffect(() => {
+    (window as any).__skiniq_mounted = true;
     const el = typeof document !== 'undefined' ? document.getElementById('root-loading') : null;
     if (el?.parentNode) el.parentNode.removeChild(el);
   }, []);
