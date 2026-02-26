@@ -261,13 +261,29 @@ export default async function RootLayout({
       if (u.indexOf("/_next/") !== -1 || u.indexOf("chunks") !== -1) tryReloadOnce();
     }
   }, true);
-  // Убираем root-loading через 8с если React ещё не смонтировался —
-  // чтобы не блокировать контент на медленных соединениях.
-  // Fallback (кнопка Обновить) — только при реальной ошибке чанка (см. error listener выше).
-  setTimeout(function(){
-    if (window.__skiniq_mounted) return;
-    try { var rl = document.getElementById("root-loading"); if (rl) rl.style.display = 'none'; } catch(_) {}
-  }, 8000);
+  // Скрываем root-loading как только React отрендерил контент в #__next.
+  // MutationObserver надёжнее чем __skiniq_mounted (который может не попасть в бандл).
+  (function(){
+    var rl = document.getElementById("root-loading");
+    if (!rl) return;
+    var next = document.getElementById("__next");
+    if (!next) { rl.style.display = 'none'; return; }
+    // Если контент уже есть — скрываем сразу
+    if (next.children.length > 0) { rl.style.display = 'none'; return; }
+    var obs = new MutationObserver(function(){
+      if (next.children.length > 0) {
+        rl.style.display = 'none';
+        window.__skiniq_mounted = true;
+        obs.disconnect();
+      }
+    });
+    obs.observe(next, { childList: true, subtree: false });
+    // Fallback: скрываем через 8с в любом случае
+    setTimeout(function(){
+      rl.style.display = 'none';
+      obs.disconnect();
+    }, 8000);
+  })();
 })();
             `.trim(),
           }}
