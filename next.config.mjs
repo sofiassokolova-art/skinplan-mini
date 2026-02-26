@@ -50,34 +50,10 @@ const nextConfig = {
       { key: 'X-Content-Type-Options', value: 'nosniff' },
       { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
       { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-      // Vercel Edge: отключаем HTTP/2 server push — вызывает ERR_CONNECTION_CLOSED на больших чанках
-      { key: 'Link', value: '' },
       ...(isProduction ? [{ key: 'Content-Security-Policy', value: cspValue }] : []),
     ];
 
     return [
-      // JS/CSS чанки с хэшем в имени — кэшируем вечно (immutable)
-      // Это критично: без кэша каждый раз грузится ~1MB JS заново
-      {
-        source: '/_next/static/:path*',
-        headers: [
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
-        ],
-      },
-      // Иконки и шрифты — кэшируем на сутки
-      {
-        source: '/icons/:path*',
-        headers: [
-          { key: 'Cache-Control', value: 'public, max-age=86400' },
-        ],
-      },
-      {
-        source: '/fonts/:path*',
-        headers: [
-          { key: 'Cache-Control', value: 'public, max-age=86400' },
-        ],
-      },
-      // Страницы приложения — не кэшируем (динамический контент)
       {
         source: '/',
         headers: [
@@ -99,13 +75,6 @@ const nextConfig = {
           ...securityHeaders,
         ],
       },
-    ];
-  },
-  // Убираем 404 для favicon (браузеры и Telegram запрашивают /favicon.ico и /favicon.png)
-  async rewrites() {
-    return [
-      { source: '/favicon.ico', destination: '/icons/icon_sparkles.svg' },
-      { source: '/favicon.png', destination: '/icons/icon_sparkles.svg' },
     ];
   },
   // ИСПРАВЛЕНО: Добавлен пустой turbopack конфиг для совместимости с Next.js 16
@@ -165,21 +134,7 @@ const nextConfig = {
             chunks: 'async',
             priority: 30,
           },
-          // TanStack Query отдельно — используется везде, но меняется редко
-          tanstack: {
-            name: 'tanstack',
-            test: /[\\/]node_modules[\\/](@tanstack)[\\/]/,
-            chunks: 'all',
-            priority: 15,
-          },
-          // Radix UI компоненты отдельно
-          radix: {
-            name: 'radix',
-            test: /[\\/]node_modules[\\/](@radix-ui)[\\/]/,
-            chunks: 'all',
-            priority: 15,
-          },
-          // Остальные node_modules — в vendor (небольшие утилиты)
+          // Остальные node_modules — в vendor (tanstack, radix и т.д.)
           vendor: {
             name: 'vendor',
             test: /[\\/]node_modules[\\/]/,
