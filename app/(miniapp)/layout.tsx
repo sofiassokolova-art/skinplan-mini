@@ -14,8 +14,10 @@ import { PaywallVisibilityProvider, usePaywallVisibility } from '@/providers/Pay
 import { ServiceFeedbackPopup } from '@/components/ServiceFeedbackPopup';
 import { useTelegram } from '@/lib/telegram-client';
 import { DEV_TELEGRAM } from '@/lib/config/timeouts';
-import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
-import { QuizInitialLoader } from '@/app/(miniapp)/quiz/components/QuizInitialLoader';
+// INFO_INITIAL_SCREENS_COUNT: кол-во начальных инфо-экранов (без showAfterQuestionCode/showAfterInfoScreenId).
+// Хардкодим чтобы не тянуть весь модуль info-screens в layout-бандл.
+// Обновить если изменится кол-во начальных экранов в info-screens.ts.
+const INFO_INITIAL_SCREENS_COUNT = 4;
 
 /** Убирает статичный «Загрузка...» из корня при первом монтировании React */
 function useRemoveRootLoading() {
@@ -122,8 +124,7 @@ function LayoutContent({
             typeof window !== 'undefined' &&
             (() => {
               const currentInfoScreenIndex = parseInt(sessionStorage.getItem('currentInfoScreenIndex') || '0', 10);
-              const initialLen = getInitialInfoScreens().length;
-              return currentInfoScreenIndex > 0 && currentInfoScreenIndex < initialLen;
+              return currentInfoScreenIndex > 0 && currentInfoScreenIndex < INFO_INITIAL_SCREENS_COUNT;
             })()
           }
           onClick={() => {
@@ -151,7 +152,25 @@ function LayoutContent({
 /** Минимальный fallback во время Suspense — только спиннер, без тяжёлых компонентов */
 function LayoutFallback() {
   useRemoveRootLoading();
-  return <QuizInitialLoader />;
+  return (
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#FFFFFF',
+    }}>
+      <div style={{
+        width: 48,
+        height: 48,
+        border: '3px solid #E8F5F3',
+        borderTopColor: '#0A5F59',
+        borderRadius: '50%',
+        animation: 'spin 0.8s linear infinite',
+      }} />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
 }
 
 export default function MiniappLayout({
