@@ -103,8 +103,13 @@ export function useQuizInit(params: UseQuizInitParams) {
         return;
       }
 
-      // Если уже доступен
-      if (window.Telegram?.WebApp?.initData) {
+      const hasData = () => {
+        if (window.Telegram?.WebApp?.initData) return true;
+        try { return !!sessionStorage.getItem('tg_init_data'); } catch { return false; }
+      };
+
+      // Если уже доступен (SDK или sessionStorage)
+      if (hasData()) {
         resolve();
         return;
       }
@@ -115,14 +120,11 @@ export function useQuizInit(params: UseQuizInitParams) {
 
       const checkInterval = setInterval(() => {
         attempts++;
-        if (window.Telegram?.WebApp?.initData || attempts >= maxAttempts) {
+        if (hasData() || attempts >= maxAttempts) {
           clearInterval(checkInterval);
           resolve();
         }
       }, 100);
-      
-      // ИСПРАВЛЕНО: Cleanup на случай, если Promise будет отменен
-      // Это предотвращает утечку памяти при размонтировании компонента
     });
   }, []);
 
@@ -135,28 +137,36 @@ export function useQuizInit(params: UseQuizInitParams) {
     if (initData) {
       return initData;
     }
-    
-    // Если не доступен, ждем его готовности
-    if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
-      await new Promise((resolve) => {
-        let attempts = 0;
-        const maxAttempts = 10; // 10 * 100ms = 1 секунда
-        const checkInterval = setInterval(() => {
-          attempts++;
-          const data = window.Telegram?.WebApp?.initData || null;
-          if (data || attempts >= maxAttempts) {
-            clearInterval(checkInterval);
-            resolve(undefined);
-          }
-        }, 100);
-        
-        // ИСПРАВЛЕНО: Cleanup на случай, если Promise будет отменен
-        // Это предотвращает утечку памяти при размонтировании компонента
-      });
-      return window.Telegram?.WebApp?.initData || null;
-    }
-    
-    return null;
+
+    if (typeof window === 'undefined') return null;
+
+    // Быстрый путь: SDK уже готов
+    if (window.Telegram?.WebApp?.initData) return window.Telegram.WebApp.initData;
+
+    // Fallback: sessionStorage (сохраняется hash-fallback скриптом)
+    try {
+      const stored = sessionStorage.getItem('tg_init_data');
+      if (stored) return stored;
+    } catch (_) {}
+
+    // Ждем появления данных (SDK или sessionStorage) — максимум 1 секунда
+    await new Promise((resolve) => {
+      let attempts = 0;
+      const maxAttempts = 10;
+      const checkInterval = setInterval(() => {
+        attempts++;
+        const hasData = !!window.Telegram?.WebApp?.initData ||
+          !!((() => { try { return sessionStorage.getItem('tg_init_data'); } catch { return null; } })());
+        if (hasData || attempts >= maxAttempts) {
+          clearInterval(checkInterval);
+          resolve(undefined);
+        }
+      }, 100);
+    });
+
+    // Возвращаем из любого доступного источника
+    if (window.Telegram?.WebApp?.initData) return window.Telegram.WebApp.initData;
+    try { return sessionStorage.getItem('tg_init_data') || null; } catch { return null; }
   }, []);
 
   // ============================================
@@ -413,14 +423,11 @@ export function useQuizInit(params: UseQuizInitParams) {
       ]);
 
       // Проверка initData (только в production)
-      // ИСПРАВЛЕНО: Делаем проверку более мягкой - не бросаем ошибку, а просто логируем предупреждение
-      // initData может быть недоступен сразу после waitForTelegram, но появиться позже
       if (!isDev && typeof window !== 'undefined') {
-        const hasInitData = !!window.Telegram?.WebApp?.initData;
+        const hasInitData = !!window.Telegram?.WebApp?.initData ||
+          !!((() => { try { return sessionStorage.getItem('tg_init_data'); } catch { return null; } })());
         if (!hasInitData) {
           clientLogger.warn('⚠️ Telegram initData not available after waitForTelegram, but continuing...');
-          // ИСПРАВЛЕНО: Не бросаем ошибку, а просто логируем предупреждение
-          // initData может появиться позже, или анкета может загрузиться без него (для публичных анкет)
         }
       }
 
