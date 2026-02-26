@@ -42,6 +42,7 @@ function LayoutContent({
   const { initData, initialize } = useTelegram();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isNewUser, setIsNewUser] = useState<boolean | null>(null);
+  const [backButtonVisible, setBackButtonVisible] = useState(false);
   
   useEffect(() => {
     if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
@@ -97,23 +98,27 @@ function LayoutContent({
   // Пейвол: скрываем навигацию, когда PaymentGate показывает экран оплаты (на /plan или /home)
   const { paywallVisible } = usePaywallVisibility();
   
-  // ИСПРАВЛЕНО: Проверяем pathname синхронно через window.location для надежности
-  const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
-  const isOnQuizPage = (currentPath === '/quiz' || currentPath.startsWith('/quiz/')) ||
-                       (pathname === '/quiz' || pathname.startsWith('/quiz/'));
+  const isOnQuizPage = pathname === '/quiz' || pathname.startsWith('/quiz/');
   
   // Скрываем навигацию на определенных страницах и в режимах/экранах, где она мешает UX
-  // ТЗ: На пейволе навигации внизу не должно быть (ни на плане, ни на главной); появляется после оплаты
-  const isOnRootPage = pathname === '/' || currentPath === '/';
+  const isOnRootPage = pathname === '/';
   const hideNav = isOnQuizPage || 
                   pathname === '/loading' ||
                   pathname.startsWith('/loading/') ||
-                  currentPath === '/loading' ||
-                  currentPath.startsWith('/loading/') ||
                   isResumeScreen ||
                   isPlanGenerating ||
-                  paywallVisible || // Скрываем навигацию, когда виден пейвол (plan или home)
-                  isOnRootPage; // Скрываем навигацию на главной странице всегда (это только редирект)
+                  paywallVisible ||
+                  isOnRootPage;
+
+  // Читаем sessionStorage только на клиенте после монтирования
+  useEffect(() => {
+    if (!isOnQuizPage) {
+      setBackButtonVisible(false);
+      return;
+    }
+    const idx = parseInt(sessionStorage.getItem('currentInfoScreenIndex') || '0', 10);
+    setBackButtonVisible(idx > 0 && idx < INFO_INITIAL_SCREENS_COUNT);
+  }, [isOnQuizPage, pathname]);
   
   return (
     <>
@@ -122,13 +127,7 @@ function LayoutContent({
       {/* Кнопка "назад" в фиксированном контейнере (портал в body) — только на инфо-экранах */}
       {isOnQuizPage && (
         <BackButtonFixed
-          show={
-            typeof window !== 'undefined' &&
-            (() => {
-              const currentInfoScreenIndex = parseInt(sessionStorage.getItem('currentInfoScreenIndex') || '0', 10);
-              return currentInfoScreenIndex > 0 && currentInfoScreenIndex < INFO_INITIAL_SCREENS_COUNT;
-            })()
-          }
+          show={backButtonVisible}
           onClick={() => {
             if (typeof window !== 'undefined' && window.history.length > 1) {
               window.history.back();
