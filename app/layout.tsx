@@ -65,14 +65,14 @@ export const metadata: Metadata = {
   icons: { icon: '/icons/icon_sparkles.svg', apple: '/icons/icon_sparkles.svg' },
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const isDev = process.env.NODE_ENV === 'development';
-  const headersList = await headers();
-  const pathname = headersList.get('x-pathname') ?? '';
+  const headersList = headers();
+  const pathname = (headersList as any).get?.('x-pathname') ?? '';
   const isAdminRoute = pathname.startsWith('/admin');
 
   return (

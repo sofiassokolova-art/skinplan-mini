@@ -129,5 +129,7 @@ export const config = {
     '/api/:path*',
     '/admin',
     '/admin/:path*',
+    // Все страницы — чтобы x-pathname был доступен в RootLayout
+    '/((?!_next/static|_next/image|favicon.ico|icons|fonts|sw.js).*)',
   ],
 };
