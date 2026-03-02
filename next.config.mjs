@@ -56,6 +56,13 @@ const nextConfig = {
 
     return [
       {
+        // Статические чанки Next.js — кэшируем навсегда (хэш в имени файла гарантирует свежесть)
+        source: '/_next/static/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      {
         source: '/',
         headers: [
           { key: 'Cache-Control', value: 'no-store, no-cache, max-age=0' },
