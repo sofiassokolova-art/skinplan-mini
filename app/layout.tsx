@@ -307,10 +307,10 @@ export default async function RootLayout({
             </div>
           </div>
         </noscript>
-        {/* Контейнер для кнопки «Назад» — вне основного контента, чтобы position:fixed не ломался из‑за transform */}
-        <div id="back-button-portal-root" />
         {/* Обёртка для React DevTools и селекторов: в App Router нет #__next по умолчанию */}
         <div id="__next">
+          {/* Контейнер для кнопки «Назад» — внутри React-дерева, чтобы избежать NotFoundError при reconciliation */}
+          <div id="back-button-portal-root" />
           <ErrorBoundary>
             <GlobalErrorHandler />
             <WebVitalsTracker />

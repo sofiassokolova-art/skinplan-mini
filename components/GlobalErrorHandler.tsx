@@ -9,6 +9,20 @@ export function GlobalErrorHandler() {
   useEffect(() => {
     // Обработчик необработанных ошибок
     const handleError = (event: ErrorEvent) => {
+      const errorName = event.error?.name || '';
+      const errorMessage = event.message || '';
+
+      // NotFoundError — DOM-ошибка React reconciliation (insertBefore/removeChild на удалённой ноде).
+      // Возникает при навигации с порталами (back-button-portal-root). Некритична, не логируем как ERROR.
+      if (
+        errorName === 'NotFoundError' ||
+        /object can not be found/i.test(errorMessage) ||
+        /The node before which the new node is to be inserted is not a child/i.test(errorMessage)
+      ) {
+        console.warn('⚠️ GlobalErrorHandler: NotFoundError (DOM reconciliation, некритично):', errorMessage);
+        return;
+      }
+
       // ИСПРАВЛЕНО: Безопасное получение URL с обработкой SecurityError
       let url = 'N/A';
       try {
