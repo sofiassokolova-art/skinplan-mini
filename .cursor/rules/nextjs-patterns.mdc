@@ -1,0 +1,70 @@
+---
+description: Next.js 15 и React паттерны для skinplan-mini — hydration, hooks, async API
+alwaysApply: true
+---
+
+# Next.js 15 + React правила
+
+## headers() — всегда async
+
+```typescript
+// ❌ BAD — бросает ошибку в Next.js 15
+export default function RootLayout() {
+  const headersList = headers();
+  const pathname = headersList.get('x-pathname');
+}
+
+// ✅ GOOD
+export default async function RootLayout() {
+  const headersList = await headers();
+  const pathname = headersList.get('x-pathname');
+}
+```
+
+## Rules of Hooks — никаких условных вызовов
+
+```typescript
+// ❌ BAD — hook после early return
+function Component() {
+  if (!data) return null;
+  const value = useHook(); // нарушение!
+}
+
+// ✅ GOOD — все хуки до любого return
+function Component() {
+  const value = useHook();
+  if (!data) return null;
+}
+```
+
+## sessionStorage/localStorage — только в useEffect
+
+```typescript
+// ❌ BAD — hydration mismatch
+const [val, setVal] = useState(() => sessionStorage.getItem('key'));
+
+// ✅ GOOD
+const [val, setVal] = useState<string | null>(null);
+useEffect(() => { setVal(sessionStorage.getItem('key')); }, []);
+```
+
+## window.* — только в useEffect или проверках typeof window
+
+```typescript
+// ❌ BAD — в useMemo/render
+const has = useMemo(() => !!window.Telegram?.WebApp?.initData, []);
+
+// ✅ GOOD — через useState+useEffect
+const [hasTelegram, setHasTelegram] = useState(false);
+useEffect(() => { setHasTelegram(!!window.Telegram?.WebApp?.initData); }, []);
+```
+
+## Neon PostgreSQL — cold start до 15 сек
+
+- Таймауты API должны быть >= 20 сек
+- Всегда вызывать `/api/ping` при старте приложения для прогрева
+- `ROOT_PAGE_MAX_WAIT` = 20_000 (не уменьшать)
+
+## Lazy imports — не дублировать
+
+Если компонент уже lazy-импортирован в одном месте — не импортировать его повторно в другом файле того же дерева.

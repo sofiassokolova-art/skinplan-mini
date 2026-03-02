@@ -1,0 +1,48 @@
+---
+description: Диагностика ошибок в skinplan-mini — Vercel логи, Neon, Telegram WebApp
+alwaysApply: true
+---
+
+# Диагностика ошибок
+
+## "Application error: a client-side exception"
+
+Причины по приоритету:
+1. **Chunk loading error** — JS файл не загрузился (сеть, CDN, Vercel edge кэш)
+   - Проверить: Network tab в DevTools, ищем 404/empty на `.js` файлах
+   - Фикс: `chunkCacheInvalidation` в `next.config`, или force redeploy
+2. **Hydration mismatch** — сервер и клиент рендерят разное
+   - Причина: `sessionStorage`, `localStorage`, `window.*` в render/useMemo
+   - Фикс: перенести в `useEffect`
+3. **Rules of Hooks violation** — хук вызван после условного return
+4. **Unhandled Promise rejection** в useEffect без try/catch
+
+## Медленные API (Neon cold start)
+
+Симптом в логах: `CRITICAL: Extremely Slow API Request`, duration > 5000ms
+
+Это нормально при первом запросе после idle. Решение:
+- `/api/ping` вызывается при монтировании root page (уже реализовано)
+- Не уменьшать `connect_timeout` и `pool_timeout` в `lib/db.ts`
+
+## Бесконечный лоадер на главной
+
+Причина: `ROOT_PAGE_MAX_WAIT` истёк раньше чем API ответил.
+- Текущее значение: 20_000ms (не уменьшать)
+- Проверить: есть ли кэш в `sessionStorage('user_preferences_cache')`
+
+## Telegram initData — порядок проверки
+
+```typescript
+// Правильный порядок источников initData:
+// 1. window.Telegram?.WebApp?.initData
+// 2. sessionStorage.getItem('tg_init_data')  (hash fallback)
+// 3. DEV_TELEGRAM.buildInitData() — только в development
+```
+
+## develop vs main
+
+Ветка `develop` должна быть в sync с `main`. При зависании dev-версии — проверить отставание:
+```bash
+git log --oneline origin/develop..main
+```
