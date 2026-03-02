@@ -102,7 +102,7 @@ export const ROOT_LOAD_TIMEOUTS = {
   SHOW_RELOAD_BUTTON_AFTER: 6_000, // 6 секунд
   
   /** Максимальное ожидание авторизации + hasPlanProgress на главной, после — редирект на /quiz */
-  ROOT_PAGE_MAX_WAIT: 10_000, // 10 секунд
+  ROOT_PAGE_MAX_WAIT: 20_000, // 20 секунд (Neon cold start может занимать до 15 сек)
 } as const;
 
 /**

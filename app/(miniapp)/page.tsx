@@ -67,7 +67,9 @@ export default function RootPage() {
       };
     }
 
-    // 2) Ждём Telegram initData (до 2с), затем проверяем hasPlanProgress
+    // 2) Параллельно прогреваем Neon (wake-up пинг) пока ждём Telegram
+    fetch('/api/ping').catch(() => undefined);
+
     const isDev = typeof window !== 'undefined' && process.env.NODE_ENV === 'development';
 
     const hasInitData = (): boolean => {
