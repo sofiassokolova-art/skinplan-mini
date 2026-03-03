@@ -292,18 +292,34 @@ export function QuizInfoScreen({
     return (
       <>
         {backButton}
-        <div style={{ 
-          padding: 0,
-          margin: 0,
-          minHeight: '100vh',
-          maxHeight: '100vh',
-          background: '#FFFFFF',
-          display: 'flex',
-          flexDirection: 'column',
-          position: 'relative',
-          width: '100%',
-          overflow: 'hidden',
-        }}>
+      <div
+        style={
+          isWelcomeScreen
+            ? {
+                padding: 0,
+                margin: 0,
+                height: '100vh',
+                background: '#FFFFFF',
+                display: 'flex',
+                flexDirection: 'column',
+                position: 'relative',
+                width: '100%',
+                overflow: 'hidden',
+              }
+            : {
+                padding: 0,
+                margin: 0,
+                minHeight: '100vh',
+                maxHeight: '100vh',
+                background: '#FFFFFF',
+                display: 'flex',
+                flexDirection: 'column',
+                position: 'relative',
+                width: '100%',
+                overflow: 'hidden',
+              }
+        }
+      >
 
         {/* Фиксированная шапка с заголовком и анимацией */}
         <div 
