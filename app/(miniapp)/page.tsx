@@ -173,27 +173,25 @@ export default function RootPage() {
   }, [router]);
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: 24,
-      backgroundColor: '#FFFFFF',
-      color: '#0A5F59',
-      fontFamily: 'var(--font-inter), system-ui, sans-serif',
-      fontSize: 16,
-    }}>
-      <div style={{
-        width: 48,
-        height: 48,
-        border: '3px solid #E8F5F3',
-        borderTopColor: '#0A5F59',
-        borderRadius: '50%',
-        animation: 'spin 0.8s linear infinite',
-      }} />
-      <p style={{ marginTop: 16, fontWeight: 500 }}>Загрузка...</p>
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#050608',
+      }}
+    >
+      <div
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: '50%',
+          border: '3px solid rgba(250, 250, 250, 0.16)',
+          borderTopColor: '#FAFAFA',
+          animation: 'spin 0.8s linear infinite',
+        }}
+      />
     </div>
   );
 }

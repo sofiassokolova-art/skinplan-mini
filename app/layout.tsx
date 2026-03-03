@@ -217,14 +217,20 @@ export default async function RootLayout({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: '#FFFFFF',
-              color: '#333',
-              fontSize: 16,
-              fontFamily: 'system-ui, sans-serif',
+              backgroundColor: '#050608',
               zIndex: 99998,
             }}
           >
-            Загрузка...
+            <div
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: '50%',
+                border: '3px solid rgba(250, 250, 250, 0.16)',
+                borderTopColor: '#FAFAFA',
+                animation: 'spin 0.8s linear infinite',
+              }}
+            />
           </div>
         )}
         {/* При ошибке загрузки чанков или таймауте — показываем кнопку «Обновить» */}
