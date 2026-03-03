@@ -141,7 +141,8 @@ export async function GET(request: NextRequest) {
       screenTitle: string;
       screenType: 'info' | 'question';
       reachedCount: number;
-      conversion: number;
+      conversionFromPrev: number;
+      conversionFromStart: number;
     }> = [];
 
     if (activeQuestionnaireWithQuestions) {
@@ -264,16 +265,36 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        const conversion = startedQuiz > 0 ? (reachedCount / startedQuiz) * 100 : 0;
-
         screenConversions.push({
           screenNumber: i + 1,
           screenId: screen.id,
           screenTitle: screen.title,
           screenType: screen.type,
           reachedCount,
-          conversion,
+          // временно 0, пересчитаем ниже, когда будут известны данные предыдущего экрана
+          conversionFromPrev: 0,
+          conversionFromStart: 0,
         });
+      }
+
+      // После того как посчитали reachedCount для всех экранов, считаем конверсии
+      // conversionFromStart — от тех, кто начал анкету
+      // conversionFromPrev — от предыдущего экрана (как ты и хочешь видеть)
+      let previousReached = startedQuiz;
+      for (let i = 0; i < screenConversions.length; i++) {
+        const current = screenConversions[i];
+        const baseForPrev =
+          i === 0
+            ? startedQuiz // первый экран считаем от начавших анкету
+            : previousReached;
+
+        current.conversionFromStart =
+          startedQuiz > 0 ? (current.reachedCount / startedQuiz) * 100 : 0;
+
+        current.conversionFromPrev =
+          baseForPrev > 0 ? (current.reachedCount / baseForPrev) * 100 : 0;
+
+        previousReached = current.reachedCount;
       }
     }
 

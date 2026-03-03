@@ -329,10 +329,8 @@ export async function POST(request: NextRequest) {
       console.log(`🤖 Bot Token configured: ${!!TELEGRAM_BOT_TOKEN}`);
       console.log(`🔑 Bot Token length: ${TELEGRAM_BOT_TOKEN?.length || 0}`);
 
-      const welcomeText = `Добро пожаловать в SkinIQ — ваш помощник в уходе за кожей!
-
-Что умеет SkinIQ:
-
+      const welcomeText = `Добро пожаловать в <b>SkinIQ</b> — ваш помощник в уходе за кожей!
+Что умеет <b>SkinIQ</b>:
 • Дает личные советы по уходу
 • Предлагает план ухода на 12 недель каждый день
 • Дает советы от врачей-дерматологов
@@ -347,7 +345,7 @@ export async function POST(request: NextRequest) {
         inline_keyboard: [
           [
             {
-              text: 'Открыть приложение',
+              text: 'SkinIQ',
               web_app: { url: MINI_APP_URL },
             },
           ],
@@ -374,9 +372,9 @@ export async function POST(request: NextRequest) {
         
         // Fallback: то же приветствие, но с кнопкой открытия Mini App (без ссылки в тексте)
         try {
-          const fallbackText = `Добро пожаловать в SkinIQ — ваш помощник в уходе за кожей!\n\nЧто умеет SkinIQ:\n• Дает личные советы по уходу\n• Предлагает план ухода на 12 недель каждый день\n• Дает советы от врачей-дерматологов\n\n🎁 Начните уже сегодня!\n\nЗаполнение анкеты займет всего 5 минут. В результате вы получите специальный план ухода, который подходит именно вашей коже.\n\nНажмите на кнопку ниже, чтобы открыть приложение:`;
+          const fallbackText = `Добро пожаловать в <b>SkinIQ</b> — ваш помощник в уходе за кожей!\n\nЧто умеет <b>SkinIQ</b>:\n• Дает личные советы по уходу\n• Предлагает план ухода на 12 недель каждый день\n• Дает советы от врачей-дерматологов\n\n🎁 Начните уже сегодня!\n\nЗаполнение анкеты займет всего 5 минут. В результате вы получите специальный план ухода, который подходит именно вашей коже.\n\nНажмите на кнопку ниже, чтобы открыть приложение:`;
           const fallbackMarkup = {
-            inline_keyboard: [[{ text: 'Открыть приложение', web_app: { url: MINI_APP_URL } }]],
+            inline_keyboard: [[{ text: 'SkinIQ', web_app: { url: MINI_APP_URL } }]],
           };
           await sendMessage(chatId, fallbackText, fallbackMarkup, userId || undefined);
           console.log(`✅ Fallback message with button sent successfully`);

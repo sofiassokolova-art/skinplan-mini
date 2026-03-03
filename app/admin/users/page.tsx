@@ -16,7 +16,7 @@ import {
   SortingState,
   ColumnFiltersState,
 } from '@tanstack/react-table';
-import { Search, User, Check, X, Calendar, Eye } from 'lucide-react';
+import { Search, Check, X, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface User {
@@ -32,6 +32,11 @@ interface User {
   profileCount: number;
   planCount: number;
   feedbackCount: number;
+  hasPaidAccess?: boolean;
+  paidAccessValidUntil?: string | null;
+  lastPaymentAt?: string | null;
+  lastPaymentAmount?: number | null;
+  lastPaymentCurrency?: string | null;
 }
 
 export default function UsersAdmin() {
@@ -50,6 +55,7 @@ export default function UsersAdmin() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [userPlan, setUserPlan] = useState<any | null>(null);
   const [loadingPlan, setLoadingPlan] = useState(false);
+  const [clearingUserId, setClearingUserId] = useState<string | null>(null);
 
   // Обработка параметра userId из URL
   useEffect(() => {
@@ -205,6 +211,64 @@ export default function UsersAdmin() {
         },
       },
       {
+        accessorKey: 'hasPaidAccess',
+        header: 'Оплата',
+        cell: ({ row }) => {
+          const user = row.original;
+          const hasPaid = !!user.hasPaidAccess;
+          const validUntil = user.paidAccessValidUntil
+            ? new Date(user.paidAccessValidUntil)
+            : null;
+          const lastPaymentAt = user.lastPaymentAt ? new Date(user.lastPaymentAt) : null;
+
+          return (
+            <div className="flex flex-col gap-1 text-xs">
+              <div className="flex items-center gap-2">
+                {hasPaid ? (
+                  <>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[11px] font-medium">
+                      Оплачен
+                    </span>
+                    {validUntil && (
+                      <span className="text-gray-600">
+                        до{' '}
+                        {validUntil.toLocaleDateString('ru-RU', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                        })}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 text-[11px] font-medium">
+                    Без оплаты
+                  </span>
+                )}
+              </div>
+              {lastPaymentAt && (
+                <div className="text-gray-500">
+                  <span>посл. платёж&nbsp;</span>
+                  {lastPaymentAt.toLocaleDateString('ru-RU', {
+                    day: '2-digit',
+                    month: '2-digit',
+                  })}
+                  {user.lastPaymentAmount != null && (
+                    <>
+                      <span> · </span>
+                      <span>
+                        {Math.round(user.lastPaymentAmount / 100).toLocaleString('ru-RU')}{' '}
+                        {user.lastPaymentCurrency || '₽'}
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        },
+      },
+      {
         accessorKey: 'createdAt',
         header: 'Дата регистрации',
         cell: ({ row }) => {
@@ -228,19 +292,33 @@ export default function UsersAdmin() {
           // ИСПРАВЛЕНО: Кнопка активна, если есть план (hasPlan), а не только профиль
           const canViewPlan = user.hasPlan;
           return (
-            <button
-              onClick={() => handleViewPlan(user.id)}
-              disabled={!canViewPlan}
-              className={cn(
-                'px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 backdrop-blur-sm',
-                canViewPlan
-                  ? 'bg-gray-900 text-white hover:bg-gray-800 shadow-md hover:shadow-lg'
-                  : 'bg-white/40 text-gray-400 cursor-not-allowed'
-              )}
-            >
-              <Eye size={16} />
-              План
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleViewPlan(user.id)}
+                disabled={!canViewPlan}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 backdrop-blur-sm',
+                  canViewPlan
+                    ? 'bg-gray-900 text-white hover:bg-gray-800 shadow-md hover:shadow-lg'
+                    : 'bg-white/40 text-gray-400 cursor-not-allowed'
+                )}
+              >
+                <Eye size={16} />
+                План
+              </button>
+              <button
+                onClick={() => handleClearUser(user.id)}
+                disabled={clearingUserId === user.id}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border backdrop-blur-sm',
+                  clearingUserId === user.id
+                    ? 'bg-red-100 text-red-700 border-red-200 cursor-wait'
+                    : 'bg-white/60 text-red-700 border-red-200 hover:bg-red-50'
+                )}
+              >
+                {clearingUserId === user.id ? 'Очищаю…' : 'Сделать новым'}
+              </button>
+            </div>
           );
         },
       },
@@ -283,6 +361,53 @@ export default function UsersAdmin() {
       setSelectedUserId(null);
     } finally {
       setLoadingPlan(false);
+    }
+  };
+
+  const handleClearUser = async (userId: string) => {
+    const target = users.find((u) => u.id === userId);
+    const label =
+      (target?.firstName || target?.lastName
+        ? `${target?.firstName || ''} ${target?.lastName || ''}`.trim()
+        : target?.username || target?.telegramId) || userId;
+
+    if (
+      !window.confirm(
+        `Точно очистить все данные пользователя "${label}"?\nБудут удалены анкета, профиль, планы, прогресс и логи. Отменить нельзя.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setClearingUserId(userId);
+      const response = await fetch(`/api/admin/users/${userId}/clear-data`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        const message = data.error || 'Не удалось очистить данные пользователя';
+        alert(message);
+        return;
+      }
+
+      const data = await response.json().catch(() => ({}));
+      // Обновляем список, чтобы отразить, что план/профиль могли исчезнуть
+      await loadUsers();
+      alert(
+        data.message ||
+          'Данные пользователя очищены. В мини‑приложении он увидит анкету как новый пользователь.'
+      );
+    } catch (err: any) {
+      console.error('Error clearing user data:', err);
+      alert('Ошибка при очистке данных пользователя: ' + (err?.message || String(err)));
+    } finally {
+      setClearingUserId(null);
     }
   };
 

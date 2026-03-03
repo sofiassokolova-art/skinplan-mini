@@ -255,7 +255,7 @@ export default function FunnelAdmin() {
                 <XAxis 
                   type="number" 
                   stroke="#6b7280"
-                  label={{ value: 'Конверсия (%)', position: 'insideBottom', offset: -10 }}
+                  label={{ value: 'Конверсия от предыдущего экрана (%)', position: 'insideBottom', offset: -10 }}
                   domain={[0, 100]}
                 />
                 <YAxis 
@@ -273,8 +273,11 @@ export default function FunnelAdmin() {
                     color: '#fff',
                   }}
                   formatter={(value: any, name: string, props: any) => {
-                    if (name === 'conversion') {
-                      return [`${value.toFixed(1)}%`, 'Конверсия'];
+                    if (name === 'conversionFromPrev') {
+                      return [`${value.toFixed(1)}%`, 'От предыдущего экрана'];
+                    }
+                    if (name === 'conversionFromStart') {
+                      return [`${value.toFixed(1)}%`, 'От начала анкеты'];
                     }
                     if (name === 'reachedCount') {
                       return [value, 'Дошли до экрана'];
@@ -289,7 +292,7 @@ export default function FunnelAdmin() {
                     return `Экран ${label}`;
                   }}
                 />
-                <Bar dataKey="conversion" fill="#8B5CF6" radius={[0, 8, 8, 0]}>
+                <Bar dataKey="conversionFromPrev" fill="#8B5CF6" radius={[0, 8, 8, 0]}>
                   {screenConversions.map((entry: any, index: number) => (
                     <Cell 
                       key={`cell-${index}`} 
@@ -310,7 +313,8 @@ export default function FunnelAdmin() {
                   <th className="text-left py-3 px-4 font-semibold text-gray-700">Тип</th>
                   <th className="text-left py-3 px-4 font-semibold text-gray-700">Название экрана</th>
                   <th className="text-right py-3 px-4 font-semibold text-gray-700">Дошли</th>
-                  <th className="text-right py-3 px-4 font-semibold text-gray-700">Конверсия</th>
+                  <th className="text-right py-3 px-4 font-semibold text-gray-700">Конв. от пред. экрана</th>
+                  <th className="text-right py-3 px-4 font-semibold text-gray-700">Конв. от начала</th>
                 </tr>
               </thead>
               <tbody>
@@ -339,7 +343,10 @@ export default function FunnelAdmin() {
                     </td>
                     <td className="py-3 px-4 text-right text-gray-700">{screen.reachedCount}</td>
                     <td className="py-3 px-4 text-right text-green-600 font-medium">
-                      {screen.conversion.toFixed(1)}%
+                      {screen.conversionFromPrev.toFixed(1)}%
+                    </td>
+                    <td className="py-3 px-4 text-right text-blue-600 font-medium">
+                      {screen.conversionFromStart.toFixed(1)}%
                     </td>
                   </tr>
                 ))}

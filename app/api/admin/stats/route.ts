@@ -116,24 +116,18 @@ export async function GET(request: NextRequest) {
 
     // ИСПРАВЛЕНО (P1): Вычисляем доход партнёрки через оптимизированный запрос
     // Берём только необходимые поля (productId и price) для минимизации памяти
-    const revenue = await prisma.wishlistFeedback
-      .findMany({
+    // Доход от покупки плана: суммируем успешные платежи по продукту plan_access
+    const revenue = await prisma.payment
+      .aggregate({
+        _sum: {
+          amount: true,
+        },
         where: {
-          feedback: {
-            in: ['bought_love', 'bought_ok', 'bought_bad'],
-          },
-        },
-        select: {
-          product: {
-            select: {
-              price: true,
-            },
-          },
+          status: 'succeeded',
+          productCode: 'plan_access',
         },
       })
-      .then((feedbacks) => {
-        return feedbacks.reduce((sum, f) => sum + (f.product?.price || 0), 0);
-      })
+      .then((res) => res._sum.amount || 0)
       .catch((err) => {
         console.error('❌ Error calculating revenue:', err);
         return 0;

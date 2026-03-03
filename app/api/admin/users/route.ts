@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '50') || 50), 100);
     const skip = (page - 1) * limit;
 
-    // Получаем пользователей с их профилями и планами
+    // Получаем пользователей с их профилями, планами и оплатой
     const [users, total] = await Promise.all([
       prisma.user.findMany({
         skip,
@@ -39,6 +39,20 @@ export async function GET(request: NextRequest) {
             take: 1,
             orderBy: { createdAt: 'desc' },
           },
+          entitlements: {
+            where: {
+              code: 'paid_access',
+            },
+            orderBy: { updatedAt: 'desc' },
+          },
+          payments: {
+            where: {
+              status: 'succeeded',
+              productCode: 'plan_access',
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          },
           _count: {
             select: {
               skinProfiles: true,
@@ -53,8 +67,17 @@ export async function GET(request: NextRequest) {
       prisma.user.count(),
     ]);
 
-    return NextResponse.json({
-      users: users.map((user) => ({
+    const usersPayload = users.map((user) => {
+      const paidEntitlement = user.entitlements.find(
+        (e) =>
+          e.code === 'paid_access' &&
+          e.active === true &&
+          (!e.validUntil || e.validUntil > new Date())
+      );
+
+      const lastPayment = user.payments[0] || null;
+
+      return {
         id: user.id,
         telegramId: user.telegramId,
         username: user.username,
@@ -70,7 +93,17 @@ export async function GET(request: NextRequest) {
         planCount: user._count.plan28s + user._count.recommendationSessions,
         feedbackCount: user._count.planFeedbacks,
         latestProfile: user.skinProfiles[0] || null,
-      })),
+        // Оплата/доступ
+        hasPaidAccess: !!paidEntitlement,
+        paidAccessValidUntil: paidEntitlement?.validUntil || null,
+        lastPaymentAt: lastPayment?.createdAt || null,
+        lastPaymentAmount: lastPayment?.amount || null,
+        lastPaymentCurrency: lastPayment?.currency || null,
+      };
+    });
+
+    return NextResponse.json({
+      users: usersPayload,
       pagination: {
         page,
         limit,
