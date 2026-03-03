@@ -324,13 +324,23 @@ export function QuizInfoScreen({
         {/* Фиксированная шапка с заголовком и анимацией */}
         <div 
           className="animate-fade-in"
-          style={{
-            paddingTop: '120px',
-            paddingLeft: '20px',
-            paddingRight: '20px',
-            paddingBottom: '24px',
-            background: '#FFFFFF',
-          }}
+          style={
+            isWelcomeScreen
+              ? {
+                  paddingTop: '180px',
+                  paddingLeft: '20px',
+                  paddingRight: '20px',
+                  paddingBottom: '24px',
+                  background: '#FFFFFF',
+                }
+              : {
+                  paddingTop: '120px',
+                  paddingLeft: '20px',
+                  paddingRight: '20px',
+                  paddingBottom: '24px',
+                  background: '#FFFFFF',
+                }
+          }
         >
           {/* Заголовок */}
           <h1 style={{
