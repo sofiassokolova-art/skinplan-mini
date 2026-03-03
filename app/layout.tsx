@@ -217,7 +217,7 @@ export default async function RootLayout({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: '#050608',
+              backgroundColor: '#FFFFFF',
               zIndex: 99998,
             }}
           >
@@ -226,8 +226,8 @@ export default async function RootLayout({
                 width: 40,
                 height: 40,
                 borderRadius: '50%',
-                border: '3px solid rgba(250, 250, 250, 0.16)',
-                borderTopColor: '#FAFAFA',
+                border: '3px solid rgba(15, 23, 42, 0.12)',
+                borderTopColor: '#111827',
                 animation: 'spin 0.8s linear infinite',
               }}
             />
