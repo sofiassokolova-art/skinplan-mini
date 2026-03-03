@@ -252,9 +252,9 @@ const FreeTextInput = memo(function FreeTextInput({ question, answers, onAnswer,
       {String(localValue).trim().length > 0 && (
         <FixedContinueButton
           variant="black"
-          ctaText="Далее"
+          ctaText="Продолжить"
           onClick={async () => {
-            console.log('➡️ [QuizQuestion] FreeText: "Далее" clicked', {
+            console.log('➡️ [QuizQuestion] FreeText: "Продолжить" clicked', {
               questionId: question.id,
               valueLength: localValue.length,
               valuePreview: localValue.substring(0, 50)
