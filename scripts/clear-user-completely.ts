@@ -6,7 +6,9 @@ import { invalidateAllUserCache, invalidateCache } from '../lib/cache';
 import { getRedis } from '../lib/redis';
 
 // Ищем пользователя по telegramId
-const telegramId = '643160759';
+// Можно передать Telegram ID первым аргументом командной строки:
+//   tsx scripts/clear-user-completely.ts 7595625369
+const telegramId = process.argv[2] || '643160759';
 let userId: string | null = null;
 
 async function clearUserCompletely() {
