@@ -14,6 +14,7 @@ import { PaywallVisibilityProvider, usePaywallVisibility } from '@/providers/Pay
 import { ServiceFeedbackPopup } from '@/components/ServiceFeedbackPopup';
 import { useTelegram } from '@/lib/telegram-client';
 import { DEV_TELEGRAM } from '@/lib/config/timeouts';
+import { QuizInitialLoader } from './quiz/components/QuizInitialLoader';
 // INFO_INITIAL_SCREENS_COUNT: кол-во начальных инфо-экранов (без showAfterQuestionCode/showAfterInfoScreenId).
 // Хардкодим чтобы не тянуть весь модуль info-screens в layout-бандл.
 // Обновить если изменится кол-во начальных экранов в info-screens.ts.
@@ -152,27 +153,10 @@ function LayoutContent({
   );
 }
 
-/** Минимальный fallback во время Suspense — только спиннер, без тяжёлых компонентов */
+/** Fallback во время Suspense — используем тот же лоадер, что и анкета, чтобы не было двух разных вариантов. */
 function LayoutFallback() {
   useRemoveRootLoading();
-  return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: '#FFFFFF',
-    }}>
-      <div style={{
-        width: 48,
-        height: 48,
-        border: '3px solid #E8F5F3',
-        borderTopColor: '#0A5F59',
-        borderRadius: '50%',
-        animation: 'spin 0.8s linear infinite',
-      }} />
-    </div>
-  );
+  return <QuizInitialLoader />;
 }
 
 export default function MiniappLayout({

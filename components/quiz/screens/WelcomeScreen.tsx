@@ -66,27 +66,35 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
         onClick={onBack ?? (() => {})}
       />
 
-      {/* Текст поверх картинки — белый */}
+      {/* Стеклянный контейнер с текстом внизу экрана */}
       <div
         className="animate-fade-in"
         style={{
-          position: 'relative',
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 0,
           zIndex: 2,
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'flex-start',
-          paddingTop: 'clamp(180px, 52vh, 400px)',
-          paddingBottom: '100px',
-          paddingLeft: '20px',
-          paddingRight: '20px',
-          width: '100%',
+          padding: '24px 20px 120px',
           boxSizing: 'border-box',
+          display: 'flex',
+          justifyContent: 'center',
           pointerEvents: 'none',
         }}
       >
-        <div style={{ width: '100%', maxWidth: '320px', textAlign: 'center', pointerEvents: 'auto' }}>
+        <div
+          style={{
+            width: '100%',
+            maxWidth: 360,
+            backgroundColor: 'rgba(0, 0, 0, 0.35)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            borderRadius: '24px 24px 0 0',
+            padding: '20px 20px 24px',
+            boxSizing: 'border-box',
+            pointerEvents: 'auto',
+          }}
+        >
           <h1
             className="quiz-welcome-title"
             style={{
@@ -101,8 +109,10 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
               margin: 0,
             }}
           >
-            Подбери уход<br />
-            для своей кожи<br />
+            Подбери уход
+            <br />
+            для своей кожи
+            <br />
             со <span style={{ fontWeight: 700, fontStyle: 'normal' }}>SkinIQ</span>
           </h1>
         </div>
@@ -110,7 +120,7 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
 
       <div style={{ position: 'relative', zIndex: 2, pointerEvents: 'auto' }}>
         <FixedContinueButton
-          ctaText={screen.ctaText}
+          ctaText="Начать"
           onClick={onContinue}
           disabled={isHandlingNext}
           loadingText="Загрузка..."

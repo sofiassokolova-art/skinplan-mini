@@ -27,7 +27,11 @@ function HowItWorksScreenComponent({
       padding: 0,
       margin: 0,
       minHeight: '100vh',
-      background: '#FFFFFF',
+      // Фон второго экрана анкеты — изображение afb7aeab_nano_4K.jpg
+      backgroundImage: 'url("/afb7aeab_nano_4K.jpg")',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
       display: 'flex',
       flexDirection: 'column',
       position: 'relative',
