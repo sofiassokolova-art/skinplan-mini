@@ -139,14 +139,20 @@ describe('QuizQuestion', () => {
     }
   });
 
-  it('должен показывать кнопку "Получить план" для последнего вопроса', () => {
-    const lastQuestion = { ...mockQuestion, id: 5 };
+  it('должен показывать кнопку "Получить план" и дисклеймер для последнего обычного single_choice вопроса', () => {
+    const lastQuestion: Question = {
+      ...mockQuestion,
+      id: 5,
+      code: 'some_final_question', // не skin_type и не budget, чтобы использовался SingleChoiceDefault
+    };
+
     render(
       <QuizQuestion
         question={lastQuestion}
         currentQuestionIndex={4}
         allQuestionsLength={5}
-        answers={{ 5: 'dry' }} // Важно: должен быть ответ на текущий вопрос (id: 5)
+        // Есть ответ на последний вопрос
+        answers={{ 5: 'dry' }}
         isRetakingQuiz={false}
         isSubmitting={false}
         {...mockHandlers}
@@ -154,14 +160,14 @@ describe('QuizQuestion', () => {
       />
     );
 
-    // Для последнего вопроса показывается кнопка "Получить план"
-    // Текст встречается в кнопке и в параграфе с соглашением, используем getAllByText
-    const buttons = screen.getAllByText(/получить план/i);
-    expect(buttons.length).toBeGreaterThan(0);
-    
-    // Проверяем, что есть кнопка с этим текстом
-    const submitButton = buttons.find(el => el.tagName === 'BUTTON');
+    // Кнопка "Получить план" должна быть видна
+    const submitButton = screen.getByRole('button', { name: /получить план/i });
     expect(submitButton).toBeInTheDocument();
+
+    // И текст дисклеймера под кнопкой
+    expect(
+      screen.getByText(/Нажимая «Получить план», вы соглашаетесь с/i)
+    ).toBeInTheDocument();
   });
 
   it('должен показывать кнопку "Продолжить" для не последнего вопроса при перепрохождении', () => {

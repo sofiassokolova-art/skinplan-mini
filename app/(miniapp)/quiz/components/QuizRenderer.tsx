@@ -3,7 +3,7 @@
 
 'use client';
 
-import React, { Suspense, lazy, memo, useEffect, useMemo, useCallback, useRef, useState } from 'react';
+import React, { Suspense, lazy, memo, useEffect, useMemo, useState } from 'react';
 import { useQuizContext } from './QuizProvider';
 import { ScreenErrorBoundary, QuestionErrorBoundary } from '@/components/QuizErrorBoundary';
 
@@ -25,19 +25,9 @@ import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 
 import type { Question } from '@/lib/quiz/types';
 
-// Import handlers
-import { createClearProgress } from '@/lib/quiz/handlers/clearProgress';
-import { handleAnswer } from '@/lib/quiz/handlers/handleAnswer';
-import { handleBack } from '@/lib/quiz/handlers/handleBack';
-import { handleFullRetake } from '@/lib/quiz/handlers/handleFullRetake';
-import { handleNext } from '@/lib/quiz/handlers/handleNext';
-import { resumeQuiz } from '@/lib/quiz/handlers/resumeQuiz';
-import { startOver } from '@/lib/quiz/handlers/startOver';
-import { submitAnswers } from '@/lib/quiz/handlers/submitAnswers';
 import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
-import { loadQuestionnaire as loadQuestionnaireHandler } from '@/lib/quiz/loadQuestionnaire';
-import * as userPreferences from '@/lib/user-preferences';
 import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
+import { useQuizHandlers } from '../hooks/useQuizHandlers';
 
 type Screen = 'LOADER' | 'ERROR' | 'RETAKE' | 'RESUME' | 'INFO' | 'INITIAL_INFO' | 'QUESTION';
 
@@ -89,6 +79,14 @@ interface QuizRendererProps {
 // Файла inter-var.woff2 в public/fonts нет — не прелоадим, чтобы не было 404.
 const preloadCriticalResources = () => {};
 
+const isDevEnv = process.env.NODE_ENV === 'development';
+const devLog = (...args: any[]) => {
+  if (isDevEnv) {
+    // eslint-disable-next-line no-console
+    console.log(...args);
+  }
+};
+
 export const QuizRenderer = memo(function QuizRenderer({
   screen,
   currentQuestion,
@@ -97,7 +95,7 @@ export const QuizRenderer = memo(function QuizRenderer({
   showDebugPanel,
   dataError
 }: QuizRendererProps) {
-  console.log('🎨 [QuizRenderer] rendering', {
+  devLog('🎨 [QuizRenderer] rendering', {
     screen,
     currentQuestionId: currentQuestion?.id,
     currentQuestionCode: currentQuestion?.code,
@@ -180,23 +178,10 @@ export const QuizRenderer = memo(function QuizRenderer({
   } = quizState;
 
   // Дополнительное логгирование после деструктуризации
-  console.log('🎨 [QuizRenderer] state destructured', {
+  devLog('🎨 [QuizRenderer] state destructured', {
     currentInfoScreenIndex,
     currentQuestionIndex
   });
-
-  // Функция для сохранения прогресса - мемоизируем чтобы избежать перерендеринга
-  // ИСПРАВЛЕНО: Используем -1 для метаданных вместо 0, чтобы избежать ошибки валидации
-  const saveProgress = useCallback(async (answers: Record<number, string | string[]>, questionIndex: number, infoScreenIndex: number) => {
-    return await saveProgressMutation.mutateAsync({
-      questionnaireId: questionnaire?.id || 0,
-      questionId: -1, // -1 используется для метаданных (сохранение прогресса без ответа на конкретный вопрос)
-      answerValue: undefined,
-      answerValues: undefined,
-      questionIndex,
-      infoScreenIndex,
-    });
-  }, [saveProgressMutation, questionnaire?.id]);
 
   // Мемоизация вычислений для оптимизации рендеринга
   const memoizedValues = useMemo(() => {
@@ -207,7 +192,6 @@ export const QuizRenderer = memo(function QuizRenderer({
     const allQuestionsLength = allQuestions.length;
 
     return {
-      isQuestionScreen,
       backgroundColor,
       questionnaireFromQuery: questionnaireQuery.data,
       quizProgressFromQuery: progressQuery.data,
@@ -217,183 +201,12 @@ export const QuizRenderer = memo(function QuizRenderer({
   }, [currentQuestion, pendingInfoScreen, showRetakeScreen, questionnaireQuery.data, progressQuery.data]);
 
   const {
-    isQuestionScreen,
     backgroundColor,
     questionnaireFromQuery,
     quizProgressFromQuery: _quizProgressFromQuery,
     allQuestions,
     allQuestionsLength,
   } = memoizedValues;
-
-  const clearProgress = useMemo(() => createClearProgress({
-    setSavedProgress,
-    setShowResumeScreen,
-    hasResumedRef,
-    setHasResumed,
-    lastSavedAnswerRef: quizState.lastSavedAnswerRef,
-  }), [
-    setSavedProgress,
-    setShowResumeScreen,
-    hasResumedRef,
-    setHasResumed,
-    quizState.lastSavedAnswerRef,
-  ]);
-
-  const handleResume = useCallback(() => {
-    if (!savedProgress) {
-      return;
-    }
-
-    resumeQuiz({
-      savedProgress,
-      questionnaire: questionnaireFromQuery || questionnaireRef.current || questionnaire,
-      allQuestions,
-      redirectInProgressRef,
-      initCompletedRef,
-      setInitCompleted,
-      setLoading,
-      hasResumed,
-      currentInfoScreenIndex,
-      currentQuestionIndex,
-      hasResumedRef,
-      setHasResumed,
-      setShowResumeScreen,
-      setSavedProgress,
-      loadProgressInProgressRef,
-      progressLoadInProgressRef,
-      setAnswers,
-      setCurrentQuestionIndex,
-      setCurrentInfoScreenIndex,
-      setPendingInfoScreen,
-      pendingInfoScreenRef: quizState.pendingInfoScreenRef,
-      resumeCompletedRef,
-    });
-  }, [
-    savedProgress,
-    questionnaireFromQuery,
-    questionnaireRef,
-    questionnaire,
-    allQuestions,
-    redirectInProgressRef,
-    initCompletedRef,
-    setInitCompleted,
-    setLoading,
-    hasResumed,
-    currentInfoScreenIndex,
-    currentQuestionIndex,
-    hasResumedRef,
-    setHasResumed,
-    setShowResumeScreen,
-    setSavedProgress,
-    loadProgressInProgressRef,
-    progressLoadInProgressRef,
-    setAnswers,
-    setCurrentQuestionIndex,
-    setCurrentInfoScreenIndex,
-    setPendingInfoScreen,
-    quizState.pendingInfoScreenRef,
-    resumeCompletedRef,
-  ]);
-
-  const handleStartOver = useCallback(async () => {
-    await startOver({
-      scope: 'default',
-      isStartingOverRef,
-      setIsStartingOver,
-      initCompletedRef,
-      setInitCompleted,
-      initCalledRef,
-      clearProgress,
-      setAnswers,
-      answersRef,
-      answersCountRef,
-      lastRestoredAnswersIdRef,
-      setCurrentQuestionIndex,
-      setCurrentInfoScreenIndex,
-      currentInfoScreenIndexRef: quizState.currentInfoScreenIndexRef,
-      currentQuestionIndexRef: quizState.currentQuestionIndexRef, // ИСПРАВЛЕНО: Добавлено
-      setShowResumeScreen,
-      hasResumedRef,
-      setHasResumed,
-      setSavedProgress,
-      setPendingInfoScreen,
-      setIsRetakingQuiz,
-      setShowRetakeScreen,
-      firstScreenResetRef,
-      setLoading,
-      setError,
-      setIsProgressCleared,
-      questionnaire,
-      savedProgress,
-    });
-  }, [
-    isStartingOverRef,
-    setIsStartingOver,
-    initCompletedRef,
-    setInitCompleted,
-    initCalledRef,
-    clearProgress,
-    setAnswers,
-    answersRef,
-    answersCountRef,
-    lastRestoredAnswersIdRef,
-    setCurrentQuestionIndex,
-    setCurrentInfoScreenIndex,
-    quizState.currentInfoScreenIndexRef,
-    setShowResumeScreen,
-    hasResumedRef,
-    setHasResumed,
-    setSavedProgress,
-    setPendingInfoScreen,
-    setIsRetakingQuiz,
-    setShowRetakeScreen,
-    firstScreenResetRef,
-    setLoading,
-    setError,
-    setIsProgressCleared,
-    questionnaire,
-    savedProgress,
-  ]);
-
-  const handleFullRetakeSelection = useCallback(async () => {
-    await handleFullRetake({
-      hasFullRetakePayment,
-      setShowRetakeScreen,
-      setIsRetakingQuiz,
-      setIsStartingOver,
-      isStartingOverRef,
-      setAnswers,
-      setSavedProgress,
-      setShowResumeScreen,
-      setHasResumed,
-      hasResumedRef,
-      autoSubmitTriggeredRef,
-      setAutoSubmitTriggered,
-      setError,
-      questionnaire,
-      setCurrentInfoScreenIndex,
-      setCurrentQuestionIndex,
-      setPendingInfoScreen,
-    });
-  }, [
-    hasFullRetakePayment,
-    setShowRetakeScreen,
-    setIsRetakingQuiz,
-    setIsStartingOver,
-    isStartingOverRef,
-    setAnswers,
-    setSavedProgress,
-    setShowResumeScreen,
-    setHasResumed,
-    hasResumedRef,
-    autoSubmitTriggeredRef,
-    setAutoSubmitTriggered,
-    setError,
-    questionnaire,
-    setCurrentInfoScreenIndex,
-    setCurrentQuestionIndex,
-    setPendingInfoScreen,
-  ]);
 
   // Preload критических ресурсов при монтировании
   useEffect(() => {
@@ -412,314 +225,22 @@ export const QuizRenderer = memo(function QuizRenderer({
   }, [questionnaireQuery.data, questionnaireRef, setQuestionnaire]);
 
 
-  // Refs for handleNext/handleBack
-  const handleNextInProgressRef = useRef(false);
-  const initInProgressRef = useRef(false);
-
-  // Functions for handleNext
-  const setIsHandlingNext = useCallback((value: boolean | ((prev: boolean) => boolean)) => {
-    const newValue = typeof value === 'function' ? value(handleNextInProgressRef.current) : value;
-    handleNextInProgressRef.current = newValue;
-  }, []);
-
-  const loadQuestionnaire = useCallback(async () => {
-    if (questionnaireRef.current?.questions?.length) {
-      return questionnaireRef.current;
-    }
-
-    if (questionnaireQuery.data) {
-      const normalizedQuestionnaire = {
-        ...questionnaireQuery.data,
-        questions: extractQuestionsFromQuestionnaire(questionnaireQuery.data),
-      };
-      setQuestionnaire(normalizedQuestionnaire);
-      questionnaireRef.current = normalizedQuestionnaire;
-      if (normalizedQuestionnaire.questions.length > 0) {
-        return normalizedQuestionnaire;
-      }
-    }
-
-    return await loadQuestionnaireHandler({
-      questionnaireRef,
-      loadQuestionnaireInProgressRef,
-      loadQuestionnaireAttemptedRef,
-      redirectInProgressRef,
-      initCompletedRef,
-      setInitCompleted,
-      questionnaire,
-      loading,
-      error,
-      isRetakingQuiz,
-      showRetakeScreen,
-      savedProgress,
-      currentQuestionIndex,
-      hasResumed,
-      setQuestionnaire,
-      setLoading,
-      setError,
-      setCurrentQuestionIndex,
-      setUserPreferencesData,
-      setIsRetakingQuiz,
-      setShowRetakeScreen,
-      setHasRetakingPayment,
-      setHasFullRetakePayment,
-      isDev,
-      userPreferences,
-      addDebugLog: () => undefined,
-    });
-  }, [
-    questionnaireRef,
-    loadQuestionnaireInProgressRef,
-    loadQuestionnaireAttemptedRef,
-    redirectInProgressRef,
-    initCompletedRef,
-    setInitCompleted,
-    questionnaire,
-    loading,
-    error,
-    isRetakingQuiz,
-    showRetakeScreen,
-    savedProgress,
-    currentQuestionIndex,
-    hasResumed,
-    setQuestionnaire,
-    setLoading,
-    setError,
-    setCurrentQuestionIndex,
-    setUserPreferencesData,
-    setIsRetakingQuiz,
-    setShowRetakeScreen,
-    setHasRetakingPayment,
-    setHasFullRetakePayment,
-    isDev,
-  ]);
-
-  // Create handlers
-  const onAnswer = useCallback(async (questionId: number, value: string | string[]) => {
-    // ИСПРАВЛЕНО: Валидация questionId перед вызовом handleAnswer
-    if (!questionId || questionId <= 0) {
-      console.error('❌ [QuizRenderer] Invalid questionId in onAnswer:', {
-        questionId,
-        currentQuestionId: currentQuestion?.id,
-        currentQuestionCode: currentQuestion?.code,
-      });
-      setError('Ошибка: невалидный ID вопроса');
-      return;
-    }
-
-    try {
-      await handleAnswer({
-        questionId,
-        value,
-        currentQuestion,
-        answers,
-        answersRef,
-        allQuestions,
-        questionnaire,
-        setAnswers,
-        saveProgress,
-        currentQuestionIndex,
-        currentInfoScreenIndex,
-        saveQuizProgressMutation: saveProgressMutation,
-        lastSavedAnswerRef: quizState.lastSavedAnswerRef,
-        setCurrentQuestionIndex,
-        currentQuestionIndexRef: quizState.currentQuestionIndexRef,
-        scopedStorageKeys: { CURRENT_QUESTION_CODE: QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE },
-        scope: 'default',
-      });
-    } catch (err) {
-      console.error('❌ [QuizRenderer] Error in onAnswer:', err);
-      setError(err instanceof Error ? err.message : 'Ошибка при сохранении ответа');
-    }
-  }, [
-    currentQuestion,
-    answers,
-    answersRef,
-    allQuestions,
-    questionnaire,
-    setAnswers,
-    saveProgress,
-    currentQuestionIndex,
-    currentInfoScreenIndex,
-    saveProgressMutation,
-    quizState.lastSavedAnswerRef,
-    setCurrentQuestionIndex,
-    quizState.currentQuestionIndexRef,
-    setError,
-  ]);
-
-  const onNext = useCallback(async () => {
-    console.log('🎯 [QuizRenderer] onNext called from button click', {
-      currentInfoScreenIndex,
-      currentQuestionIndex,
-      screen
-    });
-    try {
-      await handleNext({
-        handleNextInProgressRef,
-        currentInfoScreenIndexRef: quizState.currentInfoScreenIndexRef,
-        currentQuestionIndexRef: quizState.currentQuestionIndexRef,
-        questionnaireRef,
-        initCompletedRef: quizState.initCompletedRef,
-        questionnaire,
-        loading: false,
-        currentInfoScreenIndex,
-        currentQuestionIndex,
-        allQuestions,
-        isRetakingQuiz,
-        showRetakeScreen,
-        hasResumed,
-        pendingInfoScreen,
-        pendingInfoScreenRef: quizState.pendingInfoScreenRef,
-        answers,
-        answersRef,
-        setIsHandlingNext,
-        setCurrentInfoScreenIndex,
-        setCurrentQuestionIndex,
-        setPendingInfoScreen,
-        setLoading,
-        setError,
-        saveProgress,
-        loadQuestionnaire,
-        initInProgressRef,
-        isDev,
-      });
-    } catch (err) {
-      console.error('❌ [QuizRenderer] Error in onNext:', err);
-      setError(err instanceof Error ? err.message : 'Ошибка при переходе к следующему шагу');
-    }
-  }, [
-    quizState.currentInfoScreenIndexRef,
-    quizState.currentQuestionIndexRef,
-    questionnaireRef,
-    quizState.initCompletedRef,
-    questionnaire,
-    currentInfoScreenIndex,
-    currentQuestionIndex,
-    allQuestions,
-    isRetakingQuiz,
-    showRetakeScreen,
-    hasResumed,
-    pendingInfoScreen,
-    quizState.pendingInfoScreenRef,
-    answers,
-    answersRef,
-    setCurrentInfoScreenIndex,
-    setCurrentQuestionIndex,
-    setPendingInfoScreen,
-    setAnswers,
-    setLoading,
-    setError,
-    saveProgress,
-    loadQuestionnaire,
-    isDev,
-    screen,
-    setIsHandlingNext,
-  ]);
-
-  const onSubmit = useCallback(async () => {
-    try {
-      await submitAnswers({
-        answers,
-        questionnaire,
-        isSubmitting,
-        isSubmittingRef,
-        isMountedRef: { current: true }, // Will be passed from parent
-        initData: null, // Will be passed from parent
-        setAnswers,
-        setIsSubmitting,
-        setLoading,
-        setError,
-        setFinalizing,
-        setFinalizingStep,
-        setFinalizeError,
-        redirectInProgressRef: { current: false }, // Will be passed from parent
-        submitAnswersRef: { current: null }, // Will be passed from parent
-        isRetakingQuiz,
-        getInitData: async () => null, // Will be passed from parent
-        scopedStorageKeys: {
-          JUST_SUBMITTED: QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED,
-        },
-        isDev,
-      });
-    } catch (err) {
-      console.error('❌ [QuizRenderer] Error in onSubmit:', err);
-      setError(err instanceof Error ? err.message : 'Ошибка при отправке ответов');
-    }
-  }, [
-    answers,
-    questionnaire,
-    isSubmitting,
-    setIsSubmitting,
-    isSubmittingRef,
-    setError,
-    setLoading,
-    setFinalizing,
-    setFinalizingStep,
-    setFinalizeError,
-    setAnswers,
-    isRetakingQuiz,
-    isDev,
-  ]);
-
-  const onBack = useCallback(async () => {
-    try {
-      await handleBack({
-        currentQuestionIndex,
-        currentInfoScreenIndex,
-        allQuestions,
-        answers,
-        questionnaire,
-        setCurrentQuestionIndex,
-        setCurrentInfoScreenIndex,
-        setPendingInfoScreen,
-        setAnswers,
-        saveProgress,
-        questionnaireRef,
-        currentInfoScreenIndexRef: quizState.currentInfoScreenIndexRef,
-        currentQuestionIndexRef: quizState.currentQuestionIndexRef,
-        pendingInfoScreenRef: quizState.pendingInfoScreenRef,
-        pendingInfoScreen,
-        handleBackInProgressRef: { current: false }, // Will be passed from parent
-        isShowingInitialInfoScreen: screen === 'INITIAL_INFO',
-        initialInfoScreensLength: getInitialInfoScreens().length,
-        scopedStorageKeys: {
-          CURRENT_INFO_SCREEN: QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN,
-          CURRENT_QUESTION: QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION,
-        },
-      });
-    } catch (err) {
-      console.error('❌ [QuizRenderer] Error in onBack:', err);
-      setError(err instanceof Error ? err.message : 'Ошибка при возврате назад');
-    }
-  }, [
-    currentQuestionIndex,
-    currentInfoScreenIndex,
-    allQuestions,
-    answers,
-    questionnaire,
-    setCurrentQuestionIndex,
-    setCurrentInfoScreenIndex,
-    setPendingInfoScreen,
-    setAnswers,
-    saveProgress,
-    saveProgressMutation,
-    setError,
-    setLoading,
-    questionnaireRef,
-    quizState.currentQuestionIndexRef,
-    quizState.currentInfoScreenIndexRef,
-    quizState.lastSavedAnswerRef,
-    isDev,
-    pendingInfoScreen,
-    screen,
-  ]);
+  const {
+    handleResume,
+    handleStartOver,
+    handleFullRetakeSelection,
+    handleNextInProgressRef,
+    onAnswer,
+    onNext,
+    onBack,
+    onSubmit,
+  } = useQuizHandlers({ currentQuestion, screen });
 
   // Используем memoized значения
 
   // Обработка ошибок загрузки данных
   if (screen === 'ERROR') {
-    console.log('❌ [QuizRenderer] rendering ERROR screen', {
+    devLog('❌ [QuizRenderer] rendering ERROR screen', {
       dataError: dataError,
       hasQuestionnaire: !!questionnaire,
       isTelegramUser: !!(typeof window !== 'undefined' && window.Telegram?.WebApp?.initData)
@@ -751,7 +272,7 @@ export const QuizRenderer = memo(function QuizRenderer({
 
   // Loader screen - показывается когда данные еще загружаются
   if (screen === 'LOADER') {
-    console.log('⏳ [QuizRenderer] rendering LOADER screen');
+    devLog('⏳ [QuizRenderer] rendering LOADER screen');
     return <QuizInitialLoader />;
   }
 
@@ -806,7 +327,7 @@ export const QuizRenderer = memo(function QuizRenderer({
 
   // Info screens
   if (screen === 'INFO') {
-    console.log('📄 [QuizRenderer] rendering INFO screen', {
+    devLog('📄 [QuizRenderer] rendering INFO screen', {
       pendingInfoScreen,
       currentInfoScreenIndex,
       questionnaireFromQuery: !!questionnaireFromQuery,
@@ -863,7 +384,7 @@ export const QuizRenderer = memo(function QuizRenderer({
       return <QuizInitialLoader />;
     }
 
-    console.log('📄 [QuizRenderer] rendering INITIAL_INFO screen', {
+    devLog('📄 [QuizRenderer] rendering INITIAL_INFO screen', {
       currentInitialInfoScreen: currentInitialInfoScreen?.id,
       currentInfoScreenIndex: quizState.currentInfoScreenIndex,
       currentInfoScreenIndexRef: quizState.currentInfoScreenIndexRef.current,
@@ -904,7 +425,7 @@ export const QuizRenderer = memo(function QuizRenderer({
   }
 
   // Question screen - используем memoized значения
-  console.log('❓ [QuizRenderer] rendering QUESTION screen', {
+  devLog('❓ [QuizRenderer] rendering QUESTION screen', {
     currentQuestion: !!currentQuestion,
     currentQuestionId: currentQuestion?.id,
     currentQuestionCode: currentQuestion?.code,
@@ -930,7 +451,7 @@ export const QuizRenderer = memo(function QuizRenderer({
     // В этом случае не показываем ошибку, а позволяем показать инфо-экран
     // Это предотвращает показ ошибки на секунду перед переключением на INFO screen
     if (pendingInfoScreen) {
-      console.log('ℹ️ [QuizRenderer] currentQuestion null, но есть pendingInfoScreen, пропускаем проверку', {
+      devLog('ℹ️ [QuizRenderer] currentQuestion null, но есть pendingInfoScreen, пропускаем проверку', {
         currentQuestionIndex,
         allQuestionsLength,
         pendingInfoScreenId: pendingInfoScreen?.id,
@@ -947,12 +468,12 @@ export const QuizRenderer = memo(function QuizRenderer({
       const budgetQuestion = allQuestions.find(q => q.code === 'budget');
       if (budgetQuestion) {
         const budgetIndex = allQuestions.findIndex(q => q.code === 'budget');
-        if (budgetIndex >= 0 && budgetIndex < allQuestionsLength) {
-          console.log('🔧 [QuizRenderer] Исправляем индекс после возврата с инфо-экрана', {
-            currentQuestionIndex,
-            budgetIndex,
-            allQuestionsLength,
-          });
+          if (budgetIndex >= 0 && budgetIndex < allQuestionsLength) {
+            devLog('🔧 [QuizRenderer] Исправляем индекс после возврата с инфо-экрана', {
+              currentQuestionIndex,
+              budgetIndex,
+              allQuestionsLength,
+            });
           // Устанавливаем индекс на валидное значение
           setCurrentQuestionIndex(budgetIndex);
           if (quizState.currentQuestionIndexRef) {
@@ -965,7 +486,7 @@ export const QuizRenderer = memo(function QuizRenderer({
     }
     
     if (isAllQuestionsCompleted) {
-      console.log('✅ [QuizRenderer] Все вопросы пройдены, запускаем финализацию', {
+      devLog('✅ [QuizRenderer] Все вопросы пройдены, запускаем финализацию', {
         currentQuestionIndex,
         allQuestionsLength,
       });

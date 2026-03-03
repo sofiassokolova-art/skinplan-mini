@@ -301,7 +301,16 @@ export const QuizQuestion = memo(function QuizQuestion({
     });
     // НЕ блокируем рендеринг - продолжаем, но не будем сохранять ответ с невалидным ID
   }
-  console.log('❓ [QuizQuestion] rendering question', {
+
+  const isDevEnv = process.env.NODE_ENV === 'development';
+  const devLog = (...args: any[]) => {
+    if (isDevEnv) {
+      // eslint-disable-next-line no-console
+      console.log(...args);
+    }
+  };
+
+  devLog('❓ [QuizQuestion] rendering question', {
     questionId: question?.id,
     questionCode: question?.code,
     questionType: question?.type,
@@ -336,7 +345,7 @@ export const QuizQuestion = memo(function QuizQuestion({
 
   const questionText = question?.text || '';
 
-  console.log('🎨 [QuizQuestion] question styles determined', {
+  devLog('🎨 [QuizQuestion] question styles determined', {
     isNameQuestion,
     hideProgressBar,
     isGoalsQuestion,
@@ -664,40 +673,40 @@ export const QuizQuestion = memo(function QuizQuestion({
                 isSkinTypeQuestion={isSkinTypeQuestion}
                 imageUrl={getImageUrl(index)}
                 onOptionClick={async () => {
-                  console.log('📝 [QuizQuestion] LimeStyle: option clicked', {
+                  devLog('📝 [QuizQuestion] LimeStyle: option clicked', {
                     questionId: question.id,
                     optionValue: option.value,
                     optionLabel: option.label?.substring(0, 50),
                     isMultiChoice,
-                    wasSelected: isSelected
+                    wasSelected: isSelected,
                   });
 
                   if (isMultiChoice) {
                     const newAnswers = isSelected
                       ? currentAnswers.filter((v) => v !== option.value)
                       : [...currentAnswers, option.value];
-                    console.log('📝 [QuizQuestion] LimeStyle: multi-choice answer update', {
+                    devLog('📝 [QuizQuestion] LimeStyle: multi-choice answer update', {
                       oldAnswers: currentAnswers,
                       newAnswers,
-                      action: isSelected ? 'removed' : 'added'
+                      action: isSelected ? 'removed' : 'added',
                     });
                     // ИСПРАВЛЕНО: Валидация уже выполнена в начале компонента
                     if (question.id > 0) {
                       await onAnswer(question.id, newAnswers);
                     }
                   } else {
-                    console.log('📝 [QuizQuestion] LimeStyle: single-choice answer');
+                    devLog('📝 [QuizQuestion] LimeStyle: single-choice answer');
                     // ИСПРАВЛЕНО: Валидация question.id перед вызовом onAnswer
-                if (!question.id || question.id <= 0) {
-                  console.error('❌ [QuizQuestion] Invalid question.id:', {
-                    questionId: question.id,
-                    questionCode: question.code,
-                    questionText: question.text?.substring(0, 50),
-                  });
-                  return;
-                }
-                await onAnswer(question.id, option.value);
-                    console.log('➡️ [QuizQuestion] LimeStyle: calling onNext after single choice');
+                    if (!question.id || question.id <= 0) {
+                      console.error('❌ [QuizQuestion] Invalid question.id:', {
+                        questionId: question.id,
+                        questionCode: question.code,
+                        questionText: question.text?.substring(0, 50),
+                      });
+                      return;
+                    }
+                    await onAnswer(question.id, option.value);
+                    devLog('➡️ [QuizQuestion] LimeStyle: calling onNext after single choice');
                     setTimeout(() => onNext(), 300);
                   }
                 }}

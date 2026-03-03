@@ -6,7 +6,8 @@
 import { useState, useEffect } from 'react';
 
 // Перехватываем все console.log, console.error, console.warn
-if (typeof window !== 'undefined') {
+// В продакшене не изменяем глобальный console, чтобы не влиять на боевых пользователей
+if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
   const logs: Array<{ type: string; message: any; timestamp: number }> = [];
   
   const originalLog = console.log;
@@ -34,6 +35,17 @@ if (typeof window !== 'undefined') {
 export default function LogsPage() {
   const [logs, setLogs] = useState<Array<{ type: string; message: any; timestamp: number }>>([]);
   const [autoRefresh, setAutoRefresh] = useState(true);
+
+  // В продакшене страница логов недоступна для обычных пользователей
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') {
+      window.location.href = '/home';
+    }
+  }, []);
+
+  if (process.env.NODE_ENV === 'production') {
+    return null;
+  }
 
   useEffect(() => {
     const updateLogs = () => {

@@ -12,6 +12,17 @@ export default function ClearStoragePage() {
   }>({ localStorage: [], sessionStorage: [] });
   const [dbResults, setDbResults] = useState<any>(null);
 
+  // В продакшене страница недоступна для обычных пользователей
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') {
+      router.replace('/home');
+    }
+  }, [router]);
+
+  if (process.env.NODE_ENV === 'production') {
+    return null;
+  }
+
   const clearStorage = useCallback(async () => {
     setStatus('clearing');
 
