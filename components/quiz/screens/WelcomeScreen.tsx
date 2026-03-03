@@ -66,33 +66,39 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
         onClick={onBack ?? (() => {})}
       />
 
-      {/* Стеклянный контейнер с текстом внизу экрана */}
+      {/* Стеклянный контейнер с текстом и кнопкой на нижней части изображения */}
       <div
         className="animate-fade-in"
         style={{
           position: 'absolute',
           left: 0,
           right: 0,
+          top: '52vh',
           bottom: 0,
           zIndex: 2,
-          padding: '24px 20px 120px',
+          padding: '16px 20px 32px',
           boxSizing: 'border-box',
           display: 'flex',
-          justifyContent: 'center',
+          justifyContent: 'stretch',
           pointerEvents: 'none',
         }}
       >
         <div
           style={{
             width: '100%',
-            maxWidth: 360,
-            backgroundColor: 'rgba(0, 0, 0, 0.35)',
+            maxWidth: '100%',
+            minHeight: '160px',
+            backgroundColor: 'rgba(255, 255, 255, 0.35)',
             backdropFilter: 'blur(20px)',
             WebkitBackdropFilter: 'blur(20px)',
             borderRadius: '24px 24px 0 0',
             padding: '20px 20px 24px',
             boxSizing: 'border-box',
             pointerEvents: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'stretch',
+            gap: 16,
           }}
         >
           <h1
@@ -105,7 +111,7 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
               lineHeight: '140%',
               letterSpacing: '0px',
               textAlign: 'center',
-              color: '#FFFFFF',
+              color: '#000000',
               margin: 0,
             }}
           >
@@ -115,16 +121,31 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
             <br />
             со <span style={{ fontWeight: 700, fontStyle: 'normal' }}>SkinIQ</span>
           </h1>
-        </div>
-      </div>
 
-      <div style={{ position: 'relative', zIndex: 2, pointerEvents: 'auto' }}>
-        <FixedContinueButton
-          ctaText="Начать"
-          onClick={onContinue}
-          disabled={isHandlingNext}
-          loadingText="Загрузка..."
-        />
+          <button
+            type="button"
+            onClick={onContinue}
+            disabled={isHandlingNext}
+            style={{
+              marginTop: 8,
+              width: '100%',
+              alignSelf: 'center',
+              height: 44,
+              borderRadius: 999,
+              border: 'none',
+              backgroundColor: 'rgba(213, 254, 97, 0.9)',
+              color: '#000000',
+              fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 500,
+              fontSize: 16,
+              textTransform: 'uppercase',
+              cursor: isHandlingNext ? 'not-allowed' : 'pointer',
+              opacity: isHandlingNext ? 0.7 : 1,
+            }}
+          >
+            {isHandlingNext ? 'Загрузка...' : 'Начать'}
+          </button>
+        </div>
       </div>
     </div>
   );

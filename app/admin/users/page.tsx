@@ -78,16 +78,26 @@ export default function UsersAdmin() {
     }
   }, [searchParams, users, loading]);
 
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(globalFilter), 400);
+    return () => clearTimeout(t);
+  }, [globalFilter]);
+  useEffect(() => {
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
+  }, [debouncedSearch]);
+
   useEffect(() => {
     loadUsers();
-  }, [pagination.pageIndex]);
+  }, [pagination.pageIndex, debouncedSearch]);
 
   const loadUsers = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('admin_token');
+      const searchParam = debouncedSearch ? `&search=${encodeURIComponent(debouncedSearch)}` : '';
       const response = await fetch(
-        `/api/admin/users?page=${pagination.pageIndex + 1}&limit=${pagination.pageSize}`,
+        `/api/admin/users?page=${pagination.pageIndex + 1}&limit=${pagination.pageSize}${searchParam}`,
         {
         headers: {
           'Content-Type': 'application/json',
