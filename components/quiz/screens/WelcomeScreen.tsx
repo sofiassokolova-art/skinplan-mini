@@ -32,9 +32,10 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
       overflow: 'hidden',
       zIndex: 1,
     }}>
-      {/* Картинка на весь экран */}
+      {/* Картинка на весь экран с мягким появлением */}
       {screen.image && (
         <div
+          className="animate-fade-in"
           style={{
             position: 'absolute',
             top: 0,
@@ -66,33 +67,62 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
         onClick={onBack ?? (() => {})}
       />
 
-      {/* Стеклянный контейнер с текстом и кнопкой на нижней части изображения */}
+      {/* SkinIQ — логотип вверху экрана */}
       <div
         className="animate-fade-in"
         style={{
           position: 'absolute',
           left: 0,
           right: 0,
-          top: '52vh',
-          bottom: 0,
+          top: 0,
+          padding: 'max(24px, env(safe-area-inset-top)) 20px 0',
           zIndex: 2,
-          padding: '16px 20px 32px',
+          textAlign: 'center',
+          pointerEvents: 'none',
+        }}
+      >
+        <span
+          className="quiz-welcome-title"
+          style={{
+            fontFamily: "var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 700,
+            fontSize: 'clamp(18px, 5vw, 24px)',
+            color: '#FFFFFF',
+            letterSpacing: '0px',
+          }}
+        >
+          SkinIQ
+        </span>
+      </div>
+
+      {/* Стеклянный контейнер на всю ширину и до низа экрана */}
+      <div
+        className="animate-fade-in"
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: '74vh',
+          bottom: 0,
+          width: '100%',
+          zIndex: 2,
+          padding: 0,
           boxSizing: 'border-box',
           display: 'flex',
-          justifyContent: 'stretch',
+          flexDirection: 'column',
+          justifyContent: 'flex-end',
           pointerEvents: 'none',
         }}
       >
         <div
           style={{
             width: '100%',
-            maxWidth: '100%',
-            minHeight: '160px',
-            backgroundColor: 'rgba(255, 255, 255, 0.35)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            borderRadius: '24px 24px 0 0',
-            padding: '20px 20px 24px',
+            minHeight: '100%',
+            backgroundColor: 'rgba(0, 0, 0, 0.12)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            borderRadius: 0,
+            padding: '24px 20px max(24px, env(safe-area-inset-bottom))',
             boxSizing: 'border-box',
             pointerEvents: 'auto',
             display: 'flex',
@@ -107,46 +137,27 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
               fontFamily: "var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 400,
               fontStyle: 'normal',
-              fontSize: '28px',
-              lineHeight: '140%',
+              fontSize: '17px',
+              lineHeight: '130%',
               letterSpacing: '0px',
               textAlign: 'center',
-              color: '#000000',
+              color: '#FFFFFF',
               margin: 0,
             }}
           >
-            Подбери уход
+            Создай персональный
             <br />
-            для своей кожи
-            <br />
-            со <span style={{ fontWeight: 700, fontStyle: 'normal' }}>SkinIQ</span>
+            план ухода за 5 минут
           </h1>
-
-          <button
-            type="button"
-            onClick={onContinue}
-            disabled={isHandlingNext}
-            style={{
-              marginTop: 8,
-              width: '100%',
-              alignSelf: 'center',
-              height: 44,
-              borderRadius: 999,
-              border: 'none',
-              backgroundColor: 'rgba(213, 254, 97, 0.9)',
-              color: '#000000',
-              fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 500,
-              fontSize: 16,
-              textTransform: 'uppercase',
-              cursor: isHandlingNext ? 'not-allowed' : 'pointer',
-              opacity: isHandlingNext ? 0.7 : 1,
-            }}
-          >
-            {isHandlingNext ? 'Загрузка...' : 'Начать'}
-          </button>
         </div>
       </div>
+
+      <FixedContinueButton
+        ctaText="Начать"
+        onClick={onContinue}
+        disabled={isHandlingNext}
+        loadingText="Загрузка..."
+      />
     </div>
   );
 }

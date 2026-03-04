@@ -140,14 +140,16 @@ export default async function RootLayout({
             {`
               (function () {
                 if (typeof window === 'undefined') return;
-                if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) return;
-
                 var host = window.location.hostname;
                 if (host !== 'localhost' && host !== '127.0.0.1') return;
 
-                var TEST_TELEGRAM_ID = '987654321';
+                // В dev на localhost всегда используем нашего тестового пользователя (перезаписываем старый tg_init_data)
+                try { sessionStorage.removeItem('tg_init_data'); } catch (_) {}
+
+                // Локальный dev-пользователь Telegram — можно менять ID, чтобы эмулировать «нового» пользователя
+                var TEST_TELEGRAM_ID = '987654322';
                 var authDate = Math.floor(Date.now() / 1000);
-                var testInitData = 'user=%7B%22id%22%3A' + TEST_TELEGRAM_ID + '%2C%22first_name%22%3A%22Test%22%2C%22last_name%22%3A%22User%22%2C%22username%22%3A%22testuser%22%2C%22language_code%22%3A%22ru%22%7D&auth_date=' + authDate + '&hash=test_hash_for_development_only';
+                var testInitData = 'user=%7B%22id%22%3A' + TEST_TELEGRAM_ID + '%2C%22first_name%22%3A%22Local%22%2C%22last_name%22%3A%22User2%22%2C%22username%22%3A%22local_test_user_2%22%2C%22language_code%22%3A%22ru%22%7D&auth_date=' + authDate + '&hash=test_hash_for_development_only';
 
                 if (!window.Telegram) {
                   window.Telegram = { WebApp: null };
@@ -158,9 +160,9 @@ export default async function RootLayout({
                     initDataUnsafe: {
                       user: {
                         id: parseInt(TEST_TELEGRAM_ID, 10),
-                        first_name: 'Test',
-                        last_name: 'User',
-                        username: 'testuser',
+                        first_name: 'Local',
+                        last_name: 'User2',
+                        username: 'local_test_user_2',
                         language_code: 'ru',
                       },
                     },
@@ -174,19 +176,18 @@ export default async function RootLayout({
                   };
                 } else {
                   var w = window.Telegram.WebApp;
-                  if (!w.initData || w.initData === 'dev-init-data=1') {
+                  try {
+                    w.initData = testInitData;
+                  } catch (e) {
                     try {
-                      w.initData = testInitData;
-                    } catch (e) {
-                      try {
-                        Object.defineProperty(w, 'initData', { value: testInitData, writable: true });
-                      } catch (e2) {}
-                    }
-                    if (w.initDataUnsafe && w.initDataUnsafe.user) {
-                      w.initDataUnsafe.user.id = parseInt(TEST_TELEGRAM_ID, 10);
-                    }
+                      Object.defineProperty(w, 'initData', { value: testInitData, writable: true });
+                    } catch (e2) {}
+                  }
+                  if (w.initDataUnsafe && w.initDataUnsafe.user) {
+                    w.initDataUnsafe.user.id = parseInt(TEST_TELEGRAM_ID, 10);
                   }
                 }
+                try { sessionStorage.setItem('tg_init_data', testInitData); } catch (_) {}
 
                 console.log('[DEV TG] Telegram WebApp mocked for local development (test initData)');
               })();
@@ -205,12 +206,28 @@ export default async function RootLayout({
           backgroundColor: '#FFFFFF',
         }}
       >
+        {/* Контейнер для кнопки «Назад» — первый ребёнок body, блок 80×80 в углу */}
+        <div
+          id="back-button-fixed-container"
+          aria-hidden="true"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: 80,
+            height: 80,
+            background: 'transparent',
+            pointerEvents: 'none',
+            zIndex: 99999,
+          }}
+        />
         {/* Лоадер при открытии — показываем ВСЕГДА (кроме /admin).
             React удалит его при монтировании через useRemoveRootLoading().
             Не зависим от process.env.VERCEL — Vercel build cache может не подставлять его. */}
         {!isAdminRoute && (
           <div
             id="root-loading"
+            suppressHydrationWarning
             style={{
               position: 'fixed',
               inset: 0,
@@ -315,7 +332,6 @@ export default async function RootLayout({
         </noscript>
         {/* Обёртка для React DevTools и селекторов: в App Router нет #__next по умолчанию */}
         <div id="__next">
-          {/* Контейнер для кнопки «Назад» — внутри React-дерева, чтобы избежать NotFoundError при reconciliation */}
           <div id="back-button-portal-root" />
           <ErrorBoundary>
             <GlobalErrorHandler />

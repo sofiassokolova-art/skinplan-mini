@@ -151,24 +151,30 @@ export class QuestionErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error, retryCount: 0 };
+    const err = error instanceof Error ? error : new Error(String(error));
+    return { hasError: true, error: err, retryCount: 0 };
   }
 
   componentDidCatch(error: Error, errorInfo: any) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    const message = err.message ?? String(error);
+    const stack = err.stack ?? (error as any)?.stack;
+    const componentStack = errorInfo?.componentStack;
+
     console.error(`❌ QuestionErrorBoundary (${this.props.componentName || 'question'}):`, {
-      error: error.message,
-      stack: error.stack,
-      componentStack: errorInfo.componentStack,
+      error: message,
+      stack: stack ?? '(no stack)',
+      componentStack: componentStack ?? '(no component stack)',
     });
 
     clientLogger.error(`QuestionErrorBoundary (${this.props.componentName || 'question'})`, {
-      errorName: error.name,
-      errorMessage: error.message,
-      componentStack: errorInfo.componentStack,
+      errorName: err.name,
+      errorMessage: message,
+      componentStack: componentStack,
     });
 
     if (this.props.onError) {
-      this.props.onError(error, errorInfo);
+      this.props.onError(err, errorInfo);
     }
   }
 

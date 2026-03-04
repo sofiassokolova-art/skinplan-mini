@@ -66,25 +66,36 @@ export function useQuizRetake() {
       if (profileCheckInProgressRef.current) return;
       profileCheckInProgressRef.current = true;
 
+      const clearRetakeUrlAndState = () => {
+        setIsRetakingQuiz(false);
+        setShowRetakeScreen(false);
+        if (typeof window !== 'undefined' && window.location.search.includes('retakeFromHome=1')) {
+          const params = new URLSearchParams(window.location.search);
+          params.delete('retakeFromHome');
+          const newSearch = params.toString();
+          const newUrl = newSearch ? `${window.location.pathname}?${newSearch}` : window.location.pathname;
+          window.history.replaceState(null, '', newUrl);
+          clientLogger.log('🔗 URL очищен от retakeFromHome=1');
+        }
+      };
+
       const checkProfileAndShowRetake = async () => {
         try {
           const profile = await api.getCurrentProfile();
           if (!profile || !profile.id) {
             clientLogger.log('⚠️ retakeFromHome: профиля нет — убираем экран выбора тем');
-            setIsRetakingQuiz(false);
-            setShowRetakeScreen(false);
+            clearRetakeUrlAndState();
           } else {
             clientLogger.log('✅ retakeFromHome: профиль подтверждён');
           }
         } catch (err: any) {
-          const isNotFound = err?.status === 404 || 
-                            err?.message?.includes('404') || 
+          const isNotFound = err?.status === 404 ||
+                            err?.message?.includes('404') ||
                             err?.message?.includes('No profile') ||
                             err?.message?.includes('Profile not found');
           if (isNotFound) {
             clientLogger.log('⚠️ retakeFromHome: профиль не найден — убираем экран выбора тем');
-            setIsRetakingQuiz(false);
-            setShowRetakeScreen(false);
+            clearRetakeUrlAndState();
           } else {
             clientLogger.warn('⚠️ Ошибка при проверке профиля для retakeFromHome:', err);
           }

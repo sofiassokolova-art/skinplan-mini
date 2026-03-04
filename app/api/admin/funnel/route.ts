@@ -4,7 +4,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 // ИСПРАВЛЕНО (P0): Убран неиспользуемый импорт getCachedPlan (кэш-проверка удалена)
-import { INFO_SCREENS } from '@/app/(miniapp)/quiz/info-screens';
+import {
+  INFO_SCREENS,
+  getInitialInfoScreens,
+  getInfoScreenAfterQuestion,
+  walkInfoScreenChain,
+} from '@/app/(miniapp)/quiz/info-screens';
+import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
 import { verifyAdminBoolean } from '@/lib/admin-auth';
 
 export async function GET(request: NextRequest) {
@@ -118,19 +124,18 @@ export async function GET(request: NextRequest) {
       };
     }));
 
-    // ИСПРАВЛЕНО (P0): Получаем полную активную анкету для screenConversions
-    // activeQuestionnaire.id уже получен выше, но здесь нужны questions
+    // ИСПРАВЛЕНО (P0): Получаем полную активную анкету для screenConversions (порядок экранов как в приложении)
     const activeQuestionnaireWithQuestions = await prisma.questionnaire.findFirst({
       where: { isActive: true },
       include: {
-        questions: {
+        questionGroups: {
           include: {
-            answerOptions: true,
+            questions: { include: { answerOptions: true } },
           },
-          orderBy: [
-            { groupId: 'asc' },
-            { position: 'asc' },
-          ],
+        },
+        questions: {
+          include: { answerOptions: true },
+          orderBy: [{ groupId: 'asc' }, { position: 'asc' }],
         },
       },
     });
@@ -146,18 +151,18 @@ export async function GET(request: NextRequest) {
     }> = [];
 
     if (activeQuestionnaireWithQuestions) {
-      // Строим полный список экранов (INFO_SCREENS + вопросы)
+      // Порядок экранов как в приложении: getInitialInfoScreens + extractQuestions + цепочки инфо после вопросов
       const allScreens: Array<{
         id: string;
         title: string;
         type: 'info' | 'question';
         questionCode?: string;
         questionId?: number;
-        showAfterQuestionCode?: string; // Для инфо-экранов: код вопроса, после которого показывается экран
+        showAfterQuestionCode?: string;
+        triggerQuestionId?: number; // для инфо после вопроса: вопрос, после которого показывается экран
       }> = [];
 
-      // Добавляем начальные инфо-экраны (без showAfterQuestionCode)
-      const initialInfoScreens = INFO_SCREENS.filter(s => !s.showAfterQuestionCode);
+      const initialInfoScreens = getInitialInfoScreens();
       initialInfoScreens.forEach(screen => {
         allScreens.push({
           id: screen.id,
@@ -167,34 +172,34 @@ export async function GET(request: NextRequest) {
         });
       });
 
-      // Добавляем вопросы и инфо-экраны между ними в правильном порядке
-      const questions = activeQuestionnaireWithQuestions.questions;
-      const infoScreensMap = new Map<string, typeof INFO_SCREENS[0]>();
-      INFO_SCREENS.forEach(screen => {
-        if (screen.showAfterQuestionCode) {
-          infoScreensMap.set(screen.showAfterQuestionCode, screen);
-        }
-      });
+      const questionnaireShape = {
+        ...activeQuestionnaireWithQuestions,
+        groups: activeQuestionnaireWithQuestions.questionGroups,
+      };
+      const questionsInAppOrder = extractQuestionsFromQuestionnaire(questionnaireShape);
 
-      // Проходим по вопросам и добавляем их вместе с инфо-экранами
-      questions.forEach((question, index) => {
-        // Добавляем вопрос
+      questionsInAppOrder.forEach((question: { id: number; code?: string; text?: string }) => {
         allScreens.push({
           id: `question_${question.id}`,
-          title: question.text,
+          title: question.text ?? '',
           type: 'question',
           questionCode: question.code,
           questionId: question.id,
         });
 
-        // Проверяем, есть ли инфо-экран после этого вопроса
-        const infoScreen = infoScreensMap.get(question.code);
-        if (infoScreen) {
-          allScreens.push({
-            id: infoScreen.id,
-            title: infoScreen.title,
-            type: 'info',
-            showAfterQuestionCode: infoScreen.showAfterQuestionCode,
+        const firstInfoAfterQuestion = question.code
+          ? getInfoScreenAfterQuestion(question.code)
+          : undefined;
+        if (firstInfoAfterQuestion) {
+          const chain = walkInfoScreenChain(firstInfoAfterQuestion);
+          chain.forEach((infoScreen) => {
+            allScreens.push({
+              id: infoScreen.id,
+              title: infoScreen.title,
+              type: 'info',
+              showAfterQuestionCode: infoScreen.showAfterQuestionCode,
+              triggerQuestionId: question.id,
+            });
           });
         }
       });
@@ -230,38 +235,22 @@ export async function GET(request: NextRequest) {
         userAnswersMap.get(answer.userId)!.add(answer.questionId);
       });
 
-      // Для каждого экрана считаем, сколько пользователей до него дошли
+      // Для каждого экрана считаем, сколько пользователей до него дошли (в том же порядке, что и в приложении)
       for (let i = 0; i < allScreens.length; i++) {
         const screen = allScreens[i];
         let reachedCount = 0;
 
-        // ИСПРАВЛЕНО (P0): screenConversions - правильная логика reached
-        // Для question: reached = answered this questionId (не "хотя бы один до текущего")
-        // Для info: reached = answered previous questionId (если есть предыдущий вопрос)
         if (screen.type === 'question' && screen.questionId) {
-          // ИСПРАВЛЕНО (P0): Для вопроса считаем пользователей, которые ответили именно на этот вопрос
-          // Раньше считалось "хотя бы один до текущего" → завышало метрику
           reachedCount = Array.from(userAnswersMap.values()).filter(
             answeredQuestionIds => answeredQuestionIds.has(screen.questionId!)
           ).length;
         } else if (screen.type === 'info') {
-          // ИСПРАВЛЕНО: Для инфо-экрана правильная логика подсчета
-          // Если это начальный экран (без showAfterQuestionCode) - считаем всех, кто начал анкету
-          if (!screen.showAfterQuestionCode) {
-            reachedCount = userIdsWhoStarted.size;
+          if (screen.triggerQuestionId != null) {
+            reachedCount = Array.from(userAnswersMap.values()).filter(
+              answeredQuestionIds => answeredQuestionIds.has(screen.triggerQuestionId!)
+            ).length;
           } else {
-            // Если инфо-экран показывается после вопроса (showAfterQuestionCode),
-            // нужно найти вопрос с этим кодом и посчитать пользователей, которые на него ответили
-            const targetQuestion = questions.find(q => q.code === screen.showAfterQuestionCode);
-            if (targetQuestion) {
-              // Считаем пользователей, которые ответили на вопрос, после которого показывается этот инфо-экран
-              reachedCount = Array.from(userAnswersMap.values()).filter(
-                answeredQuestionIds => answeredQuestionIds.has(targetQuestion.id)
-              ).length;
-            } else {
-              // Если вопрос не найден, считаем всех, кто начал анкету (fallback)
-              reachedCount = userIdsWhoStarted.size;
-            }
+            reachedCount = userIdsWhoStarted.size;
           }
         }
 
@@ -271,28 +260,24 @@ export async function GET(request: NextRequest) {
           screenTitle: screen.title,
           screenType: screen.type,
           reachedCount,
-          // временно 0, пересчитаем ниже, когда будут известны данные предыдущего экрана
           conversionFromPrev: 0,
           conversionFromStart: 0,
         });
       }
 
-      // После того как посчитали reachedCount для всех экранов, считаем конверсии
-      // conversionFromStart — от тех, кто начал анкету
-      // conversionFromPrev — от предыдущего экрана (как ты и хочешь видеть)
+      // Конверсии: от начала и от предыдущего экрана; конверсия от предыдущего не больше 100%
       let previousReached = startedQuiz;
       for (let i = 0; i < screenConversions.length; i++) {
         const current = screenConversions[i];
         const baseForPrev =
-          i === 0
-            ? startedQuiz // первый экран считаем от начавших анкету
-            : previousReached;
+          i === 0 ? startedQuiz : previousReached;
 
         current.conversionFromStart =
           startedQuiz > 0 ? (current.reachedCount / startedQuiz) * 100 : 0;
-
         current.conversionFromPrev =
-          baseForPrev > 0 ? (current.reachedCount / baseForPrev) * 100 : 0;
+          baseForPrev > 0
+            ? Math.min(100, (current.reachedCount / baseForPrev) * 100)
+            : 0;
 
         previousReached = current.reachedCount;
       }

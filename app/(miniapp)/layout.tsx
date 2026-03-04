@@ -123,6 +123,32 @@ function LayoutContent({
     setBackButtonVisible(idx > 0 && idx < INFO_INITIAL_SCREENS_COUNT);
   }, [isOnQuizPage, pathname]);
   
+  // На страницах анкеты блокируем скролл body и скроллим только контент анкеты
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!isOnQuizPage) return;
+
+    const html = document.documentElement;
+    const body = document.body;
+
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    const prevHtmlHeight = html.style.height;
+    const prevBodyHeight = body.style.height;
+
+    html.style.overflow = 'hidden';
+    body.style.overflow = 'hidden';
+    html.style.height = '100%';
+    body.style.height = '100%';
+
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+      html.style.height = prevHtmlHeight;
+      body.style.height = prevBodyHeight;
+    };
+  }, [isOnQuizPage]);
+  
   return (
     <>
       <NetworkStatus />
@@ -142,13 +168,25 @@ function LayoutContent({
       )}
 
       <PageTransition>
-        {children}
+        {isOnQuizPage ? (
+          <div
+            style={{
+              height: '100vh',
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+            }}
+          >
+            {children}
+          </div>
+        ) : (
+          children
+        )}
       </PageTransition>
       {/* ТЗ: НЕ монтируем BottomNavigation на /quiz для чистого UX без элементов корзины */}
       {/* КРИТИЧНО: Используем hideNav, который включает проверку isOnQuizPage и проверку нового пользователя на главной */}
       {!hideNav && <BottomNavigation />}
-      {/* Сервисный попап для отзывов (показывается раз в неделю, НЕ на странице анкеты) */}
-      {!isOnQuizPage && <ServiceFeedbackPopup />}
+      {/* Сервисный попап для отзывов (не показываем на анкете и когда виден пейвол PaymentGate) */}
+      {!isOnQuizPage && !paywallVisible && <ServiceFeedbackPopup />}
     </>
   );
 }

@@ -483,91 +483,16 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       const scopedInfoScreenKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN, qid);
       saveIndexToSessionStorage(scopedInfoScreenKey, newInfoIndex, '💾 Сохранен currentInfoScreenIndex в sessionStorage при переходе к вопросам');
       
-      // ИСПРАВЛЕНО: Теперь используем questions из questionnaireRef как источник истины
-      // Восстанавливаем questionCode из sessionStorage для пользователей с прогрессом
-      // НО: НЕ восстанавливаем, если был выполнен startOver (флаг quiz_progress_cleared установлен)
-      // ИСПРАВЛЕНО: При переходе от последнего начального экрана к вопросам всегда начинаем с первого вопроса
-      const scopedQuestionCodeKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE, qid);
-      const savedQuestionCode = safeSessionStorageGet(scopedQuestionCodeKey);
-      const answeredQuestionIds = Object.keys(answers).map(id => Number(id));
+      // Прямое прохождение: после экрана «Расскажите о вашей цели» всегда показываем первый вопрос (индекс 0),
+      // даже если есть сохранённые ответы или код вопроса в sessionStorage. Восстановление прогресса делается
+      // при загрузке страницы (resume), а не при нажатии «Продолжить» на последнем интро-экране.
       let nextQuestionIndex = 0;
-
-      // ИСПРАВЛЕНО: Проверяем флаг quiz_progress_cleared перед восстановлением индекса вопроса
-      // Если флаг установлен (был выполнен startOver), начинаем с первого вопроса
-      const isProgressCleared = typeof window !== 'undefined' && (
-        sessionStorage.getItem(QUIZ_CONFIG.getScopedKey('quiz_progress_cleared', qid)) === 'true' ||
-        sessionStorage.getItem('quiz_progress_cleared') === 'true' ||
-        sessionStorage.getItem('default:quiz_progress_cleared') === 'true'
-      );
-
-      // ИСПРАВЛЕНО: При переходе от последнего начального экрана к вопросам (первый проход)
-      // всегда начинаем с первого вопроса (индекс 0), игнорируя сохраненный код вопроса
-      const isFirstTimeAfterInitialScreens = currentInfoScreenIndex === initialInfoScreens.length - 1 && 
-                                             currentQuestionIndex === 0 && 
-                                             answeredQuestionIds.length === 0;
-
-      if (isProgressCleared) {
-        clientLogger.log('🔄 Переход к вопросам: флаг quiz_progress_cleared установлен, начинаем с первого вопроса', {
-          savedQuestionCode,
-          answeredQuestionIdsCount: answeredQuestionIds.length,
-          currentQuestionIndex,
-        });
-      }
-
-      // ИСПРАВЛЕНО: При первом проходе после начальных экранов всегда начинаем с первого вопроса
-      if (isFirstTimeAfterInitialScreens) {
-        nextQuestionIndex = 0;
-        clientLogger.log('🔄 Переход к вопросам: первый проход после начальных экранов, начинаем с первого вопроса (USER_NAME)', {
-          currentQuestionIndex,
-          nextQuestionIndex,
-          questionsLength: questions.length,
-          firstQuestionCode: questions[0]?.code,
-          savedQuestionCode, // Логируем, но не используем
-        });
-      } else {
-        // Проверяем, есть ли сохраненный вопрос или ответы (пользователь возвращается)
-        // НО: НЕ учитываем сохраненный код вопроса, если был выполнен startOver
-        const hasSavedProgress = (!isProgressCleared && savedQuestionCode) || answeredQuestionIds.length > 0 || currentQuestionIndex > 0;
-
-        if (hasSavedProgress && savedQuestionCode && !isProgressCleared) {
-          // Восстанавливаем индекс по сохраненному коду вопроса
-          const savedIndex = questions.findIndex((q: Question) => q.code === savedQuestionCode);
-          if (savedIndex >= 0 && savedIndex < questions.length) {
-            nextQuestionIndex = savedIndex;
-            clientLogger.log('🔄 Переход к вопросам: восстановлен индекс по сохраненному коду', {
-              savedQuestionCode,
-              savedIndex,
-              nextQuestionIndex,
-              currentQuestionIndex,
-              questionsLength: questions.length,
-            });
-          } else {
-            // Если вопрос не найден, начинаем с 0
-            nextQuestionIndex = 0;
-            clientLogger.warn('⚠️ Переход к вопросам: сохраненный вопрос не найден, начинаем с 0', {
-              savedQuestionCode,
-              questionsLength: questions.length,
-            });
-          }
-        } else if (hasSavedProgress && currentQuestionIndex > 0 && !isProgressCleared) {
-          // Используем сохраненный индекс, если код не найден
-          // НО: НЕ используем, если был выполнен startOver
-          nextQuestionIndex = Math.min(currentQuestionIndex, questions.length - 1);
-          clientLogger.log('🔄 Переход к вопросам: восстановлен индекс из currentQuestionIndex', {
-            currentQuestionIndex,
-            nextQuestionIndex,
-            questionsLength: questions.length,
-          });
-        } else {
-          // Первый заход после интро - начинаем с первого вопроса
-          nextQuestionIndex = 0;
-          clientLogger.log('🔄 Переход к вопросам: первый заход, начинаем с первого вопроса', {
-            currentQuestionIndex,
-            nextQuestionIndex,
-            questionsLength: questions.length,
-          });
-        }
-      }
+      clientLogger.log('🔄 Переход к вопросам: после последнего начального экрана — всегда первый вопрос (прямое прохождение)', {
+        currentQuestionIndex,
+        nextQuestionIndex,
+        questionsLength: questions.length,
+        firstQuestionCode: questions[0]?.code,
+      });
 
       // КРИТИЧНО: Финальная проверка перед установкой индекса
       // ИСПРАВЛЕНО: Исправлена логика - если индекс некорректный, устанавливаем 0 или последний валидный индекс
@@ -592,6 +517,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       }
       setPendingInfoScreen(null);
       // ФИКС: Детальное логирование установки вопросов для диагностики
+      const answeredQuestionIds = Object.keys(answers).map(id => Number(id));
       clientLogger.log('✅ Завершены все начальные инфо-экраны, переходим к вопросам', {
         newInfoIndex,
         questionsLength: questions.length,

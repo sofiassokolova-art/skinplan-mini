@@ -24,6 +24,7 @@ interface MetricsStats {
   }>;
   
   // Временные метрики
+  activeUsersLast1Day: number;
   newUsersLast7Days: number;
   newUsersLast30Days: number;
   activeUsersLast7Days: number;
@@ -204,6 +205,7 @@ async function getTopProducts(limit: number = 10) {
  */
 export async function getMetricsStats(): Promise<MetricsStats> {
   const now = new Date();
+  const oneDayAgo = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
@@ -239,6 +241,9 @@ export async function getMetricsStats(): Promise<MetricsStats> {
   const activeUsersLast30Days = await prisma.user.count({
     where: { updatedAt: { gte: thirtyDaysAgo } },
   });
+  const activeUsersLast1Day = await prisma.user.count({
+    where: { updatedAt: { gte: oneDayAgo } },
+  });
 
   // Продуктовые метрики
   const totalWishlistItems = await prisma.wishlist.count();
@@ -268,6 +273,7 @@ export async function getMetricsStats(): Promise<MetricsStats> {
     churnRate,
     avgLTV,
     topProducts,
+    activeUsersLast1Day,
     newUsersLast7Days,
     newUsersLast30Days,
     activeUsersLast7Days,

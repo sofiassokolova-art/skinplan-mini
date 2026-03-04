@@ -285,6 +285,7 @@ export async function GET(request: NextRequest) {
         ...(metrics && {
           churnRate: metrics.churnRate,
           avgLTV: metrics.avgLTV,
+          activeUsersLast1Day: metrics.activeUsersLast1Day,
           newUsersLast7Days: metrics.newUsersLast7Days,
           newUsersLast30Days: metrics.newUsersLast30Days,
           activeUsersLast7Days: metrics.activeUsersLast7Days,

@@ -28,7 +28,6 @@ import type { Question } from '@/lib/quiz/types';
 import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
 import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
 import { useQuizHandlers } from '../hooks/useQuizHandlers';
-
 type Screen = 'LOADER' | 'ERROR' | 'RETAKE' | 'RESUME' | 'INFO' | 'INITIAL_INFO' | 'QUESTION';
 
 /** Откладывает рендер QuizResumeScreen до после монтирования — один и тот же вывод на сервере и при первом клиентском рендере (loader), устраняет hydration mismatch. */
@@ -549,7 +548,7 @@ export const QuizRenderer = memo(function QuizRenderer({
         style={{
           minHeight: '100vh',
           backgroundColor,
-          paddingTop: '48px',
+          paddingTop: '36px',
           paddingBottom: '20px',
         }}
       >
@@ -561,6 +560,7 @@ export const QuizRenderer = memo(function QuizRenderer({
             currentQuestionIndex={currentQuestionIndex}
             allQuestionsLength={allQuestionsLength}
             answers={answers}
+            answersRef={answersRef}
             isRetakingQuiz={isRetakingQuiz}
             isSubmitting={isSubmitting}
             onAnswer={onAnswer}

@@ -4,6 +4,7 @@
 
 import React from 'react';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
+import { FixedContinueButton } from '../buttons/FixedContinueButton';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 
 export interface PersonalAnalysisScreenProps {
@@ -51,7 +52,7 @@ function PersonalAnalysisScreenComponent({
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'flex-start',
-          padding: '120px 20px 100px',
+          padding: '64px 20px 100px',
           width: '100%',
           boxSizing: 'border-box',
         }}
@@ -61,7 +62,7 @@ function PersonalAnalysisScreenComponent({
           style={{
             fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
             fontStyle: 'normal',
-            fontSize: '32px',
+            fontSize: '22px',
             lineHeight: '120%',
             letterSpacing: '0px',
             textAlign: 'center',
@@ -74,31 +75,17 @@ function PersonalAnalysisScreenComponent({
           <span style={{ fontWeight: 400 }}> — ваш персональный анализ кожи</span>
         </h1>
 
-        {screen.subtitle && (
-          <div
-            style={{
-              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 400,
-              fontSize: '14px',
-              lineHeight: '140%',
-              letterSpacing: '0px',
-              textAlign: 'center',
-              color: '#9D9D9D',
-              marginBottom: '40px',
-              maxWidth: '320px',
-            }}
-          >
-            {screen.subtitle}
-          </div>
-        )}
+        {/* Subtitle перенесён к кнопке «Продолжить» */}
 
         <div
           style={{
-            width: '100%',
-            maxWidth: '320px',
+            width: '360px',
+            maxWidth: '100%',
+            minWidth: 0,
             display: 'flex',
             flexDirection: 'column',
-            gap: '24px',
+            gap: '12px',
+            marginTop: '16px',
             marginBottom: '40px',
           }}
         >
@@ -126,30 +113,35 @@ function PersonalAnalysisScreenComponent({
             <div
               key={item.alt}
               style={{
+                width: '100%',
+                minWidth: '100%',
+                minHeight: '96px',
                 display: 'flex',
-                flexDirection: 'column',
+                flexDirection: 'row',
                 alignItems: 'center',
-                textAlign: 'center',
                 gap: '12px',
+                backgroundColor: '#FFFFFF',
+                borderRadius: '12px',
+                padding: '14px 16px',
+                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08)',
+                boxSizing: 'border-box',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <img
-                  alt={item.alt}
-                  src={item.icon}
-                  style={{ width: '48px', height: '48px', objectFit: 'contain' }}
-                />
-              </div>
+              <img
+                alt={item.alt}
+                src={item.icon}
+                style={{ width: '32px', height: '32px', objectFit: 'contain', flexShrink: 0 }}
+              />
               <div
                 style={{
+                  flex: 1,
                   fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                   fontWeight: 400,
-                  fontSize: '16px',
+                  fontSize: '14px',
                   lineHeight: '120%',
                   letterSpacing: '0px',
-                  textAlign: 'center',
+                  textAlign: 'left',
                   color: '#000000',
-                  maxWidth: '289px',
                 }}
               >
                 {item.text}
@@ -159,42 +151,36 @@ function PersonalAnalysisScreenComponent({
         </div>
       </div>
 
-      <div
-        style={{
-          position: 'fixed',
-          bottom: 'clamp(40px, 6vh, 60px)',
-          left: 0,
-          right: 0,
-          padding: '0 clamp(20px, 5vw, 40px)',
-          background: 'transparent',
-          zIndex: 100,
-          display: 'flex',
-          justifyContent: 'center',
-        }}
-      >
-        <button
-          onClick={onContinue}
+      {/* Подзаголовок фиксированно над кнопкой «Продолжить», небольшой отступ */}
+      {screen.subtitle && (
+        <div
           style={{
-            width: '100%',
-            maxWidth: 'clamp(224px, 60vw, 320px)',
-            height: 'clamp(56px, 8vh, 64px)',
-            borderRadius: '20px',
-            background: '#D5FE61',
-            color: '#000000',
-            border: 'none',
-            fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 600,
-            fontSize: 'clamp(14px, 4vw, 16px)',
-            cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-            transition: 'transform 0.2s, box-shadow 0.2s',
-            opacity: 1,
-            transform: 'scale(1)',
+            position: 'fixed',
+            left: 0,
+            right: 0,
+            bottom: '88px',
+            zIndex: 99,
+            padding: '0 24px',
+            boxSizing: 'border-box',
           }}
         >
-          {screen.ctaText || 'Продолжить'}
-        </button>
-      </div>
+          <div
+            style={{
+              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 400,
+              fontSize: '12px',
+              lineHeight: '140%',
+              letterSpacing: '0px',
+              textAlign: 'center',
+              color: '#9D9D9D',
+            }}
+          >
+            {screen.subtitle}
+          </div>
+        </div>
+      )}
+
+      <FixedContinueButton ctaText={screen.ctaText || 'Продолжить'} onClick={onContinue} />
     </div>
     </>
   );

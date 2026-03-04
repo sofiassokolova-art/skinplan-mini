@@ -122,11 +122,12 @@ export const TELEGRAM_TIMEOUTS = {
 /**
  * Константы для dev-режима (тестовый Telegram)
  */
+/** Должен совпадать с TEST_TELEGRAM_ID в app/layout.tsx (dev mock), чтобы бэкенд и фронт видели одного пользователя */
 export const DEV_TELEGRAM = {
-  TEST_TELEGRAM_ID: '987654321',
+  TEST_TELEGRAM_ID: '987654322',
   TEST_HASH: 'test_hash_for_development_only',
   buildInitData(): string {
     const authDate = Math.floor(Date.now() / 1000);
-    return `user=%7B%22id%22%3A${this.TEST_TELEGRAM_ID}%2C%22first_name%22%3A%22Test%22%2C%22last_name%22%3A%22User%22%2C%22username%22%3A%22testuser%22%2C%22language_code%22%3A%22ru%22%7D&auth_date=${authDate}&hash=${this.TEST_HASH}`;
+    return `user=%7B%22id%22%3A${this.TEST_TELEGRAM_ID}%2C%22first_name%22%3A%22Local%22%2C%22last_name%22%3A%22User2%22%2C%22username%22%3A%22local_test_user_2%22%2C%22language_code%22%3A%22ru%22%7D&auth_date=${authDate}&hash=${this.TEST_HASH}`;
   },
 } as const;

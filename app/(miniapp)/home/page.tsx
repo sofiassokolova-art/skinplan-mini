@@ -668,10 +668,9 @@ export default function HomePage() {
         return;
       }
       
-      // ИСПРАВЛЕНО: При 404 / профиле, которого нет
-      // - если у пользователя УЖЕ есть план, не редиректим на /quiz, а остаёмся на главной
-      //   и пробуем собрать рутину напрямую из план28 (fallback),
-      // - если плана нет, считаем, что пользователь ещё не прошёл анкету и отправляем на /quiz.
+      // ИСПРАВЛЕНО: При 404 / "No skin profile" — бэкенд говорит, что профиля нет.
+      // Не показываем ошибку и не вызываем buildRoutineFromPlan (он тоже вернёт 404).
+      // Сбрасываем hasPlan и показываем контент без рутины (PaymentGate покажет пейвол, ниже — CTA на анкету).
       if (
         error?.status === 404 ||
         error?.isNotFound ||
@@ -681,20 +680,12 @@ export default function HomePage() {
         error?.message?.includes('profile not found')
       ) {
         setLoading(false);
-        // Если уже есть валидный план — остаёмся на главной и пробуем фолбэк-рутину из плана
-        if (hasPlan) {
-          clientLogger.log('Рекомендации не найдены, но план уже существует — остаёмся на главной и пробуем fallback из plan28');
-          try {
-            await buildRoutineFromPlan();
-          } catch (fallbackErr) {
-            clientLogger.warn('Не удалось построить фолбэк-рутину из plan28 при ошибке рекомендаций', fallbackErr);
-          }
-          return;
-        }
-
-        // Плана нет — это действительно новый пользователь → показываем CTA на анкету
-        clientLogger.log('Рекомендации не найдены (профиль ещё не создан, плана нет) — показываем CTA на анкету');
+        setHasPlan(false);
         setError(null);
+        setMorningItems([]);
+        setEveningItems([]);
+        setRecommendations(null as any);
+        clientLogger.log('Рекомендации не найдены (нет профиля) — не показываем ошибку, показываем CTA на анкету');
         return;
       }
       
@@ -705,7 +696,7 @@ export default function HomePage() {
     } finally {
       setLoading(false);
     }
-  }, [hasPlan, router, setLoading, setError, setMorningItems, setEveningItems, buildRoutineFromPlan]);
+  }, [hasPlan, router, setLoading, setError, setMorningItems, setEveningItems, setHasPlan, setRecommendations, buildRoutineFromPlan]);
 
   const toggleItem = (itemId: string) => {
     if (tab === 'AM') {
@@ -861,11 +852,14 @@ export default function HomePage() {
       }}
       retakeCta={{ text: 'Изменились цели? Перепройти анкету', href: '/quiz' }}
     >
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-      paddingBottom: '120px',
-    }}>
+    <div
+      className="animate-fade-in"
+      style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        paddingBottom: '120px',
+      }}
+    >
       {/* Header */}
       <div style={{
         padding: '20px',

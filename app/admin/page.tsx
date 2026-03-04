@@ -215,7 +215,19 @@ export default function AdminDashboard() {
       color: 'from-blue-600 to-cyan-400'
     },
     { 
-      label: 'Доход партнёрки', 
+      label: 'DAU (за сегодня)', 
+      value: stats.activeUsersLast1Day || 0, 
+      change: null,
+      color: 'from-sky-600 to-cyan-400'
+    },
+    { 
+      label: 'WAU (7 дней)', 
+      value: stats.activeUsersLast7Days || 0, 
+      change: null,
+      color: 'from-teal-600 to-emerald-400'
+    },
+    { 
+      label: 'Доход с планов', 
       value: stats.revenue ? `₽ ${stats.revenue.toLocaleString('ru-RU')}` : '₽ 0', 
       change: null,
       color: 'from-amber-600 to-yellow-400'

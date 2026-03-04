@@ -1,6 +1,5 @@
 // components/quiz/buttons/FixedContinueButton.tsx
-// Переиспользуемый компонент фиксированной кнопки "Продолжить" внизу экрана
-// Убирает дублирование кода из renderInfoScreen
+// Унифицированная фиксированная кнопка для всех инфо-экранов (текст задаётся через ctaText: «Начать» на первом экране, «Продолжить» на остальных)
 
 import React from 'react';
 
@@ -53,7 +52,7 @@ export function FixedContinueButton({
         style={{
           width: '100%',
           maxWidth: 300,
-          height: 40,
+          height: 52,
           borderRadius: 0,
           background: bgColor,
           color: fgColor,
