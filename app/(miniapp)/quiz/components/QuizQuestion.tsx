@@ -45,7 +45,12 @@ const LimeOptionCard = memo(function LimeOptionCard({
 }) {
   const optionText = option.label || '';
   const optionParts = optionText.split('\n');
-  const optionTitle = optionParts[0] || '';
+  let optionTitle = optionParts[0] || '';
+  // Для типа кожи убираем префикс "Тип N —" или "Тип N -"
+  if (isSkinTypeQuestion && optionTitle) {
+    const stripped = optionTitle.replace(/^Тип\s*\d+\s*[—\-]\s*/i, '').trim();
+    optionTitle = stripped || optionTitle;
+  }
   const optionDescription = optionParts.slice(1).join('\n') || '';
 
   return (
@@ -107,7 +112,7 @@ const LimeOptionCard = memo(function LimeOptionCard({
           <span
             style={{
               fontSize: '16px',
-              fontWeight: 500,
+              fontWeight: 600,
               color: '#000000',
               fontFamily:
                 "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
@@ -147,7 +152,7 @@ const LimeOptionCard = memo(function LimeOptionCard({
         {optionDescription && (
           <span
             style={{
-              fontSize: '14px',
+              fontSize: '12px',
               fontWeight: 400,
               color: '#6B7280',
               fontFamily:
@@ -333,15 +338,16 @@ export const QuizQuestion = memo(function QuizQuestion({
   const isNameQuestion = question?.code?.toLowerCase() === 'user_name' || question?.type === 'free_text';
   const hideProgressBar = isNameQuestion;
 
-  // Вопрос о целях (skin_goals) - лаймовый стиль с карточками
+  // Вопрос о целях (skin_goals)
   const isGoalsQuestion = question?.code === 'skin_goals';
-  // Лаймовый стиль для skin_type
+  // Экран «Тип кожи» (skin_type)
   const isSkinTypeQuestion = question?.code === 'skin_type';
   // Специальный стиль для lifestyle_habits
   const isLifestyleHabitsQuestion = question?.code === 'lifestyle_habits';
 
-  // Для skin_type используем лаймовый стиль независимо от типа вопроса
-  const useLimeStyle = (isGoalsQuestion && question?.type === 'multi_choice') || isSkinTypeQuestion;
+  // Специальный карточный layout (LimeStyle) оставляем только для «Тип кожи».
+  // Для «На чём вы хотите сфокусироваться?» используем обычный белый фон + карточки без лайм-блока.
+  const useLimeStyle = isSkinTypeQuestion;
 
   const questionText = question?.text || '';
 
@@ -378,8 +384,23 @@ export const QuizQuestion = memo(function QuizQuestion({
   };
 
   const { title: rawTitle, subtitle } = splitTitleSubtitle(questionText);
-  // Вопрос про имя: если в БД пустой text — показываем заголовок по умолчанию (код может быть USER_NAME или user_name)
-  const title = rawTitle || (question?.code?.toLowerCase() === 'user_name' ? 'Как к вам обращаться?' : '');
+  // Вопрос про имя: единый заголовок независимо от текста в БД
+  let title = rawTitle || (question?.code?.toLowerCase() === 'user_name' ? 'Как мы можем к вам обращаться?' : '');
+  if (question?.code?.toLowerCase() === 'user_name') title = 'Как мы можем к вам обращаться?';
+  const isSkinSensitivityQuestion = question?.code === 'skin_sensitivity';
+  if (isSkinSensitivityQuestion) title = 'Насколько ваша кожа склонна к раздражению?';
+  // Вопрос о целях (skin_goals) — единая формулировка
+  if (question?.code === 'skin_goals') title = 'На чём вы хотите сфокусироваться?';
+  // Вопрос о типе кожи — единая формулировка
+  if (question?.code === 'skin_type') title = 'Выберите ваш тип кожи';
+  // Вопрос о беспокойствах в коже — единая формулировка
+  const isSkinConcernsQuestion = question?.code === 'skin_concerns';
+  if (isSkinConcernsQuestion) title = 'Что вас больше всего беспокоит в коже сейчас?';
+
+  const subtitleForRender =
+    isSkinConcernsQuestion && subtitle?.toLowerCase().includes('можно выбрать несколько')
+      ? 'Можно выбрать несколько'
+      : subtitle;
 
   const renderTitle = (t: string) => {
     const isAvoidIngredientsQuestion = question?.code === 'avoid_ingredients';
@@ -396,22 +417,21 @@ export const QuizQuestion = memo(function QuizQuestion({
     return t;
   };
 
-  // Отступ сверху: прогресс-бар не должен накладываться на кнопку «Назад» (зона кнопки ~80px, контент с 48px)
-  const PROGRESS_BAR_TOP_OFFSET = '44px';
+  // Отступ сверху: прогресс-бар ниже кнопки «Назад» (зона кнопки ~80px)
+  const PROGRESS_BAR_TOP_OFFSET = '52px';
 
-  // Ширина прогресс-бара совпадает с контейнером вариантов ответов (640px с padding 20px → полоса 600px)
+  // Прогресс-бар в ширину контента (те же отступы 20px, что и у заголовка/вариантов)
   const ProgressBar = () => {
     if (hideProgressBar) return null;
 
     return (
       <div
         style={{
-          marginBottom: '24px',
+          marginBottom: '12px',
           marginTop: PROGRESS_BAR_TOP_OFFSET,
-          width: '100%',
-          maxWidth: '640px',
-          marginLeft: 'auto',
-          marginRight: 'auto',
+          width: '100vw',
+          maxWidth: '100vw',
+          marginLeft: 'calc(-50vw + 50%)',
           paddingLeft: '20px',
           paddingRight: '20px',
           boxSizing: 'border-box',
@@ -538,7 +558,7 @@ export const QuizQuestion = memo(function QuizQuestion({
 
         {/* Навигация */}
         {showSubmitButton && hasAnswer(question.id) ? (
-          <div style={{ marginTop: '24px', paddingBottom: '100px' }}>
+          <div style={{ marginTop: '24px', paddingBottom: isSkinSensitivityQuestion ? '52px' : '100px' }}>
             {renderSubmitOrContinueDisclaimer()}
             <FixedContinueButton
               variant="black"
@@ -578,82 +598,100 @@ export const QuizQuestion = memo(function QuizQuestion({
         };
         imageUrl = goalImages[index] || '/tone6.jpeg';
       } else if (isSkinTypeQuestion) {
+        // Порядок строго соответствует options в seed-questionnaire-v2:
+        // 0: Тип 1 — Сухая
+        // 1: Тип 2 — Комбинированная (сухая)
+        // 2: Тип 3 - Нормальная
+        // 3: Тип 3 — Комбинированная (жирная)
+        // 4: Тип 4 — Жирная
         const skinTypeImages: Record<number, string> = {
-          0: '/wrinkles6.jpeg',
-          1: '/acne6.jpeg',
-          2: '/pores6.jpeg',
-          3: '/puff6.jpeg',
-          4: '/pigmentation6.jpeg',
+          0: '/dry.jpeg',
+          1: '/dry (combi).jpeg',
+          2: '/normal.jpeg',
+          3: '/oily (combi).jpeg',
+          4: '/oily.jpeg',
         };
-        imageUrl = skinTypeImages[index] || '/tone6.jpeg';
+        imageUrl = skinTypeImages[index] || '/normal.jpeg';
       }
 
       return imageUrl;
     };
 
-    // Чтобы лайм доходил до низа экрана: отступ сверху (padding 48px + прогресс-бар ~74px) ≈ 122px
-    const limeMinHeight = (isGoalsQuestion || isSkinTypeQuestion) ? 'calc(100vh - 122px)' : 'auto';
-
     return (
       <div
         style={{
-          backgroundColor: '#D5FE61',
-          ...(isGoalsQuestion
-            ? {
-                borderTopLeftRadius: '24px',
-                borderTopRightRadius: '24px',
-                borderBottomLeftRadius: '0',
-                borderBottomRightRadius: '0',
-              }
-            : { borderRadius: '24px' }),
-          padding: '20px',
-          marginTop: '0px',
-          paddingTop: '20px',
-          width: (isGoalsQuestion || isSkinTypeQuestion) ? '100%' : 'auto',
-          marginLeft: (isGoalsQuestion || isSkinTypeQuestion) ? '0' : 'auto',
-          marginRight: (isGoalsQuestion || isSkinTypeQuestion) ? '0' : 'auto',
-          minHeight: limeMinHeight,
+          backgroundColor: 'transparent',
+          borderRadius: 0,
+          paddingTop: 0,
+          paddingRight: 0,
+          paddingBottom: 0,
+          paddingLeft: 0,
+          marginTop: '0',
+          width: '100%',
+          marginLeft: 0,
+          marginRight: 0,
+          minHeight: 'auto',
           position: 'static',
           boxSizing: 'border-box',
-          display: isGoalsQuestion ? 'flex' : 'block',
-          flexDirection: 'column',
+          display: 'block',
         }}
       >
-        {/* Заголовок */}
-        <h2
+        <div
           style={{
-            fontFamily:
-              "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontSize: '24px',
-            fontWeight: 700,
-            color: '#000000',
-            marginBottom: subtitle ? '4px' : '20px',
-            marginTop: '0',
+            maxWidth: '640px',
+            margin: '0 auto',
+            paddingLeft: '20px',
+            paddingRight: '20px',
+            boxSizing: 'border-box',
           }}
         >
-          {renderTitle(title)}
-        </h2>
-
-        {/* Подзаголовок */}
-        {subtitle && (
-          <div
+          {/* Заголовок */}
+          <h2
             style={{
               fontFamily:
-                "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontSize: '14px',
-              fontWeight: 400,
-              color: '#9D9D9D',
-              marginBottom: '20px',
+                "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontSize: '24px',
+              fontWeight: isSkinTypeQuestion ? 500 : 700,
+              color: '#000000',
+              marginBottom: subtitle ? '4px' : '20px',
               marginTop: '0',
-              lineHeight: '1.5',
-              whiteSpace: 'pre-line',
             }}
           >
-            {subtitle}
-          </div>
-        )}
+            {renderTitle(title)}
+          </h2>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Подзаголовок */}
+          {subtitleForRender && (
+            <div
+              style={{
+                fontFamily:
+                  "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontSize: '14px',
+                fontWeight: 400,
+                color: '#9D9D9D',
+                marginBottom: '20px',
+                marginTop: '0',
+                lineHeight: '1.5',
+                whiteSpace: 'pre-line',
+              }}
+            >
+              {subtitleForRender}
+            </div>
+          )}
+        </div>
+
+        <div
+          style={{
+            maxWidth: '640px',
+            margin: '0 auto',
+            paddingLeft: '20px',
+            paddingRight: '20px',
+            boxSizing: 'border-box',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+          }}
+        >
           {question.options.map((option, index) => {
             const currentAnswers = isMultiChoice
               ? ((answers[question.id] as string[]) || [])
@@ -918,42 +956,74 @@ export const QuizQuestion = memo(function QuizQuestion({
   const MultiChoiceDefault = () => {
     if (question?.type !== 'multi_choice' || !question?.options || useLimeStyle || isLifestyleHabitsQuestion) return null;
 
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {question.options.map((option) => {
-          const currentAnswers = (answers[question.id] as string[]) || [];
-          const isSelected = currentAnswers.includes(option.value);
+    const sensitivityCircleColors = ['#F7FFD1', '#E9FF9C', '#D5FE61', '#C1F24A'];
+    const isSkinSensitivityForMulti = question?.code === 'skin_sensitivity';
+    const isGoalsQuestionForMulti = question?.code === 'skin_goals';
 
-          return (
-            <button
-              key={option.id}
-              onClick={() => {
-                const newAnswers = isSelected
-                  ? currentAnswers.filter((v) => v !== option.value)
-                  : [...currentAnswers, option.value];
-                onAnswer(question.id, newAnswers);
-              }}
-              style={{
-                padding: '16px',
-                borderRadius: '16px',
-                border: '1px solid #000000',
-                backgroundColor: isSelected ? '#F2F2F2' : '#FFFFFF',
-                cursor: 'pointer',
-                textAlign: 'left',
-                fontSize: '16px',
-                color: '#000000',
-                transition: 'all 0.2s',
-                fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-              }}
-            >
-              {option.label}
-            </button>
-          );
-        })}
+    return (
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: isSkinConcernsQuestion ? '10px' : '12px',
+          maxWidth: '640px',
+          margin: '0 auto',
+        }}
+      >
+        {/* Для skin_goals рендерим варианты отдельно (как карточки с картинками), здесь только навигация */}
+        {!isGoalsQuestionForMulti &&
+          question.options.map((option, index) => {
+            const currentAnswers = (answers[question.id] as string[]) || [];
+            const isSelected = currentAnswers.includes(option.value);
+
+            return (
+              <button
+                key={option.id}
+                onClick={() => {
+                  const newAnswers = isSelected
+                    ? currentAnswers.filter((v) => v !== option.value)
+                    : [...currentAnswers, option.value];
+                  onAnswer(question.id, newAnswers);
+                }}
+                style={{
+                  padding: isSkinConcernsQuestion ? '14px' : '16px',
+                  borderRadius: '16px',
+                  border: '1px solid #000000',
+                  backgroundColor: isSelected ? '#F2F2F2' : '#FFFFFF',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  fontSize: isSkinConcernsQuestion ? '15px' : '16px',
+                  color: '#000000',
+                  transition: 'all 0.2s',
+                  fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                }}
+              >
+                {isSkinSensitivityForMulti ? (
+                  <>
+                    <div
+                      style={{
+                        width: '14px',
+                        height: '14px',
+                        borderRadius: '999px',
+                        backgroundColor: sensitivityCircleColors[index] ?? '#D5FE61',
+                        flexShrink: 0,
+                      }}
+                    />
+                    <span>{option.label}</span>
+                  </>
+                ) : (
+                  option.label
+                )}
+              </button>
+            );
+          })}
 
         {hasAnswer(question.id) ? (
           showSubmitButton ? (
-            <div style={{ marginTop: '24px', paddingBottom: '100px' }}>
+            <div style={{ marginTop: '24px', paddingBottom: isSkinSensitivityQuestion ? '52px' : isSkinConcernsQuestion ? '60px' : '100px' }}>
               {renderSubmitOrContinueDisclaimer()}
               <FixedContinueButton
                 variant="black"
@@ -984,8 +1054,20 @@ export const QuizQuestion = memo(function QuizQuestion({
         style={{
           maxWidth: useLimeStyle ? '100%' : '640px',
           margin: useLimeStyle ? '0' : '0 auto',
-          padding: useLimeStyle ? '0' : '0 20px',
-          paddingBottom: '100px',
+          paddingLeft: useLimeStyle ? undefined : '20px',
+          paddingRight: useLimeStyle ? undefined : '20px',
+          paddingTop: isNameQuestion ? '52px' : undefined,
+          paddingBottom: isNameQuestion
+            ? '80px'
+            : isSkinSensitivityQuestion
+            ? '52px'
+            : isSkinTypeQuestion
+            ? '60px'
+            : isGoalsQuestion
+            ? '60px'
+            : isSkinConcernsQuestion
+            ? '60px'
+            : '100px',
           boxSizing: 'border-box',
         }}
       >
@@ -1000,7 +1082,7 @@ export const QuizQuestion = memo(function QuizQuestion({
               style={{
                 fontFamily:
                   "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontSize: '24px',
+                fontSize: isNameQuestion ? '20px' : isGoalsQuestion ? '22px' : '24px',
                 fontWeight: 700,
                 color: '#000000',
                 marginBottom: subtitle ? '4px' : '24px',
@@ -1010,7 +1092,7 @@ export const QuizQuestion = memo(function QuizQuestion({
               {renderTitle(title)}
             </h2>
 
-            {subtitle && (
+            {subtitleForRender && (
               <div
                 style={{
                   fontFamily:
@@ -1021,10 +1103,10 @@ export const QuizQuestion = memo(function QuizQuestion({
                   marginBottom: '24px',
                   marginTop: '0',
                   lineHeight: '1.5',
-                  whiteSpace: 'pre-line',
-                }}
-              >
-                {subtitle}
+                whiteSpace: 'pre-line',
+              }}
+            >
+              {subtitleForRender}
               </div>
             )}
           </>
@@ -1034,7 +1116,54 @@ export const QuizQuestion = memo(function QuizQuestion({
         {useLimeStyle && <ProgressBar />}
 
         {/* Рендеры */}
-        <LimeStyle />
+        {isSkinTypeQuestion && <LimeStyle />}
+
+        {/* Экран «На чём вы хотите сфокусироваться?» — карточки с картинками без лаймового контейнера */}
+        {isGoalsQuestion && !useLimeStyle && (
+          <div
+            style={{
+              marginBottom: '24px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+            }}
+          >
+            {question.options?.map((option, index) => {
+              const currentAnswers = ((answers[question.id] as string[]) || []);
+              const isSelected = currentAnswers.includes(option.value);
+
+              const goalImages: Record<number, string> = {
+                0: '/wrinkles6.jpeg',
+                1: '/acne6.jpeg',
+                2: '/pores6.jpeg',
+                3: '/puff6.jpeg',
+                4: '/pigmentation6.jpeg',
+                5: '/tone6.jpeg',
+              };
+
+              const imageUrl = goalImages[index] || '/tone6.jpeg';
+
+              return (
+                <LimeOptionCard
+                  key={option.id}
+                  option={option}
+                  index={index}
+                  isSelected={isSelected}
+                  isMultiChoice={true}
+                  isSkinTypeQuestion={false}
+                  imageUrl={imageUrl}
+                  onOptionClick={async () => {
+                    const newAnswers = isSelected
+                      ? currentAnswers.filter((v) => v !== option.value)
+                      : [...currentAnswers, option.value];
+                    await onAnswer(question.id, newAnswers);
+                  }}
+                />
+              );
+            })}
+          </div>
+        )}
+
         <SingleChoiceDefault />
         {question?.type === 'free_text' && (
           <FreeTextInput
