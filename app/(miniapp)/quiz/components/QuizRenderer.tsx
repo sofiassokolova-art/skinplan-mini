@@ -3,7 +3,7 @@
 
 'use client';
 
-import React, { Suspense, lazy, memo, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useQuizContext } from './QuizProvider';
 import { ScreenErrorBoundary, QuestionErrorBoundary } from '@/components/QuizErrorBoundary';
 
@@ -26,7 +26,7 @@ import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 import type { Question } from '@/lib/quiz/types';
 
 import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
-import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
+import { getInitialInfoScreens, getInfoScreenAfterQuestion } from '@/app/(miniapp)/quiz/info-screens';
 import { useQuizHandlers } from '../hooks/useQuizHandlers';
 type Screen = 'LOADER' | 'ERROR' | 'RETAKE' | 'RESUME' | 'INFO' | 'INITIAL_INFO' | 'QUESTION';
 
@@ -35,6 +35,7 @@ function ResumeScreenDeferred(props: {
   savedProgress: any;
   questionnaire: any;
   answers: Record<number, string | string[]>;
+  answersRef: React.MutableRefObject<Record<number, string | string[]>>;
   isRetakingQuiz: boolean;
   showRetakeScreen: boolean;
   onResume: () => void;
@@ -223,6 +224,136 @@ export const QuizRenderer = memo(function QuizRenderer({
     }
   }, [questionnaireQuery.data, questionnaireRef, setQuestionnaire]);
 
+  // Синхронизация состояния, когда инфо-экран показан только из ref (useQuizComputed поставил ref, state ещё null).
+  // Чтобы при «Продолжить» handleNext видел currentPendingInfoScreen и вёл в habits_matter, а не в следующий вопрос.
+  // Массив зависимостей — строго 6 примитивов/стабильных ссылок, чтобы размер не менялся между рендерами (React rule).
+  const pendingInfoScreenId = pendingInfoScreen?.id ?? null;
+  const syncRef = useRef({
+    setPendingInfoScreen,
+    setCurrentQuestionIndex,
+    pendingInfoScreenRef: quizState.pendingInfoScreenRef,
+    currentQuestionIndexRef: quizState.currentQuestionIndexRef,
+    allQuestions,
+  });
+  syncRef.current = {
+    setPendingInfoScreen,
+    setCurrentQuestionIndex,
+    pendingInfoScreenRef: quizState.pendingInfoScreenRef,
+    currentQuestionIndexRef: quizState.currentQuestionIndexRef,
+    allQuestions,
+  };
+  useLayoutEffect(() => {
+    const refScreen = syncRef.current.pendingInfoScreenRef?.current;
+    if (
+      screen !== 'INFO' ||
+      !refScreen ||
+      pendingInfoScreenId !== null ||
+      refScreen.id !== 'ai_showcase' ||
+      currentQuestionIndex <= 0 ||
+      allQuestions.length === 0 ||
+      isRetakingQuiz
+    ) {
+      return;
+    }
+    const currentQ = syncRef.current.allQuestions[Math.min(currentQuestionIndex, syncRef.current.allQuestions.length - 1)];
+    const prevQ = syncRef.current.allQuestions[currentQuestionIndex - 1];
+    if ((currentQ?.code || '').toLowerCase() !== 'makeup_frequency' || (prevQ?.code || '').toLowerCase() !== 'avoid_ingredients') {
+      return;
+    }
+    const prevIndex = currentQuestionIndex - 1;
+    syncRef.current.setPendingInfoScreen(refScreen);
+    syncRef.current.setCurrentQuestionIndex(prevIndex);
+    if (syncRef.current.currentQuestionIndexRef) {
+      syncRef.current.currentQuestionIndexRef.current = prevIndex;
+    }
+  }, [screen, currentQuestionIndex, pendingInfoScreenId, allQuestions.length, isRetakingQuiz, syncRef]);
+
+  // Коррекция: если по какой-то причине показывается вопрос про косметику сразу после avoid_ingredients —
+  // откатываем на инфо-цепочку (ai_showcase → habits_matter) и не показываем makeup_frequency, пока пользователь не пройдёт экраны.
+  // useLayoutEffect чтобы применить до отрисовки и избежать мигания вопроса.
+  useLayoutEffect(() => {
+    if (
+      screen !== 'QUESTION' ||
+      !currentQuestion ||
+      (currentQuestion.code || '').toLowerCase() !== 'makeup_frequency' ||
+      currentQuestionIndex <= 0 ||
+      allQuestions.length === 0 ||
+      isRetakingQuiz ||
+      pendingInfoScreen
+    ) {
+      return;
+    }
+    const prevQuestion = allQuestions[currentQuestionIndex - 1];
+    if (!prevQuestion || (prevQuestion.code || '').toLowerCase() !== 'avoid_ingredients') {
+      return;
+    }
+    const infoScreen = getInfoScreenAfterQuestion('avoid_ingredients');
+    if (!infoScreen) return;
+    const prevIndex = currentQuestionIndex - 1;
+    if (quizState.pendingInfoScreenRef) {
+      quizState.pendingInfoScreenRef.current = infoScreen;
+    }
+    setPendingInfoScreen(infoScreen);
+    setCurrentQuestionIndex(prevIndex);
+    if (quizState.currentQuestionIndexRef) {
+      quizState.currentQuestionIndexRef.current = prevIndex;
+    }
+  }, [
+    screen,
+    currentQuestion?.id,
+    currentQuestion?.code,
+    currentQuestionIndex,
+    allQuestions.length,
+    isRetakingQuiz,
+    pendingInfoScreen,
+    setPendingInfoScreen,
+    setCurrentQuestionIndex,
+    quizState.pendingInfoScreenRef,
+    quizState.currentQuestionIndexRef,
+  ]);
+
+  // Коррекция: если показывается «Какой тип ухода вам ближе?» сразу после «Ваши привычки» —
+  // откатываем на инфо-цепочку (ai_comparison → preferences_intro) и не показываем care_type, пока пользователь не пройдёт экраны.
+  useLayoutEffect(() => {
+    if (
+      screen !== 'QUESTION' ||
+      !currentQuestion ||
+      (currentQuestion.code || '').toLowerCase() !== 'care_type' ||
+      currentQuestionIndex <= 0 ||
+      allQuestions.length === 0 ||
+      isRetakingQuiz ||
+      pendingInfoScreen
+    ) {
+      return;
+    }
+    const prevQuestion = allQuestions[currentQuestionIndex - 1];
+    if (!prevQuestion || (prevQuestion.code || '').toLowerCase() !== 'lifestyle_habits') {
+      return;
+    }
+    const infoScreen = getInfoScreenAfterQuestion('lifestyle_habits');
+    if (!infoScreen) return;
+    const prevIndex = currentQuestionIndex - 1;
+    if (quizState.pendingInfoScreenRef) {
+      quizState.pendingInfoScreenRef.current = infoScreen;
+    }
+    setPendingInfoScreen(infoScreen);
+    setCurrentQuestionIndex(prevIndex);
+    if (quizState.currentQuestionIndexRef) {
+      quizState.currentQuestionIndexRef.current = prevIndex;
+    }
+  }, [
+    screen,
+    currentQuestion?.id,
+    currentQuestion?.code,
+    currentQuestionIndex,
+    allQuestions.length,
+    isRetakingQuiz,
+    pendingInfoScreen,
+    setPendingInfoScreen,
+    setCurrentQuestionIndex,
+    quizState.pendingInfoScreenRef,
+    quizState.currentQuestionIndexRef,
+  ]);
 
   const {
     handleResume,
@@ -314,8 +445,7 @@ export const QuizRenderer = memo(function QuizRenderer({
           savedProgress={savedProgress}
           questionnaire={questionnaireFromQuery || questionnaireRef.current || questionnaire}
           answers={answers}
-          isRetakingQuiz={isRetakingQuiz}
-          showRetakeScreen={showRetakeScreen}
+          answersRef={answersRef}          isRetakingQuiz={isRetakingQuiz}          showRetakeScreen={showRetakeScreen}
           onResume={handleResume}
           onStartOver={handleStartOver}
           isBusy={isStartingOver || isSubmitting}
@@ -555,20 +685,19 @@ export const QuizRenderer = memo(function QuizRenderer({
         <Suspense fallback={<QuizInitialLoader />}>
           <QuestionErrorBoundary componentName="QuizQuestion">
             <QuizQuestion
-            key={safeCurrentQuestion.id}
-            question={safeCurrentQuestion}
-            currentQuestionIndex={currentQuestionIndex}
-            allQuestionsLength={allQuestionsLength}
-            answers={answers}
-            answersRef={answersRef}
-            isRetakingQuiz={isRetakingQuiz}
-            isSubmitting={isSubmitting}
-            onAnswer={onAnswer}
-            onNext={onNext}
-            onSubmit={onSubmit}
-            onBack={onBack}
-            showBackButton={currentQuestionIndex > 0 || currentInfoScreenIndex > 0}
-          />
+              key={safeCurrentQuestion.id}
+              question={safeCurrentQuestion}
+              currentQuestionIndex={currentQuestionIndex}
+              allQuestionsLength={allQuestionsLength}
+              answers={answers}
+              isRetakingQuiz={isRetakingQuiz}
+              isSubmitting={isSubmitting}
+              onAnswer={onAnswer}
+              onNext={onNext}
+              onSubmit={onSubmit}
+              onBack={onBack}
+              showBackButton={currentQuestionIndex > 0 || currentInfoScreenIndex > 0}
+            />
           </QuestionErrorBoundary>
         </Suspense>
       </div>

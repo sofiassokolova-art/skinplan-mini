@@ -560,6 +560,27 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       return 'ERROR';
     }
 
+    // Приоритет 8.5: Коррекция — вопрос про косметику не должен показываться сразу после avoid_ingredients.
+    // Если по индексу текущий вопрос makeup_frequency, а предыдущий avoid_ingredients — принудительно показываем инфо-цепочку в этом же рендере.
+    if (
+      allQuestions.length > 0 &&
+      currentQuestionIndex > 0 &&
+      !isRetakingQuiz &&
+      !pendingInfoScreen
+    ) {
+      const idx = Math.min(currentQuestionIndex, allQuestions.length - 1);
+      const currentQ = allQuestions[idx];
+      const prevQ = allQuestions[currentQuestionIndex - 1];
+      const currentCode = (currentQ?.code || '').toLowerCase();
+      const prevCode = (prevQ?.code || '').toLowerCase();
+      if (currentCode === 'makeup_frequency' && prevCode === 'avoid_ingredients') {
+        const fixScreen = getInfoScreenAfterQuestion('avoid_ingredients');
+        if (fixScreen && pendingInfoScreenRef) {
+          pendingInfoScreenRef.current = fixScreen;
+        }
+      }
+    }
+
     // Приоритет 9: Pending инфо-экран между вопросами
     // ИСПРАВЛЕНО: Проверяем pendingInfoScreen ПЕРЕД вопросами, чтобы не показывать ERROR
     // когда currentQuestion становится null перед показом инфо-экрана
@@ -745,11 +766,26 @@ export function useQuizComputed(params: UseQuizComputedParams) {
           questionsToUseLength: questionsToUse.length
         });
       } else {
-        console.log('❌ [useQuizComputed] currentQuestion: invalid index, returning null', {
+        console.log('❌ [useQuizComputed] currentQuestion: invalid index, попытаемся использовать ближайший валидный вопрос', {
           currentQuestionIndex,
           questionsToUseLength: questionsToUse.length
         });
       }
+
+      // ФИКС: Если есть хотя бы один вопрос, вместо null возвращаем ближайший валидный вопрос,
+      // чтобы не падать на экране "Вопрос не найден"
+      if (questionsToUse.length > 0) {
+        const clampedIndex = Math.max(0, Math.min(currentQuestionIndex, questionsToUse.length - 1));
+        const fallbackQuestion = questionsToUse[clampedIndex];
+        console.log('🔧 [useQuizComputed] currentQuestion: используем fallback-вопрос по скорректированному индексу', {
+          clampedIndex,
+          fallbackQuestionId: fallbackQuestion?.id,
+          fallbackQuestionCode: fallbackQuestion?.code,
+        });
+        return fallbackQuestion;
+      }
+
+      // Если вопросов нет вообще — возвращаем null (это уже отдельная ошибка конфигурации анкеты)
       return null;
     }
 

@@ -126,7 +126,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'general_info_intro',
     title: 'Общая информация',
     subtitle: 'Поможет нам подобрать подходящий уход',
-    image: '/info8.jpg',
+    image: '/information.png',
     showAfterInfoScreenId: 'testimonials', // ИСПРАВЛЕНО: После экрана testimonials, а не вопроса
     ctaText: 'Продолжить',
   },
@@ -137,7 +137,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'skin_features_intro',
     title: 'Узнаем особенности вашей кожи',
     subtitle: 'Мы поймем какой у вас тип кожи и как о нем заботиться лучше всего',
-    image: '/featuresinfo.jpg', // ИСПРАВЛЕНО: Добавлено расширение .jpg
+    image: '/lookimgclosely.png',
     showAfterQuestionCode: 'gender',
     ctaText: 'Продолжить',
   },
@@ -161,7 +161,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'health_data',
     title: 'Нам важно учесть ваши данные о здоровье',
     subtitle: 'Ваши данные защищены — они нужны только для точных рекомендаций',
-    image: '/infohealth.jpg', // ИСПРАВЛЕНО: Исправлен путь к изображению (jpg вместо png)
+    image: '/healthmatter.png',
     showAfterInfoScreenId: 'simple_care', // ИСПРАВЛЕНО: После экрана simple_care, а не вопроса
     ctaText: 'Продолжить',
   },
@@ -176,15 +176,16 @@ export const INFO_SCREENS: InfoScreen[] = [
     title: '💙 SkinIQ заботится о вашем здоровье',
     subtitle: 'Все рекомендации по уходу одобрены врачами-дерматологами и абсолютно безопасны\n\nВся информация остаётся конфиденциальной и используется только для персональных рекомендаций',
     image: '/dermatologist_examining.jpg',
-    showAfterQuestionCode: 'avoid_ingredients',
+    showAfterQuestionCode: 'oral_medications',
     ctaText: 'Продолжить',
   },
   
-  // 20) Расскажите о вашем текущем уходе
+  // 20) Расскажите о вашем текущем уходе — та же вёрстка, что Общая информация (GoalsIntroScreen)
   {
     id: 'current_care_intro',
     title: 'Расскажите о вашем текущем уходе',
     subtitle: 'Это поможет нам понять, какие средства вы уже используете и как реагирует ваша кожа',
+    image: '/routine.png',
     showAfterInfoScreenId: 'health_trust', // FIX: было showAfterQuestionCode — но health_trust это info screen, не question
     ctaText: 'Продолжить',
   },
@@ -198,7 +199,9 @@ export const INFO_SCREENS: InfoScreen[] = [
     title: 'SkinIQ использует ИИ для подбора ухода, который действительно работает',
     subtitle: '95% точность рекомендаций\n10M+ анализов кожи по фото\nПоддержка 500+ активных ингредиентов\nОбучено на данных, подтверждённых дерматологами',
     type: 'products',
-    showAfterQuestionCode: 'oral_medications',
+    // ПОСЛЕ вопроса "Выберите ингредиенты, которые вы хотели бы исключить" (avoid_ingredients),
+    // а не сразу после "Применяете ли вы рецептурные кремы..."
+    showAfterQuestionCode: 'avoid_ingredients',
     content: [
       { name: 'Увлажняющий крем', desc: 'Поддерживает барьер кожи', icon: '/products/moisturizer.jpg' },
       { name: 'Сыворотка с витамином C', desc: 'Осветляет и выравнивает тон', icon: '/products/vitamin_c.jpg' },
@@ -212,7 +215,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'habits_matter',
     title: 'Каждая привычка отражается на коже',
     subtitle: 'Давайте посмотрим, что влияет именно на вашу и как ей помочь',
-    image: '/habitsinfo.jpeg',
+    image: '/habits2.png',
     showAfterInfoScreenId: 'ai_showcase', // ИСПРАВЛЕНО: После экрана ai_showcase, а не вопроса
     ctaText: 'Продолжить',
   },
@@ -321,7 +324,9 @@ export const INFO_SCREENS: InfoScreen[] = [
 
 // Функция для получения информационного экрана, который нужно показать после вопроса с указанным кодом
 export function getInfoScreenAfterQuestion(questionCode: string): InfoScreen | undefined {
-  return INFO_SCREENS.find(screen => screen.showAfterQuestionCode === questionCode);
+  if (!questionCode) return undefined;
+  const normalized = questionCode.toLowerCase();
+  return INFO_SCREENS.find((screen) => screen.showAfterQuestionCode?.toLowerCase() === normalized);
 }
 
 /** Следующий инфо-экран в цепочке (имеет showAfterInfoScreenId === screenId) */

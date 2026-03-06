@@ -5,6 +5,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
 import type { Questionnaire } from '@/lib/quiz/types';
@@ -175,6 +176,7 @@ export function QuizInfoScreen({
   const isPersonalAnalysisScreen = screen.id === 'personal_analysis';
   const isGoalsIntroScreen = screen.id === 'goals_intro';
   const isGeneralInfoIntroScreen = screen.id === 'general_info_intro';
+  const isCurrentCareIntroScreen = screen.id === 'current_care_intro';
   const isHealthDataScreen = screen.id === 'health_data';
   const isSkinFeaturesIntroScreen = screen.id === 'skin_features_intro';
   const isHabitsMatterScreen = screen.id === 'habits_matter';
@@ -285,7 +287,7 @@ export function QuizInfoScreen({
     );
   }
 
-  // Экран отзывов (testimonials) — полноэкранные фото, стеклянный контейнер сверху
+  // Экран отзывов (testimonials) — полноэкранные фото, стеклянный контейнер сверху. Рендер в body без отступов.
   if (isTestimonialsScreen) {
     const testimonialsBackHandler = () => {
       const html = document.documentElement;
@@ -296,122 +298,119 @@ export function QuizInfoScreen({
       setTimeout(() => window.scrollTo(scrollLeft, scrollTop), 0);
     };
 
-    return (
-      <>
+    const testimonialsContent = (
+      <div
+        style={{
+          padding: 0,
+          margin: 0,
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          width: '100%',
+          boxSizing: 'border-box',
+          overflow: 'hidden',
+          backgroundColor: '#FFFFFF',
+          touchAction: 'pan-x',
+          overscrollBehavior: 'none',
+        }}
+      >
         <div
           style={{
+            flex: 1,
+            overflow: 'hidden',
+            overflowY: 'visible',
             padding: 0,
-            margin: 0,
-            position: 'fixed',
+            position: 'relative',
+            zIndex: 0,
+            paddingBottom: '120px',
+          }}
+        >
+          {screen.content && Array.isArray(screen.content) && (
+            <TestimonialsCarousel testimonials={screen.content as any} fullWidth />
+          )}
+        </div>
+
+        <div
+          className="animate-fade-in-soft"
+          style={{
+            position: 'absolute',
             top: 0,
             left: 0,
             right: 0,
-            bottom: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            width: '100%',
-            maxWidth: '100%',
-            overflow: 'hidden',
-            backgroundColor: '#FFFFFF',
-            touchAction: 'pan-x',
-            overscrollBehavior: 'none',
+            zIndex: 10,
+            paddingTop: '24px',
+            paddingLeft: '8px',
+            paddingRight: '16px',
+            paddingBottom: '10px',
+            pointerEvents: 'none',
+            backgroundColor: 'rgba(0, 0, 0, 0.2)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            borderBottomLeftRadius: '24px',
+            borderBottomRightRadius: '24px',
           }}
         >
-          {/* Карусель отзывов — фотографии сверху на всю ширину */}
-          <div
-            className="animate-fade-in-soft"
-            style={{
-              flex: 1,
-              overflow: 'hidden',
-              overflowY: 'visible',
-              paddingLeft: 0,
-              paddingRight: 0,
-              paddingTop: 0,
-              paddingBottom: '120px',
-              animationDelay: '0.1s',
-              position: 'relative',
-              zIndex: 0,
-            }}
-          >
-            {screen.content && Array.isArray(screen.content) && (
-              <TestimonialsCarousel testimonials={screen.content as any} fullWidth />
-            )}
-          </div>
-
-          {/* Стеклянный контейнер сверху: кнопка «Назад», заголовок и подзаголовок */}
-          <div
-            className="animate-fade-in-soft"
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              zIndex: 10,
-              paddingTop: '24px',
-              paddingLeft: '8px',
-              paddingRight: '16px',
-              paddingBottom: '10px',
-              pointerEvents: 'none',
-              backgroundColor: 'rgba(0, 0, 0, 0.2)',
-              backdropFilter: 'blur(8px)',
-              WebkitBackdropFilter: 'blur(8px)',
-              borderBottomLeftRadius: '24px',
-              borderBottomRightRadius: '24px',
-            }}
-          >
-            {shouldShowBackButton && (
-              <BackButtonFixed show onClick={testimonialsBackHandler} color="#FFFFFF" />
-            )}
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', width: '100%' }}>
-              <div style={{ width: 44, minWidth: 44, flexShrink: 0 }} aria-hidden />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h1
+          {shouldShowBackButton && (
+            <BackButtonFixed show onClick={testimonialsBackHandler} color="#FFFFFF" />
+          )}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', width: '100%' }}>
+            <div style={{ width: 44, minWidth: 44, flexShrink: 0 }} aria-hidden />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h1
+                style={{
+                  fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontWeight: 700,
+                  fontSize: '12px',
+                  lineHeight: '120%',
+                  letterSpacing: '0px',
+                  textAlign: 'left',
+                  whiteSpace: 'pre-line',
+                  color: '#FFFFFF',
+                  margin: '0 0 10px 0',
+                  maxWidth: '100%',
+                }}
+              >
+                {screen.title}
+              </h1>
+              {screen.subtitle && (
+                <div
                   style={{
-                    fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-                    fontWeight: 700,
-                    fontSize: '12px',
-                    lineHeight: '120%',
+                    fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                    fontWeight: 400,
+                    fontSize: '16px',
+                    lineHeight: '140%',
                     letterSpacing: '0px',
                     textAlign: 'left',
+                    color: 'rgba(255,255,255,0.95)',
                     whiteSpace: 'pre-line',
-                    color: '#FFFFFF',
-                    margin: '0 0 10px 0',
-                    maxWidth: '100%',
                   }}
                 >
-                  {screen.title}
-                </h1>
-                {screen.subtitle && (
-                  <div
-                    style={{
-                      fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                      fontWeight: 400,
-                      fontSize: '16px',
-                      lineHeight: '140%',
-                      letterSpacing: '0px',
-                      textAlign: 'left',
-                      color: 'rgba(255,255,255,0.95)',
-                      whiteSpace: 'pre-line',
-                    }}
-                  >
-                    {screen.subtitle}
-                  </div>
-                )}
-              </div>
+                  {screen.subtitle}
+                </div>
+              )}
             </div>
           </div>
-
-          <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 2 }}>
-            <FixedContinueButton
-              ctaText={screen.ctaText}
-              onClick={handleNext}
-              disabled={isHandlingNext}
-              loadingText="Продолжить"
-            />
-          </div>
         </div>
-      </>
+
+        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 2 }}>
+          <FixedContinueButton
+            ctaText={screen.ctaText}
+            onClick={handleNext}
+            disabled={isHandlingNext}
+            loadingText="Продолжить"
+          />
+        </div>
+      </div>
     );
+
+    if (typeof document !== 'undefined') {
+      return createPortal(testimonialsContent, document.body);
+    }
+    return testimonialsContent;
   }
 
   // Экран "Какую цель вы ставите перед собой?" (goals_intro)
@@ -432,6 +431,20 @@ export function QuizInfoScreen({
 
   // Экран "Общая информация" (general_info_intro) — тот же стиль, что goals_intro
   if (isGeneralInfoIntroScreen) {
+    return (
+      <GoalsIntroScreen
+        screen={screen}
+        currentInfoScreenIndex={currentInfoScreenIndex}
+        onBack={handleBack}
+        onContinue={() => {
+          if (!handleNextInProgressRef.current && !isHandlingNext) handleNext();
+        }}
+      />
+    );
+  }
+
+  // Экран "Расскажите о вашем текущем уходе" (current_care_intro) — та же вёрстка, что Общая информация (goals_intro)
+  if (isCurrentCareIntroScreen) {
     return (
       <GoalsIntroScreen
         screen={screen}

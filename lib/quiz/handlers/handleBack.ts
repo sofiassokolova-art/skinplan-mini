@@ -359,6 +359,8 @@ export async function handleBack(params: HandleBackParams): Promise<void> {
     // ======================
     // 3) Назад по вопросам
     // ======================
+    // Для мужчин вопрос makeup_frequency отфильтрован (filterQuestions), в allQuestions его нет.
+    // Поэтому при «Назад» с spf_frequency prevQ = avoid_ingredients, показываем habits_matter — вопрос про косметику не появляется.
     if (isOnQuestionsValue && normalizedCurrentIndex > 0) {
       // ИСПРАВЛЕНО: Используем нормализованный индекс
       const currentQ = allQuestions[normalizedCurrentIndex] ?? null;

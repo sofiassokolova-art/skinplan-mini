@@ -23,6 +23,8 @@ function GoalsIntroScreenComponent({
   onContinue
 }: GoalsIntroScreenProps) {
   const isSkinFeaturesIntro = screen.id === 'skin_features_intro';
+  const isHealthData = screen.id === 'health_data';
+  const useSameLayoutAsSkinFeatures = isSkinFeaturesIntro || isHealthData;
 
   return (
     <div style={{
@@ -36,7 +38,7 @@ function GoalsIntroScreenComponent({
 
       <BackButtonFixed show={currentInfoScreenIndex > 0} onClick={onBack} />
 
-      {/* Контент с абсолютным позиционированием */}
+      {/* Контент с картинкой и текстом */}
       <div
         className="animate-fade-in"
         style={{
@@ -52,8 +54,9 @@ function GoalsIntroScreenComponent({
             position: 'absolute',
             width: '200px',
             height: '241px',
-            top: '120px',
-            left: '60px',
+            top: '104px',
+            left: '50%',
+            transform: 'translateX(-50%)',
             zIndex: 10,
             background: PAGE_BG,
             boxShadow: 'none',
@@ -86,46 +89,53 @@ function GoalsIntroScreenComponent({
           </div>
         )}
 
-        {/* Заголовок под картинкой, адаптивный размер */}
-        <h1 style={{
-          position: 'absolute',
-          top: '360px',
-          left: '20px',
-          width: 'calc(100% - 40px)',
-          fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-          fontWeight: 700,
-          fontSize: 'clamp(23px, 6vw, 33px)',
-          lineHeight: '120%',
-          letterSpacing: '0px',
-          textAlign: 'left',
-          color: '#000000',
-          margin: '0',
-          whiteSpace: 'pre-line',
-          zIndex: 10,
-        }}>
-          {screen.title}
-        </h1>
+        {/* Текстовый блок под картинкой — заголовок и подзаголовок всегда идут друг за другом */}
+        <div
+          style={{
+            position: 'relative',
+            paddingTop: useSameLayoutAsSkinFeatures ? '360px' : '356px',
+            paddingLeft: '20px',
+            paddingRight: '20px',
+            paddingBottom: '80px',
+            boxSizing: 'border-box',
+          }}
+        >
+          <h1
+            style={{
+              fontFamily:
+                "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 700,
+              fontSize: 'clamp(23px, 6vw, 33px)',
+              lineHeight: '120%',
+              letterSpacing: '0px',
+              textAlign: 'left',
+              color: '#000000',
+              margin: 0,
+              whiteSpace: 'pre-line',
+            }}
+          >
+            {screen.title}
+          </h1>
 
-        {/* Подзаголовок — меньше и ближе к заголовку */}
-        {screen.subtitle && (
-          <div style={{
-            position: 'absolute',
-            width: 'calc(100% - 40px)',
-            top: isSkinFeaturesIntro ? '450px' : '430px',
-            left: '20px',
-            fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 400,
-            fontSize: '15px',
-            lineHeight: '140%',
-            letterSpacing: '0px',
-            textAlign: 'left',
-            color: '#000000',
-            whiteSpace: 'pre-line',
-            zIndex: 10,
-          }}>
-            {screen.subtitle}
-          </div>
-        )}
+          {screen.subtitle && (
+            <div
+              style={{
+                marginTop: '12px',
+                fontFamily:
+                  "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 400,
+                fontSize: '15px',
+                lineHeight: '140%',
+                letterSpacing: '0px',
+                textAlign: 'left',
+                color: '#000000',
+                whiteSpace: 'pre-line',
+              }}
+            >
+              {screen.subtitle}
+            </div>
+          )}
+        </div>
       </div>
 
       <FixedContinueButton ctaText={screen.ctaText || 'Продолжить'} onClick={onContinue} />

@@ -3,6 +3,8 @@
 
 'use client';
 
+import { useState, useEffect } from 'react';
+
 interface ResumeScreenProps {
   answeredCount: number;
   totalQuestions: number;
@@ -18,6 +20,11 @@ export function ResumeScreen({
   onResume,
   onStartOver,
 }: ResumeScreenProps) {
+  const [displayPercent, setDisplayPercent] = useState(0);
+  useEffect(() => {
+    setDisplayPercent(progressPercent);
+  }, [progressPercent]);
+
   return (
     <div style={{ 
       padding: '20px',
@@ -87,10 +94,10 @@ export function ResumeScreen({
             overflow: 'hidden',
           }}>
             <div style={{
-              width: `${progressPercent}%`,
+              width: `${displayPercent}%`,
               height: '100%',
               backgroundColor: '#0A5F59',
-              transition: 'width 0.3s ease',
+              transition: 'width 1s cubic-bezier(0.22, 1, 0.36, 1)',
             }} />
           </div>
         </div>

@@ -326,7 +326,46 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       });
       return;
     }
-    
+
+    // Ранняя проверка: при «Продолжить» на вопросе сразу показываем инфо-цепочку, без зависимости от остальной логики.
+    if (!currentPendingInfoScreen && !isRetakingQuiz && allQuestions.length > 0) {
+      const earlyIdx = Math.min(Math.max(0, currentQuestionIndex), allQuestions.length - 1);
+      const earlyQ = allQuestions[earlyIdx];
+      const earlyCode = (earlyQ?.code || '').toLowerCase();
+
+      // avoid_ingredients → ai_showcase → habits_matter
+      if (earlyCode === 'avoid_ingredients') {
+        const earlyInfoScreen = getInfoScreenAfterQuestion(earlyQ!.code);
+        if (earlyInfoScreen) {
+          clientLogger.log('🔧 [handleNext] Ранняя проверка avoid_ingredients → показываем инфо-цепочку', {
+            questionIndex: currentQuestionIndex,
+            earlyIdx,
+            infoScreenId: earlyInfoScreen.id,
+          });
+          if (pendingInfoScreenRef) pendingInfoScreenRef.current = earlyInfoScreen;
+          setPendingInfoScreen(earlyInfoScreen);
+          await saveProgressSafely(saveProgress, answers, earlyIdx, currentInfoScreenIndex);
+          return;
+        }
+      }
+
+      // lifestyle_habits → ai_comparison → preferences_intro («Расскажите о ваших предпочтениях»)
+      if (earlyCode === 'lifestyle_habits') {
+        const lifestyleInfoScreen = getInfoScreenAfterQuestion(earlyQ!.code);
+        if (lifestyleInfoScreen) {
+          clientLogger.log('🔧 [handleNext] Ранняя проверка lifestyle_habits → показываем ai_comparison → preferences_intro', {
+            questionIndex: currentQuestionIndex,
+            earlyIdx,
+            infoScreenId: lifestyleInfoScreen.id,
+          });
+          if (pendingInfoScreenRef) pendingInfoScreenRef.current = lifestyleInfoScreen;
+          setPendingInfoScreen(lifestyleInfoScreen);
+          await saveProgressSafely(saveProgress, answers, earlyIdx, currentInfoScreenIndex);
+          return;
+        }
+      }
+    }
+
     // ФИКС: Всегда логируем handleNext (warn уровень для сохранения в БД)
     clientLogger.warn('🔄 handleNext: вызов', {
       currentInfoScreenIndex,
@@ -707,33 +746,6 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       
       const showAfterQuestionCode = findChainOriginQuestionCode(effectivePendingInfoScreen);
       
-      // ИСПРАВЛЕНО: Специальная обработка для habits_matter - после него должен показываться вопрос lifestyle_habits
-      // Это необходимо, потому что habits_matter показывается после ai_showcase (который после oral_medications),
-      // но после habits_matter должен показываться вопрос lifestyle_habits, а не следующий после oral_medications
-      if (effectivePendingInfoScreen.id === 'habits_matter') {
-        const lifestyleHabitsQuestionIndex = allQuestions.findIndex(q => q.code === 'lifestyle_habits');
-        if (lifestyleHabitsQuestionIndex >= 0) {
-          const newIndex = lifestyleHabitsQuestionIndex;
-          clientLogger.log('🔧 [handleNext] Специальная обработка для habits_matter - переходим к lifestyle_habits', {
-            newIndex,
-            currentQuestionIndex,
-          });
-          
-          updateQuestionIndex(newIndex, currentQuestionIndexRef, setCurrentQuestionIndex);
-          const questionCode = allQuestions[newIndex]?.code;
-          if (questionCode) {
-            const scopedQuestionCodeKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE, qid);
-            saveIndexToSessionStorage(scopedQuestionCodeKey, questionCode, '💾 Сохранен код вопроса в sessionStorage');
-          }
-          
-          await saveProgressSafely(saveProgress, answers, newIndex, currentInfoScreenIndex);
-          clientLogger.log('✅ Закрыт инфо-экран habits_matter, переходим к вопросу lifestyle_habits', {
-            newIndex,
-          });
-          return;
-        }
-      }
-      
       // ИСПРАВЛЕНО: Если нашли showAfterQuestionCode, находим индекс этого вопроса и переходим к следующему
       let newIndex = currentQuestionIndex + 1;
       if (showAfterQuestionCode) {
@@ -906,6 +918,41 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
             // или обновление индекса
           }
         }
+      }
+    }
+
+    // СПЕЦОБРАБОТКА: после вопроса avoid_ingredients (исключаемые ингредиенты)
+    // всегда показываем инфо-экран цепочки (ai_showcase → habits_matter) ПЕРЕД переходом к блоку привычек.
+    // Проверяем по вопросу на ТЕКУЩЕМ ИНДЕКСЕ, а не по currentQuestion: currentQuestion может быть
+    // перезаписан на lastAnsweredQuestion (строки выше), из-за чего проверка не срабатывала и
+    // показывался сразу следующий вопрос (makeup_frequency) вместо инфо-экранов.
+    const questionAtCurrentIndex = allQuestions[validQuestionIndex];
+    if (
+      !shouldSkipToNextQuestion &&
+      questionAtCurrentIndex &&
+      !isRetakingQuiz &&
+      !currentPendingInfoScreen &&
+      (questionAtCurrentIndex.code || '').toLowerCase() === 'avoid_ingredients'
+    ) {
+      const infoScreen = getInfoScreenAfterQuestion(questionAtCurrentIndex.code);
+      if (infoScreen) {
+        clientLogger.log('🔧 [handleNext] Спец-обработка avoid_ingredients → показываем инфо-экран цепочки', {
+          questionIndex: currentQuestionIndex,
+          questionCode: questionAtCurrentIndex.code,
+          infoScreenId: infoScreen.id,
+          infoScreenTitle: infoScreen.title,
+        });
+        if (pendingInfoScreenRef) {
+          pendingInfoScreenRef.current = infoScreen;
+        }
+        setPendingInfoScreen(infoScreen);
+        await saveProgressSafely(
+          saveProgress,
+          answers,
+          validQuestionIndex >= 0 ? validQuestionIndex : currentQuestionIndex,
+          currentInfoScreenIndex
+        );
+        return;
       }
     }
     
@@ -1311,6 +1358,43 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
           if (r.handled) { if (r.promise) await r.promise; return; }
         }
         return;
+      }
+
+      // Страховка: если переходим с avoid_ingredients на первый вопрос блока привычек — сначала показываем ai_showcase → habits_matter.
+      // Для женщин следующий вопрос — makeup_frequency, для мужчин (вопрос про косметику отфильтрован) — spf_frequency.
+      const currentQuestionByIndex = allQuestions[currentQuestionIndex];
+      const isCurrentAvoidIngredients = (currentQuestionByIndex?.code || '').toLowerCase() === 'avoid_ingredients';
+      const nextCode = (nextQuestion.code || '').toLowerCase();
+      const isNextFirstHabitQuestion = nextCode === 'makeup_frequency' || nextCode === 'spf_frequency';
+      if (!isRetakingQuiz && isCurrentAvoidIngredients && isNextFirstHabitQuestion) {
+        const infoScreenAfterAvoid = getInfoScreenAfterQuestion('avoid_ingredients');
+        if (infoScreenAfterAvoid) {
+          clientLogger.log('🔧 [handleNext] Страховка: avoid_ingredients → первый вопрос привычек, показываем инфо-цепочку', {
+            infoScreenId: infoScreenAfterAvoid.id,
+            nextQuestionCode: nextQuestion.code,
+          });
+          if (pendingInfoScreenRef) pendingInfoScreenRef.current = infoScreenAfterAvoid;
+          setPendingInfoScreen(infoScreenAfterAvoid);
+          await saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
+          return;
+        }
+      }
+
+      // Страховка: вопрос «Какой тип ухода вам ближе?» (care_type) должен идти только после инфо-экрана «Расскажите о ваших предпочтениях».
+      // Если переходим с lifestyle_habits на care_type — сначала показываем ai_comparison → preferences_intro.
+      const isCurrentLifestyleHabits = (currentQuestionByIndex?.code || '').toLowerCase() === 'lifestyle_habits';
+      const isNextCareType = nextCode === 'care_type';
+      if (!isRetakingQuiz && isCurrentLifestyleHabits && isNextCareType) {
+        const infoScreenAfterLifestyle = getInfoScreenAfterQuestion('lifestyle_habits');
+        if (infoScreenAfterLifestyle) {
+          clientLogger.log('🔧 [handleNext] Страховка: lifestyle_habits → care_type, показываем ai_comparison → preferences_intro', {
+            infoScreenId: infoScreenAfterLifestyle.id,
+          });
+          if (pendingInfoScreenRef) pendingInfoScreenRef.current = infoScreenAfterLifestyle;
+          setPendingInfoScreen(infoScreenAfterLifestyle);
+          await saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
+          return;
+        }
       }
       
       // ИСПРАВЛЕНО: Удалена дублирующая очистка - она уже выполнена выше

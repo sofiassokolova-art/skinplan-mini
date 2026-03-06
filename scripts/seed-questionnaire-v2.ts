@@ -246,7 +246,7 @@ async function seedQuestionnaireV2() {
       ],
     },
 
-    // 17-20. Данные о здоровье
+    // 17-20. Данные о здоровье (порядок как в d0420fcd: avoid_ingredients здесь, перед блоком «Текущий уход»)
     {
       groupTitle: 'Данные о здоровье',
       groupPosition: 4,
@@ -313,7 +313,7 @@ async function seedQuestionnaireV2() {
       ],
     },
 
-    // 23-26. Текущий уход
+    // 23-26. Текущий уход (после avoid_ingredients идут инфо ai_showcase → habits_matter, затем вопрос про косметику)
     {
       groupTitle: 'Текущий уход',
       groupPosition: 5,
@@ -400,7 +400,7 @@ async function seedQuestionnaireV2() {
         },
         {
           code: 'lifestyle_habits',
-          text: 'Ваши привычки (можно выбрать несколько)',
+          text: 'Ваши привычки\nМожно выбрать несколько',
           type: 'multi_choice',
           position: 4,
           isRequired: false,

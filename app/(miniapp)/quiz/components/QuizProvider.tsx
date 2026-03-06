@@ -62,6 +62,11 @@ export const QuizProvider = memo(function QuizProvider({ children }: { children:
     ),
   });
 
+  // Прогрев БД при входе на /quiz (если пользователь попал сюда напрямую, пинг с главной мог не выполниться)
+  useEffect(() => {
+    fetch('/api/ping').catch(() => undefined);
+  }, []);
+
   // React Query
   const questionnaireQuery = useQuestionnaire();
   const progressQuery = useQuizProgress();
