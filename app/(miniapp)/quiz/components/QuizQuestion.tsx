@@ -43,7 +43,7 @@ const LimeOptionCard = memo(function LimeOptionCard({
   isSkinTypeQuestion: boolean;
   isGoalsQuestion?: boolean;
   imageUrl: string;
-  onOptionClick: () => void;
+  onOptionClick: (option: any, index: number) => void | Promise<void>;
 }) {
   const optionText = option.label || '';
   const optionParts = optionText.split('\n');
@@ -64,9 +64,13 @@ const LimeOptionCard = memo(function LimeOptionCard({
   const imgW = isSkinType ? 1200 : 600;
   const imgH = isSkinType ? 280 : 140;
 
+  const handleClick = useCallback(() => {
+    onOptionClick(option, index);
+  }, [onOptionClick, option, index]);
+
   return (
     <button
-      onClick={onOptionClick}
+      onClick={handleClick}
       style={{
         padding: '0',
         borderRadius: '16px',
@@ -86,9 +90,11 @@ const LimeOptionCard = memo(function LimeOptionCard({
           backgroundColor: '#e8e8e8',
           overflow: 'hidden',
           position: 'relative',
+          ...(isSkinType ? { transform: 'translateZ(0)', backfaceVisibility: 'hidden' as const } : {}),
         }}
       >
         <Image
+          key={imageUrl}
           src={imageUrl}
           alt={option.label}
           width={imgW}
@@ -101,7 +107,7 @@ const LimeOptionCard = memo(function LimeOptionCard({
             display: 'block',
           }}
           sizes={isSkinType ? '(max-width: 768px) 100vw, 640px' : '(max-width: 768px) 100vw, 420px'}
-          priority={isSkinType && index < 2}
+          priority={isSkinType}
         />
       </div>
       <div
@@ -370,6 +376,59 @@ export const QuizQuestion = memo(function QuizQuestion({
   // Специальный карточный layout (LimeStyle) оставляем только для «Тип кожи».
   // Для «На чём вы хотите сфокусироваться?» используем обычный белый фон + карточки без лайм-блока.
   const useLimeStyle = isSkinTypeQuestion;
+
+  // Refs для стабильного колбэка LimeOptionCard — убирает мигание картинок на экране «Тип кожи»
+  const questionRef = useRef(question);
+  const answersRef = useRef(answers);
+  const onAnswerRef = useRef(onAnswer);
+  const onNextRef = useRef(onNext);
+  questionRef.current = question;
+  answersRef.current = answers;
+  onAnswerRef.current = onAnswer;
+  onNextRef.current = onNext;
+
+  const handleLimeOptionClick = useCallback(async (option: any, _index: number) => {
+    const q = questionRef.current;
+    const ans = answersRef.current;
+    const onA = onAnswerRef.current;
+    const onN = onNextRef.current;
+    if (!q?.options) return;
+    const isMultiChoice = q.type === 'multi_choice';
+    const currentAnswers = isMultiChoice
+      ? ((ans[q.id] as string[]) || [])
+      : ans[q.id] ? [ans[q.id] as string] : [];
+    const isSelected = currentAnswers.includes(option.value);
+    devLog('📝 [QuizQuestion] LimeStyle: option clicked', {
+      questionId: q.id,
+      optionValue: option.value,
+      optionLabel: option.label?.substring(0, 50),
+      isMultiChoice,
+      wasSelected: isSelected,
+    });
+    if (isMultiChoice) {
+      const newAnswers = isSelected
+        ? currentAnswers.filter((v) => v !== option.value)
+        : [...currentAnswers, option.value];
+      devLog('📝 [QuizQuestion] LimeStyle: multi-choice answer update', {
+        oldAnswers: currentAnswers,
+        newAnswers,
+        action: isSelected ? 'removed' : 'added',
+      });
+      if (q.id > 0) await onA(q.id, newAnswers);
+    } else {
+      if (!q.id || q.id <= 0) {
+        console.error('❌ [QuizQuestion] Invalid question.id:', {
+          questionId: q.id,
+          questionCode: q.code,
+          questionText: q.text?.substring(0, 50),
+        });
+        return;
+      }
+      await onA(q.id, option.value);
+      devLog('➡️ [QuizQuestion] LimeStyle: calling onNext after single choice');
+      setTimeout(() => onN(), 300);
+    }
+  }, []);
 
   const questionText = question?.text || '';
 
@@ -746,45 +805,9 @@ export const QuizQuestion = memo(function QuizQuestion({
                 isSelected={isSelected}
                 isMultiChoice={isMultiChoice}
                 isSkinTypeQuestion={isSkinTypeQuestion}
+                isGoalsQuestion={isGoalsQuestion}
                 imageUrl={getImageUrl(index)}
-                onOptionClick={async () => {
-                  devLog('📝 [QuizQuestion] LimeStyle: option clicked', {
-                    questionId: question.id,
-                    optionValue: option.value,
-                    optionLabel: option.label?.substring(0, 50),
-                    isMultiChoice,
-                    wasSelected: isSelected,
-                  });
-
-                  if (isMultiChoice) {
-                    const newAnswers = isSelected
-                      ? currentAnswers.filter((v) => v !== option.value)
-                      : [...currentAnswers, option.value];
-                    devLog('📝 [QuizQuestion] LimeStyle: multi-choice answer update', {
-                      oldAnswers: currentAnswers,
-                      newAnswers,
-                      action: isSelected ? 'removed' : 'added',
-                    });
-                    // ИСПРАВЛЕНО: Валидация уже выполнена в начале компонента
-                    if (question.id > 0) {
-                      await onAnswer(question.id, newAnswers);
-                    }
-                  } else {
-                    devLog('📝 [QuizQuestion] LimeStyle: single-choice answer');
-                    // ИСПРАВЛЕНО: Валидация question.id перед вызовом onAnswer
-                    if (!question.id || question.id <= 0) {
-                      console.error('❌ [QuizQuestion] Invalid question.id:', {
-                        questionId: question.id,
-                        questionCode: question.code,
-                        questionText: question.text?.substring(0, 50),
-                      });
-                      return;
-                    }
-                    await onAnswer(question.id, option.value);
-                    devLog('➡️ [QuizQuestion] LimeStyle: calling onNext after single choice');
-                    setTimeout(() => onNext(), 300);
-                  }
-                }}
+                onOptionClick={handleLimeOptionClick}
               />
             );
           })}
