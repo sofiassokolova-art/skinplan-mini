@@ -8,6 +8,7 @@ import {
   getNextInfoScreenAfterScreen,
   INFO_SCREENS,
 } from '@/app/(miniapp)/quiz/info-screens';
+import { getQuizSteps, getPrevStep } from '@/lib/quiz/quizSteps';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 import type { Questionnaire, Question } from '@/lib/quiz/types';
 import {
@@ -357,48 +358,31 @@ export async function handleBack(params: HandleBackParams): Promise<void> {
     }
 
     // ======================
-    // 3) Назад по вопросам
+    // 3) Назад по вопросам — по каноническому списку шагов (вопрос → инфо-экраны → вопрос)
     // ======================
-    // Для мужчин вопрос makeup_frequency отфильтрован (filterQuestions), в allQuestions его нет.
-    // Поэтому при «Назад» с spf_frequency prevQ = avoid_ingredients, показываем habits_matter — вопрос про косметику не появляется.
-    if (isOnQuestionsValue && normalizedCurrentIndex > 0) {
-      // ИСПРАВЛЕНО: Используем нормализованный индекс
-      const currentQ = allQuestions[normalizedCurrentIndex] ?? null;
-      const prevIndex = normalizedCurrentIndex - 1;
-      const prevQ = allQuestions[prevIndex];
+    if (isOnQuestionsValue && allQuestions.length > 0) {
+      const steps = getQuizSteps(allQuestions);
+      const prevStep = getPrevStep(steps, normalizedCurrentIndex, null);
 
-      const nextAnswers = dropAnswer(answers, currentQ);
-      setAnswers(nextAnswers);
-
-      // 3.1 если перед текущим вопросом есть цепочка инфо-экранов после prevQ — показываем последний в цепочке
-      if (prevQ) {
-        const first = getInfoScreenAfterQuestion(prevQ.code);
-        if (first) {
-          let last = first;
-          let next = getNextInfoScreenAfterScreen(last.id);
-          while (next) {
-            last = next;
-            next = getNextInfoScreenAfterScreen(last.id);
-          }
-
-          // ИСПРАВЛЕНО: Синхронно обновляем ref перед установкой state
-          if (pendingInfoScreenRef) {
-            pendingInfoScreenRef.current = last;
-          }
-          setPendingInfoScreen(last);
-          updateQuestionIndex(prevIndex, undefined, setCurrentQuestionIndex);
-
-          safeSessionStorageSet(scopedStorageKeys.CURRENT_QUESTION, String(prevIndex));
-          void saveProgressSafely(saveProgress, nextAnswers, prevIndex, currentInfoScreenIndex);
-          return;
-        }
+      if (prevStep?.type === 'info') {
+        if (pendingInfoScreenRef) pendingInfoScreenRef.current = prevStep.infoScreen;
+        setPendingInfoScreen(prevStep.infoScreen);
+        safeSessionStorageSet(scopedStorageKeys.CURRENT_QUESTION, String(normalizedCurrentIndex));
+        void saveProgressSafely(saveProgress, answers, normalizedCurrentIndex, currentInfoScreenIndex);
+        return;
       }
-
-      // 3.2 обычный шаг назад по вопросам
-      updateQuestionIndex(prevIndex, undefined, setCurrentQuestionIndex);
-      safeSessionStorageSet(scopedStorageKeys.CURRENT_QUESTION, String(prevIndex));
-      void saveProgressSafely(saveProgress, nextAnswers, prevIndex, currentInfoScreenIndex);
-      return;
+      if (prevStep?.type === 'question' && prevStep.questionIndex >= 0) {
+        const prevIndex = prevStep.questionIndex;
+        const currentQ = allQuestions[normalizedCurrentIndex] ?? null;
+        const nextAnswers = currentQ && prevIndex !== normalizedCurrentIndex ? dropAnswer(answers, currentQ) : answers;
+        setAnswers(nextAnswers);
+        if (pendingInfoScreenRef) pendingInfoScreenRef.current = null;
+        setPendingInfoScreen(null);
+        updateQuestionIndex(prevIndex, undefined, setCurrentQuestionIndex);
+        safeSessionStorageSet(scopedStorageKeys.CURRENT_QUESTION, String(prevIndex));
+        void saveProgressSafely(saveProgress, nextAnswers, prevIndex, currentInfoScreenIndex);
+        return;
+      }
     }
 
     // ============================

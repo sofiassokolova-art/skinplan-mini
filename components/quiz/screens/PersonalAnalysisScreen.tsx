@@ -151,28 +151,31 @@ function PersonalAnalysisScreenComponent({
         </div>
       </div>
 
-      {/* Подзаголовок фиксированно над кнопкой «Продолжить», небольшой отступ */}
+      {/* Подзаголовок фиксированно над кнопкой «Продолжить», адаптивные размеры под экран */}
       {screen.subtitle && (
         <div
           style={{
             position: 'fixed',
             left: 0,
             right: 0,
-            bottom: '88px',
+            bottom: '120px',
             zIndex: 99,
-            padding: '0 24px',
+            padding: '0 max(16px, min(24px, 6vw))',
             boxSizing: 'border-box',
+            maxWidth: '100%',
           }}
         >
           <div
             style={{
               fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 400,
-              fontSize: '12px',
+              fontSize: 'clamp(11px, 2.8vw, 14px)',
               lineHeight: '140%',
               letterSpacing: '0px',
               textAlign: 'center',
               color: '#9D9D9D',
+              maxWidth: '100%',
+              margin: '0 auto',
             }}
           >
             {screen.subtitle}

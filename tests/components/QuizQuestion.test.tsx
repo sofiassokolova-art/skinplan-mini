@@ -36,7 +36,7 @@ describe('QuizQuestion', () => {
     vi.clearAllMocks();
   });
 
-  it('должен отображать текст вопроса', () => {
+  it('должен отображать текст вопроса (нормализованный заголовок для skin_type)', () => {
     render(
       <QuizQuestion
         question={mockQuestion}
@@ -50,7 +50,8 @@ describe('QuizQuestion', () => {
       />
     );
 
-    expect(screen.getByText('Какой у вас тип кожи?')).toBeInTheDocument();
+    // Для skin_type компонент нормализует текст в единый заголовок
+    expect(screen.getByText('Выберите ваш тип кожи')).toBeInTheDocument();
   });
 
   it('должен отображать опции для single_choice вопроса', () => {

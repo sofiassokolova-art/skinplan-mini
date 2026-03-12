@@ -3,7 +3,7 @@
 
 import { prisma } from '../lib/db';
 
-const telegramId = '643160759';
+const telegramId = '987654322';
 
 async function checkPlan() {
   console.log('🔍 Проверяю план для пользователя:', telegramId);

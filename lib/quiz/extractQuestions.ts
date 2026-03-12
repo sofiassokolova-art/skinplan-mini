@@ -4,18 +4,10 @@
 type Questionnaire = any;
 type Question = any;
 
-// WeakMap кеш: один и тот же объект questionnaire → один и тот же результат.
-// Не утекает память: как только questionnaire GC-ится, запись удаляется.
-const _cache = new WeakMap<object, Question[]>();
-
 /**
  * Извлекает все вопросы из questionnaire (из groups и questions).
- * Результат кешируется по ссылке объекта (WeakMap).
  */
 export function extractQuestionsFromQuestionnaire(questionnaire: Questionnaire | null): Question[] {
-  if (questionnaire && _cache.has(questionnaire)) {
-    return _cache.get(questionnaire)!;
-  }
   if (!questionnaire) {
     return [];
   }
@@ -61,6 +53,22 @@ export function extractQuestionsFromQuestionnaire(questionnaire: Questionnaire |
 
   let result = Array.from(questionsMap.values());
 
+  // Глобальная защита от дубликатов по коду вопроса:
+  // если в анкете по ошибке есть несколько вопросов с одинаковым code,
+  // используем только первый экземпляр (по порядку в groups/questions).
+  const seenCodes = new Set<string>();
+  const dedupedByCode: Question[] = [];
+  for (const q of result) {
+    const code = (q as any)?.code ? String((q as any).code).toLowerCase() : '';
+    if (!code || !seenCodes.has(code)) {
+      dedupedByCode.push(q);
+      if (code) {
+        seenCodes.add(code);
+      }
+    }
+  }
+  result = dedupedByCode;
+
   // Вопрос про имя (USER_NAME) всегда первым — и после инфо-экранов пользователь сразу его видит
   const nameCode = 'user_name';
   const nameQuestions = result.filter((q: any) => (q?.code || '').toLowerCase() === nameCode);
@@ -75,10 +83,6 @@ export function extractQuestionsFromQuestionnaire(questionnaire: Questionnaire |
       groupsCount: groups.length,
       questionsCount: questions.length,
     });
-  }
-
-  if (questionnaire) {
-    _cache.set(questionnaire, result);
   }
   return result;
 }

@@ -80,13 +80,13 @@ export function useResumeLogic(options: UseResumeLogicOptions) {
       if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
         return;
       }
-
+      
       // КРИТИЧНО: Перепрохождение с главной (retakeFromHome в URL) — не показываем "Вы не завершили анкету"
       if (new URLSearchParams(window.location.search).get('retakeFromHome') === '1') {
         clientLogger.log('✅ retakeFromHome в URL — не показываем showResumeScreen');
         return;
       }
-
+      
       const response = await api.getQuizProgress() as {
         progress?: SavedProgress & { timestamp: number } | null;
       };

@@ -45,11 +45,27 @@ export class QuestionnaireService {
         };
       }
 
+      // Перед сохранением валидируем, что все questionId существуют для этой анкеты,
+      // чтобы не ловить FK-ошибки, если в БД остались старые/битые ответы после обновления анкеты.
+      const validQuestions = await prisma.question.findMany({
+        where: { questionnaireId },
+        select: { id: true },
+      });
+      const validQuestionIds = new Set(validQuestions.map((q) => q.id));
+
       // Сохраняем ответы в транзакции
       const result = await prisma.$transaction(async (tx) => {
         // Сохраняем ответы через транзакцию (используем tx вместо prisma)
-        const savedAnswers = await Promise.all(
+        const savedAnswersRaw = await Promise.all(
           answers.map(async (answer) => {
+            if (!validQuestionIds.has(answer.questionId)) {
+              logger.warn('Skipping answer with invalid questionId for questionnaire', {
+                userId,
+                questionnaireId,
+                questionId: answer.questionId,
+              });
+              return null;
+            }
             return tx.userAnswer.upsert({
               where: {
                 userId_questionnaireId_questionId: {
@@ -72,6 +88,10 @@ export class QuestionnaireService {
               },
             });
           })
+        );
+
+        const savedAnswers = savedAnswersRaw.filter(
+          (a): a is UserAnswer => a !== null
         );
 
         // Сохраняем имя пользователя из ответа на вопрос USER_NAME

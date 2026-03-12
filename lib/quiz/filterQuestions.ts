@@ -236,19 +236,9 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
   
   const filteredQuestions = questions.filter((question) => {
     try {
-      // ИСПРАВЛЕНО: Если нет ответов, показываем все вопросы (кроме исключений для retake)
+      // ИСПРАВЛЕНО: Если нет ответов, показываем все вопросы
       // Это предотвращает ситуацию, когда все вопросы отфильтрованы при первой загрузке
       if (!hasAnyAnswers) {
-        // При повторном прохождении все равно исключаем вопросы про пол и возраст
-        if (isRetakingQuiz && !showRetakeScreen) {
-          const normalizedCode = question.code?.toLowerCase();
-          if (normalizedCode === 'gender' || normalizedCode === 'age') {
-            excludedCount++;
-            excludedReasons['retake_gender_age'] = (excludedReasons['retake_gender_age'] || 0) + 1;
-            return false;
-          }
-        }
-        // Для нового пользователя показываем все остальные вопросы
         filteredCount++;
         return true;
       }
@@ -256,15 +246,7 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
       // ИСПРАВЛЕНО: Используем normalizedCode для всех проверок
       const normalizedCode = question.code?.toLowerCase();
       
-      // 1. При повторном прохождении исключаем вопросы про пол и возраст
-      // ИСПРАВЛЕНО: Используем только question.code для стабильности, без проверки text
-      if (isRetakingQuiz && !showRetakeScreen) {
-        if (normalizedCode === 'gender' || normalizedCode === 'age') {
-          return false;
-        }
-      }
-
-      // 2. Фильтрация retinoid_reaction на основе retinoid_usage
+      // 1. Фильтрация retinoid_reaction на основе retinoid_usage
       // ИСПРАВЛЕНО: Используем только question.code для стабильности
       // ФИКС: Вопрос retinoid_reaction должен показываться до ответа на retinoid_usage
       const isRetinoidReactionQuestion = normalizedCode === 'retinoid_reaction';
@@ -440,6 +422,9 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
     return fallbackQuestions;
   }
 
+  // Никак не переупорядочиваем вопросы — полностью доверяем порядку из анкеты.
+  // Фильтрация выше только скрывает отдельные вопросы (например, про беременность для мужчин),
+  // но не меняет относительный порядок оставшихся.
   return filteredQuestions;
 }
 

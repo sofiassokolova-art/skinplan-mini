@@ -471,7 +471,7 @@ export function QuizInfoScreen({
     );
   }
 
-  // Экран "Нам важно учесть ваши данные о здоровье" (health_data) — тот же стиль, что goals_intro
+  // Экран "Нам важно учесть данные о здоровье" (health_data) — тот же стиль, что goals_intro
   if (isHealthDataScreen) {
     return (
       <GoalsIntroScreen

@@ -65,6 +65,8 @@ export const metadata: Metadata = {
   icons: { icon: '/icons/icon_sparkles.svg', apple: '/icons/icon_sparkles.svg' },
 };
 
+const DEV_TELEGRAM_ID = process.env.NEXT_PUBLIC_DEV_TELEGRAM_ID || '987654322';
+
 export default async function RootLayout({
   children,
 }: {
@@ -146,8 +148,8 @@ export default async function RootLayout({
                 // В dev на localhost всегда используем нашего тестового пользователя (перезаписываем старый tg_init_data)
                 try { sessionStorage.removeItem('tg_init_data'); } catch (_) {}
 
-                // Локальный dev-пользователь Telegram — можно менять ID, чтобы эмулировать «нового» пользователя
-                var TEST_TELEGRAM_ID = '987654322';
+                // Локальный dev-пользователь Telegram — ID берём из NEXT_PUBLIC_DEV_TELEGRAM_ID (fallback: 987654322)
+                var TEST_TELEGRAM_ID = '${DEV_TELEGRAM_ID}';
                 var authDate = Math.floor(Date.now() / 1000);
                 var testInitData = 'user=%7B%22id%22%3A' + TEST_TELEGRAM_ID + '%2C%22first_name%22%3A%22Local%22%2C%22last_name%22%3A%22User2%22%2C%22username%22%3A%22local_test_user_2%22%2C%22language_code%22%3A%22ru%22%7D&auth_date=' + authDate + '&hash=test_hash_for_development_only';
 

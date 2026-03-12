@@ -171,6 +171,27 @@ export async function POST(request: NextRequest) {
       return ApiResponse.notFound('Questionnaire not found');
     }
 
+    // ИСПРАВЛЕНО: дополнительная серверная валидация — фильтруем ответы,
+    // чьи questionId не существуют в текущей анкете, чтобы не ловить FK-ошибки
+    const questionnaireQuestions = await prisma.question.findMany({
+      where: { questionnaireId: questionnaire.id },
+      select: { id: true },
+    });
+    const validQuestionIds = new Set<number>(questionnaireQuestions.map((q) => q.id));
+    const beforeFkFilterCount = validAnswers.length;
+    validAnswers = validAnswers.filter((a: any) => validQuestionIds.has(a.questionId));
+
+    if (validAnswers.length === 0) {
+      logger.error('No answers left after FK validation against questionnaire questions', {
+        userId,
+        questionnaireId,
+        beforeFkFilterCount,
+        totalAnswers: answers.length,
+        questionnaireQuestionsCount: questionnaireQuestions.length,
+      });
+      return ApiResponse.badRequest('No valid answers for this questionnaire');
+    }
+
     // Идемпотентность: если клиент прислал clientSubmissionId и мы уже обрабатывали этот сабмит,
     // сразу возвращаем существующий результат без повторной тяжелой работы.
     if (clientSubmissionId) {
