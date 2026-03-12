@@ -60,6 +60,9 @@ function HowItWorksScreenComponent({
           width: '100%',
           height: '100%',
           zIndex: 0,
+          // Fallback фон, который виден до загрузки фоновой фотографии
+          background:
+            'radial-gradient(circle at top, #0f172a 0%, #020617 40%, #020617 100%)',
         }}
       >
         <img

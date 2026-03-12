@@ -34,11 +34,12 @@ export function FixedContinueButton({
       bottom: 'clamp(24px, 5vh, 60px)',
       left: 0,
       right: 0,
-      padding: '0 clamp(19px, 5vw, 38px)',
+      padding: '0 20px',
       background: 'transparent',
       zIndex: 100,
       display: 'flex',
       justifyContent: 'center',
+      boxSizing: 'border-box',
     }}>
       <button
         onClick={(e) => {
@@ -51,7 +52,7 @@ export function FixedContinueButton({
         disabled={disabled}
         style={{
           width: '100%',
-          maxWidth: 300,
+          maxWidth: 640,
           height: 52,
           borderRadius: 0,
           background: bgColor,

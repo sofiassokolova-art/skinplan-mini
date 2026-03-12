@@ -31,6 +31,36 @@ export function getQuizSteps(allQuestions: Question[]): QuizStep[] {
       }
     }
   }
+
+  // ФИКС: Гарантируем канонический порядок для блока вокруг avoid_ingredients.
+  // После вопроса avoid_ingredients должны идти инфо-экраны ai_showcase → habits_matter,
+  // а уже затем вопросы про привычки (makeup_frequency, spf_frequency, sun_exposure, lifestyle_habits).
+  const avoidIdx = steps.findIndex(
+    (s) => s.type === 'question' && (s.question as any)?.code === 'avoid_ingredients'
+  );
+  const aiIdx = steps.findIndex(
+    (s) => s.type === 'info' && (s.infoScreen as any)?.id === 'ai_showcase'
+  );
+  const habitsIdx = steps.findIndex(
+    (s) => s.type === 'info' && (s.infoScreen as any)?.id === 'habits_matter'
+  );
+
+  if (avoidIdx !== -1 && aiIdx !== -1) {
+    // Собираем цепочку инфо-экранов (ai_showcase, habits_matter), которые хотим вставить сразу после avoid_ingredients
+    const infoChain: QuizStep[] = [];
+    if (aiIdx !== -1) infoChain.push(steps[aiIdx]);
+    if (habitsIdx !== -1) infoChain.push(steps[habitsIdx]);
+
+    // Удаляем их из текущего положения (начиная с большего индекса, чтобы не сбивать позиции)
+    const removeIndices = [aiIdx, habitsIdx].filter((i) => i !== -1).sort((a, b) => b - a);
+    for (const idx of removeIndices) {
+      steps.splice(idx, 1);
+    }
+
+    // Вставляем цепочку сразу после avoid_ingredients
+    steps.splice(avoidIdx + 1, 0, ...infoChain);
+  }
+
   return steps;
 }
 

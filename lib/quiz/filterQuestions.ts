@@ -201,8 +201,12 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
     return [];
   }
 
-  // ИСПРАВЛЕНО: Используем эффективные ответы (объединение answers и savedProgressAnswers)
-  const effectiveAnswers = getEffectiveAnswers(answers, savedProgressAnswers);
+  // ИСПРАВЛЕНО: Используем эффективные ответы (объединение answers и savedProgressAnswers).
+  // Для перепрохождения (isRetakingQuiz && !showRetakeScreen) игнорируем savedProgressAnswers,
+  // чтобы старая анкета не влияла на порядок и фильтрацию вопросов.
+  const effectiveAnswers = isRetakingQuiz && !showRetakeScreen
+    ? { ...(answers || {}) }
+    : getEffectiveAnswers(answers, savedProgressAnswers);
 
   // ИСПРАВЛЕНО: Проверяем, есть ли ответы вообще
   // Если ответов нет (новый пользователь), показываем все вопросы без фильтрации
@@ -290,26 +294,14 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
         return shouldShow;
       }
 
-      // 3. Фильтрация вопросов про макияж (только для женщин)
-      // ИСПРАВЛЕНО: Используем только question.code для стабильности
+      // 3. Фильтрация вопросов про макияж (ранее была только для женщин).
+      // Сейчас упрощаем: всегда показываем makeup_frequency, spf_frequency, sun_exposure,
+      // порядок контролируется через seed + extractQuestions (CANONICAL_ORDER).
       const isMakeupQuestion = normalizedCode === 'makeup_frequency';
       
       if (isMakeupQuestion) {
-        const gender = getAnswerByCode('gender', questions, effectiveAnswers);
-        if (!gender.question || !gender.value) {
-          // Пол еще не выбран - показываем вопрос (он будет скрыт позже)
-          return true;
-        }
-
-        const isMale = isMaleGender(gender.value, gender.option, gender.question, effectiveAnswers);
-        const shouldShow = !isMale; // Показываем только если не мужчина
-        if (!shouldShow) {
-          excludedCount++;
-          excludedReasons['makeup_male'] = (excludedReasons['makeup_male'] || 0) + 1;
-        } else {
-          filteredCount++;
-        }
-        return shouldShow;
+        filteredCount++;
+        return true;
       }
 
       // 4. Фильтрация вопросов про беременность (только для женщин)

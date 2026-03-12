@@ -73,8 +73,56 @@ export function extractQuestionsFromQuestionnaire(questionnaire: Questionnaire |
   const nameCode = 'user_name';
   const nameQuestions = result.filter((q: any) => (q?.code || '').toLowerCase() === nameCode);
   const otherQuestions = result.filter((q: any) => (q?.code || '').toLowerCase() !== nameCode);
+
+  // Жёстко заданный порядок кодов вопросов согласно seed-questionnaire-v2 (QUIZ_FLOW.md).
+  // Это устраняет «рандомный» порядок, если БД возвращает группы/вопросы в другом порядке.
+  const CANONICAL_ORDER = [
+    'user_name',
+    'skin_goals',
+    'age',
+    'gender',
+    'skin_type',
+    'skin_concerns',
+    'skin_sensitivity',
+    'seasonal_changes',
+    'medical_diagnoses',
+    'pregnancy_breastfeeding',
+    'allergies',
+    'oral_medications',
+    'retinoid_usage',
+    'retinoid_reaction',
+    'prescription_topical',
+    'avoid_ingredients',
+    'makeup_frequency',
+    'spf_frequency',
+    'sun_exposure',
+    'lifestyle_habits',
+    'care_type',
+    'care_steps',
+    'budget',
+  ];
+
+  const orderMap = new Map<string, number>();
+  CANONICAL_ORDER.forEach((code, index) => {
+    orderMap.set(code, index);
+  });
+
+  const sortedOthers = otherQuestions.slice().sort((a: any, b: any) => {
+    const ca = (a?.code || '').toLowerCase();
+    const cb = (b?.code || '').toLowerCase();
+    const ia = orderMap.has(ca) ? (orderMap.get(ca) as number) : Number.MAX_SAFE_INTEGER;
+    const ib = orderMap.has(cb) ? (orderMap.get(cb) as number) : Number.MAX_SAFE_INTEGER;
+    if (ia !== ib) return ia - ib;
+    // стабильный дополнительный критерий — по id
+    const idA = typeof a?.id === 'number' ? a.id : 0;
+    const idB = typeof b?.id === 'number' ? b.id : 0;
+    return idA - idB;
+  });
+
   if (nameQuestions.length > 0) {
-    result = [...nameQuestions, ...otherQuestions];
+    result = [...nameQuestions, ...sortedOthers];
+  } else {
+    result = sortedOthers;
   }
   
   if (result.length === 0 && (groups.length > 0 || questions.length > 0)) {
