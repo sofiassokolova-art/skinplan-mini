@@ -131,6 +131,59 @@ const ensureQuestionsReady = async (
   }
 };
 
+type BudgetInfoScreenResult = {
+  handled: boolean;
+  promise?: Promise<void>;
+};
+
+function tryShowBudgetInfoScreen(
+  allQuestions: Question[],
+  effectiveAnswers: Record<number, string | string[]>,
+  pendingInfoScreenRef: React.MutableRefObject<InfoScreen | null> | undefined,
+  setPendingInfoScreen: React.Dispatch<React.SetStateAction<InfoScreen | null>>,
+  currentQuestionIndexRef: React.MutableRefObject<number> | undefined,
+  setCurrentQuestionIndex: React.Dispatch<React.SetStateAction<number>>,
+  saveProgress: (answers: Record<number, string | string[]>, questionIndex: number, infoScreenIndex: number) => Promise<void>,
+  answers: Record<number, string | string[]>,
+  currentInfoScreenIndex: number
+): BudgetInfoScreenResult {
+  const budgetQuestionIndex = allQuestions.findIndex(q => q.code === 'budget');
+  if (budgetQuestionIndex === -1) {
+    return { handled: false };
+  }
+
+  const budgetQuestion = allQuestions[budgetQuestionIndex];
+  const hasAnsweredBudget = effectiveAnswers[budgetQuestion.id] !== undefined;
+  if (!hasAnsweredBudget) {
+    return { handled: false };
+  }
+
+  const infoScreen = getInfoScreenAfterQuestion('budget');
+  if (!infoScreen) {
+    return { handled: false };
+  }
+
+  if (pendingInfoScreenRef) {
+    pendingInfoScreenRef.current = infoScreen;
+  }
+  setPendingInfoScreen(infoScreen);
+
+  if (currentQuestionIndexRef) {
+    updateQuestionIndex(budgetQuestionIndex, currentQuestionIndexRef, setCurrentQuestionIndex);
+  } else {
+    setCurrentQuestionIndex(budgetQuestionIndex);
+  }
+
+  const promise = saveProgressSafely(
+    saveProgress,
+    answers,
+    budgetQuestionIndex,
+    currentInfoScreenIndex
+  );
+
+  return { handled: true, promise };
+}
+
 // Экспортируем функцию для использования в других местах
 export { getTotalQuestionsCount };
 
