@@ -733,6 +733,26 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
           (currentQuestion!.code || '').toLowerCase()
       );
 
+    // Специальный защитный кейс: после avoid_ingredients мы обязаны показать цепочку ai_showcase → habits_matter.
+    // Если по какой-то причине канонический список шагов не сработает, явно ставим первый инфо-экран.
+    if (
+      !shouldSkipToNextQuestion &&
+      currentQuestion &&
+      currentQuestion.code === 'avoid_ingredients' &&
+      !currentPendingInfoScreen &&
+      (hasAnsweredCurrentQuestion || hasInfoScreenForCurrent)
+    ) {
+      const infoScreen = getInfoScreenAfterQuestion('avoid_ingredients');
+      if (infoScreen) {
+        if (pendingInfoScreenRef) {
+          pendingInfoScreenRef.current = infoScreen;
+        }
+        setPendingInfoScreen(infoScreen);
+        await saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
+        return;
+      }
+    }
+
     if (
       !shouldSkipToNextQuestion &&
       currentQuestion &&
