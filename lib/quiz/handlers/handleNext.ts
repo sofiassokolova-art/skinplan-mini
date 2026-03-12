@@ -1135,9 +1135,15 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         return;
       }
 
+      // ИСПРАВЛЕНО: Определяем nextQuestion для использования в логах и проверках
+      // Используем уже определенную переменную nextQuestion из блока выше, или получаем из массива
+      const nextQuestionForLog = nextQuestion || (newIndex < allQuestions.length ? allQuestions[newIndex] : null);
+
       // Страховка: вопрос «Какой тип ухода вам ближе?» (care_type) должен идти только после инфо-экрана «Расскажите о ваших предпочтениях».
       // Если переходим с lifestyle_habits на care_type — сначала показываем ai_comparison → preferences_intro.
-      const isCurrentLifestyleHabits = (currentQuestionByIndex?.code || '').toLowerCase() === 'lifestyle_habits';
+      const currentQuestionCodeByIndex = (allQuestions[currentQuestionIndex]?.code || currentQuestion?.code || '').toLowerCase();
+      const isCurrentLifestyleHabits = currentQuestionCodeByIndex === 'lifestyle_habits';
+      const nextCode = (nextQuestionForLog?.code || '').toLowerCase();
       const isNextCareType = nextCode === 'care_type';
       if (isCurrentLifestyleHabits && isNextCareType) {
         const infoScreenAfterLifestyle = getInfoScreenAfterQuestion('lifestyle_habits');
@@ -1151,12 +1157,6 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
           return;
         }
       }
-      
-      // ИСПРАВЛЕНО: Удалена дублирующая очистка - она уже выполнена выше
-      
-      // ИСПРАВЛЕНО: Определяем nextQuestion для использования в логах и проверках
-      // Используем уже определенную переменную nextQuestion из блока выше, или получаем из массива
-      const nextQuestionForLog = nextQuestion || (newIndex < allQuestions.length ? allQuestions[newIndex] : null);
       
       // КРИТИЧНО: Логируем переход к следующему вопросу для диагностики
       clientLogger.warn('🔄 handleNext: переход к следующему вопросу', {
