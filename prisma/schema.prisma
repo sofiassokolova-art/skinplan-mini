@@ -263,6 +263,7 @@ model RecommendationRule {
   createdAt              DateTime                @default(now()) @map("created_at")
   updatedAt              DateTime                @updatedAt @map("updated_at")
   recommendationSessions RecommendationSession[]
+  history                RecommendationRuleHistory[]
 
   @@index([isActive, priority])
   @@map("recommendation_rules")
@@ -283,6 +284,23 @@ model RecommendationSession {
   @@index([profileId])
   @@index([createdAt])
   @@map("recommendation_sessions")
+}
+
+model RecommendationRuleHistory {
+  id             Int                @id @default(autoincrement())
+  ruleId         Int                @map("rule_id")
+  name           String
+  conditionsJson Json               @map("conditions_json")
+  stepsJson      Json               @map("steps_json")
+  priority       Int
+  isActive       Boolean            @map("is_active")
+  version        Int
+  createdBy      String?            @map("created_by")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  rule           RecommendationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId, version])
+  @@map("recommendation_rule_history")
 }
 
 model Admin {
