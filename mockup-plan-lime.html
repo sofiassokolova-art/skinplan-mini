@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <title>SkinIQ · Mockup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --lime:  #D5FE61;
+      --black: #0A0A0A;
+      --white: #FFFFFF;
+      --gray:  #F4F4F4;
+      --line:  #EBEBEB;
+      --muted: #6B7280;
+      --F1: 'Unbounded', sans-serif;
+      --F2: 'Inter', sans-serif;
+    }
+
+    body {
+      font-family: var(--F2);
+      background: #DEDEDE;
+      color: var(--black);
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 60px;
+      gap: 32px;
+    }
+
+    /* ── PAGE SWITCHER ── */
+    .switcher {
+      display: flex; gap: 6px;
+      background: rgba(255,255,255,0.55);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255,255,255,0.8);
+      padding: 5px; border-radius: 14px;
+      position: sticky; top: 16px; z-index: 999;
+    }
+    .sw-btn {
+      padding: 8px 22px; border-radius: 10px; border: none; cursor: pointer;
+      font-family: var(--F2); font-size: 13px; font-weight: 600;
+      background: transparent; color: #888;
+      transition: all 0.2s;
+    }
+    .sw-btn.on { background: var(--black); color: var(--lime); }
+
+    /* ── PHONE SHELL ── */
+    .phone {
+      width: 390px;
+      background: var(--white);
+      border-radius: 44px;
+      overflow: hidden;
+      position: relative;
+      box-shadow:
+        0 40px 100px rgba(0,0,0,0.28),
+        0 0 0 1px rgba(0,0,0,0.08);
+      display: none;
+      flex-direction: column;
+    }
+    .phone.active { display: flex; }
+
+    .phone-scroll {
+      overflow-y: auto;
+      max-height: 820px;
+      padding-bottom: 114px;
+      scrollbar-width: none;
+    }
+    .phone-scroll::-webkit-scrollbar { display: none; }
+
+    /* ── TOPBAR ── */
+    .topbar {
+      height: 54px;
+      background: var(--white);
+      border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 22px; flex-shrink: 0;
+      position: sticky; top: 0; z-index: 50;
+    }
+    .topbar-logo { font-family: var(--F1); font-size: 16px; font-weight: 700; letter-spacing: -0.5px; }
+    .day-pill {
+      background: var(--black); color: var(--lime);
+      font-family: var(--F1); font-size: 11px; font-weight: 700;
+      padding: 5px 12px; border-radius: 20px; letter-spacing: 0.2px;
+    }
+
+    /* ── BOTTOM NAV — floating glass pill ── */
+    .bnav {
+      position: absolute; bottom: 20px; left: 4%; width: 92%;
+      height: 72px;
+      background: rgba(255,255,255,0.75);
+      backdrop-filter: blur(28px) saturate(200%); -webkit-backdrop-filter: blur(28px) saturate(200%);
+      border: 1px solid rgba(255,255,255,0.95);
+      border-radius: 34px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.06);
+      display: flex; align-items: center; justify-content: space-around;
+      padding: 0 8px;
+      z-index: 100;
+    }
+    .ni {
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      cursor: pointer; padding: 8px 12px; border-radius: 22px;
+      transition: background 0.2s;
+      min-width: 64px;
+    }
+    .ni svg { width: 20px; height: 20px; display: block; stroke: #BBBBBB; transition: stroke 0.2s; }
+    .ni-label { font-size: 10px; font-weight: 600; color: #BBBBBB; transition: color 0.2s; white-space: nowrap; }
+    .ni.on { background: var(--lime); }
+    .ni.on svg { stroke: var(--black); }
+    .ni.on .ni-label { color: var(--black); font-weight: 800; }
+
+    /* ── CARDS ── */
+    /* Standard white card */
+    .card {
+      background: var(--white);
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.04);
+    }
+    /* Glass on lime background */
+    .glass-lime {
+      background: rgba(255,255,255,0.42);
+      backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%);
+      border: 1px solid rgba(255,255,255,0.72);
+      border-radius: 14px;
+    }
+    /* Glass on black background */
+    .glass-black {
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 14px;
+    }
+
+    /* ── ROUTINE ITEM ACTIVE (lime bg) ── */
+    .item-active {
+      background: var(--lime);
+      border-radius: 16px;
+      box-shadow: 0 8px 28px rgba(213,254,97,0.55);
+    }
+    /* Routine item done */
+    .item-done {
+      opacity: 0.55;
+    }
+  </style>
+</head>
+<body>
+
+<!-- PAGE SWITCHER -->
+<div class="switcher">
+  <button class="sw-btn on" onclick="show('home',this)">Главная</button>
+  <button class="sw-btn"    onclick="show('plan',this)">План</button>
+</div>
+
+
+<!-- ═══════════ HOME PAGE ═══════════ -->
+<div class="phone active" id="home">
+  <div class="topbar">
+    <span class="topbar-logo">SkinIQ</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="var(--black)" stroke-width="2" stroke-linecap="round" style="width:22px;height:22px;opacity:0.3">
+      <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>
+    </svg>
+  </div>
+
+  <div class="phone-scroll">
+
+    <!-- HEADER -->
+    <div style="padding:22px 20px 6px;background:#fff;">
+      <div style="font-size:13px;color:var(--muted);font-weight:500;margin-bottom:6px;letter-spacing:0.1px;">Добрый день, Анна</div>
+      <div style="font-family:var(--F1);font-size:21px;font-weight:700;line-height:1.15;letter-spacing:-0.5px;color:var(--black);margin-bottom:16px;">Время ухаживать<br>за кожей</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <button style="display:inline-flex;align-items:center;gap:7px;padding:10px 16px;border-radius:12px;background:var(--black);color:var(--white);border:none;cursor:pointer;font-size:13px;font-weight:600;font-family:var(--F2);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><rect x="3" y="3" width="18" height="18" rx="3"/><polyline points="9 12 11 14 15 10"/></svg>
+          28-дневный план
+        </button>
+        <div style="background:var(--lime);color:var(--black);font-size:12px;font-weight:800;padding:6px 12px;border-radius:20px;font-family:var(--F2);letter-spacing:0.1px;">2 / 5 ✓</div>
+      </div>
+    </div>
+
+    <!-- AM/PM TOGGLE -->
+    <div style="padding:16px 20px 14px;background:#fff;">
+      <div style="background:var(--gray);border-radius:26px;padding:4px;display:flex;gap:4px;">
+        <button id="am-btn" onclick="switchTab('AM')"
+          style="flex:1;padding:9px 0;border-radius:22px;border:none;background:var(--black);color:var(--white);cursor:pointer;font-weight:700;font-size:13px;font-family:var(--F2);transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:5px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:13px;height:13px"><circle cx="12" cy="12" r="4"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+          Утро
+        </button>
+        <button id="pm-btn" onclick="switchTab('PM')"
+          style="flex:1;padding:9px 0;border-radius:22px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-weight:600;font-size:13px;font-family:var(--F2);transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:5px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:13px;height:13px"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+          Вечер
+        </button>
+      </div>
+    </div>
+
+    <!-- AM ROUTINE ITEMS -->
+    <div id="routine-am" style="display:flex;flex-direction:column;gap:10px;padding:0 16px 16px;background:#fff;">
+
+      <!-- 1 — done -->
+      <div class="card item-done" style="padding:13px 14px;display:flex;align-items:center;gap:12px;">
+        <div style="width:30px;height:30px;border-radius:50%;background:var(--lime);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg viewBox="0 0 14 10" fill="none" stroke="var(--black)" stroke-width="2.8" stroke-linecap="round" style="width:12px;height:8px"><path d="M1 5L5 9L13 1"/></svg>
+        </div>
+        <div style="width:46px;height:46px;border-radius:12px;background:var(--gray);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#AAAAAA" stroke-width="1.7" stroke-linecap="round" style="width:20px;height:20px"><path d="M7 16.5c0 2.5 2 4 5 4s5-1.5 5-4V8c0-2.5-2-4-5-4S7 5.5 7 8v8.5z"/><line x1="12" y1="4" x2="12" y2="20.5"/></svg>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:700;color:var(--black);margin-bottom:2px;text-decoration:line-through;">Очищение</div>
+          <div style="font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">La Roche-Posay Effaclar</div>
+        </div>
+        <div style="width:24px;height:24px;border-radius:50%;background:var(--lime);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;">
+          <span style="font-size:10px;font-weight:800;color:var(--black);">i</span>
+        </div>
+      </div>
+
+      <!-- 2 — done -->
+      <div class="card item-done" style="padding:13px 14px;display:flex;align-items:center;gap:12px;">
+        <div style="width:30px;height:30px;border-radius:50%;background:var(--lime);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg viewBox="0 0 14 10" fill="none" stroke="var(--black)" stroke-width="2.8" stroke-linecap="round" style="width:12px;height:8px"><path d="M1 5L5 9L13 1"/></svg>
+        </div>
+        <div style="width:46px;height:46px;border-radius:12px;background:var(--gray);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#AAAAAA" stroke-width="1.7" stroke-linecap="round" style="width:20px;height:20px"><circle cx="12" cy="12" r="9"/><path d="M12 3c2 3 3 5.5 3 9s-1 6-3 9"/><line x1="3" y1="12" x2="21" y2="12"/></svg>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:700;color:var(--black);margin-bottom:2px;text-decoration:line-through;">Тонер</div>
+          <div style="font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">COSRX AHA/BHA тонер</div>
+        </div>
+        <div style="width:24px;height:24px;border-radius:50%;background:var(--lime);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;">
+          <span style="font-size:10px;font-weight:800;color:var(--black);">i</span>
+        </div>
+      </div>
+
+      <!-- 3 — ACTIVE -->
+      <div class="item-active" style="padding:13px 14px;display:flex;align-items:center;gap:12px;">
+        <div style="width:30px;height:30px;border-radius:50%;background:var(--black);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span style="color:var(--lime);font-size:13px;font-weight:800;font-family:var(--F1);">3</span>
+        </div>
+        <div style="width:46px;height:46px;border-radius:12px;background:rgba(0,0,0,0.08);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--black)" stroke-width="1.7" stroke-linecap="round" style="width:20px;height:20px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:10px;font-weight:800;color:rgba(0,0,0,0.45);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:2px;">Сейчас</div>
+          <div style="font-size:14px;font-weight:700;color:var(--black);margin-bottom:2px;">Сыворотка с ниацинамидом</div>
+          <div style="font-size:12px;color:rgba(0,0,0,0.5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">The Ordinary · сужение пор</div>
+        </div>
+        <div style="width:24px;height:24px;border-radius:50%;background:var(--black);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;">
+          <span style="font-size:10px;font-weight:800;color:var(--lime);">i</span>
+        </div>
+      </div>
+
+      <!-- 4 -->
+      <div class="card" style="padding:13px 14px;display:flex;align-items:center;gap:12px;">
+        <div style="width:30px;height:30px;border-radius:50%;background:var(--gray);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span style="color:var(--black);font-size:13px;font-weight:700;">4</span>
+        </div>
+        <div style="width:46px;height:46px;border-radius:12px;background:var(--gray);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#AAAAAA" stroke-width="1.7" stroke-linecap="round" style="width:20px;height:20px"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:700;color:var(--black);margin-bottom:2px;">Увлажняющий крем</div>
+          <div style="font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Neutrogena · лёгкая текстура</div>
+        </div>
+        <div style="width:24px;height:24px;border-radius:50%;background:var(--gray);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;">
+          <span style="font-size:10px;font-weight:800;color:var(--black);">i</span>
+        </div>
+      </div>
+
+      <!-- 5 — SPF -->
+      <div class="card" style="padding:13px 14px;display:flex;align-items:center;gap:12px;">
+        <div style="width:30px;height:30px;border-radius:50%;background:var(--gray);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span style="color:var(--black);font-size:13px;font-weight:700;">5</span>
+        </div>
+        <div style="width:46px;height:46px;border-radius:12px;background:var(--gray);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#AAAAAA" stroke-width="1.7" stroke-linecap="round" style="width:20px;height:20px"><circle cx="12" cy="12" r="4"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:700;color:var(--black);margin-bottom:2px;">Солнцезащитный крем</div>
+          <div style="font-size:12px;color:var(--muted);">SPF 50+ · Bioderma</div>
+        </div>
+        <div style="width:24px;height:24px;border-radius:50%;background:var(--gray);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;">
+          <span style="font-size:10px;font-weight:800;color:var(--black);">i</span>
+        </div>
+      </div>
+
+    </div><!-- /am -->
+
+    <!-- PM ROUTINE ITEMS (hidden) -->
+    <div id="routine-pm" style="display:none;flex-direction:column;gap:10px;padding:0 16px 16px;background:#fff;">
+
+      <div class="card" style="padding:13px 14px;display:flex;align-items:center;gap:12px;">
+        <div style="width:30px;height:30px;border-radius:50%;background:var(--gray);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:13px;font-weight:700;">1</span></div>
+        <div style="width:46px;height:46px;border-radius:12px;background:var(--gray);flex-shrink:0;"></div>
+        <div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:700;color:var(--black);margin-bottom:2px;">Масло для снятия макияжа</div><div style="font-size:12px;color:var(--muted);">DHC Deep Cleansing Oil</div></div>
+        <div style="width:24px;height:24px;border-radius:50%;background:var(--gray);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;"><span style="font-size:10px;font-weight:800;">i</span></div>
+      </div>
+
+      <div class="card" style="padding:13px 14px;display:flex;align-items:center;gap:12px;">
+        <div style="width:30px;height:30px;border-radius:50%;background:var(--gray);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:13px;font-weight:700;">2</span></div>
+        <div style="width:46px;height:46px;border-radius:12px;background:var(--gray);flex-shrink:0;"></div>
+        <div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:700;color:var(--black);margin-bottom:2px;">Кислотный тонер</div><div style="font-size:12px;color:var(--muted);">AHA/BHA · Paula's Choice</div></div>
+        <div style="width:24px;height:24px;border-radius:50%;background:var(--gray);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;"><span style="font-size:10px;font-weight:800;">i</span></div>
+      </div>
+
+      <div class="item-active" style="padding:13px 14px;display:flex;align-items:center;gap:12px;">
+        <div style="width:30px;height:30px;border-radius:50%;background:var(--black);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span style="color:var(--lime);font-size:13px;font-weight:800;font-family:var(--F1);">3</span>
+        </div>
+        <div style="width:46px;height:46px;border-radius:12px;background:rgba(0,0,0,0.08);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--black)" stroke-width="1.7" stroke-linecap="round" style="width:20px;height:20px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:10px;font-weight:800;color:rgba(0,0,0,0.45);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:2px;">Сейчас</div>
+          <div style="font-size:14px;font-weight:700;color:var(--black);margin-bottom:2px;">Ночная сыворотка</div>
+          <div style="font-size:12px;color:rgba(0,0,0,0.5);">Ретинол 0.2% · The Ordinary</div>
+        </div>
+        <div style="width:24px;height:24px;border-radius:50%;background:var(--black);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;">
+          <span style="font-size:10px;font-weight:800;color:var(--lime);">i</span>
+        </div>
+      </div>
+
+      <div class="card" style="padding:13px 14px;display:flex;align-items:center;gap:12px;">
+        <div style="width:30px;height:30px;border-radius:50%;background:var(--gray);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:13px;font-weight:700;">4</span></div>
+        <div style="width:46px;height:46px;border-radius:12px;background:var(--gray);flex-shrink:0;"></div>
+        <div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:700;color:var(--black);margin-bottom:2px;">Ночной крем</div><div style="font-size:12px;color:var(--muted);">Восстанавливающий · CeraVe</div></div>
+        <div style="width:24px;height:24px;border-radius:50%;background:var(--gray);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;"><span style="font-size:10px;font-weight:800;">i</span></div>
+      </div>
+
+    </div><!-- /pm -->
+
+    <div style="height:12px;background:#fff;"></div>
+
+  </div><!-- /phone-scroll -->
+
+  <!-- BOTTOM NAV -->
+  <div class="bnav">
+    <div class="ni on">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <div class="ni-label">Главная</div>
+    </div>
+    <div class="ni">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><polyline points="9 12 11 14 15 10"/></svg>
+      <div class="ni-label">План</div>
+    </div>
+    <div class="ni">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+      <div class="ni-label">Избранное</div>
+    </div>
+    <div class="ni">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <div class="ni-label">Профиль</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════ PLAN PAGE ═══════════ -->
+<div class="phone" id="plan">
+  <div class="topbar">
+    <span class="topbar-logo">SkinIQ</span>
+    <span class="day-pill">День 7 / 28</span>
+  </div>
+
+  <div class="phone-scroll">
+
+    <!-- HERO — BLACK -->
+    <div style="background:var(--black);padding:24px 20px 28px;">
+      <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:14px;">Фаза 1 · Адаптация</div>
+      <div style="font-family:var(--F1);font-size:26px;font-weight:700;color:var(--white);line-height:1.1;letter-spacing:-0.5px;margin-bottom:22px;">Твой план<br>на сегодня</div>
+
+      <!-- Progress bar -->
+      <div style="margin-bottom:22px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;">
+          <span style="font-size:12px;color:rgba(255,255,255,0.4);font-weight:500;">Прогресс</span>
+          <span style="font-size:12px;color:var(--lime);font-weight:700;">25% · неделя 1 из 4</span>
+        </div>
+        <div style="height:5px;background:rgba(255,255,255,0.10);border-radius:3px;overflow:hidden;">
+          <div style="width:25%;height:100%;background:var(--lime);border-radius:3px;"></div>
+        </div>
+      </div>
+
+      <!-- AM/PM chips (glass on black) -->
+      <div style="display:flex;gap:8px;">
+        <div class="glass-black" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" style="width:13px;height:13px"><circle cx="12" cy="12" r="4"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+          <span style="font-size:12px;color:rgba(255,255,255,0.7);font-weight:600;">Утро · 3 шага</span>
+        </div>
+        <div class="glass-black" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" style="width:13px;height:13px"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+          <span style="font-size:12px;color:rgba(255,255,255,0.7);font-weight:600;">Вечер · 4 шага</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SKIN STORY — LIME -->
+    <div style="background:var(--lime);padding:24px 20px;">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:rgba(0,0,0,0.4);margin-bottom:10px;">Что с твоей кожей</div>
+      <div style="font-family:var(--F1);font-size:20px;font-weight:700;color:var(--black);line-height:1.15;letter-spacing:-0.3px;margin-bottom:10px;">Жирная кожа<br>с расширенными порами</div>
+      <div style="font-size:13px;color:rgba(0,0,0,0.58);line-height:1.55;margin-bottom:20px;">Сальные железы вырабатывают избыток себума — поры забиваются, появляются акне и блеск. План направлен на регуляцию жирности без пересушивания.</div>
+
+      <!-- Issues (glass on lime) -->
+      <div style="display:flex;flex-direction:column;gap:7px;">
+        <div class="glass-lime" style="display:flex;align-items:center;gap:10px;padding:10px 14px;">
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--black);flex-shrink:0;"></div>
+          <div style="flex:1;font-size:13px;font-weight:600;color:var(--black);">Жирный блеск</div>
+          <div style="font-size:10px;font-weight:800;background:var(--black);color:var(--lime);padding:3px 9px;border-radius:10px;letter-spacing:0.2px;">Приоритет</div>
+        </div>
+        <div class="glass-lime" style="display:flex;align-items:center;gap:10px;padding:10px 14px;">
+          <div style="width:8px;height:8px;border-radius:50%;background:rgba(0,0,0,0.4);flex-shrink:0;"></div>
+          <div style="flex:1;font-size:13px;font-weight:600;color:var(--black);">Расширенные поры</div>
+          <div style="font-size:10px;font-weight:700;background:rgba(0,0,0,0.12);color:var(--black);padding:3px 9px;border-radius:10px;">В работе</div>
+        </div>
+        <div class="glass-lime" style="display:flex;align-items:center;gap:10px;padding:10px 14px;">
+          <div style="width:8px;height:8px;border-radius:50%;background:rgba(0,0,0,0.25);flex-shrink:0;"></div>
+          <div style="flex:1;font-size:13px;font-weight:600;color:var(--black);">Акне</div>
+          <div style="font-size:10px;font-weight:700;background:rgba(0,0,0,0.08);color:var(--black);padding:3px 9px;border-radius:10px;">В работе</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TODAY'S ROUTINE — WHITE -->
+    <div style="background:#fff;padding:22px 20px;">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;">Утренний уход · сегодня</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+
+        <div class="card item-done" style="padding:11px 14px;display:flex;align-items:center;gap:10px;">
+          <div style="width:26px;height:26px;border-radius:50%;background:var(--lime);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg viewBox="0 0 14 10" fill="none" stroke="var(--black)" stroke-width="2.8" stroke-linecap="round" style="width:10px;height:7px"><path d="M1 5L5 9L13 1"/></svg>
+          </div>
+          <div style="flex:1;"><span style="font-size:13px;font-weight:600;color:var(--black);text-decoration:line-through;">Очищение</span></div>
+          <div style="font-size:11px;color:var(--muted);">La Roche-Posay</div>
+        </div>
+
+        <div class="card item-done" style="padding:11px 14px;display:flex;align-items:center;gap:10px;">
+          <div style="width:26px;height:26px;border-radius:50%;background:var(--lime);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg viewBox="0 0 14 10" fill="none" stroke="var(--black)" stroke-width="2.8" stroke-linecap="round" style="width:10px;height:7px"><path d="M1 5L5 9L13 1"/></svg>
+          </div>
+          <div style="flex:1;"><span style="font-size:13px;font-weight:600;color:var(--black);text-decoration:line-through;">Тонер</span></div>
+          <div style="font-size:11px;color:var(--muted);">COSRX</div>
+        </div>
+
+        <!-- current step — black -->
+        <div style="background:var(--black);border-radius:14px;padding:11px 14px;display:flex;align-items:center;gap:10px;">
+          <div style="width:26px;height:26px;border-radius:50%;background:var(--lime);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <span style="color:var(--black);font-size:11px;font-weight:800;">3</span>
+          </div>
+          <div style="flex:1;"><span style="font-size:13px;font-weight:700;color:var(--white);">Сыворотка с ниацинамидом</span></div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.45);">The Ordinary</div>
+        </div>
+
+        <div class="card" style="padding:11px 14px;display:flex;align-items:center;gap:10px;">
+          <div style="width:26px;height:26px;border-radius:50%;background:var(--gray);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:11px;font-weight:700;">4</span></div>
+          <div style="flex:1;"><span style="font-size:13px;font-weight:600;color:var(--black);">Увлажняющий крем</span></div>
+          <div style="font-size:11px;color:var(--muted);">Neutrogena</div>
+        </div>
+
+        <div class="card" style="padding:11px 14px;display:flex;align-items:center;gap:10px;">
+          <div style="width:26px;height:26px;border-radius:50%;background:var(--gray);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:11px;font-weight:700;">5</span></div>
+          <div style="flex:1;"><span style="font-size:13px;font-weight:600;color:var(--black);">Солнцезащитный крем</span></div>
+          <div style="font-size:11px;color:var(--muted);">Bioderma SPF50</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WHY THIS WORKS — BLACK (glass cards) -->
+    <div style="background:var(--black);padding:24px 20px;">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.3);margin-bottom:16px;">Почему это работает</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+
+        <div class="glass-black" style="padding:14px;display:flex;gap:12px;align-items:flex-start;">
+          <div style="width:34px;height:34px;border-radius:50%;background:var(--lime);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">
+            <div style="font-weight:800;font-size:14px;color:var(--black);line-height:1;">1</div>
+            <div style="font-size:8px;font-weight:400;color:var(--black);opacity:0.6;margin-top:1px;">Шаг</div>
+          </div>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--white);margin-bottom:4px;">Ниацинамид → поры</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.45);line-height:1.55;">Регулирует себум и сужает поры за 4–6 недель применения.</div>
+          </div>
+        </div>
+
+        <div class="glass-black" style="padding:14px;display:flex;gap:12px;align-items:flex-start;">
+          <div style="width:34px;height:34px;border-radius:50%;background:var(--lime);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">
+            <div style="font-weight:800;font-size:14px;color:var(--black);line-height:1;">2</div>
+            <div style="font-size:8px;font-weight:400;color:var(--black);opacity:0.6;margin-top:1px;">Шаг</div>
+          </div>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--white);margin-bottom:4px;">AHA/BHA → акне</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.45);line-height:1.55;">Отшелушивает мёртвые клетки и не даёт порам забиваться.</div>
+          </div>
+        </div>
+
+        <div class="glass-black" style="padding:14px;display:flex;gap:12px;align-items:flex-start;">
+          <div style="width:34px;height:34px;border-radius:50%;background:var(--lime);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">
+            <div style="font-weight:800;font-size:14px;color:var(--black);line-height:1;">3</div>
+            <div style="font-size:8px;font-weight:400;color:var(--black);opacity:0.6;margin-top:1px;">Шаг</div>
+          </div>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--white);margin-bottom:4px;">SPF → защита результата</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.45);line-height:1.55;">Кислоты повышают чувствительность к UV — SPF обязателен каждое утро.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WHAT TO EXPECT — WHITE -->
+    <div style="background:#fff;padding:24px 20px;">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;">Чего ожидать</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+
+        <div class="card" style="padding:14px;display:flex;gap:14px;align-items:flex-start;">
+          <div style="font-family:var(--F1);font-size:11px;font-weight:700;background:var(--gray);color:var(--black);padding:7px 8px;border-radius:10px;white-space:nowrap;line-height:1.3;text-align:center;min-width:38px;">1–2<br>нед.</div>
+          <div><div style="font-size:13px;font-weight:700;color:var(--black);margin-bottom:3px;">Адаптация</div><div style="font-size:12px;color:var(--muted);line-height:1.55;">Кожа привыкает к кислотам. Возможно временное обострение — это нормально.</div></div>
+        </div>
+
+        <div class="card" style="padding:14px;display:flex;gap:14px;align-items:flex-start;">
+          <div style="font-family:var(--F1);font-size:11px;font-weight:700;background:var(--gray);color:var(--black);padding:7px 8px;border-radius:10px;white-space:nowrap;line-height:1.3;text-align:center;min-width:38px;">3<br>нед.</div>
+          <div><div style="font-size:13px;font-weight:700;color:var(--black);margin-bottom:3px;">Первые результаты</div><div style="font-size:12px;color:var(--muted);line-height:1.55;">Поры начинают сужаться, блеск становится менее интенсивным.</div></div>
+        </div>
+
+        <div style="background:var(--lime);border-radius:14px;padding:14px;display:flex;gap:14px;align-items:flex-start;">
+          <div style="font-family:var(--F1);font-size:11px;font-weight:700;background:rgba(0,0,0,0.10);color:var(--black);padding:7px 8px;border-radius:10px;white-space:nowrap;line-height:1.3;text-align:center;min-width:38px;">4<br>нед.</div>
+          <div><div style="font-size:13px;font-weight:700;color:var(--black);margin-bottom:3px;">Устойчивый эффект</div><div style="font-size:12px;color:rgba(0,0,0,0.55);line-height:1.55;">Кожа выровнена, текстура улучшена, рутина входит в привычку.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FEEDBACK — LIME -->
+    <div style="background:var(--lime);padding:24px 20px;">
+      <div style="font-family:var(--F1);font-size:18px;font-weight:700;color:var(--black);line-height:1.2;margin-bottom:6px;">Как ощущения?</div>
+      <div style="font-size:13px;color:rgba(0,0,0,0.5);margin-bottom:18px;">Помогает ли план с твоими целями?</div>
+      <div style="display:flex;gap:10px;">
+        <button style="flex:1;padding:13px;border-radius:13px;background:var(--black);color:var(--lime);border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:var(--F2);">Да, помогает</button>
+        <button style="flex:1;padding:13px;border-radius:13px;background:rgba(0,0,0,0.10);color:var(--black);border:none;cursor:pointer;font-size:13px;font-weight:600;font-family:var(--F2);">Есть вопросы</button>
+      </div>
+    </div>
+
+    <div style="height:12px;background:#fff;"></div>
+
+  </div><!-- /scroll -->
+
+  <!-- BOTTOM NAV -->
+  <div class="bnav">
+    <div class="ni">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <div class="ni-label">Главная</div>
+    </div>
+    <div class="ni on">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><polyline points="9 12 11 14 15 10"/></svg>
+      <div class="ni-label">План</div>
+    </div>
+    <div class="ni">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+      <div class="ni-label">Избранное</div>
+    </div>
+    <div class="ni">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <div class="ni-label">Профиль</div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+  function show(id, btn) {
+    document.querySelectorAll('.phone').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.sw-btn').forEach(b => b.classList.remove('on'));
+    document.getElementById(id).classList.add('active');
+    btn.classList.add('on');
+  }
+
+  function switchTab(tab) {
+    const am = document.getElementById('routine-am');
+    const pm = document.getElementById('routine-pm');
+    const amBtn = document.getElementById('am-btn');
+    const pmBtn = document.getElementById('pm-btn');
+    if (tab === 'AM') {
+      am.style.display = 'flex'; pm.style.display = 'none';
+      amBtn.style.background = 'var(--black)'; amBtn.style.color = 'var(--white)';
+      pmBtn.style.background = 'transparent'; pmBtn.style.color = 'var(--muted)';
+    } else {
+      am.style.display = 'none'; pm.style.display = 'flex';
+      pmBtn.style.background = 'var(--black)'; pmBtn.style.color = 'var(--white)';
+      amBtn.style.background = 'transparent'; amBtn.style.color = 'var(--muted)';
+    }
+  }
+</script>
+</body>
+</html>
