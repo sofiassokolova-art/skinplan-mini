@@ -5,8 +5,7 @@ import { getRedis } from './redis';
 
 let kv: any = null;
 let kvAvailable = false;
-let isUpstashRedis = false;
-let cacheInitialized = false; // Флаг инициализации
+let cacheInitialized = false;
 
 /**
  * Ленивая инициализация кэша
@@ -21,86 +20,29 @@ function initializeCache(): void {
 
   cacheInitialized = true;
 
-  // Пытаемся инициализировать кэш: сначала Upstash Redis, потом Vercel KV
   try {
-    // Приоритет 1: Upstash Redis (если настроен)
     const upstashRedis = getRedis();
     if (upstashRedis) {
       kv = upstashRedis;
       kvAvailable = true;
       isUpstashRedis = true;
       console.log('✅ Using Upstash Redis for cache');
-      
-      // ВАЖНО: Проверяем, что используется токен для записи
+
       const writeToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
       const readOnlyToken = process.env.KV_REST_API_READ_ONLY_TOKEN;
-      const tokensMatch = readOnlyToken && writeToken === readOnlyToken;
-      
-      if (tokensMatch) {
-        console.error('❌ ERROR: Using read-only token for Redis write operations!');
-        console.error('   KV_REST_API_TOKEN совпадает с KV_REST_API_READ_ONLY_TOKEN');
-        console.error('   Please set KV_REST_API_TOKEN to a write token in Vercel environment variables.');
-      }
-      
-      if (!writeToken && readOnlyToken) {
-        console.error('❌ ERROR: Only KV_REST_API_READ_ONLY_TOKEN is set, KV_REST_API_TOKEN is missing!');
-        console.error('   Cache write operations will fail. Please set KV_REST_API_TOKEN in Vercel.');
-      }
-      
-      return;
-    } 
-    
-    // Приоритет 2: Vercel KV (если Upstash не настроен, но есть Vercel KV)
-    // ВАЖНО: Используем токен для записи (KV_REST_API_TOKEN), а не read-only токен
-    if (process.env.KV_REST_API_URL) {
-      const kvModule = require('@vercel/kv');
-      
-      // ИСПРАВЛЕНО: Проверяем наличие write token
-      const writeToken = process.env.KV_REST_API_TOKEN;
-      const readOnlyToken = process.env.KV_REST_API_READ_ONLY_TOKEN;
-      
-      // Если установлен только read-only токен - не используем кэш для записи
-      if (!writeToken && readOnlyToken) {
-        console.error('❌ ERROR: Only KV_REST_API_READ_ONLY_TOKEN is set, but KV_REST_API_TOKEN is missing!');
-        console.error('   Cache write operations will fail. Please set KV_REST_API_TOKEN in Vercel.');
-        kvAvailable = false;
-        return;
-      }
-      
+
       if (readOnlyToken && writeToken === readOnlyToken) {
-        console.error('❌ ERROR: KV_REST_API_TOKEN и KV_REST_API_READ_ONLY_TOKEN совпадают - используйте токен для записи!');
-        kvAvailable = false;
-        return;
+        console.error('❌ ERROR: Using read-only token for Redis write operations!');
       }
-      
-      if (!writeToken || writeToken.length === 0) {
-        console.error('❌ ERROR: KV_REST_API_TOKEN пустой или не установлен!');
-        console.error('   Cache write operations will fail. Please set KV_REST_API_TOKEN in Vercel.');
-        kvAvailable = false;
-        return;
+      if (!writeToken && readOnlyToken) {
+        console.error('❌ ERROR: Only read-only token is set — cache writes will fail.');
       }
-      
-      // @vercel/kv автоматически использует переменные окружения KV_REST_API_URL и KV_REST_API_TOKEN
-      // ВАЖНО: Убедитесь, что в Vercel установлен KV_REST_API_TOKEN (не KV_REST_API_READ_ONLY_TOKEN)
-      try {
-        kv = kvModule.kv;
-        kvAvailable = true;
-        isUpstashRedis = false;
-        console.log('✅ Using Vercel KV for cache', {
-          hasWriteToken: !!writeToken,
-          writeTokenLength: writeToken.length,
-          hasReadOnlyToken: !!readOnlyToken,
-          tokensMatch: readOnlyToken && writeToken === readOnlyToken,
-        });
-        return;
-      } catch (kvError) {
-        console.error('❌ Failed to initialize Vercel KV:', kvError);
-        // Продолжаем, возможно, Upstash Redis доступен
-      }
+
+      return;
     }
-    
-    // Если ни один вариант не доступен
-    console.warn('⚠️ Cache not available: missing environment variables (UPSTASH_REDIS_REST_URL/TOKEN or KV_REST_API_URL/TOKEN)');
+
+    // Если Upstash не настроен
+    console.warn('⚠️ Cache not available: set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN');
   } catch (error) {
     console.warn('⚠️ Cache not available:', error);
     kvAvailable = false;
@@ -117,13 +59,8 @@ const CACHE_TTL = {
  * Работает как с Upstash Redis, так и с Vercel KV
  */
 async function setWithTTL(key: string, value: string, ttl: number): Promise<void> {
-  if (isUpstashRedis) {
-    // Upstash Redis использует set(key, value, { ex: seconds })
-    await kv.set(key, value, { ex: ttl });
-  } else {
-    // Vercel KV использует setex(key, seconds, value)
-    await kv.setex(key, ttl, value);
-  }
+  // Upstash Redis: set(key, value, { ex: seconds })
+  await kv.set(key, value, { ex: ttl });
 }
 
 /**

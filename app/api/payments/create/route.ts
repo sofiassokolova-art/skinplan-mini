@@ -150,13 +150,11 @@ export async function POST(request: NextRequest) {
   try {
     const origin = request.nextUrl.origin;
 
-    // ВАЖНО: На Vercel `NODE_ENV=production` может быть и в preview окружениях.
-    // Для разделения "боевой прод" vs "тест/preview" используем `VERCEL_ENV`.
-    // - production: запрещаем симуляцию (нужна реальная интеграция)
-    // - preview/development/локально: разрешаем симуляцию
-    const vercelEnv = process.env.VERCEL_ENV; // 'production' | 'preview' | 'development' | undefined
+    // На Cloudflare Pages: CF_PAGES_BRANCH === 'main' означает production-деплой.
+    // На preview-ветках симуляция платежей разрешена.
+    const cfBranch = process.env.CF_PAGES_BRANCH;
     const isProductionDeployment =
-      vercelEnv === 'production' || (!vercelEnv && process.env.NODE_ENV === 'production');
+      cfBranch === 'main' || (!cfBranch && process.env.NODE_ENV === 'production');
 
     const shopId = process.env.YOOKASSA_SHOP_ID?.trim() || '';
     const secretKey = process.env.YOOKASSA_SECRET_KEY?.trim() || '';

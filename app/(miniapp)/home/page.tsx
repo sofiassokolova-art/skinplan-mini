@@ -727,7 +727,7 @@ export default function HomePage() {
     return (
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        background: '#FFFFFF',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -739,13 +739,13 @@ export default function HomePage() {
         <div style={{
           width: '44px',
           height: '44px',
-          border: '4px solid rgba(10, 95, 89, 0.2)',
-          borderTop: '4px solid #0A5F59',
+          border: '4px solid rgba(0,0,0,0.08)',
+          borderTop: '4px solid #0A0A0A',
           borderRadius: '50%',
           animation: 'spin 1s linear infinite',
           marginBottom: '16px',
         }} />
-        <div style={{ color: '#0A5F59', fontSize: '16px', fontWeight: 500 }}>
+        <div style={{ color: '#0A0A0A', fontSize: '16px', fontWeight: 500 }}>
           Загрузка плана...
         </div>
         <style>{`
@@ -765,24 +765,24 @@ export default function HomePage() {
 
   if (error && routineItems.length === 0) {
     return (
-      <div style={{ 
-        padding: '20px', 
+      <div style={{
+        padding: '20px',
         textAlign: 'center',
         minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+        background: '#FFFFFF'
       }}>
-        <h1 style={{ color: '#0A5F59', marginBottom: '16px' }}>Ошибка загрузки</h1>
+        <h1 style={{ color: '#0A0A0A', marginBottom: '16px' }}>Ошибка загрузки</h1>
         <p style={{ color: '#475467', marginBottom: '24px' }}>{error}</p>
         <button
           onClick={() => router.push('/quiz')}
           style={{
             padding: '12px 24px',
             borderRadius: '12px',
-            backgroundColor: '#0A5F59',
+            backgroundColor: '#0A0A0A',
             color: 'white',
             border: 'none',
             cursor: 'pointer',
@@ -817,9 +817,9 @@ export default function HomePage() {
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        background: '#FFFFFF',
       }}>
-        <h1 style={{ color: '#0A5F59', marginBottom: '16px' }}>Начните с анкеты</h1>
+        <h1 style={{ color: '#0A0A0A', marginBottom: '16px' }}>Начните с анкеты</h1>
         <p style={{ color: '#475467', marginBottom: '24px' }}>
           Мы подберём персональный уход после короткой анкеты.
         </p>
@@ -828,7 +828,7 @@ export default function HomePage() {
           style={{
             padding: '12px 24px',
             borderRadius: '12px',
-            backgroundColor: '#0A5F59',
+            backgroundColor: '#0A0A0A',
             color: 'white',
             border: 'none',
             cursor: 'pointer',
@@ -844,6 +844,7 @@ export default function HomePage() {
 
   const completedCount = routineItems.filter((item) => item.done).length;
   const totalCount = routineItems.length;
+  const currentStepIndex = routineItems.findIndex(item => !item.done);
 
   // ИСПРАВЛЕНО: План - это платный продукт, поэтому PaymentGate показывается ВСЕГДА
   // PaymentGate сам проверит статус оплаты через localStorage и БД
@@ -863,21 +864,19 @@ export default function HomePage() {
     >
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+      background: '#FFFFFF',
       paddingBottom: '120px',
     }}>
       {/* Header */}
       <div style={{
-        padding: '20px',
-        textAlign: 'center',
+        padding: '22px 20px 6px',
       }}>
-        {/* Приветствие с именем */}
         {userName && (
           <div style={{
-            fontSize: '20px',
+            fontSize: '13px',
             fontWeight: 500,
-            color: '#0A5F59',
-            marginBottom: '12px',
+            color: '#6B7280',
+            marginBottom: '6px',
           }}>
             {(() => {
               const hour = new Date().getHours();
@@ -887,38 +886,51 @@ export default function HomePage() {
           </div>
         )}
         <div style={{
-          fontSize: '26px',
-          fontWeight: 600,
-          color: '#374151',
-          marginBottom: '8px',
+          fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+          fontSize: '21px',
+          fontWeight: 700,
+          color: '#0A0A0A',
+          lineHeight: '1.15',
+          letterSpacing: '-0.5px',
+          marginBottom: '16px',
         }}>
-          Время заботиться о своей коже
+          Время ухаживать<br />за кожей
         </div>
-        <button
-          onClick={() => router.push('/plan')}
-          style={{
-            marginTop: '16px',
-            padding: '12px 24px',
-            borderRadius: '12px',
-            backgroundColor: '#0A5F59',
-            color: 'white',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: '16px',
-            fontWeight: 'bold',
-          }}
-        >
-          📅 28-дневный план →
-        </button>
-        {recommendations?.profile_summary && (
-          <div style={{
-            fontSize: '16px',
-            color: '#475467',
-            marginBottom: '16px',
-          }}>
-            {completedCount}/{totalCount} шагов
-          </div>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => router.push('/plan')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '7px',
+              padding: '10px 16px',
+              borderRadius: '12px',
+              backgroundColor: '#0A0A0A',
+              color: 'white',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: 600,
+            }}
+          >
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="3"/><polyline points="9 12 11 14 15 10"/>
+            </svg>
+            28-дневный план
+          </button>
+          {totalCount > 0 && (
+            <div style={{
+              background: '#D5FE61',
+              color: '#0A0A0A',
+              fontSize: '12px',
+              fontWeight: 800,
+              padding: '6px 12px',
+              borderRadius: '20px',
+            }}>
+              {completedCount} / {totalCount} ✓
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Ретейк ссылка на главной (всегда видна, даже если доступ уже оплачен) */}
@@ -941,7 +953,7 @@ export default function HomePage() {
             width: '100%',
             background: 'transparent',
             border: 'none',
-            color: '#0A5F59',
+            color: '#6B7280',
             textDecoration: 'underline',
             cursor: 'pointer',
             fontSize: '14px',
@@ -955,47 +967,61 @@ export default function HomePage() {
 
       {/* Toggle AM/PM */}
       <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        marginBottom: '24px',
+        padding: '0 20px 14px',
       }}>
         <div style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.42)',
-          backdropFilter: 'blur(20px)',
-          borderRadius: '28px',
-          padding: '6px',
+          backgroundColor: '#F4F4F4',
+          borderRadius: '26px',
+          padding: '4px',
           display: 'flex',
-          gap: '6px',
-          border: '1px solid rgba(255, 255, 255, 0.3)',
+          gap: '4px',
         }}>
           <button
             onClick={() => setTab('AM')}
             style={{
-              padding: '8px 20px',
+              flex: 1,
+              padding: '9px 0',
               borderRadius: '22px',
               border: 'none',
-              backgroundColor: tab === 'AM' ? 'rgba(10, 95, 89, 0.9)' : 'rgba(255, 255, 255, 0.2)',
-              color: tab === 'AM' ? 'white' : '#0A5F59',
+              backgroundColor: tab === 'AM' ? '#0A0A0A' : 'transparent',
+              color: tab === 'AM' ? 'white' : '#6B7280',
               cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '14px',
+              fontWeight: tab === 'AM' ? 700 : 600,
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '5px',
+              transition: 'all 0.2s',
             }}
           >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ width: '13px', height: '13px' }}>
+              <circle cx="12" cy="12" r="4"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+            </svg>
             Утро
           </button>
           <button
             onClick={() => setTab('PM')}
             style={{
-              padding: '8px 20px',
+              flex: 1,
+              padding: '9px 0',
               borderRadius: '22px',
               border: 'none',
-              backgroundColor: tab === 'PM' ? 'rgba(10, 95, 89, 0.9)' : 'rgba(255, 255, 255, 0.2)',
-              color: tab === 'PM' ? 'white' : '#0A5F59',
+              backgroundColor: tab === 'PM' ? '#0A0A0A' : 'transparent',
+              color: tab === 'PM' ? 'white' : '#6B7280',
               cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '14px',
+              fontWeight: tab === 'PM' ? 700 : 600,
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '5px',
+              transition: 'all 0.2s',
             }}
           >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ width: '13px', height: '13px' }}>
+              <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+            </svg>
             Вечер
           </button>
         </div>
@@ -1005,115 +1031,148 @@ export default function HomePage() {
       <div style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: '12px',
-        padding: '0 20px',
-        maxWidth: '600px',
-        margin: '0 auto',
+        gap: '10px',
+        padding: '0 16px 16px',
       }}>
-        {routineItems.map((item, index) => (
-          <div
-            key={item.id}
-            onClick={() => setSelectedItem(item)}
-            style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.56)',
-              backdropFilter: 'blur(28px)',
-              borderRadius: '20px',
-              padding: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '16px',
-              cursor: 'pointer',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              opacity: item.done ? 0.7 : 1,
-            }}
-          >
-            {/* Step Number */}
+        {routineItems.map((item, index) => {
+          const isCurrentStep = !item.done && index === currentStepIndex;
+          return (
             <div
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleItem(item.id);
-              }}
+              key={item.id}
+              onClick={() => setSelectedItem(item)}
               style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                backgroundColor: item.done ? '#0A5F59' : 'rgba(10, 95, 89, 0.1)',
-                color: 'white',
+                background: isCurrentStep ? '#D5FE61' : '#FFFFFF',
+                borderRadius: '16px',
+                padding: '13px 14px',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '14px',
-                fontWeight: 'bold',
+                gap: '12px',
                 cursor: 'pointer',
-                flexShrink: 0,
+                border: isCurrentStep ? 'none' : '1px solid #EBEBEB',
+                opacity: item.done ? 0.55 : 1,
+                boxShadow: isCurrentStep
+                  ? '0 8px 28px rgba(213,254,97,0.55)'
+                  : '0 2px 12px rgba(0,0,0,0.05)',
               }}
             >
-              {item.done ? '✓' : index + 1}
-            </div>
-
-            {/* Icon */}
-            <img
-              src={item.icon}
-              alt={item.title}
-              style={{
-                width: '60px',
-                height: '60px',
-                objectFit: 'contain',
-                flexShrink: 0,
-              }}
-              onError={(e) => {
-                clientLogger.warn('Icon not found:', item.icon);
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
-
-            {/* Content */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{
-                fontSize: '17px',
-                fontWeight: 'bold',
-                color: '#0A5F59',
-                marginBottom: '4px',
-              }}>
-                {item.title}
+              {/* Step circle */}
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleItem(item.id);
+                }}
+                style={{
+                  width: '30px',
+                  height: '30px',
+                  borderRadius: '50%',
+                  backgroundColor: item.done
+                    ? '#D5FE61'
+                    : isCurrentStep
+                    ? '#0A0A0A'
+                    : '#F4F4F4',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                {item.done ? (
+                  <svg width="12" height="9" viewBox="0 0 14 10" fill="none">
+                    <path d="M1 5L5 9L13 1" stroke="#0A0A0A" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                ) : (
+                  <span style={{
+                    color: isCurrentStep ? '#D5FE61' : '#0A0A0A',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    lineHeight: 1,
+                  }}>
+                    {index + 1}
+                  </span>
+                )}
               </div>
-              <div style={{
-                fontSize: '14px',
-                color: '#475467',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}>
-                {item.subtitle}
-              </div>
-            </div>
 
-            {/* Info Button */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedItem(item);
-              }}
-              style={{
-                width: '28px',
-                height: '28px',
-                borderRadius: '50%',
-                backgroundColor: '#0A5F59',
-                color: 'white',
-                border: 'none',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: 'bold',
-                flexShrink: 0,
-              }}
-            >
-              i
-            </button>
-          </div>
-        ))}
+              {/* Icon */}
+              <img
+                src={item.icon}
+                alt={item.title}
+                style={{
+                  width: '52px',
+                  height: '52px',
+                  objectFit: 'contain',
+                  flexShrink: 0,
+                  borderRadius: '10px',
+                }}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+
+              {/* Content */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {isCurrentStep && (
+                  <div style={{
+                    fontSize: '10px',
+                    fontWeight: 800,
+                    color: 'rgba(0,0,0,0.45)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.6px',
+                    marginBottom: '2px',
+                  }}>
+                    Сейчас
+                  </div>
+                )}
+                <div style={{
+                  fontSize: '15px',
+                  fontWeight: 700,
+                  color: '#0A0A0A',
+                  marginBottom: '3px',
+                  textDecoration: item.done ? 'line-through' : 'none',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}>
+                  {item.title}
+                </div>
+                <div style={{
+                  fontSize: '12px',
+                  color: isCurrentStep ? 'rgba(0,0,0,0.5)' : '#6B7280',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}>
+                  {item.subtitle}
+                </div>
+              </div>
+
+              {/* Info Button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedItem(item);
+                }}
+                style={{
+                  width: '26px',
+                  height: '26px',
+                  borderRadius: '50%',
+                  backgroundColor: isCurrentStep ? '#0A0A0A' : (item.done ? '#D5FE61' : '#F4F4F4'),
+                  color: isCurrentStep ? '#D5FE61' : '#0A0A0A',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  flexShrink: 0,
+                }}
+              >
+                i
+              </button>
+            </div>
+          );
+        })}
       </div>
 
       {/* BottomSheet для деталей */}

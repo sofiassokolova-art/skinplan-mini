@@ -99,16 +99,16 @@ export default function BottomNavigation() {
                 navigator.vibrate(10);
               }
             }}
-            style={{ 
-              color: active ? '#0A5F59' : '#94A3B8',
+            style={{
+              color: active ? '#0A0A0A' : '#94A3B8',
               minWidth: '64px',
               position: 'relative',
-              background: active ? 'rgba(10, 95, 89, 0.20)' : 'transparent',
+              background: active ? '#D5FE61' : 'transparent',
               border: 'none',
               borderRadius: '36px',
               cursor: 'pointer',
               padding: '8px 12px',
-              transform: active ? 'scale(1.06)' : 'scale(1)',
+              transform: 'scale(1)',
               transition: 'transform 0.2s ease-out, background-color 0.2s ease-out',
               display: 'flex',
               flexDirection: 'column',
@@ -117,13 +117,13 @@ export default function BottomNavigation() {
               gap: '4px',
             }}
             onMouseDown={(e) => {
-              e.currentTarget.style.transform = active ? 'scale(1.0)' : 'scale(0.95)';
+              e.currentTarget.style.transform = 'scale(0.95)';
             }}
             onMouseUp={(e) => {
-              e.currentTarget.style.transform = active ? 'scale(1.06)' : 'scale(1)';
+              e.currentTarget.style.transform = 'scale(1)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.transform = active ? 'scale(1.06)' : 'scale(1)';
+              e.currentTarget.style.transform = 'scale(1)';
             }}
           >
             {item.icon === 'home' && (
@@ -132,9 +132,9 @@ export default function BottomNavigation() {
                 width="24" 
                 height="24" 
                 fill="none" 
-                stroke={active ? '#0A5F59' : '#94A3B8'} 
-                strokeWidth="2" 
-                strokeLinecap="round" 
+                stroke={active ? '#0A0A0A' : '#94A3B8'}
+                strokeWidth="2"
+                strokeLinecap="round"
                 strokeLinejoin="round"
               >
                 <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -147,9 +147,9 @@ export default function BottomNavigation() {
                 width="24" 
                 height="24" 
                 fill="none" 
-                stroke={active ? '#0A5F59' : '#94A3B8'} 
-                strokeWidth="2" 
-                strokeLinecap="round" 
+                stroke={active ? '#0A0A0A' : '#94A3B8'}
+                strokeWidth="2"
+                strokeLinecap="round"
                 strokeLinejoin="round"
               >
                 <path d="M9 11l3 3L22 4" />
@@ -162,9 +162,9 @@ export default function BottomNavigation() {
                 width="24" 
                 height="24" 
                 fill="none" 
-                stroke={active ? '#0A5F59' : '#94A3B8'} 
-                strokeWidth="2" 
-                strokeLinecap="round" 
+                stroke={active ? '#0A0A0A' : '#94A3B8'}
+                strokeWidth="2"
+                strokeLinecap="round"
                 strokeLinejoin="round"
               >
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
@@ -178,8 +178,8 @@ export default function BottomNavigation() {
                 viewBox="0 0 24 24" 
                 width="24" 
                 height="24" 
-                fill={active ? '#0A5F59' : 'none'} 
-                stroke={active ? '#0A5F59' : '#94A3B8'} 
+                fill={active ? '#0A0A0A' : 'none'}
+                stroke={active ? '#0A0A0A' : '#94A3B8'}
                 strokeWidth="2" 
                 strokeLinecap="round" 
                 strokeLinejoin="round"
@@ -193,9 +193,9 @@ export default function BottomNavigation() {
                 width="24" 
                 height="24" 
                 fill="none" 
-                stroke={active ? '#0A5F59' : '#94A3B8'} 
-                strokeWidth="2" 
-                strokeLinecap="round" 
+                stroke={active ? '#0A0A0A' : '#94A3B8'}
+                strokeWidth="2"
+                strokeLinecap="round"
                 strokeLinejoin="round"
               >
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -204,7 +204,7 @@ export default function BottomNavigation() {
             )}
             <span 
               style={{
-                color: active ? '#0A5F59' : '#94A3B8',
+                color: active ? '#0A0A0A' : '#94A3B8',
                 fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
                 fontWeight: active ? 700 : 500,
                 fontSize: '11px',
@@ -226,16 +226,16 @@ export default function BottomNavigation() {
               navigator.vibrate(10);
             }
           }}
-          style={{ 
-            color: pathname === '/cart-new' ? '#0A5F59' : '#94A3B8',
+          style={{
+            color: pathname === '/cart-new' ? '#0A0A0A' : '#94A3B8',
             minWidth: '64px',
             position: 'relative',
-            background: pathname === '/cart-new' ? 'rgba(10, 95, 89, 0.20)' : 'transparent',
+            background: pathname === '/cart-new' ? '#D5FE61' : 'transparent',
             border: 'none',
             borderRadius: '36px',
             cursor: 'pointer',
             padding: '8px 12px',
-            transform: pathname === '/cart-new' ? 'scale(1.06)' : 'scale(1)',
+            transform: 'scale(1)',
             transition: 'transform 0.2s ease-out, background-color 0.2s ease-out',
             display: 'flex',
             flexDirection: 'column',
@@ -250,7 +250,7 @@ export default function BottomNavigation() {
               width="24" 
               height="24" 
               fill="none" 
-              stroke={pathname === '/cart-new' ? '#0A5F59' : '#94A3B8'} 
+              stroke={pathname === '/cart-new' ? '#0A0A0A' : '#94A3B8'}
               strokeWidth="2" 
               strokeLinecap="round" 
               strokeLinejoin="round"
@@ -283,7 +283,7 @@ export default function BottomNavigation() {
           </div>
           <span 
             style={{
-              color: pathname === '/cart-new' ? '#0A5F59' : '#94A3B8',
+              color: pathname === '/cart-new' ? '#0A0A0A' : '#94A3B8',
               fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: pathname === '/cart-new' ? 700 : 500,
               fontSize: '11px',

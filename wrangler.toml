@@ -1,0 +1,11 @@
+# Cloudflare Pages configuration for skinplan-mini
+# Build: npm run pages:build
+# Output: .vercel/output/static
+
+name = "skinplan-mini"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# Cron triggers are not supported directly in Cloudflare Pages via wrangler.toml.
+# Configure in Cloudflare Dashboard → Workers & Pages → skinplan-mini → Settings → Triggers
+# Add a cron rule: "0 0 * * 0" → calls GET /api/cron/cleanup-logs?secret=$CRON_SECRET
