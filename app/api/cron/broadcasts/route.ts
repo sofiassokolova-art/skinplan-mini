@@ -1,4 +1,4 @@
-// Настраивается в vercel.json или через Vercel Cron Jobs
+// Настраивается через wrangler.toml → [triggers] crons
 
 export const runtime = 'edge';
 

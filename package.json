@@ -8,7 +8,6 @@
     "dev:vite": "vite",
     "dev:api": "next dev",
     "build": "next build --webpack",
-    "pages:build": "npx @cloudflare/next-on-pages",
     "build:vite": "tsc -b && vite build",
     "build:api": "next build",
     "start": "next start",
@@ -56,7 +55,10 @@
     "analyze:products": "tsx scripts/analyze-products-by-step.ts",
     "check:product-coverage": "tsx scripts/check-product-coverage-by-skintype.ts",
     "add:combo-rules": "tsx scripts/add-combo-skin-rules.ts",
-    "add:comprehensive-rules": "tsx scripts/add-comprehensive-rules.ts"
+    "add:comprehensive-rules": "tsx scripts/add-comprehensive-rules.ts",
+    "build:cf": "npx @opennextjs/cloudflare build",
+    "deploy:cf": "npx wrangler deploy",
+    "preview:cf": "npx @opennextjs/cloudflare build && npx wrangler dev"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -104,6 +106,7 @@
     "@cloudflare/next-on-pages": "^1.13.12",
     "@eslint/js": "^9.33.0",
     "@next/bundle-analyzer": "^16.1.3",
+    "@opennextjs/cloudflare": "^1.19.1",
     "@playwright/test": "^1.49.0",
     "@tanstack/react-query-devtools": "^5.91.1",
     "@testing-library/jest-dom": "^6.9.1",
