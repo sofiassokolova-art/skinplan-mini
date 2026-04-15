@@ -7,7 +7,6 @@ import { prisma } from '@/lib/db';
 import { ApiResponse } from '@/lib/api-response';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
-import { randomBytes } from 'crypto';
 import { rateLimit } from '@/lib/rate-limit';
 
 export const runtime = 'edge';
@@ -231,7 +230,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Генерируем idempotencyKey если не передан
-    const finalIdempotencyKey = idempotencyKey || randomBytes(16).toString('hex');
+    const finalIdempotencyKey = idempotencyKey || Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join('');
 
     // Проверяем, не создан ли уже платеж с таким ключом
     const existingPayment = await prisma.payment.findUnique({

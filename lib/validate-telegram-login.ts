@@ -1,7 +1,5 @@
 // lib/validate-telegram-login.ts
-// Валидация данных от Telegram Login Widget
-
-import crypto from 'crypto';
+// Валидация данных от Telegram Login Widget (Edge-compatible)
 
 interface TelegramLoginData {
   id: number;
@@ -13,52 +11,45 @@ interface TelegramLoginData {
   hash: string;
 }
 
-/**
- * Валидирует данные от Telegram Login Widget
- * @param data - Объект с данными от виджета
- * @param botToken - Токен Telegram бота
- */
-export function validateTelegramLoginWidget(
+async function hmacSha256(key: ArrayBuffer | Uint8Array, data: string): Promise<ArrayBuffer> {
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw', key instanceof Uint8Array ? key : new Uint8Array(key),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  );
+  return crypto.subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(data));
+}
+
+function bufToHex(buf: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+export async function validateTelegramLoginWidget(
   data: TelegramLoginData,
   botToken: string
-): { valid: boolean; user?: TelegramLoginData['id'] | null; error?: string } {
+): Promise<{ valid: boolean; user?: TelegramLoginData['id'] | null; error?: string }> {
   try {
-    // Проверяем время (не старше 24 часов)
     const now = Math.floor(Date.now() / 1000);
     if (now - data.auth_date > 86400) {
       return { valid: false, error: 'Data expired' };
     }
 
-    // Создаем строку для проверки
     const dataCheckString = Object.keys(data)
       .filter(key => key !== 'hash')
       .sort()
       .map(key => `${key}=${data[key as keyof TelegramLoginData]}`)
       .join('\n');
 
-    // Создаем секретный ключ
-    const secretKey = crypto
-      .createHmac('sha256', 'WebAppData')
-      .update(botToken)
-      .digest();
+    // secretKey = HMAC-SHA256("WebAppData", botToken)
+    const webAppDataKey = new TextEncoder().encode('WebAppData');
+    const secretKey = await hmacSha256(webAppDataKey, botToken);
+    const calculatedHash = bufToHex(await hmacSha256(new Uint8Array(secretKey), dataCheckString));
 
-    // Вычисляем hash
-    const calculatedHash = crypto
-      .createHmac('sha256', secretKey)
-      .update(dataCheckString)
-      .digest('hex');
-
-    // Проверяем подпись
     if (calculatedHash !== data.hash) {
       return { valid: false, error: 'Invalid hash' };
     }
 
     return { valid: true, user: data.id };
   } catch (error) {
-    return {
-      valid: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    };
+    return { valid: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
-

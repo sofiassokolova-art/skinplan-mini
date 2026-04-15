@@ -6,9 +6,8 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db';
 import { ApiResponse } from '@/lib/api-response';
 import { verifyAdminBoolean } from '@/lib/admin-auth';
-import jwt from 'jsonwebtoken';
+import { verifyAdminToken } from '@/lib/jwt';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // POST - отправка экспорта в Telegram чат админа
 export async function POST(request: NextRequest) {
@@ -27,14 +26,12 @@ export async function POST(request: NextRequest) {
       return ApiResponse.unauthorized('Token not found');
     }
 
-    let decoded: any;
-    try {
-      decoded = jwt.verify(token, JWT_SECRET) as any;
-    } catch (error) {
+    const decodeResult = await verifyAdminToken(token);
+    if (!decodeResult.valid || !decodeResult.payload) {
       return ApiResponse.unauthorized('Invalid token');
     }
 
-    const adminTelegramId = decoded.telegramId;
+    const adminTelegramId = decodeResult.payload.telegramId;
     if (!adminTelegramId) {
       return ApiResponse.error('Admin telegramId not found in token', 404);
     }

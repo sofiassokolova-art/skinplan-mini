@@ -3,10 +3,19 @@
 export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
 import { prisma } from '@/lib/db';
 import { getUserIdFromTelegramId } from '@/lib/get-user-from-telegram-id';
 import { verifyAdmin } from '@/lib/admin-auth';
+
+// Edge-compatible constant-time comparison
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  const aBytes = new TextEncoder().encode(a);
+  const bBytes = new TextEncoder().encode(b);
+  let diff = 0;
+  for (let i = 0; i < aBytes.length; i++) diff |= aBytes[i] ^ bBytes[i];
+  return diff === 0;
+}
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 // Секретный токен опционален - используется только если установлен в переменных окружения
@@ -138,9 +147,7 @@ export async function POST(request: NextRequest) {
         console.warn('⚠️ Webhook: отсутствует X-Telegram-Bot-Api-Secret-Token');
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
-      const expected = Buffer.from(TELEGRAM_SECRET_TOKEN, 'utf8');
-      const actual = Buffer.from(headerToken, 'utf8');
-      if (expected.length !== actual.length || !crypto.timingSafeEqual(expected, actual)) {
+      if (!timingSafeEqual(TELEGRAM_SECRET_TOKEN, headerToken)) {
         console.warn('⚠️ Webhook: неверный X-Telegram-Bot-Api-Secret-Token');
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
@@ -752,14 +759,7 @@ export async function GET(request: NextRequest) {
   // Для check/set-webhook: допуск по админ-сессии ИЛИ по секрету WEBHOOK_SET_SECRET (curl без браузера)
   if (action === 'check' || action === 'set-webhook') {
     const secret = searchParams.get('secret') ?? request.headers.get('x-webhook-set-secret') ?? '';
-    const expected = WEBHOOK_SET_SECRET ? Buffer.from(WEBHOOK_SET_SECRET, 'utf8') : null;
-    const actual = secret ? Buffer.from(secret, 'utf8') : null;
-    const allowedBySecret = !!(
-      expected &&
-      actual &&
-      expected.length === actual.length &&
-      crypto.timingSafeEqual(expected, actual)
-    );
+    const allowedBySecret = !!(WEBHOOK_SET_SECRET && secret && timingSafeEqual(WEBHOOK_SET_SECRET, secret));
     if (!allowedBySecret) {
       const adminAuth = await verifyAdmin(request);
       if (!adminAuth.valid) {

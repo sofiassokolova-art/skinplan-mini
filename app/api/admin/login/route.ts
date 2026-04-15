@@ -4,192 +4,84 @@ export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
+import { signAdminToken } from '@/lib/jwt';
 import { logger } from '@/lib/logger';
 import { rateLimit, getIdentifier } from '@/lib/rate-limit';
 
-// ИСПРАВЛЕНО: Убрали хардкод JWT секрета - теперь обязательная переменная
-const JWT_SECRET = process.env.JWT_SECRET;
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
+
+// Edge-compatible SHA-256 hash comparison
+async function sha256Hex(text: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 export async function POST(request: NextRequest) {
   try {
-    // ОПТИМИЗАЦИЯ: Rate limiting для защиты от brute force атак
     const identifier = getIdentifier(request);
     const rateLimitResult = await rateLimit(
       `admin-login:${identifier}`,
-      {
-        interval: 60 * 1000, // 1 минута
-        maxRequests: 5, // Максимум 5 попыток в минуту
-      },
+      { interval: 60 * 1000, maxRequests: 5 },
       'admin-login'
     );
 
     if (!rateLimitResult.success) {
-      logger.warn('Admin login rate limit exceeded', {
-        identifier,
-        remaining: rateLimitResult.remaining,
-        resetAt: new Date(rateLimitResult.resetAt).toISOString(),
-      });
+      logger.warn('Admin login rate limit exceeded', { identifier });
       return NextResponse.json(
-        { 
-          error: 'Слишком много попыток входа. Попробуйте позже.',
-          code: 'RATE_LIMIT_EXCEEDED',
-          resetAt: rateLimitResult.resetAt,
-        },
-        { 
-          status: 429,
-          headers: {
-            'Retry-After': String(Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000)),
-            'X-RateLimit-Limit': '5',
-            'X-RateLimit-Remaining': String(rateLimitResult.remaining),
-            'X-RateLimit-Reset': String(rateLimitResult.resetAt),
-          },
-        }
+        { error: 'Слишком много попыток входа. Попробуйте позже.', code: 'RATE_LIMIT_EXCEEDED', resetAt: rateLimitResult.resetAt },
+        { status: 429, headers: { 'Retry-After': String(Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000)) } }
       );
     }
 
-    // ИСПРАВЛЕНО: Проверяем JWT_SECRET перед использованием
-    if (!JWT_SECRET || JWT_SECRET === 'your-secret-key-change-in-production') {
-      logger.error('JWT_SECRET not configured or using default value', {
-        hasJwtSecret: !!JWT_SECRET,
-        isDefault: JWT_SECRET === 'your-secret-key-change-in-production',
-      });
-      return NextResponse.json(
-        { error: 'Server configuration error. JWT_SECRET must be set in environment variables.' },
-        { status: 500 }
-      );
+    if (!process.env.JWT_SECRET) {
+      return NextResponse.json({ error: 'Server configuration error. JWT_SECRET must be set.' }, { status: 500 });
     }
-
-    // Логируем входящий запрос (для отладки)
-    logger.info('Admin login request received', {
-      timestamp: new Date().toISOString(),
-      hasBody: !!request.body,
-      adminSecretSet: !!ADMIN_SECRET && ADMIN_SECRET !== '',
-      adminSecretLength: ADMIN_SECRET ? ADMIN_SECRET.length : 0,
-    });
 
     let body;
     try {
       body = await request.json();
-    } catch (parseError) {
-      logger.error('Failed to parse request body', parseError as Error);
-      return NextResponse.json(
-        { error: 'Неверный формат запроса' },
-        { status: 400 }
-      );
+    } catch {
+      return NextResponse.json({ error: 'Неверный формат запроса' }, { status: 400 });
     }
 
     const { secretWord } = body;
-
     if (!secretWord) {
-      logger.warn('Secret word not provided in request');
-      return NextResponse.json(
-        { error: 'Требуется секретное слово' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Требуется секретное слово' }, { status: 400 });
     }
 
-    if (!ADMIN_SECRET || ADMIN_SECRET === '') {
-      logger.error('ADMIN_SECRET not configured in environment variables');
-      return NextResponse.json(
-        { error: 'Секретное слово не настроено на сервере. Проверьте переменные окружения на Vercel.' },
-        { status: 500 }
-      );
+    if (!ADMIN_SECRET) {
+      return NextResponse.json({ error: 'Секретное слово не настроено на сервере.' }, { status: 500 });
     }
 
-    // Проверяем секретное слово (сравниваем в виде хэша для безопасности)
-    const secretHash = crypto
-      .createHash('sha256')
-      .update(secretWord.trim())
-      .digest('hex');
-    
-    const expectedHash = crypto
-      .createHash('sha256')
-      .update(ADMIN_SECRET.trim())
-      .digest('hex');
-
-    // Логирование для отладки
-    logger.info('Admin login attempt', {
-      secretWordLength: secretWord.trim().length,
-      adminSecretLength: ADMIN_SECRET.trim().length,
-      hashesMatch: secretHash === expectedHash,
-      environment: process.env.NODE_ENV || 'unknown',
-    });
+    const secretHash = await sha256Hex(secretWord.trim());
+    const expectedHash = await sha256Hex(ADMIN_SECRET.trim());
 
     if (secretHash !== expectedHash) {
-      logger.warn('Invalid admin login attempt', {
-        timestamp: new Date().toISOString(),
-        providedLength: secretWord.trim().length,
-      });
-      return NextResponse.json(
-        { error: 'Неверное секретное слово. Проверьте правильность ввода.' },
-        { status: 401 }
-      );
+      logger.warn('Invalid admin login attempt');
+      return NextResponse.json({ error: 'Неверное секретное слово.' }, { status: 401 });
     }
 
-    // Получаем или создаём админа по умолчанию
-    let admin = await prisma.admin.findFirst({
-      where: {
-        role: 'admin',
-      },
-    });
-
+    let admin = await prisma.admin.findFirst({ where: { role: 'admin' } });
     if (!admin) {
-      // Создаём админа по умолчанию, если его нет
-      admin = await prisma.admin.create({
-        data: {
-          role: 'admin',
-        },
-      });
-      logger.info('Default admin created', { adminId: admin.id });
+      admin = await prisma.admin.create({ data: { role: 'admin' } });
     }
 
-    // ИСПРАВЛЕНО (P2): Генерируем JWT токен с issuer/audience для безопасности
-    const token = jwt.sign(
-      {
-        adminId: admin.id,
-        role: admin.role || 'admin',
-      },
-      JWT_SECRET!, // Теперь мы уверены, что JWT_SECRET не null
-      {
-        expiresIn: '7d',
-        issuer: 'skiniq-admin',
-        audience: 'skiniq-admin-ui',
-      }
-    );
+    const token = await signAdminToken({ adminId: admin.id, role: admin.role || 'admin' });
 
-    logger.info('Admin logged in via secret word', { 
-      adminId: admin.id, 
-      role: admin.role,
-      timestamp: new Date().toISOString(),
-    });
+    logger.info('Admin logged in via secret word', { adminId: admin.id });
 
-    // ИСПРАВЛЕНО (P1): Убрали token из JSON ответа - cookie-only подход
-    const response = NextResponse.json({
-      valid: true,
-      admin: {
-        id: admin.id,
-        role: admin.role,
-      },
-    });
-
-    // ИСПРАВЛЕНО (P0): httpOnly: true для защиты от XSS
+    const response = NextResponse.json({ valid: true, admin: { id: admin.id, role: admin.role } });
     response.cookies.set('admin_token', token, {
-      httpOnly: true, // ИСПРАВЛЕНО (P0): Защита от XSS
+      httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 дней
+      maxAge: 60 * 60 * 24 * 7,
       path: '/',
     });
 
     return response;
   } catch (error) {
     logger.error('Admin login error', error as Error);
-    return NextResponse.json(
-      { error: 'Внутренняя ошибка сервера' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Внутренняя ошибка сервера' }, { status: 500 });
   }
 }

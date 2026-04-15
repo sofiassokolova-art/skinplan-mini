@@ -3,7 +3,7 @@
 export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
+import { verifyAdminToken } from '@/lib/jwt';
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,34 +19,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const secret = process.env.JWT_SECRET;
-    if (!secret) {
-      return NextResponse.json(
-        { error: 'Server configuration error' },
-        { status: 500 }
-      );
+    const result = await verifyAdminToken(token);
+    if (!result.valid || !result.payload) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
-
-    try {
-      const decoded = jwt.verify(token, secret, {
-        issuer: 'skiniq-admin',
-        audience: 'skiniq-admin-ui',
-      }) as {
-        adminId: string | number;
-        role?: string;
-      };
-
-      return NextResponse.json({
-        valid: true,
-        adminId: decoded.adminId,
-        role: decoded.role || 'admin',
-      });
-    } catch {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
+    return NextResponse.json({
+      valid: true,
+      adminId: result.payload.adminId,
+      role: result.payload.role || 'admin',
+    });
   } catch (error) {
     console.error('Verify error:', error);
     return NextResponse.json(
