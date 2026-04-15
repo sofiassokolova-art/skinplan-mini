@@ -1,7 +1,5 @@
 // API endpoint для получения данных анализа кожи
 
-export const runtime = 'edge';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { calculateSkinAxes } from '@/lib/skin-analysis-engine';

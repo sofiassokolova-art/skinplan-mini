@@ -1,7 +1,5 @@
 // Webhook для Telegram бота
 
-export const runtime = 'edge';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getUserIdFromTelegramId } from '@/lib/get-user-from-telegram-id';
@@ -21,9 +19,9 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 // Секретный токен опционален - используется только если установлен в переменных окружения
 // Для генерации токена: node -e "const crypto = require('crypto'); console.log(crypto.randomBytes(32).toString('hex'))"
 const TELEGRAM_SECRET_TOKEN = process.env.TELEGRAM_SECRET_TOKEN;
-/** Секрет для установки webhook без входа в админку (curl / CI). Задайте WEBHOOK_SET_SECRET в Vercel. */
+/** Секрет для установки webhook без входа в админку (curl / CI). Задайте WEBHOOK_SET_SECRET в Cloudflare. */
 const WEBHOOK_SET_SECRET = process.env.WEBHOOK_SET_SECRET;
-const MINI_APP_URL = process.env.NEXT_PUBLIC_MINI_APP_URL || 'https://skinplan-mini.vercel.app';
+const MINI_APP_URL = process.env.NEXT_PUBLIC_MINI_APP_URL || 'https://skinplan-mini.pages.dev';
 
 interface TelegramUpdate {
   update_id: number;

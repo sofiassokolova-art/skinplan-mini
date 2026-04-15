@@ -1,7 +1,5 @@
 // Идемпотентный: можно вызывать несколько раз с тем же profileId
 
-export const runtime = 'edge';
-
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';

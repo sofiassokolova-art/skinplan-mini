@@ -82,12 +82,12 @@ export default function TelegramSetupPage() {
             <li>Введите домен: <code className="bg-gray-100 px-2 py-1 rounded">
               {typeof window !== 'undefined' 
                 ? new URL(process.env.NEXT_PUBLIC_MINI_APP_URL || window.location.origin).hostname
-                : 'skinplan-mini.vercel.app'}
+                : 'skinplan-mini.pages.dev'}
             </code></li>
           </ol>
           <div className="bg-blue-50 border border-blue-200 rounded p-4">
             <p className="text-sm text-blue-800">
-              <strong>Важно:</strong> Домен должен точно совпадать с доменом вашего приложения на Vercel.
+              <strong>Важно:</strong> Домен должен точно совпадать с доменом вашего приложения на Cloudflare.
             </p>
           </div>
         </div>
@@ -151,11 +151,11 @@ export default function TelegramSetupPage() {
             <div>TELEGRAM_BOT_TOKEN=ваш_токен_бота</div>
             <div>TELEGRAM_SECRET_TOKEN=ваш_секретный_токен (опционально)</div>
             <div>NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=@skinplanned_bot</div>
-            <div>NEXT_PUBLIC_MINI_APP_URL=https://skinplan-mini.vercel.app</div>
+            <div>NEXT_PUBLIC_MINI_APP_URL=https://skinplan-mini.pages.dev</div>
           </div>
           <p className="text-gray-600 mt-4 text-sm">
             Эти переменные должны быть добавлены в <code className="bg-gray-100 px-1 rounded">.env</code> локально 
-            и в настройках проекта на Vercel.
+            и в настройках проекта на Cloudflare.
           </p>
         </div>
       </div>

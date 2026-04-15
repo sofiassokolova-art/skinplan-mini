@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 // app/(miniapp)/plan/calendar/page.tsx
 // Отдельная страница календаря плана с выбором дня
 

@@ -1,7 +1,5 @@
 // Проверка токена админа
 
-export const runtime = 'edge';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminToken } from '@/lib/jwt';
 

@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 // app/admin/replacements/page.tsx
 // Страница замен продуктов
 

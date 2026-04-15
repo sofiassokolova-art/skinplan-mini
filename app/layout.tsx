@@ -1,8 +1,6 @@
 // app/layout.tsx
 // Root layout для Next.js приложения
 
-export const runtime = 'edge';
-
 import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
 import Script from 'next/script';

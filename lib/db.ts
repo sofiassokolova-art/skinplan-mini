@@ -4,7 +4,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import { PrismaNeon } from '@prisma/adapter-neon';
-import { Pool, neonConfig } from '@neondatabase/serverless';
+import { neonConfig } from '@neondatabase/serverless';
 
 // В Cloudflare Workers используем встроенный WebSocket вместо ws-пакета
 // В Node.js среде (dev/scripts) neonConfig.webSocketConstructor не нужен
@@ -20,14 +20,12 @@ function createPrismaClient() {
   const url = process.env.DATABASE_URL;
 
   if (!url) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('DATABASE_URL is missing in production!');
-    }
-    console.warn('⚠️ DATABASE_URL is not set; Prisma will require it for DB operations.');
+    console.warn('⚠️ DATABASE_URL is not set; Prisma DB operations will fail until it is configured.');
   }
 
-  const pool = new Pool({ connectionString: url });
-  const adapter = new PrismaNeon(pool);
+  // Build-time fallback avoids crashing edge route compilation when env vars are injected only at deploy/runtime.
+  const connectionString = url || 'postgresql://placeholder:placeholder@127.0.0.1:5432/placeholder';
+  const adapter = new PrismaNeon({ connectionString });
 
   return new PrismaClient({
     adapter,

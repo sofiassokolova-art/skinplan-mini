@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 // app/admin/products/[id]/page.tsx
 // Страница редактирования продукта - премиум верстка 2025
 

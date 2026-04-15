@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 // app/admin/brands/page.tsx
 // Страница управления брендами (таблица как продукты)
 

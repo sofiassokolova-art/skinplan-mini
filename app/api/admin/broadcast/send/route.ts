@@ -1,7 +1,5 @@
 // Отправка рассылки
 
-export const runtime = 'edge';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { verifyAdmin, verifyAdminBoolean } from '@/lib/admin-auth';

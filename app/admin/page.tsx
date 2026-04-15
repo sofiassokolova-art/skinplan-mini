@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 // app/admin/page.tsx
 // Дашборд админ-панели - премиум верстка 2025
 

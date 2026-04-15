@@ -1,7 +1,5 @@
 // Не требует авторизации, делает минимальный запрос к БД
 
-export const runtime = 'edge';
-
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 

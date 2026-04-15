@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 // app/admin/broadcasts/page.tsx
 // Главная страница со списком рассылок
 

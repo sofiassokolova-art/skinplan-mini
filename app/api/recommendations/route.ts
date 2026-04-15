@@ -11,8 +11,6 @@ import { getProductsForStep, type RuleStep } from '@/lib/product-selection';
 import { normalizeIngredientSimple } from '@/lib/ingredient-normalizer';
 import { calculateSkinAxes, type QuestionnaireAnswers } from '@/lib/skin-analysis-engine';
 
-export const runtime = 'edge';
-
 interface RuleCondition {
   [key: string]: string[] | { gte?: number; lte?: number } | string;
 }

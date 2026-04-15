@@ -25,7 +25,6 @@ function initializeCache(): void {
     if (upstashRedis) {
       kv = upstashRedis;
       kvAvailable = true;
-      isUpstashRedis = true;
       console.log('✅ Using Upstash Redis for cache');
 
       const writeToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;

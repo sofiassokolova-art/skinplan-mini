@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 // app/admin/analytics/page.tsx
 // Страница аналитики
 

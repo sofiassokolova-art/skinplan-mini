@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 // app/admin/support/page.tsx
 // Страница поддержки с чатами
 

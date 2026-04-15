@@ -1,7 +1,5 @@
 // API для экспорта списка продуктов в CSV/JSON
 
-export const runtime = 'edge';
-
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db';
 import { ApiResponse } from '@/lib/api-response';

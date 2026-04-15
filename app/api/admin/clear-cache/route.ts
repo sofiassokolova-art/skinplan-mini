@@ -8,8 +8,6 @@ import { ApiResponse } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 
-export const runtime = 'edge';
-
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireTelegramAuth(request, { ensureUser: true });

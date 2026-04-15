@@ -1,7 +1,5 @@
 // API для статистики админки
 
-export const runtime = 'edge';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getMetricsStats } from '@/lib/admin-stats';

@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 // app/(miniapp)/quiz/update/[topicId]/page.tsx
 // Страница мини-анкеты для выбранной темы
 

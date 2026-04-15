@@ -1,7 +1,5 @@
 // Health check endpoint для мониторинга состояния приложения
 
-export const runtime = 'edge';
-
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';

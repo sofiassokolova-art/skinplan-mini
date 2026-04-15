@@ -8,7 +8,6 @@ import { getCurrentProfile } from '@/lib/get-current-profile';
 import { getCorrelationId, addCorrelationIdToHeaders } from '@/lib/utils/correlation-id';
 import { addCacheHeaders, CachePresets } from '@/lib/utils/api-cache';
 
-export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {

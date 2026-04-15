@@ -1,7 +1,5 @@
 // API для управления конкретной рассылкой
 
-export const runtime = 'edge';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getUserIdFromTelegramId } from '@/lib/get-user-from-telegram-id';

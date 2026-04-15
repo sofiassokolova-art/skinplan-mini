@@ -8,8 +8,6 @@ import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 
-export const runtime = 'edge';
-
 import { entitlementCodeForProduct, calculateValidUntil } from '@/lib/payment-helpers';
 
 /**

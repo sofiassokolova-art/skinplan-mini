@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 // app/admin/login/page.tsx
 // Вход в админку по email + коду. Список допущенных email — в БД (AdminEmailWhitelist), код пользователь задаёт сам.
 

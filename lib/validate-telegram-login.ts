@@ -11,9 +11,16 @@ interface TelegramLoginData {
   hash: string;
 }
 
+function toRawBuffer(key: ArrayBuffer | Uint8Array): ArrayBuffer {
+  if (key instanceof Uint8Array) {
+    return key.buffer.slice(key.byteOffset, key.byteOffset + key.byteLength) as ArrayBuffer;
+  }
+  return key;
+}
+
 async function hmacSha256(key: ArrayBuffer | Uint8Array, data: string): Promise<ArrayBuffer> {
   const cryptoKey = await crypto.subtle.importKey(
-    'raw', key instanceof Uint8Array ? key : new Uint8Array(key),
+    'raw', toRawBuffer(key),
     { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
   );
   return crypto.subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(data));

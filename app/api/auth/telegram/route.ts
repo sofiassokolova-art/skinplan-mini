@@ -7,8 +7,6 @@ import { signToken } from '@/lib/jwt';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 
 // Используем Node.js runtime для поддержки jsonwebtoken
-export const runtime = 'edge';
-
 
 
 export async function POST(request: NextRequest) {

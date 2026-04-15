@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 // app/admin/rules/page.tsx
 // Страница управления правилами рекомендаций с JSON редактором
 

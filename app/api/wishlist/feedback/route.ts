@@ -1,7 +1,5 @@
 // API для обратной связи по продуктам в избранном
 
-export const runtime = 'edge';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';

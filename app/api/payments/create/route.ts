@@ -9,8 +9,6 @@ import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { rateLimit } from '@/lib/rate-limit';
 
-export const runtime = 'edge';
-
 const YOOKASSA_API = 'https://api.yookassa.ru/v3/payments';
 
 /** Названия товаров для чека (54-ФЗ) */
@@ -337,7 +335,6 @@ export async function POST(request: NextRequest) {
       paymentUrl = yoo.confirmationUrl;
       providerPayload = (yoo.raw as Record<string, unknown>) ?? {};
     } else {
-      const crypto = await import('crypto');
       providerPaymentId = crypto.randomUUID();
       paymentUrl = `${origin}/payments/test?payment_id=${providerPaymentId}`;
       providerPayload = {

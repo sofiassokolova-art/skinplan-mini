@@ -1,7 +1,5 @@
 // Настраивается через wrangler.toml → [triggers] crons
 
-export const runtime = 'edge';
-
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {

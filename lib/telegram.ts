@@ -87,8 +87,11 @@ export async function validateTelegramInitData(
       .join('\n');
 
     // Создаем секретный ключ: HMAC-SHA256("WebAppData", botToken) — Web Crypto API
+    const toRawBuffer = (bytes: Uint8Array): ArrayBuffer =>
+      bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+
     async function hmac(key: Uint8Array, data: string): Promise<Uint8Array> {
-      const k = await crypto.subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+      const k = await crypto.subtle.importKey('raw', toRawBuffer(key), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
       return new Uint8Array(await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(data)));
     }
     const secretKey = await hmac(new TextEncoder().encode('WebAppData'), botToken);

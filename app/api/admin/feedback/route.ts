@@ -1,7 +1,5 @@
 // API для получения обратной связи
 
-export const runtime = 'edge';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { verifyAdminBoolean } from '@/lib/admin-auth';

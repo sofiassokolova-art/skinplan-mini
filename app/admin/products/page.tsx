@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 // app/admin/products/page.tsx
 // Страница управления продуктами с TanStack Table
 

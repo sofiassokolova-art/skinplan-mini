@@ -1,7 +1,5 @@
 // Обработка callback от Telegram Login Widget
 
-export const runtime = 'edge';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { validateTelegramLoginWidget } from '@/lib/validate-telegram-login';

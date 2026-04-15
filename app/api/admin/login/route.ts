@@ -1,7 +1,5 @@
 // Авторизация админа по секретному слову
 
-export const runtime = 'edge';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { signAdminToken } from '@/lib/jwt';

@@ -1,7 +1,5 @@
 // API для управления правилами рекомендаций
 
-export const runtime = 'edge';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { verifyAdmin } from '@/lib/admin-auth';

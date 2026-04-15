@@ -42,7 +42,7 @@ async function seedAdmin() {
   console.log('⚠️  ВАЖНО: Измените пароль после первого входа!');
   console.log('');
   console.log('🌐 Вход:');
-  console.log('   Откройте: https://skinplan-mini.vercel.app/admin/login');
+  console.log('   Откройте: https://skinplan-mini.pages.dev/admin/login');
 }
 
 seedAdmin()

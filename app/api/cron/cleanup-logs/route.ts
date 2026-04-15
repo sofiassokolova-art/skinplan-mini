@@ -7,8 +7,6 @@ import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
-export const runtime = 'edge';
-
 // Cloudflare Workers Cron вызывает scheduled handler, не HTTP.
 // Этот endpoint используется для ручных вызовов через CRON_SECRET.
 function verifyCronRequest(request: NextRequest): boolean {

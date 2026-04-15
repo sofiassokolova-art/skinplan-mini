@@ -1,7 +1,5 @@
 // API для ручной очистки логов старше 7 дней
 
-export const runtime = 'edge';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';

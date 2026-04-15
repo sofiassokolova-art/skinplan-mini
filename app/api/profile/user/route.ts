@@ -1,7 +1,5 @@
 // API для работы с данными пользователя (имя, телефон)
 
-export const runtime = 'edge';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';

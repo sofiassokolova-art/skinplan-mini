@@ -1,7 +1,5 @@
 // Заменяет использование localStorage
 
-export const runtime = 'edge';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { logApiRequest, logApiError } from '@/lib/logger';

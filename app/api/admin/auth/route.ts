@@ -8,9 +8,7 @@ import { getTelegramInitDataFromHeaders } from '@/lib/auth/telegram-auth';
 
 // ИСПРАВЛЕНО (P0): Убран fallback - критическая уязвимость безопасности
 // ИСПРАВЛЕНО: Возвращаем ошибку вместо throw, чтобы не ломать обработку
-// ИСПРАВЛЕНО: Runtime для Node.js (требуется для crypto, jsonwebtoken)
-export const runtime = 'edge';
-
+// Runtime для Cloudflare Edge
 // POST - авторизация через Telegram initData
 export async function POST(request: NextRequest) {
   try {
@@ -95,20 +93,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ valid: false }, { status: 401 });
     }
 
-    try {
-      const decodeResult = await verifyAdminToken(token);
-      if (!decodeResult.valid || !decodeResult.payload) {
-        console.warn('Token verification failed:', decodeResult.error);
-        return NextResponse.json({ valid: false }, { status: 401 });
-      }
-      return NextResponse.json({
-        valid: true,
-        admin: {
-          id: decodeResult.payload.adminId,
-          telegramId: (decodeResult.payload.telegramId as string) ?? '',
-          role: decodeResult.payload.role ?? 'admin',
-        },
-      });
+    const decodeResult = await verifyAdminToken(token);
+    if (!decodeResult.valid || !decodeResult.payload) {
+      console.warn('Token verification failed:', decodeResult.error);
+      return NextResponse.json({ valid: false }, { status: 401 });
+    }
+
+    return NextResponse.json({
+      valid: true,
+      admin: {
+        id: decodeResult.payload.adminId,
+        telegramId: (decodeResult.payload.telegramId as string) ?? '',
+        role: decodeResult.payload.role ?? 'admin',
+      },
+    });
   } catch (error) {
     // ИСПРАВЛЕНО: Показываем реальную причину ошибки для дебага
     console.error('Unexpected error in GET /api/admin/auth:', error);

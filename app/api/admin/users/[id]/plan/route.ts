@@ -1,7 +1,5 @@
 // API для получения плана пользователя
 
-export const runtime = 'edge';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCachedPlan } from '@/lib/cache';

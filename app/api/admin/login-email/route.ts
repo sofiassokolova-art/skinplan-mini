@@ -1,7 +1,5 @@
 // Вход в админку по email + коду. Код пользователь задаёт сам при первом входе.
 
-export const runtime = 'edge';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { signAdminToken } from '@/lib/jwt';

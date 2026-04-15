@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 // app/admin/telegram-callback/page.tsx
 // Callback страница для Telegram Login Widget (используется как data-auth-url)
 // Telegram перенаправляет пользователя на эту страницу с данными в URL параметрах

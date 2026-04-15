@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 // app/(miniapp)/plan/page.tsx
 // Страница 28-дневного плана ухода за кожей - Client Component
 // (используем Client Component, чтобы получить initData из window.Telegram)

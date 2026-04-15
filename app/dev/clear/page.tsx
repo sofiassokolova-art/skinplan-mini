@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 'use client';
 
 // Страница сброса: очищает localStorage, sessionStorage и прогресс на сервере.
