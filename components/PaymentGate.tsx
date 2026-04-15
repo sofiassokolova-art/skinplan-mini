@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { usePaywallVisibility } from '@/providers/PaywallVisibilityContext';
+import { DEV_TELEGRAM } from '@/lib/config/timeouts';
 
 interface PaymentGateProps {
   price?: number;
@@ -23,6 +24,33 @@ const PRODUCT_PRICES: Record<string, number> = {
   retake_full: 99, // Цена за полное перепрохождение анкеты
   subscription_month: 499,
 };
+
+function getInitDataForClient(): string {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+
+  let initData = window.Telegram?.WebApp?.initData || '';
+
+  // В dev-режиме мокаем Telegram initData, чтобы можно было тестировать оплату локально
+  if (!initData && process.env.NODE_ENV === 'development') {
+    const testData = DEV_TELEGRAM.buildInitData();
+    if (!(window as any).Telegram) {
+      (window as any).Telegram = { WebApp: { initData: testData, ready() {}, expand() {} } };
+    } else if (!(window as any).Telegram.WebApp) {
+      (window as any).Telegram.WebApp = { initData: testData, ready() {}, expand() {} };
+    } else {
+      try {
+        (window as any).Telegram.WebApp.initData = testData;
+      } catch {
+        // ignore
+      }
+    }
+    initData = testData;
+  }
+
+  return initData || '';
+}
 
 // Глобальный кеш — чтобы множество PaymentGate (на /quiz) не спамили /api/me/entitlements
 let entitlementsCache: { codes: string[]; ts: number } | null = null;
@@ -110,8 +138,7 @@ export function PaymentGate({
     let cancelled = false;
 
     // Если уже есть initData — готовы
-    const current =
-      typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '';
+    const current = getInitDataForClient();
     if (current) {
       setInitDataReady(true);
       return;
@@ -185,8 +212,7 @@ export function PaymentGate({
       try {
         setCheckingDbPayment(true);
 
-        const initData =
-          typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '';
+        const initData = getInitDataForClient();
         if (!initData) {
           // initData ещё не готов — выходим, таймаут установлен отдельно
           return;
@@ -282,8 +308,7 @@ export function PaymentGate({
     if (!paymentId) return;
 
     const checkPaymentStatus = async () => {
-      const initData =
-        typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '';
+      const initData = getInitDataForClient();
       if (!initData) return;
 
       try {
@@ -328,8 +353,7 @@ export function PaymentGate({
     setIsProcessing(true);
 
     try {
-      const initData =
-        typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '';
+      const initData = getInitDataForClient();
       // После старта оплаты сбрасываем кеш entitlement, чтобы второй экран (план/главная)
       // быстрее увидел "paid_access".
       entitlementsCache = null;

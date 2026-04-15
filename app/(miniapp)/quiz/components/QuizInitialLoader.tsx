@@ -17,7 +17,7 @@ export function QuizInitialLoader({
   message: _message,
   subMessage: _subMessage,
   onTimeout,
-  timeoutMs = 8000,
+  timeoutMs = 12_000, // 12 сек: даём время на cold start БД (Neon до ~15 сек) и медленную сеть
 }: QuizInitialLoaderProps) {
   const [showReload, setShowReload] = useState(false);
 

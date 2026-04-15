@@ -32,9 +32,10 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
       overflow: 'hidden',
       zIndex: 1,
     }}>
-      {/* Картинка на весь экран */}
+      {/* Картинка на весь экран с мягким появлением */}
       {screen.image && (
         <div
+          className="animate-fade-in"
           style={{
             position: 'absolute',
             top: 0,
@@ -66,56 +67,97 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
         onClick={onBack ?? (() => {})}
       />
 
-      {/* Текст поверх картинки — белый */}
+      {/* SkinIQ — логотип вверху экрана */}
       <div
         className="animate-fade-in"
         style={{
-          position: 'relative',
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: 0,
+          padding: 'max(24px, env(safe-area-inset-top)) 20px 0',
           zIndex: 2,
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'flex-start',
-          paddingTop: 'clamp(180px, 52vh, 400px)',
-          paddingBottom: '100px',
-          paddingLeft: '20px',
-          paddingRight: '20px',
-          width: '100%',
-          boxSizing: 'border-box',
+          textAlign: 'center',
           pointerEvents: 'none',
         }}
       >
-        <div style={{ width: '100%', maxWidth: '320px', textAlign: 'center', pointerEvents: 'auto' }}>
+        <span
+          className="quiz-welcome-title"
+          style={{
+            fontFamily: "var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 700,
+            fontSize: 'clamp(18px, 5vw, 24px)',
+            color: '#FFFFFF',
+            letterSpacing: '0px',
+          }}
+        >
+          SkinIQ
+        </span>
+      </div>
+
+      {/* Стеклянный контейнер на всю ширину и до низа экрана */}
+      <div
+        className="animate-fade-in"
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: '74vh',
+          bottom: 0,
+          width: '100%',
+          zIndex: 2,
+          padding: 0,
+          boxSizing: 'border-box',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'flex-end',
+          pointerEvents: 'none',
+        }}
+      >
+        <div
+          style={{
+            width: '100%',
+            minHeight: '100%',
+            backgroundColor: 'rgba(0, 0, 0, 0.12)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            borderRadius: 0,
+            padding: '24px 20px max(24px, env(safe-area-inset-bottom))',
+            boxSizing: 'border-box',
+            pointerEvents: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'stretch',
+            gap: 16,
+          }}
+        >
           <h1
             className="quiz-welcome-title"
             style={{
               fontFamily: "var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 400,
               fontStyle: 'normal',
-              fontSize: '28px',
-              lineHeight: '140%',
+              fontSize: '17px',
+              lineHeight: '130%',
               letterSpacing: '0px',
               textAlign: 'center',
               color: '#FFFFFF',
               margin: 0,
             }}
           >
-            Подбери уход<br />
-            для своей кожи<br />
-            со <span style={{ fontWeight: 700, fontStyle: 'normal' }}>SkinIQ</span>
+            Создай персональный
+            <br />
+            план ухода за 5 минут
           </h1>
         </div>
       </div>
 
-      <div style={{ position: 'relative', zIndex: 2, pointerEvents: 'auto' }}>
-        <FixedContinueButton
-          ctaText={screen.ctaText}
-          onClick={onContinue}
-          disabled={isHandlingNext}
-          loadingText="Загрузка..."
-        />
-      </div>
+      <FixedContinueButton
+        ctaText="Начать"
+        onClick={onContinue}
+        disabled={isHandlingNext}
+        loadingText="Загрузка..."
+      />
     </div>
   );
 }

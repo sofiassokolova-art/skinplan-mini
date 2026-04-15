@@ -52,7 +52,8 @@ export const INFO_SCREENS: InfoScreen[] = [
   {
     id: 'how_it_works',
     title: 'Как это работает?',
-    subtitle: '1. Пройдите анкету\n2. Получите индивидуальную программу ухода\n3. Узнайте, как изменится ваша кожа уже через 28 дней использования средств',
+    subtitle: '1. Пройдите анкету\n2. Получите индивидуальную программу ухода\nи персональные советы\nот дерматологов\n3. Отслеживайте прогресс ежедневно',
+    image: '/5426b95c-f28c-4172-b3ef-e67237150a77.jpg',
     ctaText: 'Продолжить',
   },
   
@@ -80,8 +81,7 @@ export const INFO_SCREENS: InfoScreen[] = [
   // 6) Отзывы с горизонтальным скроллом
   {
     id: 'testimonials',
-    title: 'Тысячи пользователей уже получили результат со SkinIQ',
-    subtitle: 'Персональный уход\nпод ваши цели и особенности',
+    title: 'Тысячи пользователей уже\nполучили результат\nсо SkinIQ',
     type: 'testimonials',
     showAfterQuestionCode: 'skin_goals', // После вопроса о целях
     content: [
@@ -126,7 +126,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'general_info_intro',
     title: 'Общая информация',
     subtitle: 'Поможет нам подобрать подходящий уход',
-    image: '/info8.jpg',
+    image: '/information.png',
     showAfterInfoScreenId: 'testimonials', // ИСПРАВЛЕНО: После экрана testimonials, а не вопроса
     ctaText: 'Продолжить',
   },
@@ -137,7 +137,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'skin_features_intro',
     title: 'Узнаем особенности вашей кожи',
     subtitle: 'Мы поймем какой у вас тип кожи и как о нем заботиться лучше всего',
-    image: '/featuresinfo.jpg', // ИСПРАВЛЕНО: Добавлено расширение .jpg
+    image: '/lookimgclosely.png',
     showAfterQuestionCode: 'gender',
     ctaText: 'Продолжить',
   },
@@ -156,12 +156,12 @@ export const INFO_SCREENS: InfoScreen[] = [
     ctaText: 'Продолжить',
   },
   
-  // 14) Нам важно учесть ваши данные о здоровье
+  // 14) Нам важно учесть данные о здоровье
   {
     id: 'health_data',
-    title: 'Нам важно учесть ваши данные о здоровье',
-    subtitle: 'Ваши данные защищены — они нужны только для точных рекомендаций',
-    image: '/infohealth.jpg', // ИСПРАВЛЕНО: Исправлен путь к изображению (jpg вместо png)
+    title: 'Нам важно учесть данные о здоровье',
+    subtitle: 'Ваши данные защищены, они нужны только для точных рекомендаций',
+    image: '/healthmatter.png',
     showAfterInfoScreenId: 'simple_care', // ИСПРАВЛЕНО: После экрана simple_care, а не вопроса
     ctaText: 'Продолжить',
   },
@@ -170,21 +170,24 @@ export const INFO_SCREENS: InfoScreen[] = [
   // 17) Аллергические реакции - вопрос в БД (allergies)
   // 18) Исключить ингредиенты (можно пропустить) - вопрос в БД (avoid_ingredients)
   
-  // 19) SkinIQ заботится о вашем здоровье
+  // 19) SkinIQ заботится о вашем здоровье — после последнего вопроса блока «Данные о здоровье»
   {
     id: 'health_trust',
     title: '💙 SkinIQ заботится о вашем здоровье',
     subtitle: 'Все рекомендации по уходу одобрены врачами-дерматологами и абсолютно безопасны\n\nВся информация остаётся конфиденциальной и используется только для персональных рекомендаций',
     image: '/dermatologist_examining.jpg',
-    showAfterQuestionCode: 'avoid_ingredients',
+    // В актуальной анкете последний вопрос блока данных о здоровье — allergies,
+    // поэтому цепочку health_trust → current_care_intro показываем именно после него.
+    showAfterQuestionCode: 'allergies',
     ctaText: 'Продолжить',
   },
   
-  // 20) Расскажите о вашем текущем уходе
+  // 20) Расскажите о вашем текущем уходе — та же вёрстка, что Общая информация (GoalsIntroScreen)
   {
     id: 'current_care_intro',
     title: 'Расскажите о вашем текущем уходе',
     subtitle: 'Это поможет нам понять, какие средства вы уже используете и как реагирует ваша кожа',
+    image: '/routine.png',
     showAfterInfoScreenId: 'health_trust', // FIX: было showAfterQuestionCode — но health_trust это info screen, не question
     ctaText: 'Продолжить',
   },
@@ -198,7 +201,9 @@ export const INFO_SCREENS: InfoScreen[] = [
     title: 'SkinIQ использует ИИ для подбора ухода, который действительно работает',
     subtitle: '95% точность рекомендаций\n10M+ анализов кожи по фото\nПоддержка 500+ активных ингредиентов\nОбучено на данных, подтверждённых дерматологами',
     type: 'products',
-    showAfterQuestionCode: 'oral_medications',
+    // ПОСЛЕ вопроса "Выберите ингредиенты, которые вы хотели бы исключить" (avoid_ingredients),
+    // а не сразу после "Применяете ли вы рецептурные кремы..."
+    showAfterQuestionCode: 'avoid_ingredients',
     content: [
       { name: 'Увлажняющий крем', desc: 'Поддерживает барьер кожи', icon: '/products/moisturizer.jpg' },
       { name: 'Сыворотка с витамином C', desc: 'Осветляет и выравнивает тон', icon: '/products/vitamin_c.jpg' },
@@ -212,7 +217,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'habits_matter',
     title: 'Каждая привычка отражается на коже',
     subtitle: 'Давайте посмотрим, что влияет именно на вашу и как ей помочь',
-    image: '/habitsinfo.jpeg',
+    image: '/habits2.png',
     showAfterInfoScreenId: 'ai_showcase', // ИСПРАВЛЕНО: После экрана ai_showcase, а не вопроса
     ctaText: 'Продолжить',
   },
@@ -321,7 +326,9 @@ export const INFO_SCREENS: InfoScreen[] = [
 
 // Функция для получения информационного экрана, который нужно показать после вопроса с указанным кодом
 export function getInfoScreenAfterQuestion(questionCode: string): InfoScreen | undefined {
-  return INFO_SCREENS.find(screen => screen.showAfterQuestionCode === questionCode);
+  if (!questionCode) return undefined;
+  const normalized = questionCode.toLowerCase();
+  return INFO_SCREENS.find((screen) => screen.showAfterQuestionCode?.toLowerCase() === normalized);
 }
 
 /** Следующий инфо-экран в цепочке (имеет showAfterInfoScreenId === screenId) */

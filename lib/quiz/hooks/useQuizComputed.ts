@@ -565,7 +565,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     // когда currentQuestion становится null перед показом инфо-экрана
     // ИСПРАВЛЕНО: Проверяем, что pendingInfoScreen не null, чтобы не показывать INFO экран без данных
     const effectivePending = pendingInfoScreenRef?.current ?? pendingInfoScreen;
-    if (effectivePending && !isRetakingQuiz && effectivePending !== null) {
+    if (effectivePending && effectivePending !== null) {
       console.log('📺 [useQuizComputed] viewMode: PENDING_INFO (pending info screen)', {
         effectivePending,
         pendingInfoScreenRef: pendingInfoScreenRef?.current,
@@ -745,11 +745,26 @@ export function useQuizComputed(params: UseQuizComputedParams) {
           questionsToUseLength: questionsToUse.length
         });
       } else {
-        console.log('❌ [useQuizComputed] currentQuestion: invalid index, returning null', {
+        console.log('❌ [useQuizComputed] currentQuestion: invalid index, попытаемся использовать ближайший валидный вопрос', {
           currentQuestionIndex,
           questionsToUseLength: questionsToUse.length
         });
       }
+
+      // ФИКС: Если есть хотя бы один вопрос, вместо null возвращаем ближайший валидный вопрос,
+      // чтобы не падать на экране "Вопрос не найден"
+      if (questionsToUse.length > 0) {
+        const clampedIndex = Math.max(0, Math.min(currentQuestionIndex, questionsToUse.length - 1));
+        const fallbackQuestion = questionsToUse[clampedIndex];
+        console.log('🔧 [useQuizComputed] currentQuestion: используем fallback-вопрос по скорректированному индексу', {
+          clampedIndex,
+          fallbackQuestionId: fallbackQuestion?.id,
+          fallbackQuestionCode: fallbackQuestion?.code,
+        });
+        return fallbackQuestion;
+      }
+
+      // Если вопросов нет вообще — возвращаем null (это уже отдельная ошибка конфигурации анкеты)
       return null;
     }
 
