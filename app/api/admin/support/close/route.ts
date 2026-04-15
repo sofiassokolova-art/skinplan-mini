@@ -1,5 +1,6 @@
-// app/api/admin/support/close/route.ts
 // Закрытие обращения поддержки
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';

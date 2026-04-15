@@ -1,5 +1,6 @@
-// app/api/admin/broadcasts/[id]/route.ts
 // API для управления конкретной рассылкой
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';

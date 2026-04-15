@@ -1,11 +1,6 @@
-// app/api/plan/progress/route.ts
-// API для сохранения и загрузки прогресса плана (день, выполненные дни)
-//
-// Прогресс жёстко привязан к пользователю через Telegram initData:
-// - client → всегда передаёт X-Telegram-Init-Data (см. lib/api.ts)
-// - server → через requireTelegramAuth(request) получает userId (User.id)
-//
 // Никакого localStorage для "истинных" данных прогресса — только как UI‑кеш.
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';

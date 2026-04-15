@@ -1,5 +1,6 @@
-// app/api/plan/replace-product/route.ts
 // API для замены продукта во всём плане
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';

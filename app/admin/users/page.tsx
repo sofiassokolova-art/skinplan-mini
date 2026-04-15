@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 // app/admin/users/page.tsx
 // Страница управления пользователями с TanStack Table
 

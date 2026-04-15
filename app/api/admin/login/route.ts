@@ -1,5 +1,6 @@
-// app/api/admin/login/route.ts
 // Авторизация админа по секретному слову
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';

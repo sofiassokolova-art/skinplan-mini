@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 // app/admin/broadcast/page.tsx
 // Страница создания рассылок - премиум верстка 2025
 

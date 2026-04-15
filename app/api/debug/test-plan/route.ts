@@ -1,5 +1,6 @@
-// app/api/debug/test-plan/route.ts
 // Отладочный endpoint для проверки генерации плана
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';

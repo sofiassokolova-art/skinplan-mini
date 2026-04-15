@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 // app/admin/products/new/page.tsx
 // Страница создания нового продукта
 

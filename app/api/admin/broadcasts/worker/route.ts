@@ -1,6 +1,6 @@
-// app/api/admin/broadcasts/worker/route.ts
-// Worker для обработки рассылок (вызывается cron или вручную)
 // Обрабатывает рассылки в статусе scheduled (когда время пришло) или sending (немедленно)
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';

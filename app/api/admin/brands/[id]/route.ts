@@ -1,5 +1,6 @@
-// app/api/admin/brands/[id]/route.ts
 // API для управления конкретным брендом
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';

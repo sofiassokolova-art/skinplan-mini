@@ -6,7 +6,7 @@ import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 /** Проверяет, что тело запроса похоже на уведомление ЮKassa (event + object.id) */
 async function looksLikeYooKassaBody(request: NextRequest): Promise<boolean> {

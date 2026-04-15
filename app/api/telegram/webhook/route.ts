@@ -1,5 +1,6 @@
-// app/api/telegram/webhook/route.ts
 // Webhook для Telegram бота
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';

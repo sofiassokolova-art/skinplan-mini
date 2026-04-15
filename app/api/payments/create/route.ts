@@ -10,7 +10,7 @@ import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { randomBytes } from 'crypto';
 import { rateLimit } from '@/lib/rate-limit';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 const YOOKASSA_API = 'https://api.yookassa.ru/v3/payments';
 

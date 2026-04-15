@@ -17,7 +17,7 @@ function getJwtSecret(): { valid: boolean; secret?: string; error?: string } {
 }
 
 // ИСПРАВЛЕНО: Runtime для Node.js (требуется для crypto, jsonwebtoken)
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 // POST - авторизация через Telegram initData
 export async function POST(request: NextRequest) {

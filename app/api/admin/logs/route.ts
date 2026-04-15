@@ -1,5 +1,6 @@
-// app/api/admin/logs/route.ts
 // API для просмотра логов клиентов техподдержкой
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';

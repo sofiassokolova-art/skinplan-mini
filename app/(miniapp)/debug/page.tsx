@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 // app/(miniapp)/debug/page.tsx
 // Страница для отладки проблем с планом
 

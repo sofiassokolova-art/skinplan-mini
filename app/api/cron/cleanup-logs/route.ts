@@ -7,7 +7,7 @@ import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 // Проверяем, что запрос пришел от Vercel Cron
 // Vercel Cron передает специальный заголовок x-vercel-cron

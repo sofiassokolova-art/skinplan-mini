@@ -1,5 +1,6 @@
-// app/api/admin/support/chats/route.ts
 // Получение списка чатов поддержки
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';

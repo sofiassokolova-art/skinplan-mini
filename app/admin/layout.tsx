@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 // app/admin/layout.tsx
 // Layout для админ-панели с glassmorphism стилем
 

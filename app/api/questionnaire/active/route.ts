@@ -1,6 +1,6 @@
-// app/api/questionnaire/active/route.ts
-// Получение активной анкеты (обновленная версия с правильной структурой)
 // ИСПРАВЛЕНО: Проверяет профиль и план на бэкенде, возвращает информацию о редиректе
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';

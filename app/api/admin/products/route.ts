@@ -1,5 +1,6 @@
-// app/api/admin/products/route.ts
 // API для управления продуктами (список и создание)
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';

@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 // app/admin/feedback/page.tsx
 // Страница отзывов с разделением по типам: отзывы по продуктам из вишлиста и отзывы по плану
 

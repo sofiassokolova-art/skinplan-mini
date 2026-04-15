@@ -1,5 +1,6 @@
-// app/api/admin/support/send/route.ts
 // Отправка ответа админа
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';

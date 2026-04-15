@@ -1,5 +1,6 @@
-// app/api/admin/broadcast/count/route.ts
 // Подсчет пользователей по фильтрам
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';

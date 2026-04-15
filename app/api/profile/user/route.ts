@@ -1,5 +1,6 @@
-// app/api/profile/user/route.ts
 // API для работы с данными пользователя (имя, телефон)
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';

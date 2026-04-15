@@ -1,6 +1,6 @@
-// app/api/logs/route.ts
-// API для сохранения логов клиентов
 // ИСПРАВЛЕНО: Логи сохраняются ТОЛЬКО в PostgreSQL, без Redis/KV
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';

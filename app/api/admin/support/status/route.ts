@@ -1,5 +1,6 @@
-// app/api/admin/support/status/route.ts
 // Изменение статуса обращения поддержки
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';

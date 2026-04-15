@@ -1,5 +1,6 @@
-// app/api/admin/stats/route.ts
 // API для статистики админки
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';

@@ -1,5 +1,6 @@
-// app/api/admin/users/route.ts
 // API для получения списка пользователей
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';

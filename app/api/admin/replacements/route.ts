@@ -1,5 +1,6 @@
-// app/api/admin/replacements/route.ts
 // API для получения замен продуктов
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';

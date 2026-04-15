@@ -6,7 +6,7 @@ import { prisma } from '@/lib/db';
 import { invalidateAllUserCache } from '@/lib/cache';
 import { verifyAdminBoolean } from '@/lib/admin-auth';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 export async function POST(

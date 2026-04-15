@@ -1,6 +1,6 @@
-// app/api/cron/broadcasts/route.ts
-// Cron endpoint для вызова worker рассылок
 // Настраивается в vercel.json или через Vercel Cron Jobs
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 

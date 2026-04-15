@@ -7,7 +7,7 @@ import jwt from 'jsonwebtoken';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 
 // Используем Node.js runtime для поддержки jsonwebtoken
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 

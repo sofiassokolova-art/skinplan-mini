@@ -1,5 +1,6 @@
-// app/api/analysis/route.ts
 // API endpoint для получения данных анализа кожи
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';

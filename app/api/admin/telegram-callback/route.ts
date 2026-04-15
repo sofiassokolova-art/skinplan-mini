@@ -1,5 +1,6 @@
-// app/api/admin/telegram-callback/route.ts
 // Обработка callback от Telegram Login Widget
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';

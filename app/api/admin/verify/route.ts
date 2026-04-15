@@ -1,5 +1,6 @@
-// app/api/admin/verify/route.ts
 // Проверка токена админа
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';

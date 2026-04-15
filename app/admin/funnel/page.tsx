@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 // app/admin/funnel/page.tsx
 // Страница аналитики воронки конверсии
 

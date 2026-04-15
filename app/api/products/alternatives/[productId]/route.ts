@@ -1,5 +1,6 @@
-// app/api/products/alternatives/[productId]/route.ts
 // API для поиска альтернативных продуктов
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';

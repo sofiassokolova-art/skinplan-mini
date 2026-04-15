@@ -1,5 +1,6 @@
-// app/api/admin/cleanup-logs/route.ts
 // API для ручной очистки логов старше 7 дней
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';

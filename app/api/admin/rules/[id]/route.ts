@@ -1,5 +1,6 @@
-// app/api/admin/rules/[id]/route.ts
 // API для управления конкретным правилом рекомендаций
+
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
