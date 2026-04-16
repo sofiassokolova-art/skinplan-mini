@@ -1,1 +1,0 @@
-self.__NEXT_FONT_MANIFEST='{"pages":{},"app":{"/Users/sofasokolova/skinplan-mini/.claude/worktrees/strange-gould/app/layout":[]},"appUsingSizeAdjust":false,"pagesUsingSizeAdjust":false}';

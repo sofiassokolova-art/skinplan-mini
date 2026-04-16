@@ -1,1 +1,0 @@
-{"node":{"40c6919b0fd1d04205ab259e23a353a33ba35239c1":{"workers":{"app/api/questionnaire/answers/route":{"moduleId":"80491","async":false},"app/api/user/clear-data/route":{"moduleId":"80491","async":false}},"filename":"lib/db-fingerprint.ts","exportedName":"logDbFingerprint"}},"edge":{},"encryptionKey":"tolOYVGjVwAuCOoJ7ajt1QaKb9100ZrJmtvCEiKaWes="}
