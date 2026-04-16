@@ -3,7 +3,7 @@
 # Deploy prod:    npx wrangler deploy --env production
 # Deploy staging: npx wrangler deploy --env staging
 
-name = "skinplan-mini"
+name = "skinplan-mini-staging"
 main = ".open-next/worker.js"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
