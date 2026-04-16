@@ -12,8 +12,9 @@ compatibility_flags = ["nodejs_compat"]
 directory = ".open-next/assets"
 binding = "ASSETS"
 
-[triggers]
-crons = ["0 0 * * 0"]
+# Cron только для prod — настраивается вручную в CF Dashboard для staging
+# [triggers]
+# crons = ["0 0 * * 0"]
 
 # ── Production ────────────────────────────────────────────────
 [env.production]
@@ -23,8 +24,9 @@ routes = [
   { pattern = "www.proskiniq.ru/*", zone_name = "proskiniq.ru" },
 ]
 
-[env.production.triggers]
-crons = ["0 0 * * 0"]
+# Cron для prod — настрой вручную в CF Dashboard → skinplan-mini-prod → Triggers
+# [env.production.triggers]
+# crons = ["0 0 * * 0"]
 
 # ── Staging ───────────────────────────────────────────────────
 [env.staging]
