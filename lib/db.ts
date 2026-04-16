@@ -20,12 +20,10 @@ function createPrismaClient() {
   const url = process.env.DATABASE_URL;
 
   if (!url) {
-    console.warn('⚠️ DATABASE_URL is not set; Prisma DB operations will fail until it is configured.');
+    throw new Error('DATABASE_URL is not set');
   }
 
-  // Build-time fallback avoids crashing edge route compilation when env vars are injected only at deploy/runtime.
-  const connectionString = url || 'postgresql://placeholder:placeholder@127.0.0.1:5432/placeholder';
-  const adapter = new PrismaNeon({ connectionString });
+  const adapter = new PrismaNeon({ connectionString: url });
 
   return new PrismaClient({
     adapter,
@@ -33,11 +31,21 @@ function createPrismaClient() {
   });
 }
 
-export const prisma =
-  globalForPrisma.prisma ??
-  createPrismaClient();
+// Lazy getter — инициализируем только при первом обращении во время запроса,
+// когда CF Workers уже инжектил process.env из Dashboard Variables
+export const getPrisma = (): PrismaClient => {
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = createPrismaClient();
+  }
+  return globalForPrisma.prisma;
+};
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+// Обратная совместимость — proxy который инициализируется при первом обращении
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    return (getPrisma() as any)[prop];
+  },
+});
 
 // Функция для проверки подключения к БД
 export async function checkDatabaseConnection() {
