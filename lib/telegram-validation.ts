@@ -80,7 +80,7 @@ export async function validateTelegramInitDataUnified(
   }
 
   // ИСПРАВЛЕНО: Hash validation выполняется строго один раз в validateTelegramInitData
-  const validation = validateTelegramInitData(initData, botToken);
+  const validation = await validateTelegramInitData(initData, botToken);
 
   if (!validation.valid || !validation.data?.user) {
     // SECURITY: Логируем только безопасные данные

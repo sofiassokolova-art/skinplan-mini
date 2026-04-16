@@ -1,4 +1,3 @@
-// app/api/admin/replacements/route.ts
 // API для получения замен продуктов
 
 import { NextRequest, NextResponse } from 'next/server';

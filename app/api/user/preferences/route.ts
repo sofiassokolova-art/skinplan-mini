@@ -1,5 +1,3 @@
-// app/api/user/preferences/route.ts
-// API для работы с пользовательскими настройками и флагами
 // Заменяет использование localStorage
 
 import { NextRequest, NextResponse } from 'next/server';

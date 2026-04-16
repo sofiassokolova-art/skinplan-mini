@@ -4,7 +4,6 @@
 import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
 import Script from 'next/script';
-import { Analytics } from '@vercel/analytics/react';
 import localFont from 'next/font/local';
 import './globals.css';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -260,7 +259,7 @@ export default async function RootLayout({
 (function(){
   var fallbackCss = "display:block;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;padding:12px 20px;background:rgba(10,95,89,0.95);color:#fff;border-radius:12px;font-family:system-ui,sans-serif;font-size:14px;box-shadow:0 4px 20px rgba(0,0,0,0.2);";
   var fallbackHtml = 'Не удалось загрузить приложение. <a href="javascript:location.reload()" style="color:#fff;text-decoration:underline;font-weight:600">Обновить</a>';
-  var reloadKey = 'skinplan_chunk_reload_done_' + ('${process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.slice(0,8) || Date.now()}');
+  var reloadKey = 'skinplan_chunk_reload_done_' + ('${process.env.CF_PAGES_COMMIT_SHA?.slice(0,8) || Date.now()}');
   window.__skiniq_mounted = false;
   function showFallback(){
     var e = document.getElementById("loading-timeout-fallback");
@@ -341,7 +340,6 @@ export default async function RootLayout({
             <ServiceWorker />
             {children}
             <Toaster />
-            <Analytics />
           </ErrorBoundary>
         </div>
       </body>

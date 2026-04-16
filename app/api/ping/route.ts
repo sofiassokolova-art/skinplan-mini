@@ -1,4 +1,3 @@
-// GET /api/ping — лёгкий endpoint для прогрева Neon PostgreSQL (wake-up)
 // Не требует авторизации, делает минимальный запрос к БД
 
 import { NextResponse } from 'next/server';

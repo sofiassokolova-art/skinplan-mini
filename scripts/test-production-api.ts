@@ -2,7 +2,7 @@
 // Тестирование API на продакшене
 
 async function testProductionAPI() {
-  const baseUrl = 'https://skinplan-mini.vercel.app';
+  const baseUrl = process.env.PRODUCTION_BASE_URL || 'https://skinplan-mini.pages.dev';
   const endpoint = '/api/questionnaire/active';
   const url = `${baseUrl}${endpoint}`;
 

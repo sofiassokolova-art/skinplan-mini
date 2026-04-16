@@ -1,4 +1,3 @@
-// app/api/analysis/route.ts
 // API endpoint для получения данных анализа кожи
 
 import { NextRequest, NextResponse } from 'next/server';

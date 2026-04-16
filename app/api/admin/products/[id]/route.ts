@@ -1,4 +1,3 @@
-// app/api/admin/products/[id]/route.ts
 // API для обновления и удаления конкретного продукта
 
 import { NextRequest, NextResponse } from 'next/server';

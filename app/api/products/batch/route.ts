@@ -6,8 +6,6 @@ import { prisma } from '@/lib/db';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 
-export const runtime = 'nodejs';
-
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   const method = 'POST';

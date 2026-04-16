@@ -9,8 +9,6 @@ import { ApiResponse } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 
-export const runtime = 'nodejs';
-
 /**
  * @deprecated НЕ ИСПОЛЬЗУЙТЕ В ПРОДАКШЕНЕ!
  * 
@@ -25,11 +23,10 @@ export const runtime = 'nodejs';
 export async function POST(request: NextRequest) {
   try {
     // В продакшене блокируем этот endpoint.
-    // ВАЖНО: На Vercel `NODE_ENV=production` может быть и в preview окружениях,
-    // поэтому ориентируемся на `VERCEL_ENV`.
-    const vercelEnv = process.env.VERCEL_ENV; // 'production' | 'preview' | 'development' | undefined
+    // На Cloudflare Pages: CF_PAGES_BRANCH === 'main' означает production-деплой.
+    const cfBranch = process.env.CF_PAGES_BRANCH;
     const isProductionDeployment =
-      vercelEnv === 'production' || (!vercelEnv && process.env.NODE_ENV === 'production');
+      cfBranch === 'main' || (!cfBranch && process.env.NODE_ENV === 'production');
 
     if (isProductionDeployment) {
       // ИСПРАВЛЕНО: не спамим error-логами в проде (часто сканеры/боты дергают /test-* и deprecated пути)

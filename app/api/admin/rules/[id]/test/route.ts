@@ -1,4 +1,3 @@
-// app/api/admin/rules/[id]/test/route.ts
 // API для тестирования правила на конкретном пользователе
 
 import { NextRequest, NextResponse } from 'next/server';

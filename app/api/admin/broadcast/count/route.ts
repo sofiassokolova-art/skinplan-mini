@@ -1,4 +1,3 @@
-// app/api/admin/broadcast/count/route.ts
 // Подсчет пользователей по фильтрам
 
 import { NextRequest, NextResponse } from 'next/server';

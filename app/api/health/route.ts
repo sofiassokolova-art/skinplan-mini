@@ -1,4 +1,3 @@
-// app/api/health/route.ts
 // Health check endpoint для мониторинга состояния приложения
 
 import { NextRequest } from 'next/server';

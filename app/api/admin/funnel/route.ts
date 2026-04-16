@@ -1,4 +1,3 @@
-// app/api/admin/funnel/route.ts
 // API для получения данных воронки конверсии
 
 import { NextRequest, NextResponse } from 'next/server';

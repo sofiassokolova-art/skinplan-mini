@@ -1,4 +1,3 @@
-// app/api/wishlist/route.ts
 // API для работы с избранным (wishlist)
 
 import { NextRequest, NextResponse } from 'next/server';

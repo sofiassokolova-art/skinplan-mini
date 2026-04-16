@@ -1,4 +1,3 @@
-// app/api/admin/logs/route.ts
 // API для просмотра логов клиентов техподдержкой
 
 import { NextRequest, NextResponse } from 'next/server';

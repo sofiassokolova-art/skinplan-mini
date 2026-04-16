@@ -1,4 +1,3 @@
-// app/api/cart/route.ts
 // API для работы с корзиной
 
 import { NextRequest, NextResponse } from 'next/server';

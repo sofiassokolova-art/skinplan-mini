@@ -61,16 +61,7 @@ export default function UsersAdmin() {
   useEffect(() => {
     const userIdFromUrl = searchParams.get('userId');
     if (userIdFromUrl && !loading && users.length > 0) {
-      // Ищем пользователя в текущем списке
-      const user = users.find(u => u.id === userIdFromUrl);
-      if (user) {
-        // Если пользователь найден, открываем его план
-        handleViewPlan(userIdFromUrl);
-      } else {
-        // Если пользователь не найден в текущем списке, 
-        // попробуем открыть план напрямую (может быть на другой странице)
-        handleViewPlan(userIdFromUrl);
-      }
+      handleViewPlan(userIdFromUrl);
       // Убираем параметр из URL
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.delete('userId');
@@ -333,7 +324,7 @@ export default function UsersAdmin() {
         },
       },
     ],
-    []
+    [clearingUserId]
   );
 
   const handleViewPlan = async (userId: string) => {

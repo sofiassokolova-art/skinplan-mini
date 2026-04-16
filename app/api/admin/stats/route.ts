@@ -1,4 +1,3 @@
-// app/api/admin/stats/route.ts
 // API для статистики админки
 
 import { NextRequest, NextResponse } from 'next/server';

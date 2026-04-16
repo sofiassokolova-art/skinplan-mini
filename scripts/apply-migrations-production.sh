@@ -13,7 +13,7 @@ if [ -z "$DATABASE_URL" ]; then
     echo ""
     echo "Установите DATABASE_URL одним из способов:"
     echo "1. Экспорт переменной: export DATABASE_URL='postgresql://...'"
-    echo "2. Использование Vercel CLI: vercel env pull .env.production"
+    echo "2. Использование Cloudflare variables/secrets в проекте"
     echo ""
     exit 1
 fi

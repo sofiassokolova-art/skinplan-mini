@@ -12,7 +12,6 @@ import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { logDbFingerprint } from '@/lib/db-fingerprint';
 import { normalizeProfileData, normalizeMedicalMarkers } from '@/lib/profile-normalizer';
 
-export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 interface AnswerInput {

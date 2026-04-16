@@ -1,4 +1,3 @@
-// app/api/feedback/route.ts
 // Сохранение отзывов о плане
 
 import { NextRequest, NextResponse } from 'next/server';

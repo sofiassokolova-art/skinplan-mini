@@ -1,4 +1,14 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
+type ApiRequest = {
+  method?: string;
+  body?: unknown;
+};
+
+type ApiResponse = {
+  setHeader: (name: string, value: string) => void;
+  status: (code: number) => {
+    json: (payload: unknown) => unknown;
+  };
+};
 
 type AnalysisSnapshot = {
   skinType: string;
@@ -10,7 +20,7 @@ type AnalysisSnapshot = {
   riskFlags: string[];
 };
 
-const handler = async (req: VercelRequest, res: VercelResponse) => {
+const handler = async (req: ApiRequest, res: ApiResponse) => {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ error: "Method not allowed" });

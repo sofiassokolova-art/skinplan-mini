@@ -1,4 +1,3 @@
-// app/api/admin/support/status/route.ts
 // Изменение статуса обращения поддержки
 
 import { NextRequest, NextResponse } from 'next/server';

@@ -1,4 +1,3 @@
-// app/api/admin/users/route.ts
 // API для получения списка пользователей
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -57,6 +56,7 @@ export async function GET(request: NextRequest) {
               code: 'paid_access',
             },
             orderBy: { updatedAt: 'desc' },
+            take: 1,
           },
           payments: {
             where: {
@@ -80,12 +80,13 @@ export async function GET(request: NextRequest) {
       prisma.user.count({ where }),
     ]);
 
+    const now = new Date();
     const usersPayload = users.map((user) => {
       const paidEntitlement = user.entitlements.find(
         (e) =>
           e.code === 'paid_access' &&
           e.active === true &&
-          (!e.validUntil || e.validUntil > new Date())
+          (!e.validUntil || e.validUntil > now)
       );
 
       const lastPayment = user.payments[0] || null;

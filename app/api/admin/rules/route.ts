@@ -1,4 +1,3 @@
-// app/api/admin/rules/route.ts
 // API для управления правилами рекомендаций
 
 import { NextRequest, NextResponse } from 'next/server';
