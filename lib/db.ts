@@ -2,7 +2,7 @@
 // Prisma Client для работы с базой данных (Neon PostgreSQL)
 // Использует @prisma/adapter-neon для совместимости с Cloudflare Workers/Pages
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client/edge';
 import { PrismaNeon } from '@prisma/adapter-neon';
 import { neonConfig } from '@neondatabase/serverless';
 
