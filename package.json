@@ -59,7 +59,9 @@
     "add:comprehensive-rules": "tsx scripts/add-comprehensive-rules.ts",
     "build:cf": "npx @opennextjs/cloudflare build",
     "deploy:cf": "npx wrangler deploy",
-    "preview:cf": "npx @opennextjs/cloudflare build && npx wrangler dev"
+    "preview:cf": "npx @opennextjs/cloudflare build && npx wrangler dev",
+    "deploy:prod": "npx wrangler deploy --env production",
+    "deploy:staging": "npx wrangler deploy --env staging"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

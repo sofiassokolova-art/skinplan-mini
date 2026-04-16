@@ -1,0 +1,626 @@
+{
+  "rules": [
+    {
+      "id": 5,
+      "key": "goals_primary",
+      "type": "multi_choice",
+      "options": [
+        {
+          "label": "Морщины и мелкие линии",
+          "actions": [
+            { "op": "addToArray", "path": "mainGoals", "value": "wrinkles" }
+          ]
+        },
+        {
+          "label": "Акне и высыпания",
+          "actions": [
+            { "op": "addToArray", "path": "mainGoals", "value": "acne" }
+          ]
+        },
+        {
+          "label": "Сократить видимость пор",
+          "actions": [
+            { "op": "addToArray", "path": "mainGoals", "value": "pores" }
+          ]
+        },
+        {
+          "label": "Уменьшить отёчность",
+          "actions": [
+            { "op": "addToArray", "path": "secondaryGoals", "value": "puffiness" }
+          ]
+        },
+        {
+          "label": "Выровнять пигментацию",
+          "actions": [
+            { "op": "addToArray", "path": "mainGoals", "value": "pigmentation" }
+          ]
+        },
+        {
+          "label": "Улучшить текстуру кожи",
+          "actions": [
+            { "op": "addToArray", "path": "secondaryGoals", "value": "texture" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "key": "demographics",
+      "type": "group",
+      "fields": [
+        {
+          "subKey": "age",
+          "type": "single_choice",
+          "options": [
+            { "label": "До 18 лет", "actions": [ { "op": "set", "path": "ageGroup", "value": "u18" } ] },
+            { "label": "18–24", "actions": [ { "op": "set", "path": "ageGroup", "value": "18_24" } ] },
+            { "label": "25–34", "actions": [ { "op": "set", "path": "ageGroup", "value": "25_34" } ] },
+            { "label": "35–44", "actions": [ { "op": "set", "path": "ageGroup", "value": "35_44" } ] },
+            { "label": "45+", "actions": [ { "op": "set", "path": "ageGroup", "value": "45plus" } ] }
+          ]
+        },
+        {
+          "subKey": "gender",
+          "type": "single_choice",
+          "options": [
+            { "label": "Женский", "actions": [ { "op": "set", "path": "gender", "value": "female" } ] },
+            { "label": "Мужской", "actions": [ { "op": "set", "path": "gender", "value": "male" } ] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "key": "skin_type",
+      "type": "single_choice",
+      "options": [
+        {
+          "label": "Тип 1 — Сухая",
+          "actions": [
+            { "op": "set", "path": "skinType", "value": "dry" }
+          ]
+        },
+        {
+          "label": "Тип 2 — Комбинированная (сухая)",
+          "actions": [
+            { "op": "set", "path": "skinType", "value": "combination_dry" }
+          ]
+        },
+        {
+          "label": "Тип 3 - Нормальная",
+          "actions": [
+            { "op": "set", "path": "skinType", "value": "normal" }
+          ]
+        },
+        {
+          "label": "Тип 3 — Комбинированная (жирная)",
+          "actions": [
+            { "op": "set", "path": "skinType", "value": "combination_oily" }
+          ]
+        },
+        {
+          "label": "Тип 4 — Жирная",
+          "actions": [
+            { "op": "set", "path": "skinType", "value": "oily" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "key": "current_concerns",
+      "type": "multi_choice",
+      "options": [
+        {
+          "label": "Акне",
+          "actions": [
+            { "op": "addToArray", "path": "mainGoals", "value": "acne" }
+          ]
+        },
+        {
+          "label": "Жирность и блеск кожи",
+          "actions": [
+            { "op": "addToArray", "path": "secondaryGoals", "value": "oiliness" }
+          ]
+        },
+        {
+          "label": "Сухость и стянутость",
+          "actions": [
+            { "op": "addToArray", "path": "secondaryGoals", "value": "dryness" }
+          ]
+        },
+        {
+          "label": "Неровный тон",
+          "actions": [
+            { "op": "addToArray", "path": "secondaryGoals", "value": "uneven_tone" }
+          ]
+        },
+        {
+          "label": "Пигментация",
+          "actions": [
+            { "op": "addToArray", "path": "mainGoals", "value": "pigmentation" }
+          ]
+        },
+        {
+          "label": "Морщины, возрастные изменения",
+          "actions": [
+            { "op": "addToArray", "path": "mainGoals", "value": "wrinkles" }
+          ]
+        },
+        {
+          "label": "Чувствительность",
+          "actions": [
+            { "op": "setIfNull", "path": "sensitivity", "value": "high" },
+            { "op": "addToArray", "path": "secondaryGoals", "value": "sensitivity" }
+          ]
+        },
+        {
+          "label": "Расширенные поры",
+          "actions": [
+            { "op": "addToArray", "path": "mainGoals", "value": "pores" }
+          ]
+        },
+        {
+          "label": "Отеки под глазами",
+          "actions": [
+            { "op": "addToArray", "path": "secondaryGoals", "value": "puffiness" }
+          ]
+        },
+        {
+          "label": "Круги под галазми",
+          "actions": [
+            { "op": "addToArray", "path": "secondaryGoals", "value": "dark_circles" }
+          ]
+        },
+        {
+          "label": "В целом всё устраивает, хочу поддерживающий уход",
+          "actions": [
+            { "op": "addToArray", "path": "secondaryGoals", "value": "maintenance" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "key": "seasonality",
+      "type": "single_choice",
+      "options": [
+        {
+          "label": "Летом становится жирнее",
+          "actions": [
+            { "op": "set", "path": "seasonality", "value": "summer_oilier" }
+          ]
+        },
+        {
+          "label": "Зимой суше",
+          "actions": [
+            { "op": "set", "path": "seasonality", "value": "winter_drier" }
+          ]
+        },
+        {
+          "label": "Круглый год одинаково",
+          "actions": [
+            { "op": "set", "path": "seasonality", "value": "stable" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "key": "diagnoses",
+      "type": "multi_choice",
+      "options": [
+        {
+          "label": "Акне",
+          "actions": [
+            { "op": "addToArray", "path": "diagnoses", "value": "acne" }
+          ]
+        },
+        {
+          "label": "Розацеа",
+          "actions": [
+            { "op": "addToArray", "path": "diagnoses", "value": "rosacea" },
+            { "op": "set", "path": "sensitivity", "value": "high" }
+          ]
+        },
+        {
+          "label": "Себорейный дерматит",
+          "actions": [
+            { "op": "addToArray", "path": "diagnoses", "value": "seborrheic_dermatitis" }
+          ]
+        },
+        {
+          "label": "Атопический дерматит / сухая кожа",
+          "actions": [
+            { "op": "addToArray", "path": "diagnoses", "value": "atopic_dermatitis" },
+            { "op": "setIfNull", "path": "sensitivity", "value": "high" }
+          ]
+        },
+        {
+          "label": "Пигментация (мелазма)",
+          "actions": [
+            { "op": "addToArray", "path": "diagnoses", "value": "melasma" }
+          ]
+        },
+        {
+          "label": "Нет",
+          "actions": []
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "key": "pregnancy",
+      "type": "single_choice",
+      "options": [
+        {
+          "label": "Я беременна",
+          "actions": [
+            { "op": "set", "path": "pregnancyStatus", "value": "pregnant" },
+            { "op": "addToArray", "path": "contraindications", "value": "no_retinol" },
+            { "op": "addToArray", "path": "contraindications", "value": "no_strong_acids" }
+          ]
+        },
+        {
+          "label": "Я кормлю грудью",
+          "actions": [
+            { "op": "set", "path": "pregnancyStatus", "value": "breastfeeding" },
+            { "op": "addToArray", "path": "contraindications", "value": "no_strong_acids" }
+          ]
+        },
+        {
+          "label": "Нет",
+          "actions": [
+            { "op": "set", "path": "pregnancyStatus", "value": "none" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "key": "allergies",
+      "type": "multi_choice",
+      "options": [
+        {
+          "label": "Да, на средства для ухода за кожей (кремы, сыворотки, маски и др.)",
+          "actions": [
+            { "op": "setIfNull", "path": "sensitivity", "value": "high" }
+          ]
+        },
+        {
+          "label": "Да, на декоративную косметику",
+          "actions": [
+            { "op": "addToArray", "path": "lifestyleFactors", "value": "makeup_irritation" }
+          ]
+        },
+        {
+          "label": "Да, на солнцезащитные средства",
+          "actions": [
+            { "op": "addToArray", "path": "contraindications", "value": "spf_fragrance_free_only" }
+          ]
+        },
+        {
+          "label": "Не уверен(а), но бывали раздражения",
+          "actions": [
+            { "op": "setIfNull", "path": "sensitivity", "value": "medium" }
+          ]
+        },
+        {
+          "label": "Нет, реакции не отмечались",
+          "actions": []
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "key": "ingredients_exclude",
+      "type": "multi_choice",
+      "options": [
+        { "label": "Ретинол", "actions": [ { "op": "addToArray", "path": "contraindications", "value": "no_retinol" } ] },
+        { "label": "Витамин C", "actions": [ { "op": "addToArray", "path": "contraindications", "value": "no_vitc" } ] },
+        { "label": "Гиалуроновая кислота", "actions": [ { "op": "addToArray", "path": "contraindications", "value": "no_hyaluronic" } ] },
+        { "label": "Ниацинамид", "actions": [ { "op": "addToArray", "path": "contraindications", "value": "no_niacinamide" } ] },
+        { "label": "Пептиды", "actions": [ { "op": "addToArray", "path": "contraindications", "value": "no_peptides" } ] },
+        { "label": "Церамиды", "actions": [ { "op": "addToArray", "path": "contraindications", "value": "no_ceramides" } ] },
+        { "label": "Кислоты AHA/BHA (гликолевая, салициловая и др.)", "actions": [ { "op": "addToArray", "path": "contraindications", "value": "no_strong_acids" } ] },
+        { "label": "Минеральные масла", "actions": [ { "op": "addToArray", "path": "contraindications", "value": "no_mineral_oil" } ] },
+        { "label": "Сульфаты (SLS, SLES)", "actions": [ { "op": "addToArray", "path": "contraindications", "value": "no_sulfates" } ] },
+        { "label": "Парабены", "actions": [ { "op": "addToArray", "path": "contraindications", "value": "no_parabens" } ] },
+        { "label": "Отдушки и ароматизаторы", "actions": [ { "op": "addToArray", "path": "contraindications", "value": "no_fragrance" } ] },
+        { "label": "Спирт (alcohol denat.)", "actions": [ { "op": "addToArray", "path": "contraindications", "value": "no_alcohol_denat" } ] },
+        { "label": "Такие ингредиенты отсутствуют", "actions": [] }
+      ]
+    },
+    {
+      "id": 21,
+      "key": "retinol_use",
+      "type": "compound",
+      "subQuestions": [
+        {
+          "subKey": "used_retinol",
+          "type": "single_choice",
+          "options": [
+            {
+              "label": "Да",
+              "actions": [
+                { "op": "addToArray", "path": "currentTopicals", "value": "retinoid_experience" }
+              ]
+            },
+            {
+              "label": "Нет",
+              "actions": []
+            }
+          ]
+        },
+        {
+          "subKey": "retinol_tolerance",
+          "type": "single_choice_conditional",
+          "condition": { "dependsOn": "used_retinol", "equals": "Да" },
+          "options": [
+            {
+              "label": "Хорошо переносила",
+              "actions": [
+                { "op": "setIfNull", "path": "sensitivity", "value": "medium" }
+              ]
+            },
+            {
+              "label": "Появлялось раздражение или сухость",
+              "actions": [
+                { "op": "set", "path": "sensitivity", "value": "high" }
+              ]
+            },
+            {
+              "label": "Затрудняюсь ответить",
+              "actions": [
+                { "op": "setIfNull", "path": "sensitivity", "value": "medium" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "key": "topical_rx",
+      "type": "multi_choice",
+      "options": [
+        {
+          "label": "Азелаиновая кислота (Skinoren, Азелик, Finacea)",
+          "actions": [
+            { "op": "addToArray", "path": "currentTopicals", "value": "azelaic_acid" }
+          ]
+        },
+        {
+          "label": "Антибактериальные средства (Клиндамицин — Клиндовит, Далацин; Метронидазол — Метрогил, Розамет)",
+          "actions": [
+            { "op": "addToArray", "path": "currentTopicals", "value": "topical_antibiotics" }
+          ]
+        },
+        {
+          "label": "Ретиноиды наружные (Адапален — Дифферин, Адаклин; Изотретиноин — Изотрекс)",
+          "actions": [
+            { "op": "addToArray", "path": "currentTopicals", "value": "topical_retinoids" }
+          ]
+        },
+        {
+          "label": "Бензоилпероксид (Базирон АС, Эффезел)",
+          "actions": [
+            { "op": "addToArray", "path": "currentTopicals", "value": "benzoyl_peroxide" }
+          ]
+        },
+        {
+          "label": "Кортикостероидные кремы/мази (Гидрокортизон, Адвантан, Локоид)",
+          "actions": [
+            { "op": "addToArray", "path": "currentTopicals", "value": "topical_steroids" },
+            { "op": "addToArray", "path": "contraindications", "value": "no_aggressive_acids" }
+          ]
+        },
+        {
+          "label": "Нет, не применяю",
+          "actions": []
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "key": "oral_meds",
+      "type": "multi_choice",
+      "options": [
+        {
+          "label": "Изотретиноин (Аккутан, Роаккутан и аналоги)",
+          "actions": [
+            { "op": "addToArray", "path": "currentOralMeds", "value": "isotretinoin" },
+            { "op": "addToArray", "path": "contraindications", "value": "no_additional_retinoids" },
+            { "op": "addToArray", "path": "contraindications", "value": "no_aggressive_acids" }
+          ]
+        },
+        {
+          "label": "Антибиотики (Доксициклин, Миноциклин, Эритромицин и др.)",
+          "actions": [
+            { "op": "addToArray", "path": "currentOralMeds", "value": "oral_antibiotics" }
+          ]
+        },
+        {
+          "label": "Гормональные препараты (Спиронолактон, оральные контрацептивы)",
+          "actions": [
+            { "op": "addToArray", "path": "currentOralMeds", "value": "hormonal" }
+          ]
+        },
+        {
+          "label": "Нет, не принимал(а)",
+          "actions": []
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "key": "makeup_frequency",
+      "type": "single_choice",
+      "options": [
+        {
+          "label": "Ежедневно",
+          "actions": [
+            { "op": "set", "path": "makeupFrequency", "value": "daily" }
+          ]
+        },
+        {
+          "label": "Иногда",
+          "actions": [
+            { "op": "set", "path": "makeupFrequency", "value": "sometimes" }
+          ]
+        },
+        {
+          "label": "Почти никогда",
+          "actions": [
+            { "op": "set", "path": "makeupFrequency", "value": "rarely" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "key": "spf_usage",
+      "type": "single_choice",
+      "options": [
+        {
+          "label": "Каждый день",
+          "actions": [
+            { "op": "set", "path": "spfHabit", "value": "daily" }
+          ]
+        },
+        {
+          "label": "Иногда",
+          "actions": [
+            { "op": "set", "path": "spfHabit", "value": "sometimes" }
+          ]
+        },
+        {
+          "label": "Никогда",
+          "actions": [
+            { "op": "set", "path": "spfHabit", "value": "never" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "key": "sun_exposure",
+      "type": "single_choice",
+      "options": [
+        { "label": "0–1 час в день", "actions": [ { "op": "addToArray", "path": "lifestyleFactors", "value": "low_sun" } ] },
+        { "label": "1–3 часа в день", "actions": [ { "op": "addToArray", "path": "lifestyleFactors", "value": "medium_sun" } ] },
+        { "label": "Более 3 часов в день", "actions": [ { "op": "addToArray", "path": "lifestyleFactors", "value": "high_sun" } ] },
+        { "label": "Не знаю", "actions": [] }
+      ]
+    },
+    {
+      "id": 29,
+      "key": "habits",
+      "type": "multi_choice",
+      "options": [
+        { "label": "Курю", "actions": [ { "op": "addToArray", "path": "lifestyleFactors", "value": "smoking" } ] },
+        { "label": "Употребляю алкоголь", "actions": [ { "op": "addToArray", "path": "lifestyleFactors", "value": "alcohol" } ] },
+        { "label": "Часто не высыпаюсь", "actions": [ { "op": "addToArray", "path": "lifestyleFactors", "value": "poor_sleep" } ] },
+        { "label": "Испытываю стресс", "actions": [ { "op": "addToArray", "path": "lifestyleFactors", "value": "stress" } ] },
+        { "label": "Ем много сладкого", "actions": [ { "op": "addToArray", "path": "lifestyleFactors", "value": "sugar" } ] },
+        { "label": "Ем много фастфуда", "actions": [ { "op": "addToArray", "path": "lifestyleFactors", "value": "fastfood" } ] },
+        { "label": "Часто бываю на солнце без SPF", "actions": [ { "op": "addToArray", "path": "lifestyleFactors", "value": "sun_no_spf" } ] },
+        { "label": "Нет, у меня нет таких привычек", "actions": [] }
+      ]
+    },
+    {
+      "id": 32,
+      "key": "care_preference",
+      "type": "single_choice",
+      "options": [
+        {
+          "label": "Стандартные продукты популярных брендов",
+          "actions": [
+            { "op": "set", "path": "carePreference", "value": "mass" }
+          ]
+        },
+        {
+          "label": "Только натуральное / органическое",
+          "actions": [
+            { "op": "set", "path": "carePreference", "value": "natural" }
+          ]
+        },
+        {
+          "label": "Медицинские и аптечные средства",
+          "actions": [
+            { "op": "set", "path": "carePreference", "value": "dermo" }
+          ]
+        },
+        {
+          "label": "Не знаю, хочу, чтобы подобрали",
+          "actions": [
+            { "op": "set", "path": "carePreference", "value": "any" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 33,
+      "key": "routine_complexity",
+      "type": "single_choice",
+      "options": [
+        {
+          "label": "Минимум (1–3 шага)",
+          "actions": [
+            { "op": "set", "path": "routineComplexity", "value": "minimal" }
+          ]
+        },
+        {
+          "label": "Средний (3–5 шагов)",
+          "actions": [
+            { "op": "set", "path": "routineComplexity", "value": "medium" }
+          ]
+        },
+        {
+          "label": "Максимум (5+ шагов)",
+          "actions": [
+            { "op": "set", "path": "routineComplexity", "value": "maximal" }
+          ]
+        },
+        {
+          "label": "Не знаю",
+          "actions": [
+            { "op": "set", "path": "routineComplexity", "value": "any" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "key": "budget",
+      "type": "single_choice",
+      "options": [
+        {
+          "label": "Бюджетный сегмент\nдо 2 000",
+          "actions": [
+            { "op": "set", "path": "budgetSegment", "value": "budget" }
+          ]
+        },
+        {
+          "label": "Средний сегмент\n2 000–5 000",
+          "actions": [
+            { "op": "set", "path": "budgetSegment", "value": "medium" }
+          ]
+        },
+        {
+          "label": "Премиум-сегмент\n5 000+",
+          "actions": [
+            { "op": "set", "path": "budgetSegment", "value": "premium" }
+          ]
+        },
+        {
+          "label": "Без предпочтений\nЛюбой",
+          "actions": [
+            { "op": "set", "path": "budgetSegment", "value": "any" }
+          ]
+        }
+      ]
+    }
+  ]
+}
+

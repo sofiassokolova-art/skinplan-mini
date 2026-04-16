@@ -1,0 +1,138 @@
+{
+  "app/(miniapp)/analysis/page.tsx -> @/lib/user-preferences": {
+    "id": 81260,
+    "files": [
+      "static/chunks/6498.afcfcb0e4450b8d6.js"
+    ]
+  },
+  "app/(miniapp)/home/page.tsx -> @/lib/user-preferences": {
+    "id": 81260,
+    "files": [
+      "static/chunks/6498.afcfcb0e4450b8d6.js"
+    ]
+  },
+  "app/(miniapp)/layout.tsx -> @/lib/user-preferences": {
+    "id": 81260,
+    "files": [
+      "static/chunks/6498.afcfcb0e4450b8d6.js"
+    ]
+  },
+  "app/(miniapp)/page.tsx -> @/lib/user-preferences": {
+    "id": 81260,
+    "files": [
+      "static/chunks/8879.b41e4df47505ac3e.js"
+    ]
+  },
+  "app/(miniapp)/plan/page.tsx -> @/lib/user-preferences": {
+    "id": 81260,
+    "files": [
+      "static/chunks/6498.afcfcb0e4450b8d6.js"
+    ]
+  },
+  "app/(miniapp)/plan/page.tsx -> @lottiefiles/dotlottie-react": {
+    "id": 41877,
+    "files": [
+      "static/chunks/animations.8606e82735e92521.js"
+    ]
+  },
+  "app/(miniapp)/plan/plan-client-new.tsx -> @/lib/format-helpers": {
+    "id": 1576,
+    "files": []
+  },
+  "app/(miniapp)/plan/plan-client-new.tsx -> @/lib/user-preferences": {
+    "id": 81260,
+    "files": [
+      "static/chunks/6498.afcfcb0e4450b8d6.js"
+    ]
+  },
+  "app/(miniapp)/quiz/components/QuizRenderer.tsx -> ./QuizInfoScreen": {
+    "id": 23183,
+    "files": [
+      "static/chunks/vendor-33cf7a409f26a88e.js",
+      "static/chunks/3183.1843462ddcc06d5d.js"
+    ]
+  },
+  "app/(miniapp)/quiz/components/QuizRenderer.tsx -> ./QuizQuestion": {
+    "id": 37894,
+    "files": [
+      "static/chunks/vendor-33cf7a409f26a88e.js",
+      "static/chunks/7894.6ec7e1fa8c4ec186.js"
+    ]
+  },
+  "app/(miniapp)/quiz/components/QuizRenderer.tsx -> ./QuizResumeScreen": {
+    "id": 18163,
+    "files": [
+      "static/chunks/8163.c60ef13452fdeb98.js"
+    ]
+  },
+  "app/(miniapp)/quiz/components/QuizRenderer.tsx -> ./QuizRetakeScreen": {
+    "id": 88036,
+    "files": [
+      "static/chunks/vendor-33cf7a409f26a88e.js",
+      "static/chunks/8036.8a14bd07e46b4a98.js"
+    ]
+  },
+  "app/(miniapp)/quiz/update/result/page.tsx -> @/lib/user-preferences": {
+    "id": 81260,
+    "files": [
+      "static/chunks/1260.b61875374580fed5.js"
+    ]
+  },
+  "components/AddToCartButton.tsx -> @/lib/api": {
+    "id": 71319,
+    "files": []
+  },
+  "components/FeedbackBlock.tsx -> @/lib/user-preferences": {
+    "id": 81260,
+    "files": [
+      "static/chunks/6498.afcfcb0e4450b8d6.js"
+    ]
+  },
+  "components/PaymentGate.tsx -> @/lib/user-preferences": {
+    "id": 81260,
+    "files": [
+      "static/chunks/6498.afcfcb0e4450b8d6.js"
+    ]
+  },
+  "components/ServiceFeedbackPopup.tsx -> @/lib/user-preferences": {
+    "id": 81260,
+    "files": [
+      "static/chunks/6498.afcfcb0e4450b8d6.js"
+    ]
+  },
+  "hooks/useCart.ts -> @/lib/user-preferences": {
+    "id": 81260,
+    "files": [
+      "static/chunks/6498.afcfcb0e4450b8d6.js"
+    ]
+  },
+  "lib/logger.ts -> ./utils/performance-monitor": {
+    "id": 94067,
+    "files": [
+      "static/chunks/4067.73aa83b9c341befe.js"
+    ]
+  },
+  "lib/logger.ts -> @/lib/db": {
+    "id": 7270,
+    "files": [
+      "static/chunks/prisma.96a71a68972bb35b.js",
+      "static/chunks/vendor-33cf7a409f26a88e.js",
+      "static/chunks/6015.935279fbb0b6a11a.js",
+      "static/chunks/7270.5fa37ca5958627c2.js"
+    ]
+  },
+  "lib/logger.ts -> @/lib/redis": {
+    "id": 73127,
+    "files": [
+      "static/chunks/9293.b25168206349a8c4.js",
+      "static/chunks/3127.3ace992b0f1d2abc.js"
+    ]
+  },
+  "lib/logger.ts -> @prisma/client": {
+    "id": 39493,
+    "files": [
+      "static/chunks/prisma.96a71a68972bb35b.js",
+      "static/chunks/vendor-33cf7a409f26a88e.js"
+    ]
+  }
+}

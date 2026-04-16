@@ -1,0 +1,1 @@
+globalThis.__RSC_MANIFEST=(globalThis.__RSC_MANIFEST||{});globalThis.__RSC_MANIFEST["/api/logs/route"]={"moduleLoading":{"prefix":"/_next/"},"ssrModuleMapping":{},"edgeSSRModuleMapping":{},"clientModules":{},"entryCSSFiles":{"/Users/sofasokolova/skinplan-mini/.claude/worktrees/strange-gould/app/api/logs/route":[]},"rscModuleMapping":{},"edgeRscModuleMapping":{}};

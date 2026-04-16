@@ -1,6 +1,7 @@
 # Cloudflare Workers configuration for skinplan-mini
 # Build: npm run build:cf
-# Deploy: npx wrangler deploy
+# Deploy prod:    npx wrangler deploy --env production
+# Deploy staging: npx wrangler deploy --env staging
 
 name = "skinplan-mini"
 main = ".open-next/worker.js"
@@ -11,6 +12,23 @@ compatibility_flags = ["nodejs_compat"]
 directory = ".open-next/assets"
 binding = "ASSETS"
 
-# Cron trigger — calls GET /api/cron/cleanup-logs (auth via CRON_SECRET)
 [triggers]
 crons = ["0 0 * * 0"]
+
+# ── Production ────────────────────────────────────────────────
+[env.production]
+name = "skinplan-mini-prod"
+routes = [
+  { pattern = "proskiniq.ru/*", zone_name = "proskiniq.ru" },
+  { pattern = "www.proskiniq.ru/*", zone_name = "proskiniq.ru" },
+]
+
+[env.production.triggers]
+crons = ["0 0 * * 0"]
+
+# ── Staging ───────────────────────────────────────────────────
+[env.staging]
+name = "skinplan-mini-staging"
+routes = [
+  { pattern = "staging.proskiniq.ru/*", zone_name = "proskiniq.ru" },
+]

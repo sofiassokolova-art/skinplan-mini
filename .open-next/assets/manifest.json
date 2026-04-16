@@ -1,0 +1,28 @@
+{
+  "name": "SkinPlan Mini",
+  "short_name": "SkinPlan",
+  "description": "Персонализированные рекомендации по уходу за кожей",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F5FFFC",
+  "theme_color": "#0A5F59",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/skiniq-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/skiniq-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["health", "lifestyle"],
+  "lang": "ru",
+  "dir": "ltr"
+}
