@@ -102,6 +102,14 @@ const nextConfig = {
       '@prisma/client/wasm': _require.resolve('@prisma/client/wasm.js'),
     };
 
+    // Нативная поддержка WASM в webpack 5 — нужна для Prisma query engine
+    // layers: true обязателен для asyncWebAssembly в Next.js
+    config.experiments = {
+      ...config.experiments,
+      asyncWebAssembly: true,
+      layers: true,
+    };
+
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
