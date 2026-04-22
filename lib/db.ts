@@ -4,7 +4,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import { PrismaNeon } from '@prisma/adapter-neon';
-import { Pool, neonConfig } from '@neondatabase/serverless';
+import { neonConfig } from '@neondatabase/serverless';
 
 // В Cloudflare Workers используем встроенный WebSocket вместо ws-пакета
 // В Node.js среде (dev/scripts) neonConfig.webSocketConstructor не нужен
@@ -23,9 +23,7 @@ function createPrismaClient() {
     throw new Error('DATABASE_URL is not set');
   }
 
-  // PrismaNeon требует Pool-инстанс из @neondatabase/serverless
-  const pool = new Pool({ connectionString: url });
-  const adapter = new PrismaNeon(pool);
+  const adapter = new PrismaNeon({ connectionString: url });
 
   return new PrismaClient({
     adapter,
