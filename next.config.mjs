@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 import withBundleAnalyzer from '@next/bundle-analyzer';
+import { createRequire } from 'module';
+
+const _require = createRequire(import.meta.url);
 
 const bundleAnalyzerConfig = withBundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
@@ -93,11 +96,10 @@ const nextConfig = {
   // Исключаем src из сборки (Vite фронтенд)
   // ОПТИМИЗАЦИЯ: Code splitting для уменьшения размера бандла
   webpack: (config, { isServer }) => {
-    // Позволяет webpack бандлить .wasm файлы (нужно для Prisma WASM движка в CF Workers)
-    config.experiments = {
-      ...config.experiments,
-      asyncWebAssembly: true,
-      layers: true,
+    // @prisma/client/wasm.mjs не существует — форсируем CJS версию (wasm.js) через alias
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@prisma/client/wasm': _require.resolve('@prisma/client/wasm.js'),
     };
 
     if (!isServer) {
