@@ -4,7 +4,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import { PrismaNeon } from '@prisma/adapter-neon';
-import { neonConfig } from '@neondatabase/serverless';
+import { Pool, neonConfig } from '@neondatabase/serverless';
 
 // В Cloudflare Workers используем встроенный WebSocket вместо ws-пакета
 // В Node.js среде (dev/scripts) neonConfig.webSocketConstructor не нужен
@@ -23,7 +23,9 @@ function createPrismaClient() {
     throw new Error('DATABASE_URL is not set');
   }
 
-  const adapter = new PrismaNeon({ connectionString: url });
+  // PrismaNeon требует Pool-инстанс из @neondatabase/serverless
+  const pool = new Pool({ connectionString: url });
+  const adapter = new PrismaNeon(pool);
 
   return new PrismaClient({
     adapter,
@@ -48,9 +50,11 @@ export const prisma = new Proxy({} as PrismaClient, {
 });
 
 // Функция для проверки подключения к БД
+// Не вызываем $connect() — с driver adapters соединение устанавливается лениво при первом запросе
 export async function checkDatabaseConnection() {
   try {
-    await prisma.$connect();
+    // Выполняем простой запрос вместо $connect(), чтобы не триггерить бинарный движок
+    await (getPrisma() as any).$queryRaw`SELECT 1`;
     return { connected: true };
   } catch (error: any) {
     console.error('❌ Database connection error:', error);
