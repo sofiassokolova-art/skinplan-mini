@@ -2,7 +2,9 @@
 // Prisma Client для работы с базой данных (Neon PostgreSQL)
 // Использует @prisma/adapter-neon для совместимости с Cloudflare Workers/Pages
 
-import { PrismaClient } from '@prisma/client';
+// Используем /wasm entry — он загружает движок через import() а не fs.readdir
+// Это единственный вариант совместимый с CF Workers + driverAdapters
+import { PrismaClient } from '@prisma/client/wasm';
 import { PrismaNeon } from '@prisma/adapter-neon';
 import { neonConfig } from '@neondatabase/serverless';
 
