@@ -97,17 +97,20 @@ const nextConfig = {
   // ОПТИМИЗАЦИЯ: Code splitting для уменьшения размера бандла
   webpack: (config, { isServer }) => {
     // @prisma/client/wasm.mjs не существует — форсируем CJS версию (wasm.js) через alias
+    // Алиасируем все non-postgresql WASM на postgresql чтобы webpack не бандлил 5×копий (14.5 МБ!)
+    // Prisma WASM: каждый провайдер = 2.9 МБ base64 JS. Нам нужен только postgresql.
+    const pgWasmPath = _require.resolve('@prisma/client/runtime/query_engine_bg.postgresql.wasm-base64.js');
+    const nonPgProviders = ['mysql', 'sqlite', 'sqlserver', 'cockroachdb'];
+    const wasmAliases = {};
+    for (const p of nonPgProviders) {
+      wasmAliases[`@prisma/client/runtime/query_engine_bg.${p}.wasm-base64`] = pgWasmPath;
+      wasmAliases[`@prisma/client/runtime/query_engine_bg.${p}.wasm-base64.js`] = pgWasmPath;
+      wasmAliases[`@prisma/client/runtime/query_engine_bg.${p}.wasm-base64.mjs`] = pgWasmPath;
+    }
     config.resolve.alias = {
       ...config.resolve.alias,
       '@prisma/client/wasm': _require.resolve('@prisma/client/wasm.js'),
-    };
-
-    // Нативная поддержка WASM в webpack 5 — нужна для Prisma query engine
-    // layers: true обязателен для asyncWebAssembly в Next.js
-    config.experiments = {
-      ...config.experiments,
-      asyncWebAssembly: true,
-      layers: true,
+      ...wasmAliases,
     };
 
     if (!isServer) {
