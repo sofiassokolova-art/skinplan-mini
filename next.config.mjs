@@ -93,6 +93,13 @@ const nextConfig = {
   // Исключаем src из сборки (Vite фронтенд)
   // ОПТИМИЗАЦИЯ: Code splitting для уменьшения размера бандла
   webpack: (config, { isServer }) => {
+    // Позволяет webpack бандлить .wasm файлы (нужно для Prisma WASM движка в CF Workers)
+    config.experiments = {
+      ...config.experiments,
+      asyncWebAssembly: true,
+      layers: true,
+    };
+
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -139,7 +146,7 @@ const nextConfig = {
           prisma: {
             name: 'prisma',
             test: /[\\/]node_modules[\\/]@prisma[\\/]/,
-            chunks: 'async',
+            chunks: 'all',
             priority: 30,
           },
           // Остальные node_modules — в vendor (tanstack, radix и т.д.)
