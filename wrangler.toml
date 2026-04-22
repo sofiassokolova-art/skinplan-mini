@@ -12,6 +12,11 @@ compatibility_flags = ["nodejs_compat_v2"]
 directory = ".open-next/assets"
 binding = "ASSETS"
 
+# WASM modules — Prisma query engine (handled as native WebAssembly, not bundled into JS)
+[[rules]]
+type = "CompiledWasm"
+globs = ["**/*.wasm"]
+
 # Cron только для prod — настраивается вручную в CF Dashboard для staging
 # [triggers]
 # crons = ["0 0 * * 0"]

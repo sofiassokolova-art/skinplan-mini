@@ -1,15 +1,14 @@
 /**
- * Патч для Prisma WASM loader — замена на base64 подход для Cloudflare Workers.
+ * Патч для Prisma WASM loader — нативный импорт для Cloudflare Workers.
  *
- * Проблема: wasm-worker-loader.mjs делает `import('./query_engine_bg.wasm')`
- * который не работает в CF Workers через @opennextjs/cloudflare, вызывая fallback
- * к fs.readdir (не реализован в unenv).
+ * Проблема с base64 подходом: webpack включает 2.9 МБ base64 строку в JS бандл,
+ * раздувая worker.js до >10 МБ и превышая лимиты CF Workers.
  *
- * Решение: заменить loader на версию которая импортирует WASM как base64 строку
- * из @prisma/client/runtime/query_engine_bg.postgresql.wasm-base64.mjs
- * и компилирует его через WebAssembly.compile() — работает нативно в CF Workers.
+ * Правильный подход: оставить нативный import('./query_engine_bg.wasm').
+ * Wrangler обрабатывает .wasm файлы как отдельные WebAssembly модули,
+ * которые НЕ учитываются в лимите размера JS скрипта.
  *
- * Запускать ПОСЛЕ prisma generate, ДО next build.
+ * Бинарный WASM (2.2 МБ) в gzip ≈ 600-900 КБ — отлично вписывается в лимиты.
  */
 
 import { writeFileSync, existsSync } from 'fs';
@@ -26,15 +25,13 @@ if (!existsSync(loaderPath)) {
   process.exit(1);
 }
 
-// Новый loader: использует base64-encoded WASM вместо import('.wasm')
-// Формат возврата: Promise<{ default: WebAssembly.Module }> — как ожидает Prisma
+// Нативный импорт: wrangler обработает .wasm как WebAssembly.Module
+// Формат: Promise<{ default: WebAssembly.Module }> — как ожидает Prisma
 const patchedContent = `/* patched by scripts/patch-prisma-wasm-loader.mjs for Cloudflare Workers */
-/* Original: export default import('./query_engine_bg.wasm') */
-/* Uses base64-encoded WASM to avoid fs.readdir in CF Workers unenv */
-import { wasm as wasmBase64 } from '@prisma/client/runtime/query_engine_bg.postgresql.wasm-base64.mjs';
-const bytes = Uint8Array.from(atob(wasmBase64), (c) => c.charCodeAt(0));
-export default WebAssembly.compile(bytes).then((mod) => ({ default: mod }));
+/* Uses native WASM import — wrangler bundles .wasm as WebAssembly.Module (not base64 JS) */
+import wasm from './query_engine_bg.wasm';
+export default Promise.resolve(wasm);
 `;
 
 writeFileSync(loaderPath, patchedContent, 'utf8');
-console.log('✅ Patched Prisma WASM loader for Cloudflare Workers (base64 approach)');
+console.log('✅ Patched Prisma WASM loader: native import (not base64)');
