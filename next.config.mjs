@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 import withBundleAnalyzer from '@next/bundle-analyzer';
 import { createRequire } from 'module';
+import { existsSync } from 'fs';
+import path from 'path';
 
 const _require = createRequire(import.meta.url);
 
@@ -96,22 +98,37 @@ const nextConfig = {
   // Исключаем src из сборки (Vite фронтенд)
   // ОПТИМИЗАЦИЯ: Code splitting для уменьшения размера бандла
   webpack: (config, { isServer }) => {
-    // @prisma/client/wasm.mjs не существует — форсируем CJS версию (wasm.js) через alias
-    // Алиасируем все non-postgresql WASM на postgresql чтобы webpack не бандлил 5×копий (14.5 МБ!)
-    // Prisma WASM: каждый провайдер = 2.9 МБ base64 JS. Нам нужен только postgresql.
-    const pgWasmPath = _require.resolve('@prisma/client/runtime/query_engine_bg.postgresql.wasm-base64.js');
-    const nonPgProviders = ['mysql', 'sqlite', 'sqlserver', 'cockroachdb'];
-    const wasmAliases = {};
-    for (const p of nonPgProviders) {
-      wasmAliases[`@prisma/client/runtime/query_engine_bg.${p}.wasm-base64`] = pgWasmPath;
-      wasmAliases[`@prisma/client/runtime/query_engine_bg.${p}.wasm-base64.js`] = pgWasmPath;
-      wasmAliases[`@prisma/client/runtime/query_engine_bg.${p}.wasm-base64.mjs`] = pgWasmPath;
-    }
+    // @prisma/client/wasm.mjs не существует — форсируем CJS версию (wasm.js)
     config.resolve.alias = {
       ...config.resolve.alias,
       '@prisma/client/wasm': _require.resolve('@prisma/client/wasm.js'),
-      ...wasmAliases,
     };
+
+    // На Cloudflare Pages (CF_PAGES=1): помечаем .wasm как внешние CommonJS зависимости.
+    // webpack не парсит WASM файлы, просто эмитит require('/abs/path/file.wasm').
+    // OpenNext esbuild перехватит эти require через плагин setWranglerExternal и пометит
+    // как external с абсолютным путём — wrangler загрузит их отдельно (CompiledWasm).
+    // Итог: .wasm НЕ попадает в JS бандл (3 МБ limit free tier соблюдается).
+    if (isServer && process.env.CF_PAGES === '1') {
+      const existingExternals = Array.isArray(config.externals)
+        ? config.externals
+        : config.externals
+        ? [config.externals]
+        : [];
+      config.externals = [
+        ...existingExternals,
+        async ({ context, request }) => {
+          if (request && request.endsWith('.wasm')) {
+            try {
+              const abs = path.resolve(context, request);
+              if (existsSync(abs)) return `commonjs ${abs}`;
+            } catch {
+              // ignore resolution errors
+            }
+          }
+        },
+      ];
+    }
 
     if (!isServer) {
       config.resolve.fallback = {

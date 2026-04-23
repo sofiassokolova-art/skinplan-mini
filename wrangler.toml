@@ -13,9 +13,11 @@ directory = ".open-next/assets"
 binding = "ASSETS"
 
 # WASM modules — Prisma query engine (handled as native WebAssembly, not bundled into JS)
+# fallthrough = false: suppress warning about default CompiledWasm rule being shadowed
 [[rules]]
 type = "CompiledWasm"
 globs = ["**/*.wasm"]
+fallthrough = false
 
 # Cron только для prod — настраивается вручную в CF Dashboard для staging
 # [triggers]
