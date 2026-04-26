@@ -1,8 +1,6 @@
 /** @type {import('next').NextConfig} */
 import withBundleAnalyzer from '@next/bundle-analyzer';
 import { createRequire } from 'module';
-import { existsSync } from 'fs';
-import path from 'path';
 
 const _require = createRequire(import.meta.url);
 
@@ -103,35 +101,6 @@ const nextConfig = {
       ...config.resolve.alias,
       '@prisma/client/wasm': _require.resolve('@prisma/client/wasm.js'),
     };
-
-    // На Cloudflare Pages (CF_PAGES=1): помечаем .wasm как внешние CommonJS зависимости.
-    // webpack не парсит WASM файлы, просто эмитит require('/abs/path/file.wasm').
-    // OpenNext esbuild перехватит эти require через плагин setWranglerExternal и пометит
-    // как external с абсолютным путём — wrangler загрузит их отдельно (CompiledWasm).
-    // Итог: .wasm НЕ попадает в JS бандл (3 МБ limit free tier соблюдается).
-    // Применяем для ВСЕХ webpack компиляций (server + client) на CF Pages.
-    // Клиентская компиляция тоже обходит граф зависимостей для lazy чанков
-    // (напр. await import('@/lib/db') в logger.ts) и встречает .wasm файл.
-    if (process.env.CF_PAGES === '1') {
-      const existingExternals = Array.isArray(config.externals)
-        ? config.externals
-        : config.externals
-        ? [config.externals]
-        : [];
-      config.externals = [
-        ...existingExternals,
-        async ({ context, request }) => {
-          if (request && request.endsWith('.wasm')) {
-            try {
-              const abs = path.resolve(context, request);
-              if (existsSync(abs)) return `commonjs ${abs}`;
-            } catch {
-              // ignore resolution errors
-            }
-          }
-        },
-      ];
-    }
 
     if (!isServer) {
       config.resolve.fallback = {

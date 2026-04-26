@@ -33,14 +33,24 @@ if (!existsSync(loaderPath)) {
   process.exit(1);
 }
 
-// Нативный импорт .wasm — wrangler загружает его как WebAssembly.Module отдельно от JS.
-// Prisma ожидает Promise<{ default: WebAssembly.Module }> из этого лоадера.
+// Абсолютный путь к WASM бинарю — вычисляется здесь, во время патча, чтобы esbuild
+// мог резолвить его через setWranglerExternal (resolve(dirname(importer), absPath) = absPath).
+const wasmBinaryPath = resolve(projectRoot, 'node_modules/.prisma/client/query_engine_bg.wasm');
+
+if (!existsSync(wasmBinaryPath)) {
+  console.error('❌ query_engine_bg.wasm not found — run prisma generate first');
+  process.exit(1);
+}
+
+// /* webpackIgnore: true */ — webpack полностью пропускает этот импорт (не парсит .wasm как JS).
+// esbuild (OpenNext setWranglerExternal) перехватывает .wasm импорт, помечает как external.
+// wrangler загружает WASM отдельно как CompiledWasm (не входит в 3 МБ лимит JS).
+// Динамический импорт возвращает Promise<{ default: WebAssembly.Module }> — именно то, что ждёт Prisma.
 const patchedContent = `/* patched by scripts/patch-prisma-wasm-loader.mjs for Cloudflare Workers */
-/* Native .wasm import — wrangler bundles it as a separate WebAssembly module */
-/* NOT counted in the 3 MB JS script size limit */
-import wasm from './query_engine_bg.wasm';
-export default Promise.resolve({ default: wasm });
+/* webpackIgnore: webpack skips this import entirely — no "Module parse failed" */
+/* esbuild setWranglerExternal marks .wasm as external → wrangler CompiledWasm */
+export default import(/* webpackIgnore: true */ ${JSON.stringify(wasmBinaryPath)});
 `;
 
 writeFileSync(loaderPath, patchedContent, 'utf8');
-console.log('✅ Patched Prisma WASM loader: native .wasm import (CF Workers CompiledWasm)');
+console.log('✅ Patched Prisma WASM loader: webpackIgnore + absolute path (CF Workers CompiledWasm)');
