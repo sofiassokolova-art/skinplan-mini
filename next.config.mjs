@@ -109,7 +109,10 @@ const nextConfig = {
     // OpenNext esbuild перехватит эти require через плагин setWranglerExternal и пометит
     // как external с абсолютным путём — wrangler загрузит их отдельно (CompiledWasm).
     // Итог: .wasm НЕ попадает в JS бандл (3 МБ limit free tier соблюдается).
-    if (isServer && process.env.CF_PAGES === '1') {
+    // Применяем для ВСЕХ webpack компиляций (server + client) на CF Pages.
+    // Клиентская компиляция тоже обходит граф зависимостей для lazy чанков
+    // (напр. await import('@/lib/db') в logger.ts) и встречает .wasm файл.
+    if (process.env.CF_PAGES === '1') {
       const existingExternals = Array.isArray(config.externals)
         ? config.externals
         : config.externals
