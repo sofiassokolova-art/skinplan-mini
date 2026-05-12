@@ -8,9 +8,16 @@ import { PrismaClient } from '@prisma/client/wasm';
 import { PrismaNeon } from '@prisma/adapter-neon';
 import { neonConfig } from '@neondatabase/serverless';
 
-// В Cloudflare Workers используем встроенный WebSocket вместо ws-пакета
-// В Node.js среде (dev/scripts) neonConfig.webSocketConstructor не нужен
+// В Cloudflare Workers используем HTTP fetch вместо WebSocket Pool.
+// WebSocket-соединения stateful и переживают между запросами; CF Workers stateless,
+// что ломает кэшированный Prisma-инстанс после первого запроса (второй query → 500
+// или обрезанный ответ). poolQueryViaFetch=true роутит каждый query через fetch()
+// → Neon HTTP API, каждый request получает свежее соединение.
+//
+// В Node (dev/scripts/тесты) WebSocket работает нормально — оставляем ветку для них.
 if (typeof globalThis.WebSocket !== 'undefined') {
+  // CF Workers: HTTP fetch транспорт — рекомендуемый Neon-ом для serverless edge.
+  neonConfig.poolQueryViaFetch = true;
   neonConfig.webSocketConstructor = globalThis.WebSocket;
 }
 
