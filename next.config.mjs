@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 import withBundleAnalyzer from '@next/bundle-analyzer';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
 
 const bundleAnalyzerConfig = withBundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
@@ -93,6 +95,12 @@ const nextConfig = {
   // Исключаем src из сборки (Vite фронтенд)
   // ОПТИМИЗАЦИЯ: Code splitting для уменьшения размера бандла
   webpack: (config, { isServer }) => {
+    // @prisma/client/wasm exports map points to wasm.mjs for ESM imports,
+    // but only wasm.js exists — alias to the .js file explicitly.
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@prisma/client/wasm': require.resolve('@prisma/client/wasm.js'),
+    };
 
     if (!isServer) {
       config.resolve.fallback = {
