@@ -66,7 +66,10 @@ export async function validateTelegramInitData(
       if (key === 'hash') {
         hash = value;
       } else if (key) {
-        // Сохраняем значение как есть (может быть URL-encoded)
+        // ВАЖНО: `signature` (Ed25519 подпись из Telegram Mini Apps v2)
+        // ВКЛЮЧАЕТСЯ в data-check-string наравне с остальными полями.
+        // Только `hash` исключается. Проверено локально: HMAC сходится
+        // только если signature учтена в проверке.
         params.set(key, value);
       }
     }
@@ -119,9 +122,9 @@ export async function validateTelegramInitData(
         calculatedHash = calculatedHashDecoded;
       } else {
         console.error('❌ Hash validation failed:', {
-          receivedHash: hash,
+          receivedHash: hash.slice(0, 8) + '…',
           paramsCount: params.size,
-          sortedKeys: sortedKeys.slice(0, 5),
+          sortedKeys: sortedKeys.slice(0, 6),
         });
         return { valid: false, error: 'Invalid hash' };
       }
