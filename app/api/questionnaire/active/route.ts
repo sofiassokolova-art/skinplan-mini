@@ -131,29 +131,100 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const questionnaire = await prisma.questionnaire.findFirst({
-      where: { isActive: true },
-      include: {
-        questionGroups: {
-          include: {
-            questions: {
-              include: {
-                answerOptions: { orderBy: { position: 'asc' } },
-              },
-              orderBy: { position: 'asc' },
-            },
-          },
-          orderBy: { position: 'asc' },
-        },
-        questions: {
-          where: { groupId: null },
-          include: {
-            answerOptions: { orderBy: { position: 'asc' } },
-          },
-          orderBy: { position: 'asc' },
-        },
-      },
-    });
+    // ОПТИМИЗАЦИЯ: вся работа по сборке nested-JSON делается в Postgres через json_agg.
+    // CF Workers free-tier даёт ~10-50ms CPU/запрос; Prisma deep-include с 5 фетчами
+    // и затем object-tree allocation + JSON.stringify съедал 50-80ms → ответ резался
+    // на ~12 KiB. Здесь один SQL возвращает уже готовые JSON-строки для groups/questions,
+    // воркер делает только склейку через template-literal — CPU падает в ~5 раз.
+    const rows = await prisma.$queryRaw<Array<{
+      id: number;
+      name: string;
+      version: number;
+      total_q: number;
+      groups_json: string;
+      questions_json: string;
+    }>>`
+      SELECT
+        q.id,
+        q.name,
+        q.version,
+        (SELECT COUNT(*)::int FROM questions WHERE questionnaire_id = q.id) AS total_q,
+        COALESCE((
+          SELECT json_agg(g_obj ORDER BY g_pos)::text
+          FROM (
+            SELECT
+              g.position AS g_pos,
+              json_build_object(
+                'id', g.id,
+                'title', g.title,
+                'position', g.position,
+                'questions', COALESCE((
+                  SELECT json_agg(qu_obj ORDER BY qu_pos)
+                  FROM (
+                    SELECT
+                      qu.position AS qu_pos,
+                      json_build_object(
+                        'id', qu.id,
+                        'code', qu.code,
+                        'text', qu.text,
+                        'type', qu.type,
+                        'position', qu.position,
+                        'isRequired', qu.is_required,
+                        'description', NULL,
+                        'options', COALESCE((
+                          SELECT json_agg(json_build_object(
+                            'id', ao.id,
+                            'value', ao.value,
+                            'label', ao.label,
+                            'position', ao.position
+                          ) ORDER BY ao.position)
+                          FROM answer_options ao
+                          WHERE ao.question_id = qu.id
+                        ), '[]'::json)
+                      ) AS qu_obj
+                    FROM questions qu
+                    WHERE qu.group_id = g.id
+                  ) sub
+                ), '[]'::json)
+              ) AS g_obj
+            FROM question_groups g
+            WHERE g.questionnaire_id = q.id
+          ) sub
+        ), '[]') AS groups_json,
+        COALESCE((
+          SELECT json_agg(qu_obj ORDER BY qu_pos)::text
+          FROM (
+            SELECT
+              qu.position AS qu_pos,
+              json_build_object(
+                'id', qu.id,
+                'code', qu.code,
+                'text', qu.text,
+                'type', qu.type,
+                'position', qu.position,
+                'isRequired', qu.is_required,
+                'description', NULL,
+                'options', COALESCE((
+                  SELECT json_agg(json_build_object(
+                    'id', ao.id,
+                    'value', ao.value,
+                    'label', ao.label,
+                    'position', ao.position
+                  ) ORDER BY ao.position)
+                  FROM answer_options ao
+                  WHERE ao.question_id = qu.id
+                ), '[]'::json)
+              ) AS qu_obj
+            FROM questions qu
+            WHERE qu.questionnaire_id = q.id AND qu.group_id IS NULL
+          ) sub
+        ), '[]') AS questions_json
+      FROM questionnaires q
+      WHERE q.is_active = true
+      LIMIT 1
+    `;
+
+    const questionnaire = rows[0];
 
     if (!questionnaire) {
       logger.warn('No active questionnaire found in DB');
@@ -164,15 +235,11 @@ export async function GET(request: NextRequest) {
       return res;
     }
 
-    const groups = questionnaire.questionGroups ?? [];
-    const plainQuestions = questionnaire.questions ?? [];
-    const totalQuestionsCount =
-      groups.reduce((sum, g) => sum + (g.questions?.length ?? 0), 0) +
-      plainQuestions.length;
+    // groups_json и questions_json — уже готовые JSON-строки из Postgres.
+    const totalQuestionsCount = questionnaire.total_q ?? 0;
 
     logger.info('Active questionnaire loaded', {
       questionnaireId: questionnaire.id,
-      groupsCount: groups.length,
       totalQuestionsCount,
       shouldRedirectToPlan,
       isCompleted,
@@ -210,63 +277,36 @@ export async function GET(request: NextRequest) {
       return responseWithCache;
     }
 
-    const formatted = {
-      id: questionnaire.id,
-      name: questionnaire.name,
-      version: questionnaire.version,
-      groups: groups.map(group => ({
-        id: group.id,
-        title: group.title,
-        position: group.position,
-        questions: (group.questions ?? []).map(q => ({
-          id: q.id,
-          code: q.code,
-          text: q.text,
-          type: q.type,
-          position: q.position,
-          isRequired: q.isRequired,
-          description: null,
-          options: (q.answerOptions ?? []).map(opt => ({
-            id: opt.id,
-            value: opt.value,
-            label: opt.label,
-            position: opt.position,
-          })),
-        })),
-      })),
-      questions: plainQuestions.map(q => ({
-        id: q.id,
-        code: q.code,
-        text: q.text,
-        type: q.type,
-        position: q.position,
-        isRequired: q.isRequired,
-        description: null,
-        options: (q.answerOptions ?? []).map(opt => ({
-          id: opt.id,
-          value: opt.value,
-          label: opt.label,
-          position: opt.position,
-        })),
-      })),
-    };
-
     const duration = Date.now() - startTime;
     logApiRequest(method, path, 200, duration, userId, correlationId);
 
-    const response = NextResponse.json({
-      ...formatted,
-      _meta: {
-        shouldRedirectToPlan,
-        isCompleted,
-        hasProfile: !!userId,
-        preferences: {
-          hasPlanProgress,
-          isRetakingQuiz,
-          fullRetakeFromHome,
-          paymentRetakingCompleted,
-          paymentFullRetakeCompleted,
-        },
+    // Склейка через template-literal: groups_json и questions_json уже валидный JSON
+    // из Postgres, name экранируем через JSON.stringify (учитывает кавычки/спецсимволы).
+    // _meta маленький (~200 байт), JSON.stringify на нём дёшев.
+    const metaJson = JSON.stringify({
+      shouldRedirectToPlan,
+      isCompleted,
+      hasProfile: !!userId,
+      preferences: {
+        hasPlanProgress,
+        isRetakingQuiz,
+        fullRetakeFromHome,
+        paymentRetakingCompleted,
+        paymentFullRetakeCompleted,
+      },
+    });
+    const body =
+      `{"id":${questionnaire.id},` +
+      `"name":${JSON.stringify(questionnaire.name)},` +
+      `"version":${questionnaire.version},` +
+      `"groups":${questionnaire.groups_json},` +
+      `"questions":${questionnaire.questions_json},` +
+      `"_meta":${metaJson}}`;
+
+    const response = new NextResponse(body, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
       },
     });
 

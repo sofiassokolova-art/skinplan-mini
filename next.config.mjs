@@ -79,7 +79,15 @@ const nextConfig = {
         ],
       },
       {
-        source: '/:path*',
+        // /api/* — route handlers сами выставляют Cache-Control (через addCacheHeaders),
+        // глобальный no-store здесь перебивал бы их и ломал edge-кеш CF, увеличивая CPU
+        // на воркере. Только security headers.
+        source: '/api/:path*',
+        headers: securityHeaders,
+      },
+      {
+        // Всё остальное (HTML-страницы) — no-store, как было.
+        source: '/((?!api/).*)',
         headers: [
           { key: 'Cache-Control', value: 'no-store, no-cache, max-age=0, must-revalidate' },
           ...securityHeaders,
