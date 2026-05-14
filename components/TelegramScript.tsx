@@ -1,41 +1,55 @@
-'use client';
-
 import Script from 'next/script';
 
 /**
- * Загружает telegram-web-app.js после первого рендера (afterInteractive),
- * чтобы не блокировать открытие в WebView Telegram. По готовности вызывает
- * ready()/expand() на настоящем SDK и диспатчит событие для useTelegram.
+ * Telegram WebApp SDK + синхронная инициализация.
+ *
+ * strategy="beforeInteractive" → Next.js рендерит <script> прямо в <head>
+ * без async/defer. SDK успевает загрузиться и вызвать ready()/expand() ДО
+ * старта гидрации React, поэтому системный лоадер Telegram скрывается
+ * сразу после первого пейнта, а не через секунды.
+ *
+ * onLoad/onError с beforeInteractive не работают (тег рендерится серверно),
+ * поэтому инициализация вынесена в отдельный inline-скрипт ниже по порядку:
+ * sync-скрипты исполняются в порядке вставки, к моменту запуска init'а
+ * window.Telegram.WebApp уже доступен.
  */
 export function TelegramScript() {
   return (
-    <Script
-      src="https://telegram.org/js/telegram-web-app.js"
-      strategy="afterInteractive"
-      // Отключаем preload — он добавляет <link rel="preload"> в HTTP/2 push headers
-      // что обрывает основной HTML стрим на нестабильных соединениях
-      data-nscript="afterInteractive"
-      onLoad={() => {
-        if (typeof window === 'undefined') return;
-        try {
-          const wa = window.Telegram?.WebApp;
-          if (wa) {
-            wa.ready();
-            wa.expand();
-            if (wa.initData) {
-              try { sessionStorage.setItem('tg_init_data', wa.initData); } catch (_) {}
-            }
-          }
-        } catch (_) {}
-        window.dispatchEvent(new Event('telegram-webapp-ready'));
-      }}
-      onError={() => {
-        // SDK не загрузился (сетевая ошибка и т.д.) — всё равно диспатчим событие,
-        // чтобы useTelegram перестал ждать и использовал данные из hash/sessionStorage.
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new Event('telegram-webapp-ready'));
+    <>
+      <Script
+        src="https://telegram.org/js/telegram-web-app.js"
+        strategy="beforeInteractive"
+      />
+      <Script id="telegram-webapp-init" strategy="beforeInteractive">
+        {`
+(function(){
+  function dispatchReady(){
+    try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch(_) {}
+  }
+  function init(){
+    try {
+      var wa = window.Telegram && window.Telegram.WebApp;
+      if (wa) {
+        if (typeof wa.ready === 'function') wa.ready();
+        if (typeof wa.expand === 'function') wa.expand();
+        if (wa.initData) {
+          try { sessionStorage.setItem('tg_init_data', wa.initData); } catch(_) {}
         }
-      }}
-    />
+      }
+    } catch(_) {}
+    dispatchReady();
+  }
+  if (window.Telegram && window.Telegram.WebApp) {
+    init();
+  } else {
+    // Fallback: SDK не загрузился (network error) — не оставляем приложение
+    // в подвешенном состоянии, диспатчим событие, чтобы useTelegram
+    // переключился на initData из hash/sessionStorage.
+    setTimeout(init, 1500);
+  }
+})();
+        `}
+      </Script>
+    </>
   );
 }
