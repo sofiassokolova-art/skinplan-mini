@@ -7,47 +7,57 @@
 import { PrismaClient } from '@prisma/client/wasm';
 import { PrismaNeon } from '@prisma/adapter-neon';
 import { neonConfig } from '@neondatabase/serverless';
+import { currentPrismaRequestId, resetPrismaForRequest } from './db-request-scope';
 
-// В Cloudflare Workers используем HTTP fetch вместо WebSocket Pool.
-// WebSocket-соединения stateful и переживают между запросами; CF Workers stateless,
-// что ломает кэшированный Prisma-инстанс после первого запроса (второй query → 500
-// или обрезанный ответ). poolQueryViaFetch=true роутит каждый query через fetch()
-// → Neon HTTP API, каждый request получает свежее соединение.
-//
-// В Node (dev/scripts/тесты) WebSocket работает нормально — оставляем ветку для них.
-if (typeof globalThis.WebSocket !== 'undefined') {
-  // CF Workers: HTTP fetch транспорт — рекомендуемый Neon-ом для serverless edge.
-  neonConfig.poolQueryViaFetch = true;
-  neonConfig.webSocketConstructor = globalThis.WebSocket;
-}
-
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-};
+// CF Workers: HTTP fetch транспорт через poolQueryViaFetch=true.
+// webSocketConstructor НЕ ставим — даже неиспользуемая ссылка на globalThis.WebSocket
+// заставляет Neon Pool регистрировать обработчики, привязанные к контексту request-а;
+// между запросами CF Workers выбрасывает "Cannot perform I/O on behalf of a different request".
+neonConfig.poolQueryViaFetch = true;
 
 function createPrismaClient() {
   const url = process.env.DATABASE_URL;
-
   if (!url) {
     throw new Error('DATABASE_URL is not set');
   }
-
-  // @prisma/adapter-neon@6.x принимает PoolConfig напрямую (не Pool-инстанс)
   const adapter = new PrismaNeon({ connectionString: url });
-
   return new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
   });
 }
 
-// Lazy getter — инициализируем только при первом обращении во время запроса,
-// когда CF Workers уже инжектил process.env из Dashboard Variables
+// КРИТИЧНО: в CF Workers НЕ кэшируем PrismaClient между запросами.
+// Pool держит fetch-state (HTTP keep-alive, Response объекты), привязанный
+// к контексту первого request-а. Следующий request видит "Cannot perform I/O
+// on behalf of a different request" → "Connection terminated" → 500/обрезанные ответы.
+//
+// Кешируем по-request: вешаем клиент на globalThis под уникальным ключом, который
+// сбрасывается на каждом новом request-handler-е через requestPrismaScopeKey.
+// В пределах одного request все вызовы prisma.* возвращают тот же клиент.
+const PRISMA_SCOPE_KEY = Symbol.for('skiniq.prismaPerRequest');
+const prismaStore = globalThis as unknown as {
+  [PRISMA_SCOPE_KEY]?: { id: string; client: PrismaClient };
+};
+
+// Re-export для удобства (route handlers могут вызвать reset напрямую если нужно)
+export { resetPrismaForRequest };
+
 export const getPrisma = (): PrismaClient => {
-  if (!globalForPrisma.prisma) {
-    globalForPrisma.prisma = createPrismaClient();
+  const reqId = currentPrismaRequestId();
+  const cached = prismaStore[PRISMA_SCOPE_KEY];
+  // В пределах одного request-а возвращаем тот же клиент.
+  // На новом request middleware ставит новый reqId — старый кэш инвалидируется.
+  if (cached && reqId && cached.id === reqId) {
+    return cached.client;
   }
-  return globalForPrisma.prisma;
+  // Fallback: если reqId не выставлен (Node/scripts), кэшируем как обычно
+  if (!reqId && cached) {
+    return cached.client;
+  }
+  const client = createPrismaClient();
+  prismaStore[PRISMA_SCOPE_KEY] = { id: reqId, client };
+  return client;
 };
 
 // Обратная совместимость — proxy который инициализируется при первом обращении

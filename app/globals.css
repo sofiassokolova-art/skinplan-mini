@@ -5,11 +5,10 @@
 @tailwind components;
 @tailwind utilities;
 
-/* CSS переменные для шрифтов (используются с Google Fonts или локальными файлами) */
-:root {
-  --font-unbounded: 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-inter: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-}
+/* --font-unbounded и --font-inter ставятся через next/font на html.className
+ * (см. app/layout.tsx). Не переопределяем здесь — иначе перебиваем хешированное
+ * имя локального шрифта на литералы 'Unbounded'/'Inter' (которых нет в @font-face)
+ * → заголовки слетают на системный fallback. */
 
 /* Шрифты для админки 2025 — применяются только внутри .admin-layout */
 .admin-layout {
