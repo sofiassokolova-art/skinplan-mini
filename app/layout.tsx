@@ -82,56 +82,13 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        {/* Telegram SDK + init через next/script beforeInteractive.
-            Plain <script dangerouslySetInnerHTML> в head ломал гидрацию
-            React 19 — миниапка падала в белый экран (никакие useEffect
-            не запускались). Возвращаемся к проверенной обёртке next/script.
-
-            Минус: код кладётся в __next_s очередь и исполняется чуть позже
-            (после загрузки основного JS) — на медленном Telegram WebView
-            системный лоадер может задержаться лишние пол-секунды. Это
-            приемлемее, чем поломанная гидрация. */}
-        {!isAdminRoute && (
-          <Script id="telegram-hash-fallback" strategy="beforeInteractive">
-            {`
-(function(){
-  if (typeof window === 'undefined') return;
-  // Парсим initData из hash (мобильный Telegram передаёт #tgWebAppData=...)
-  try {
-    var h = window.location.hash.slice(1);
-    if (h) {
-      var raw = new URLSearchParams(h).get('tgWebAppData');
-      if (raw) sessionStorage.setItem('tg_init_data', decodeURIComponent(raw));
-    }
-  } catch (_) {}
-
-  // Динамически грузим настоящий SDK. Когда подгрузится — зовём
-  // WebApp.ready()/expand() (это закрывает системный Telegram-лоадер)
-  // и диспатчим событие, чтобы useTelegram/useQuizEngine обновили state.
-  function done(){
-    try {
-      var wa = window.Telegram && window.Telegram.WebApp;
-      if (wa) {
-        if (typeof wa.ready === 'function') wa.ready();
-        if (typeof wa.expand === 'function') wa.expand();
-        if (wa.initData) {
-          try { sessionStorage.setItem('tg_init_data', wa.initData); } catch (_) {}
-        }
-      }
-    } catch (_) {}
-    try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {}
-  }
-  var s = document.createElement('script');
-  s.src = 'https://telegram.org/js/telegram-web-app.js';
-  s.onload = done;
-  s.onerror = function(){
-    try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {}
-  };
-  document.head.appendChild(s);
-})();
-            `}
-          </Script>
-        )}
+        {/* Telegram SDK init теперь рендерится plain <script> в <body>
+            (см. ниже, рядом с chunk-error хэндлером). В <head> через
+            next/script он исполнялся в __next_s очереди — слишком поздно,
+            системный лоадер висел. Plain <script> в <head> ломал гидрацию
+            React 19. Plain <script> в <body> — единственный безопасный
+            вариант, который и работает (как у chunk-error), и стартует
+            до загрузки основного JS-бандла. */}
         {/* DEV-режим: мок Telegram WebApp для локального браузера (не на /admin) */}
         {isDev && !isAdminRoute && (
           <Script id="telegram-dev-mock" strategy="beforeInteractive">
@@ -219,6 +176,19 @@ export default async function RootLayout({
             zIndex: 99999,
           }}
         />
+        {/* Telegram SDK loader + ready() — plain inline <script>, тот же
+            безопасный паттерн что у chunk-error хэндлера ниже. Исполняется
+            браузером синхронно при первом же парсинге body, ДО основной
+            гидрации React. Так системный лоадер Telegram скрывается
+            заметно быстрее: SDK подгружается параллельно с main-JS, а не
+            ПОСЛЕ него (как было через next/script beforeInteractive). */}
+        {!isAdminRoute && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `(function(){try{var h=window.location.hash.slice(1);if(h){var raw=new URLSearchParams(h).get('tgWebAppData');if(raw)sessionStorage.setItem('tg_init_data',decodeURIComponent(raw))}}catch(_){}function done(){try{var wa=window.Telegram&&window.Telegram.WebApp;if(wa){if(typeof wa.ready==='function')wa.ready();if(typeof wa.expand==='function')wa.expand();if(wa.initData){try{sessionStorage.setItem('tg_init_data',wa.initData)}catch(_){}}}}catch(_){}try{window.dispatchEvent(new Event('telegram-webapp-ready'))}catch(_){}}var s=document.createElement('script');s.src='https://telegram.org/js/telegram-web-app.js';s.onload=done;s.onerror=function(){try{window.dispatchEvent(new Event('telegram-webapp-ready'))}catch(_){}};document.head.appendChild(s);})();`,
+            }}
+          />
+        )}
         {/* Лоадер при открытии — показываем ВСЕГДА (кроме /admin).
             React удалит его при монтировании через useRemoveRootLoading().
             Не зависим от process.env.VERCEL — Vercel build cache может не подставлять его. */}
