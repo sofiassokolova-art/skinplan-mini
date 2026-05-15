@@ -11,7 +11,6 @@ import { WebVitalsTracker } from './(miniapp)/components/WebVitals';
 import { Toaster } from '@/components/Toaster';
 import { GlobalErrorHandler } from '@/components/GlobalErrorHandler';
 import { ServiceWorker } from '@/components/ServiceWorker';
-import { TelegramScript } from '@/components/TelegramScript';
 
 // Загружаем шрифты локально из public/fonts
 // Файлы шрифтов загружены в public/fonts/
@@ -129,12 +128,34 @@ export default async function RootLayout({
     w.openLink = w.openLink || function(url){ window.open(url); };
     w.openTelegramLink = w.openTelegramLink || function(url){ window.open(url); };
   }
+
+  // Загружаем настоящий SDK динамически (async, не блокирует HTML-парсинг)
+  // и сразу зовём ready()/expand(), как только он подгрузится — Telegram
+  // скрывает системный лоадер именно по WebApp.ready().
+  var s = document.createElement('script');
+  s.src = 'https://telegram.org/js/telegram-web-app.js';
+  function done(){
+    try {
+      var wa = window.Telegram && window.Telegram.WebApp;
+      if (wa) {
+        if (typeof wa.ready === 'function') wa.ready();
+        if (typeof wa.expand === 'function') wa.expand();
+        if (wa.initData) {
+          try { sessionStorage.setItem('tg_init_data', wa.initData); } catch (_) {}
+        }
+      }
+    } catch (_) {}
+    try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {}
+  }
+  s.onload = done;
+  s.onerror = function(){
+    try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {}
+  };
+  document.head.appendChild(s);
 })();
             `}
           </Script>
         )}
-        {/* Telegram WebApp: после первого рендера, чтобы в WebView не зависало на загрузке telegram.org */}
-        {!isAdminRoute && <TelegramScript />}
         {/* DEV-режим: мок Telegram WebApp для локального браузера (не на /admin) */}
         {isDev && !isAdminRoute && (
           <Script id="telegram-dev-mock" strategy="beforeInteractive">
