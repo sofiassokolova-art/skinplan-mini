@@ -82,25 +82,55 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        {/* Telegram SDK + init.
-            ВАЖНО: рендерим только ОДИН inline <script dangerouslySetInnerHTML>,
-            без отдельного <script src>. React 19 хитро ведёт себя с
-            server-rendered <script src> в <head> — на гидрации reconciler
-            пытается рассматривать его как resource и роняет дерево
-            (белый экран).
-            Поэтому SDK подгружаем динамически через document.createElement
-            прямо из inline-скрипта (тот же безопасный паттерн, что у
-            chunk-error хэндлера ниже). Inline-скрипт sync исполняется
-            браузером при парсинге <head> — ещё до загрузки основного JS,
-            поэтому createElement+appendChild успевают пнуть загрузку
-            SDK моментально, а WebApp.ready() зовётся в onload как только
-            SDK подгрузится. */}
+        {/* Telegram SDK + init через next/script beforeInteractive.
+            Plain <script dangerouslySetInnerHTML> в head ломал гидрацию
+            React 19 — миниапка падала в белый экран (никакие useEffect
+            не запускались). Возвращаемся к проверенной обёртке next/script.
+
+            Минус: код кладётся в __next_s очередь и исполняется чуть позже
+            (после загрузки основного JS) — на медленном Telegram WebView
+            системный лоадер может задержаться лишние пол-секунды. Это
+            приемлемее, чем поломанная гидрация. */}
         {!isAdminRoute && (
-          <script
-            dangerouslySetInnerHTML={{
-              __html: `(function(){try{var h=window.location.hash.slice(1);if(h){var raw=new URLSearchParams(h).get('tgWebAppData');if(raw)sessionStorage.setItem('tg_init_data',decodeURIComponent(raw))}}catch(_){}function done(){try{var wa=window.Telegram&&window.Telegram.WebApp;if(wa){if(typeof wa.ready==='function')wa.ready();if(typeof wa.expand==='function')wa.expand();if(wa.initData){try{sessionStorage.setItem('tg_init_data',wa.initData)}catch(_){}}}}catch(_){}try{window.dispatchEvent(new Event('telegram-webapp-ready'))}catch(_){}}var s=document.createElement('script');s.src='https://telegram.org/js/telegram-web-app.js';s.onload=done;s.onerror=function(){try{window.dispatchEvent(new Event('telegram-webapp-ready'))}catch(_){}};document.head.appendChild(s);})();`,
-            }}
-          />
+          <Script id="telegram-hash-fallback" strategy="beforeInteractive">
+            {`
+(function(){
+  if (typeof window === 'undefined') return;
+  // Парсим initData из hash (мобильный Telegram передаёт #tgWebAppData=...)
+  try {
+    var h = window.location.hash.slice(1);
+    if (h) {
+      var raw = new URLSearchParams(h).get('tgWebAppData');
+      if (raw) sessionStorage.setItem('tg_init_data', decodeURIComponent(raw));
+    }
+  } catch (_) {}
+
+  // Динамически грузим настоящий SDK. Когда подгрузится — зовём
+  // WebApp.ready()/expand() (это закрывает системный Telegram-лоадер)
+  // и диспатчим событие, чтобы useTelegram/useQuizEngine обновили state.
+  function done(){
+    try {
+      var wa = window.Telegram && window.Telegram.WebApp;
+      if (wa) {
+        if (typeof wa.ready === 'function') wa.ready();
+        if (typeof wa.expand === 'function') wa.expand();
+        if (wa.initData) {
+          try { sessionStorage.setItem('tg_init_data', wa.initData); } catch (_) {}
+        }
+      }
+    } catch (_) {}
+    try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {}
+  }
+  var s = document.createElement('script');
+  s.src = 'https://telegram.org/js/telegram-web-app.js';
+  s.onload = done;
+  s.onerror = function(){
+    try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {}
+  };
+  document.head.appendChild(s);
+})();
+            `}
+          </Script>
         )}
         {/* DEV-режим: мок Telegram WebApp для локального браузера (не на /admin) */}
         {isDev && !isAdminRoute && (
