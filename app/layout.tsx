@@ -82,79 +82,25 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        {/* На мобильном Telegram передаёт initData в hash (#tgWebAppData=...). Парсим и сохраняем в sessionStorage. Stub-объект WebApp создаётся только для данных, ready() НЕ подменяем — его должен вызвать настоящий SDK. */}
+        {/* Telegram SDK + init — рендерим обычные <script>-теги, НЕ через next/script.
+            next/script с beforeInteractive в App Router кладёт код в очередь
+            __next_s, которая обрабатывается только после загрузки основного
+            JS-бандла. Это значит WebApp.ready() зовётся уже после старта
+            гидрации — а нам нужно ровно наоборот.
+
+            Plain <script src> в JSX → React server-renderer выводит его как
+            обычный sync-тег в HTML. Браузер блокирует парсинг, грузит и
+            исполняет SDK, потом следующий inline-скрипт зовёт ready() — всё
+            ДО любого main-JS. Telegram скрывает системный лоадер сразу. */}
         {!isAdminRoute && (
-          <Script id="telegram-hash-fallback" strategy="beforeInteractive">
-            {`
-(function(){
-  if (typeof window === 'undefined') return;
-
-  var initData = '';
-
-  // 1. Пробуем hash
-  var h = window.location.hash.slice(1);
-  if (h) {
-    try {
-      var p = new URLSearchParams(h);
-      var raw = p.get('tgWebAppData');
-      if (raw) initData = decodeURIComponent(raw);
-    } catch (_) {}
-  }
-
-  // 2. Fallback — sessionStorage (после редиректа hash теряется)
-  if (!initData) {
-    try { initData = sessionStorage.getItem('tg_init_data') || ''; } catch (_) {}
-  }
-
-  if (!initData) return;
-
-  // Сохраняем/обновляем в sessionStorage
-  try { sessionStorage.setItem('tg_init_data', initData); } catch (_) {}
-
-  if (!window.Telegram) window.Telegram = {};
-  if (!window.Telegram.WebApp || !window.Telegram.WebApp.initData) {
-    var w = window.Telegram.WebApp = window.Telegram.WebApp || {};
-    w.initData = initData;
-    w.initDataUnsafe = w.initDataUnsafe || {};
-    try {
-      var userMatch = initData.match(/user=([^&]+)/);
-      if (userMatch) w.initDataUnsafe.user = JSON.parse(decodeURIComponent(userMatch[1]));
-    } catch (_) {}
-    w.ready = w.ready || function(){};
-    w.expand = w.expand || function(){};
-    w.close = w.close || function(){};
-    w.sendData = w.sendData || function(){};
-    w.showPopup = w.showPopup || function(){};
-    w.openLink = w.openLink || function(url){ window.open(url); };
-    w.openTelegramLink = w.openTelegramLink || function(url){ window.open(url); };
-  }
-
-  // Загружаем настоящий SDK динамически (async, не блокирует HTML-парсинг)
-  // и сразу зовём ready()/expand(), как только он подгрузится — Telegram
-  // скрывает системный лоадер именно по WebApp.ready().
-  var s = document.createElement('script');
-  s.src = 'https://telegram.org/js/telegram-web-app.js';
-  function done(){
-    try {
-      var wa = window.Telegram && window.Telegram.WebApp;
-      if (wa) {
-        if (typeof wa.ready === 'function') wa.ready();
-        if (typeof wa.expand === 'function') wa.expand();
-        if (wa.initData) {
-          try { sessionStorage.setItem('tg_init_data', wa.initData); } catch (_) {}
-        }
-      }
-    } catch (_) {}
-    try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {}
-  }
-  s.onload = done;
-  s.onerror = function(){
-    try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {}
-  };
-  document.head.appendChild(s);
-})();
-            `}
-          </Script>
+          <>
+            <script src="https://telegram.org/js/telegram-web-app.js" />
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `(function(){try{var h=window.location.hash.slice(1);if(h){var raw=new URLSearchParams(h).get('tgWebAppData');if(raw)sessionStorage.setItem('tg_init_data',decodeURIComponent(raw))}}catch(_){}try{var wa=window.Telegram&&window.Telegram.WebApp;if(wa){if(typeof wa.ready==='function')wa.ready();if(typeof wa.expand==='function')wa.expand();if(wa.initData){try{sessionStorage.setItem('tg_init_data',wa.initData)}catch(_){}}}}catch(_){}try{window.dispatchEvent(new Event('telegram-webapp-ready'))}catch(_){}})();`,
+              }}
+            />
+          </>
         )}
         {/* DEV-режим: мок Telegram WebApp для локального браузера (не на /admin) */}
         {isDev && !isAdminRoute && (
