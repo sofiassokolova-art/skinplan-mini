@@ -82,25 +82,25 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        {/* Telegram SDK + init — рендерим обычные <script>-теги, НЕ через next/script.
-            next/script с beforeInteractive в App Router кладёт код в очередь
-            __next_s, которая обрабатывается только после загрузки основного
-            JS-бандла. Это значит WebApp.ready() зовётся уже после старта
-            гидрации — а нам нужно ровно наоборот.
-
-            Plain <script src> в JSX → React server-renderer выводит его как
-            обычный sync-тег в HTML. Браузер блокирует парсинг, грузит и
-            исполняет SDK, потом следующий inline-скрипт зовёт ready() — всё
-            ДО любого main-JS. Telegram скрывает системный лоадер сразу. */}
+        {/* Telegram SDK + init.
+            ВАЖНО: рендерим только ОДИН inline <script dangerouslySetInnerHTML>,
+            без отдельного <script src>. React 19 хитро ведёт себя с
+            server-rendered <script src> в <head> — на гидрации reconciler
+            пытается рассматривать его как resource и роняет дерево
+            (белый экран).
+            Поэтому SDK подгружаем динамически через document.createElement
+            прямо из inline-скрипта (тот же безопасный паттерн, что у
+            chunk-error хэндлера ниже). Inline-скрипт sync исполняется
+            браузером при парсинге <head> — ещё до загрузки основного JS,
+            поэтому createElement+appendChild успевают пнуть загрузку
+            SDK моментально, а WebApp.ready() зовётся в onload как только
+            SDK подгрузится. */}
         {!isAdminRoute && (
-          <>
-            <script src="https://telegram.org/js/telegram-web-app.js" />
-            <script
-              dangerouslySetInnerHTML={{
-                __html: `(function(){try{var h=window.location.hash.slice(1);if(h){var raw=new URLSearchParams(h).get('tgWebAppData');if(raw)sessionStorage.setItem('tg_init_data',decodeURIComponent(raw))}}catch(_){}try{var wa=window.Telegram&&window.Telegram.WebApp;if(wa){if(typeof wa.ready==='function')wa.ready();if(typeof wa.expand==='function')wa.expand();if(wa.initData){try{sessionStorage.setItem('tg_init_data',wa.initData)}catch(_){}}}}catch(_){}try{window.dispatchEvent(new Event('telegram-webapp-ready'))}catch(_){}})();`,
-              }}
-            />
-          </>
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `(function(){try{var h=window.location.hash.slice(1);if(h){var raw=new URLSearchParams(h).get('tgWebAppData');if(raw)sessionStorage.setItem('tg_init_data',decodeURIComponent(raw))}}catch(_){}function done(){try{var wa=window.Telegram&&window.Telegram.WebApp;if(wa){if(typeof wa.ready==='function')wa.ready();if(typeof wa.expand==='function')wa.expand();if(wa.initData){try{sessionStorage.setItem('tg_init_data',wa.initData)}catch(_){}}}}catch(_){}try{window.dispatchEvent(new Event('telegram-webapp-ready'))}catch(_){}}var s=document.createElement('script');s.src='https://telegram.org/js/telegram-web-app.js';s.onload=done;s.onerror=function(){try{window.dispatchEvent(new Event('telegram-webapp-ready'))}catch(_){}};document.head.appendChild(s);})();`,
+            }}
+          />
         )}
         {/* DEV-режим: мок Telegram WebApp для локального браузера (не на /admin) */}
         {isDev && !isAdminRoute && (
