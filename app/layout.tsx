@@ -218,7 +218,7 @@ export default async function RootLayout({
         {!isAdminRoute && (
           <script
             dangerouslySetInnerHTML={{
-              __html: `(function(){try{var h=window.location.hash.slice(1);if(h){var raw=new URLSearchParams(h).get('tgWebAppData');if(raw)try{sessionStorage.setItem('tg_init_data',decodeURIComponent(raw))}catch(_){}}}catch(_){}try{if(window.TelegramWebviewProxy!==undefined){TelegramWebviewProxy.postEvent('web_app_ready','""');TelegramWebviewProxy.postEvent('web_app_expand','""')}else if(window.external&&'notify'in window.external){window.external.notify(JSON.stringify({eventType:'web_app_ready',eventData:''}))}}catch(_){}})();`,
+              __html: `(function(){try{var h=window.location.hash.slice(1);if(h){var raw=new URLSearchParams(h).get('tgWebAppData');if(raw)try{sessionStorage.setItem('tg_init_data',decodeURIComponent(raw))}catch(_){}}}catch(_){}function callReady(){try{if(window.TelegramWebviewProxy!==undefined){TelegramWebviewProxy.postEvent('web_app_ready','""')}else if(window.external&&'notify'in window.external){window.external.notify(JSON.stringify({eventType:'web_app_ready',eventData:''}))}}catch(_){}}if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',callReady)}else{callReady()}})();`,
             }}
           />
         )}
