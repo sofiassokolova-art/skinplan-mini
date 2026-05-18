@@ -96,7 +96,6 @@ export default async function RootLayout({
             {`
 (function(){
   if (typeof window === 'undefined') return;
-  // Парсим initData из hash (мобильный Telegram передаёт #tgWebAppData=...)
   try {
     var h = window.location.hash.slice(1);
     if (h) {
@@ -105,9 +104,6 @@ export default async function RootLayout({
     }
   } catch (_) {}
 
-  // Динамически грузим настоящий SDK. Когда подгрузится — зовём
-  // WebApp.ready()/expand() (это закрывает системный Telegram-лоадер)
-  // и диспатчим событие, чтобы useTelegram/useQuizEngine обновили state.
   function done(){
     try {
       var wa = window.Telegram && window.Telegram.WebApp;
@@ -121,6 +117,16 @@ export default async function RootLayout({
     } catch (_) {}
     try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {}
   }
+
+  // Telegram pre-injects the SDK into WebView before the page loads.
+  // In that case the early body <script> already called ready(); we just
+  // confirm state here without a redundant network request.
+  if (window.Telegram && window.Telegram.WebApp) {
+    done();
+    return;
+  }
+
+  // Fallback for non-Telegram contexts: load SDK dynamically.
   var s = document.createElement('script');
   s.src = 'https://telegram.org/js/telegram-web-app.js';
   s.onload = done;
@@ -204,6 +210,17 @@ export default async function RootLayout({
           backgroundColor: '#FFFFFF',
         }}
       >
+        {/* Earliest possible ready() — executes synchronously during HTML parse,
+            before any JS bundle downloads. Telegram always pre-injects
+            window.Telegram.WebApp into the WebView, so this dismisses the
+            system loader immediately. No DOM changes → React 19 safe. */}
+        {!isAdminRoute && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `(function(){try{var h=window.location.hash.slice(1);if(h){var raw=new URLSearchParams(h).get('tgWebAppData');if(raw)try{sessionStorage.setItem('tg_init_data',decodeURIComponent(raw))}catch(_){}}}catch(_){}try{var wa=window.Telegram&&window.Telegram.WebApp;if(wa){if(wa.initData)try{sessionStorage.setItem('tg_init_data',wa.initData)}catch(_){};if(typeof wa.ready==='function')wa.ready();if(typeof wa.expand==='function')wa.expand();try{window.dispatchEvent(new Event('telegram-webapp-ready'))}catch(_){}}}catch(_){}})();`,
+            }}
+          />
+        )}
         {/* Контейнер для кнопки «Назад» — первый ребёнок body, блок 80×80 в углу */}
         <div
           id="back-button-fixed-container"
