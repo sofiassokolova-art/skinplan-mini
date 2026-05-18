@@ -82,15 +82,18 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        {/* Telegram SDK + init через next/script beforeInteractive.
-            Plain <script dangerouslySetInnerHTML> в head ломал гидрацию
-            React 19 — миниапка падала в белый экран (никакие useEffect
-            не запускались). Возвращаемся к проверенной обёртке next/script.
-
-            Минус: код кладётся в __next_s очередь и исполняется чуть позже
-            (после загрузки основного JS) — на медленном Telegram WebView
-            системный лоадер может задержаться лишние пол-секунды. Это
-            приемлемее, чем поломанная гидрация. */}
+        {/* Preload SDK параллельно с Next.js бандлом — скачивание стартует
+            при парсинге <head>, до того как beforeInteractive запустится.
+            Когда appendChid(s) выполняется в beforeInteractive, SDK уже
+            в кеше браузера → onload стреляет сразу → ready() намного раньше. */}
+        {!isAdminRoute && (
+          <link
+            rel="preload"
+            href="https://telegram.org/js/telegram-web-app.js"
+            as="script"
+            crossOrigin="anonymous"
+          />
+        )}
         {!isAdminRoute && (
           <Script id="telegram-hash-fallback" strategy="beforeInteractive">
             {`
@@ -117,16 +120,6 @@ export default async function RootLayout({
     } catch (_) {}
     try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {}
   }
-
-  // Telegram pre-injects the SDK into WebView before the page loads.
-  // In that case the early body <script> already called ready(); we just
-  // confirm state here without a redundant network request.
-  if (window.Telegram && window.Telegram.WebApp) {
-    done();
-    return;
-  }
-
-  // Fallback for non-Telegram contexts: load SDK dynamically.
   var s = document.createElement('script');
   s.src = 'https://telegram.org/js/telegram-web-app.js';
   s.onload = done;
@@ -210,15 +203,12 @@ export default async function RootLayout({
           backgroundColor: '#FFFFFF',
         }}
       >
-        {/* Вызываем ready() через нативный Telegram-бридж СИНХРОННО при парсинге HTML —
-            до загрузки любого JS-бандла. TelegramWebviewProxy инжектируется Telegram
-            в WebView до загрузки страницы (SDK именно через него и посылает ready()).
-            window.Telegram.WebApp здесь ещё нет — SDK не загружен, — но
-            TelegramWebviewProxy уже есть. No DOM changes → React 19 safe. */}
+        {/* Извлекаем initData из hash до загрузки SDK — чтобы не потерять,
+            если Telegram передал данные только в hash и его потом сбросит. */}
         {!isAdminRoute && (
           <script
             dangerouslySetInnerHTML={{
-              __html: `(function(){try{var h=window.location.hash.slice(1);if(h){var raw=new URLSearchParams(h).get('tgWebAppData');if(raw)try{sessionStorage.setItem('tg_init_data',decodeURIComponent(raw))}catch(_){}}}catch(_){}function callReady(){try{if(window.TelegramWebviewProxy!==undefined){TelegramWebviewProxy.postEvent('web_app_ready','""')}else if(window.external&&'notify'in window.external){window.external.notify(JSON.stringify({eventType:'web_app_ready',eventData:''}))}}catch(_){}}if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',callReady)}else{callReady()}})();`,
+              __html: `try{var _h=window.location.hash.slice(1);if(_h){var _r=new URLSearchParams(_h).get('tgWebAppData');if(_r)sessionStorage.setItem('tg_init_data',decodeURIComponent(_r))}}catch(_){}`,
             }}
           />
         )}
