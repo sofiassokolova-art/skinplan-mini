@@ -540,14 +540,11 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
           clientLogger.warn('⚠️ Ошибка при восстановлении состояния из sessionStorage:', restoreError);
         }
 
-        // ФИКС: Для Telegram пользователей всегда вызываем init(), даже если quiz_init_done установлен
-        // Это исправляет проблему, когда пользователь застревает на лоадере
-        if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
-          clientLogger.log('🔄 Telegram user detected, forcing init() despite quiz_init_done flag');
-          init();
-          return;
-        }
-
+        // Всегда вызываем init() после ремаунта — init() внутри сам ждёт Telegram initData
+        // через waitForTelegram(). Без этого на MacBook Desktop (где SDK грузится медленно)
+        // loading оставался true вечно, потому что initData ещё не был доступен здесь.
+        clientLogger.log('🔄 Calling init() after remount — will wait for Telegram internally');
+        init();
         return;
       }
       sessionStorage.setItem('quiz_init_done', 'true');

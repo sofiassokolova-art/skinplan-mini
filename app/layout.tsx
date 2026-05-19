@@ -133,6 +133,14 @@ export default async function RootLayout({
     } catch (_) {}
     try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {}
   }
+  // На Telegram Desktop SDK уже инжектирован до запуска наших скриптов.
+  // Если initData уже есть — вызываем ready() сразу, скрипт скачивать не нужно.
+  try {
+    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
+      done();
+      return;
+    }
+  } catch (_) {}
   var s = document.createElement('script');
   s.src = 'https://telegram.org/js/telegram-web-app.js';
   s.onload = done;
