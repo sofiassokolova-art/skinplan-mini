@@ -204,16 +204,14 @@ export default async function RootLayout({
           backgroundColor: '#FFFFFF',
         }}
       >
-        {/* 1. Извлекаем initData из hash чтобы не потерять.
-            2. Зовём web_app_ready через все доступные каналы СРАЗУ —
-               без загрузки SDK. На Telegram Web/Desktop это iframe →
-               postMessage(parent). На mobile — TelegramWebviewProxy.
-               SDK всё равно загрузится через beforeInteractive ниже —
-               он нужен для initData и других методов. */}
+        {/* Извлекаем initData из hash до загрузки SDK — чтобы не потерять,
+            если Telegram передал данные только в hash и сбросит его потом.
+            НЕ зовём web_app_ready напрямую — SDK делает важную init-последовательность
+            (request_viewport, request_theme), которую мы пропустить не можем. */}
         {!isAdminRoute && (
           <script
             dangerouslySetInnerHTML={{
-              __html: `try{var _h=window.location.hash.slice(1);if(_h){var _r=new URLSearchParams(_h).get('tgWebAppData');if(_r)sessionStorage.setItem('tg_init_data',decodeURIComponent(_r))}}catch(_){}try{if(window.TelegramWebviewProxy){window.TelegramWebviewProxy.postEvent('web_app_ready','""')}else if(window.external&&'notify'in window.external){window.external.notify(JSON.stringify({eventType:'web_app_ready',eventData:''}))}else if(window.parent!==window){window.parent.postMessage(JSON.stringify({eventType:'web_app_ready',eventData:{}}),'*')}}catch(_){}`,
+              __html: `try{var _h=window.location.hash.slice(1);if(_h){var _r=new URLSearchParams(_h).get('tgWebAppData');if(_r)sessionStorage.setItem('tg_init_data',decodeURIComponent(_r))}}catch(_){}`,
             }}
           />
         )}
