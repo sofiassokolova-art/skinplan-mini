@@ -91,17 +91,17 @@ function PersonalAnalysisScreenComponent({
         >
           {[
             {
-              icon: '/icons/detailed_3.PNG',
+              icon: '/icons/detailed_3_64.png',
               alt: 'Точная оценка',
               text: 'Точная оценка состояния кожи',
             },
             {
-              icon: '/icons/hydration_3.PNG',
+              icon: '/icons/hydration_3_64.png',
               alt: 'Индивидуальный уход',
               text: 'Индивидуально подобранные средства ухода',
             },
             {
-              icon: '/icons/face_3.PNG',
+              icon: '/icons/face_3_64.png',
               alt: 'Умная рутина',
               text: (
                 <>

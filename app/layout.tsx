@@ -96,15 +96,16 @@ export default async function RootLayout({
           />
         )}
         {/* Preload картинок первых двух info-экранов (welcome + personal_analysis):
-            до этого фоновая 4K картинка грузилась после рендера → контент
-            на экране появлялся "по очереди" (контейнер + потом картинка хлоп). */}
+            до этого фоновая картинка грузилась после рендера → контент
+            на экране появлялся "по очереди" (контейнер + потом картинка хлоп).
+            Иконки списка оптимизированы (64×64 PNG вместо 880×880 JPEG-as-PNG)
+            — экономия ~258KB (с 277KB до 19KB суммарно). */}
         {!isAdminRoute && (
           <>
             <link rel="preload" href="/792c9598_nano_4K.jpg" as="image" fetchPriority="high" />
-            <link rel="preload" href="/skin-model.jpg" as="image" fetchPriority="high" />
-            <link rel="preload" href="/icons/detailed_3.PNG" as="image" />
-            <link rel="preload" href="/icons/hydration_3.PNG" as="image" />
-            <link rel="preload" href="/icons/face_3.PNG" as="image" />
+            <link rel="preload" href="/icons/detailed_3_64.png" as="image" />
+            <link rel="preload" href="/icons/hydration_3_64.png" as="image" />
+            <link rel="preload" href="/icons/face_3_64.png" as="image" />
           </>
         )}
         {!isAdminRoute && (
