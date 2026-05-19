@@ -58,6 +58,18 @@ export function useResumeScreenLogic({
     const savedAnswersCount = savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0;
     const hasSavedProgress = savedProgress && savedProgress.answers && Object.keys(savedProgress.answers).length >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN;
     
+    // Повторный заход: резюм до «Продолжить», восстановленные ответы не считаем активной сессией
+    if (hasSavedProgress && savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN) {
+      if (!showResumeScreen) {
+        clientLogger.log('✅ Показываем резюм экран: повторный заход (до нажатия «Продолжить»)', {
+          savedAnswersCount,
+          currentAnswersCount: Object.keys(answers).length,
+        });
+        setShowResumeScreen(true);
+      }
+      return;
+    }
+    
     // ИСПРАВЛЕНО: Пользователь активно отвечает ТОЛЬКО если:
     // 1. Есть ответы в текущей сессии (answers не пустые) И
     // 2. Текущие ответы совпадают с сохраненными (пользователь продолжает текущую сессию)

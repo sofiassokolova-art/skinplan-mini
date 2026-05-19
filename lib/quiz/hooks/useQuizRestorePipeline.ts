@@ -281,9 +281,21 @@ export function useQuizRestorePipeline(params: UseQuizRestorePipelineParams) {
       // Это необходимо для показа резюм-экрана, когда пользователь вернулся после "Начать заново"
       const shouldShowResume = progressAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN;
       
-      if (shouldShowResume && answersCountRef.current === 0 && !savedProgress) {
-        // Если должен показываться резюм-экран и answers пустые, устанавливаем savedProgress
-        // НЕ восстанавливаем answers - они останутся пустыми, что позволит показать резюм-экран
+      // Повторный заход: резюм-экран, answers не трогаем (даже если savedProgress уже есть из sessionStorage)
+      if (shouldShowResume && !hasResumed && !hasResumedRef.current) {
+        // Если answers уже попали в state (гонка/старый баг) — очищаем, иначе резюм не покажется
+        if (answersCountRef.current > 0) {
+          if (isDev) {
+            clientLogger.log('🧹 [Restore Pipeline Step 2] Очищаем answers для показа резюм-экрана', {
+              previousAnswersCount: answersCountRef.current,
+            });
+          }
+          setAnswers({});
+          answersRef.current = {};
+          answersCountRef.current = 0;
+          lastRestoredAnswersIdRef.current = null;
+        }
+        // Устанавливаем/обновляем savedProgress с сервера, answers не восстанавливаем
         // ИСПРАВЛЕНО: Удаляем флаг quiz_progress_cleared, если на сервере есть прогресс >= 2 ответов
         // Это означает, что пользователь вернулся после "Начать заново", но на сервере есть старый прогресс
         if (isProgressCleared() && typeof window !== 'undefined') {
