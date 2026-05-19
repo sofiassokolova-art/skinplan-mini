@@ -426,7 +426,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       return 'RETAKE_SELECT';
     }
     
-    if ((showResumeScreen || shouldShowResumeImmediately) && !shouldSuppressResumeForRetake) {
+    if ((showResumeScreen || shouldShowResumeImmediately) && !shouldSuppressResumeForRetake && !hasResumed) {
       console.log('📺 [useQuizComputed] viewMode: RESUME (highest priority - before errors)', {
         showResumeScreen,
         savedCount,

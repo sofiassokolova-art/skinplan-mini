@@ -33,8 +33,16 @@ export function useResumeScreenLogic({
   setShowResumeScreen,
 }: UseResumeScreenLogicParams) {
   useEffect(() => {
+    // После «Продолжить» резюм больше не показываем
+    if (hasResumed) {
+      if (showResumeScreen) {
+        setShowResumeScreen(false);
+      }
+      return;
+    }
+
     // Не проверяем резюм экран во время загрузки или если пользователь начал заново
-    if (loading || isStartingOver || hasResumed) {
+    if (loading || isStartingOver) {
       return;
     }
 
