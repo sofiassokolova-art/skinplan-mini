@@ -95,6 +95,18 @@ export default async function RootLayout({
             as="script"
           />
         )}
+        {/* Preload картинок первых двух info-экранов (welcome + personal_analysis):
+            до этого фоновая 4K картинка грузилась после рендера → контент
+            на экране появлялся "по очереди" (контейнер + потом картинка хлоп). */}
+        {!isAdminRoute && (
+          <>
+            <link rel="preload" href="/792c9598_nano_4K.jpg" as="image" fetchPriority="high" />
+            <link rel="preload" href="/skin-model.jpg" as="image" fetchPriority="high" />
+            <link rel="preload" href="/icons/detailed_3.PNG" as="image" />
+            <link rel="preload" href="/icons/hydration_3.PNG" as="image" />
+            <link rel="preload" href="/icons/face_3.PNG" as="image" />
+          </>
+        )}
         {!isAdminRoute && (
           <Script id="telegram-hash-fallback" strategy="beforeInteractive">
             {`

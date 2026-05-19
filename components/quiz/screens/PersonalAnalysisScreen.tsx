@@ -130,6 +130,8 @@ function PersonalAnalysisScreenComponent({
               <img
                 alt={item.alt}
                 src={item.icon}
+                fetchPriority="high"
+                decoding="sync"
                 style={{ width: '32px', height: '32px', objectFit: 'contain', flexShrink: 0 }}
               />
               <div

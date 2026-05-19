@@ -17,25 +17,27 @@ export interface WelcomeScreenProps {
 
 function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInfoScreenIndex = 0, onBack }: WelcomeScreenProps) {
   return (
-    <div style={{
-      padding: 0,
-      margin: 0,
-      minHeight: '100vh',
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      width: '100vw',
-      maxWidth: '100vw',
-      boxSizing: 'border-box',
-      overflow: 'hidden',
-      zIndex: 1,
-    }}>
-      {/* Картинка на весь экран с мягким появлением */}
+    <div
+      className="animate-fade-in"
+      style={{
+        padding: 0,
+        margin: 0,
+        minHeight: '100vh',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        maxWidth: '100vw',
+        boxSizing: 'border-box',
+        overflow: 'hidden',
+        zIndex: 1,
+      }}
+    >
+      {/* Картинка на весь экран */}
       {screen.image && (
         <div
-          className="animate-fade-in"
           style={{
             position: 'absolute',
             top: 0,
@@ -49,6 +51,8 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
           <img
             src={screen.image}
             alt={screen.title}
+            fetchPriority="high"
+            decoding="sync"
             style={{
               width: '100%',
               height: '100%',
@@ -69,7 +73,6 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
 
       {/* SkinIQ — логотип вверху экрана */}
       <div
-        className="animate-fade-in"
         style={{
           position: 'absolute',
           left: 0,
@@ -97,7 +100,6 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
 
       {/* Стеклянный контейнер на всю ширину и до низа экрана */}
       <div
-        className="animate-fade-in"
         style={{
           position: 'absolute',
           left: 0,
