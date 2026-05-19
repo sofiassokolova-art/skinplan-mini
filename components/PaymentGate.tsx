@@ -25,6 +25,18 @@ const PRODUCT_PRICES: Record<string, number> = {
   subscription_month: 499,
 };
 
+function shouldMockTelegramInitData(): boolean {
+  if (process.env.NODE_ENV === 'development') return true;
+  if (process.env.NEXT_PUBLIC_ALLOW_TEST_INIT_DATA === 'true') return true;
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1' || host.includes('staging.')) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function getInitDataForClient(): string {
   if (typeof window === 'undefined') {
     return '';
@@ -32,8 +44,16 @@ function getInitDataForClient(): string {
 
   let initData = window.Telegram?.WebApp?.initData || '';
 
-  // В dev-режиме мокаем Telegram initData, чтобы можно было тестировать оплату локально
-  if (!initData && process.env.NODE_ENV === 'development') {
+  try {
+    if (!initData) {
+      initData = sessionStorage.getItem('tg_init_data') || '';
+    }
+  } catch {
+    // ignore
+  }
+
+  // Локально / staging: мокаем initData для тестового эмулятора оплаты
+  if (!initData && shouldMockTelegramInitData()) {
     const testData = DEV_TELEGRAM.buildInitData();
     if (!(window as any).Telegram) {
       (window as any).Telegram = { WebApp: { initData: testData, ready() {}, expand() {} } };
@@ -354,6 +374,12 @@ export function PaymentGate({
 
     try {
       const initData = getInitDataForClient();
+      if (!initData) {
+        toast.error('Откройте приложение через Telegram Mini App для оплаты');
+        setIsProcessing(false);
+        return;
+      }
+
       // После старта оплаты сбрасываем кеш entitlement, чтобы второй экран (план/главная)
       // быстрее увидел "paid_access".
       entitlementsCache = null;
@@ -371,9 +397,18 @@ export function PaymentGate({
       });
 
       if (!response.ok) {
-        const errorText = await response.text().catch(() => '');
-        console.error('Payment creation failed:', response.status, errorText);
-        toast.error('Не удалось создать платеж. Попробуйте ещё раз.');
+        let message = 'Не удалось создать платеж. Попробуйте ещё раз.';
+        try {
+          const errBody = await response.json();
+          if (typeof errBody?.error === 'string' && errBody.error.trim()) {
+            message = errBody.error;
+          }
+        } catch {
+          const errorText = await response.text().catch(() => '');
+          if (errorText) console.error('Payment creation failed:', response.status, errorText);
+        }
+        console.error('Payment creation failed:', response.status, message);
+        toast.error(message);
         setIsProcessing(false);
         return;
       }

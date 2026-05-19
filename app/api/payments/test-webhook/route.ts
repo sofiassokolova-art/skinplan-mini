@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 
 import { entitlementCodeForProduct, calculateValidUntil } from '@/lib/payment-helpers';
+import { isProductionDeployment } from '@/lib/deployment-env';
 
 /**
  * Тестовый endpoint для симуляции успешного платежа через вебхук ЮKassa
@@ -19,13 +20,7 @@ import { entitlementCodeForProduct, calculateValidUntil } from '@/lib/payment-he
  * Body: { paymentId: "payment_id_from_db" }
  */
 export async function POST(request: NextRequest) {
-  // В продакшене блокируем этот endpoint.
-  // На Cloudflare Pages: CF_PAGES_BRANCH === 'main' означает production-деплой.
-  const cfBranch = process.env.CF_PAGES_BRANCH;
-  const isProductionDeployment =
-    cfBranch === 'main' || (!cfBranch && process.env.NODE_ENV === 'production');
-
-  if (isProductionDeployment) {
+  if (isProductionDeployment()) {
     // ИСПРАВЛЕНО: не спамим error-логами в проде (часто сканеры/боты дергают /test-* пути)
     // и не раскрываем наличие endpoint'а.
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
