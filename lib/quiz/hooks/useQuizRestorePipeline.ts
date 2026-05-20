@@ -291,17 +291,16 @@ export function useQuizRestorePipeline(params: UseQuizRestorePipelineParams) {
       
       // Повторный заход: резюм-экран, answers не трогаем (даже если savedProgress уже есть из sessionStorage)
       if (shouldShowResume && !hasResumed && !hasResumedRef.current) {
-        // Если answers уже попали в state (гонка/старый баг) — очищаем, иначе резюм не покажется
+        // ФИКС: Если пользователь активно проходит анкету (есть текущие ответы), это первое прохождение —
+        // рефетч после авто-сохранения не должен прерывать сессию и показывать резюм-экран.
         if (answersCountRef.current > 0) {
           if (isDev) {
-            clientLogger.log('🧹 [Restore Pipeline Step 2] Очищаем answers для показа резюм-экрана', {
-              previousAnswersCount: answersCountRef.current,
+            clientLogger.log('⏸️ [Restore Pipeline Step 2] Пропускаем резюм-логику — пользователь активно отвечает', {
+              answersCount: answersCountRef.current,
+              progressAnswersCount,
             });
           }
-          setAnswers({});
-          answersRef.current = {};
-          answersCountRef.current = 0;
-          lastRestoredAnswersIdRef.current = null;
+          return;
         }
         // Устанавливаем/обновляем savedProgress с сервера, answers не восстанавливаем
         // ИСПРАВЛЕНО: Удаляем флаг quiz_progress_cleared, если на сервере есть прогресс >= 2 ответов

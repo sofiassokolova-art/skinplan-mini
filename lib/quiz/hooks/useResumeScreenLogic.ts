@@ -66,12 +66,14 @@ export function useResumeScreenLogic({
     const savedAnswersCount = savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0;
     const hasSavedProgress = savedProgress && savedProgress.answers && Object.keys(savedProgress.answers).length >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN;
     
-    // Повторный заход: резюм до «Продолжить», восстановленные ответы не считаем активной сессией
-    if (hasSavedProgress && savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN) {
+    // Повторный заход: резюм до «Продолжить», восстановленные ответы не считаем активной сессией.
+    // ФИКС: Не показываем резюм-экран если у пользователя уже есть активные ответы в текущей сессии —
+    // это значит он сейчас проходит анкету, а рефетч просто вернул уже сохранённые ответы.
+    if (hasSavedProgress && savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN && currentAnswersCount === 0) {
       if (!showResumeScreen) {
         clientLogger.log('✅ Показываем резюм экран: повторный заход (до нажатия «Продолжить»)', {
           savedAnswersCount,
-          currentAnswersCount: Object.keys(answers).length,
+          currentAnswersCount,
         });
         setShowResumeScreen(true);
       }

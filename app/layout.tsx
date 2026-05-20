@@ -103,6 +103,7 @@ export default async function RootLayout({
         {!isAdminRoute && (
           <>
             <link rel="preload" href="/792c9598_nano_4K.jpg" as="image" fetchPriority="high" />
+            <link rel="preload" href="/ea01dd6e_nano_4K.jpg" as="image" fetchPriority="high" />
             <link rel="preload" href="/icons/detailed_3_64.png" as="image" />
             <link rel="preload" href="/icons/hydration_3_64.png" as="image" />
             <link rel="preload" href="/icons/face_3_64.png" as="image" />

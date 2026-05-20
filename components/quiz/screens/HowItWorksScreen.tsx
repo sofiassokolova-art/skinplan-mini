@@ -68,6 +68,8 @@ function HowItWorksScreenComponent({
         <img
           src="/ea01dd6e_nano_4K.jpg"
           alt={screen.title}
+          fetchPriority="high"
+          decoding="sync"
           style={{
             width: '100%',
             height: '100%',
