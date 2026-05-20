@@ -53,7 +53,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'how_it_works',
     title: 'Как это работает?',
     subtitle: '1. Пройдите анкету\n2. Получите индивидуальную программу ухода\nи персональные советы\nот дерматологов\n3. Отслеживайте прогресс ежедневно',
-    image: '/5426b95c-f28c-4172-b3ef-e67237150a77.jpg',
+    image: '/ea01dd6e_nano_4K.jpg',
     ctaText: 'Продолжить',
   },
   
