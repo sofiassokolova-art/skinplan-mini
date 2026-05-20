@@ -285,6 +285,127 @@ export function QuizInfoScreen({
     );
   }
 
+  // Экран сравнения simple_care — полноэкранный редизайн с карточками
+  if (isComparisonScreen && screen.id === 'simple_care') {
+    const content = screen.content as {
+      left: { title: string; items: string[] };
+      right: { title: string; items: string[] };
+    };
+
+    const glassCard = {
+      flex: 1,
+      backgroundColor: 'rgba(255, 255, 255, 0.45)',
+      backdropFilter: 'blur(24px)',
+      WebkitBackdropFilter: 'blur(24px)',
+      border: '1px solid rgba(255, 255, 255, 0.55)',
+      borderRadius: '24px',
+      paddingTop: '36px',
+      paddingBottom: '24px',
+      paddingLeft: '14px',
+      paddingRight: '14px',
+      display: 'flex',
+      flexDirection: 'column' as const,
+      alignItems: 'center',
+      boxShadow: '0 8px 32px rgba(0,0,0,0.07)',
+    };
+
+    const renderCard = (
+      side: { title: string; items: string[] },
+      iconBg: string,
+      iconColor: string,
+      icon: string,
+    ) => (
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        {/* Icon — половина торчит из карточки */}
+        <div style={{
+          width: '52px',
+          height: '52px',
+          borderRadius: '50%',
+          backgroundColor: iconBg,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1,
+          flexShrink: 0,
+          marginBottom: '-26px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+        }}>
+          <span style={{ fontSize: '22px', color: iconColor, lineHeight: 1 }}>{icon}</span>
+        </div>
+        <div style={glassCard}>
+          <p style={{
+            fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, sans-serif",
+            fontWeight: 700,
+            fontSize: '13px',
+            lineHeight: '1.3',
+            textAlign: 'center',
+            color: '#000',
+            margin: '0 0 14px 0',
+          }}>
+            {side.title}
+          </p>
+          {side.items.map((item, i) => (
+            <p key={i} style={{
+              fontFamily: "var(--font-inter), 'Inter', -apple-system, sans-serif",
+              fontSize: '13px',
+              lineHeight: '1.45',
+              textAlign: 'center',
+              color: '#333',
+              margin: i < side.items.length - 1 ? '0 0 10px 0' : '0',
+            }}>
+              {item}
+            </p>
+          ))}
+        </div>
+      </div>
+    );
+
+    return (
+      <>
+        {backButton}
+        <div style={{
+          minHeight: '100vh',
+          position: 'relative',
+          overflow: 'hidden',
+          paddingBottom: '100px',
+          background: '#f5f0eb',
+        }}>
+          {screen.image && (
+            <Image
+              src={screen.image}
+              alt=""
+              fill
+              style={{ objectFit: 'cover', objectPosition: 'center' }}
+              priority
+            />
+          )}
+          <div style={{ position: 'relative', zIndex: 1, padding: '80px 20px 24px' }}>
+            <h1 style={{
+              fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 700,
+              fontSize: '26px',
+              lineHeight: '1.25',
+              color: '#000000',
+              margin: '0 0 36px 0',
+            }}>
+              {screen.title}
+            </h1>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'stretch' }}>
+              {renderCard(content?.left, '#f0f0f0', '#555', '✕')}
+              {renderCard(content?.right, '#D5FE61', '#000', '✓')}
+            </div>
+          </div>
+          <FixedContinueButton
+            ctaText={screen.ctaText}
+            onClick={handleNext}
+            disabled={isHandlingNext}
+            loadingText="Продолжить"
+          />
+        </div>
+      </>
+    );
+  }
+
   // Экран отзывов (testimonials) - белый фон, фиксированная шапка, скроллится только слайдер
   if (isTestimonialsScreen) {
     // Кнопка "Назад" через портал для гарантированной фиксации

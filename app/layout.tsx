@@ -4,7 +4,7 @@
 import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
 import Script from 'next/script';
-import { Analytics } from '@vercel/analytics/react';
+// import { Analytics } from '@vercel/analytics/react'; // not installed in dev
 import localFont from 'next/font/local';
 import './globals.css';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -323,7 +323,7 @@ export default async function RootLayout({
             <ServiceWorker />
             {children}
             <Toaster />
-            <Analytics />
+            {/* <Analytics /> */}
           </ErrorBoundary>
         </div>
       </body>
