@@ -180,6 +180,7 @@ export function QuizInfoScreen({
   const isHealthDataScreen = screen.id === 'health_data';
   const isSkinFeaturesIntroScreen = screen.id === 'skin_features_intro';
   const isHabitsMatterScreen = screen.id === 'habits_matter';
+  const isHealthTrustScreen = screen.id === 'health_trust';
 
   // ФИКС: Prefetch следующих 1-2 изображений для ускорения загрузки
   // Используем new Image().src для предзагрузки в кэш браузера
@@ -751,6 +752,120 @@ export function QuizInfoScreen({
               loadingText="Продолжить"
             />
           </div>
+        </div>
+      </>
+    );
+  }
+
+  // Экран "SkinIQ заботится о вашем здоровье" (health_trust)
+  if (isHealthTrustScreen) {
+    const cards = [
+      {
+        icon: (
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke="#555" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 3 L30 8 L30 18 C30 25 24 30 18 33 C12 30 6 25 6 18 L6 8 Z"/>
+            <polyline points="13,18 16,21 23,14"/>
+          </svg>
+        ),
+        title: 'Безопасность',
+        desc: 'Все рекомендации по уходу одобрены врачами дерматологами и абсолютно безопасны',
+      },
+      {
+        icon: (
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke="#555" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="8" y="16" width="20" height="16" rx="3"/>
+            <path d="M12 16 L12 11 C12 7.7 14.7 5 18 5 C21.3 5 24 7.7 24 11 L24 16"/>
+            <circle cx="18" cy="24" r="2" fill="#555" stroke="none"/>
+          </svg>
+        ),
+        title: 'Конфиденциальность',
+        desc: 'Вся информация остается конфиденциальной и используется только для персональных рекомендаций',
+      },
+    ];
+
+    return (
+      <>
+        {backButton}
+        <div style={{
+          minHeight: '100vh',
+          position: 'relative',
+          overflow: 'hidden',
+          paddingBottom: '100px',
+          background: '#f5f0eb',
+        }}>
+          {screen.image && (
+            <Image
+              src={screen.image}
+              alt=""
+              fill
+              style={{ objectFit: 'cover', objectPosition: 'center top' }}
+              priority
+            />
+          )}
+          <div style={{
+            position: 'relative',
+            zIndex: 1,
+            padding: '72px 20px 24px',
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: '100vh',
+            boxSizing: 'border-box',
+          }}>
+            <h1 style={{
+              fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 700,
+              fontSize: '26px',
+              lineHeight: '1.25',
+              color: '#000000',
+              margin: '0',
+              maxWidth: '200px',
+            }}>
+              {screen.title}
+            </h1>
+            <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: '8px' }}>
+              {cards.map((card, i) => (
+                <div key={i} style={{
+                  background: 'rgba(255,255,255,0.55)',
+                  backdropFilter: 'blur(24px)',
+                  WebkitBackdropFilter: 'blur(24px)',
+                  border: '1px solid rgba(255,255,255,0.6)',
+                  borderRadius: '20px',
+                  padding: '20px 20px 20px 16px',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '16px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.06)',
+                }}>
+                  <div style={{ width: '44px', height: '44px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {card.icon}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{
+                      fontFamily: "var(--font-inter), 'Inter', -apple-system, sans-serif",
+                      fontWeight: 600,
+                      fontSize: '15px',
+                      color: '#000',
+                      margin: '0 0 6px 0',
+                      lineHeight: '1.3',
+                    }}>{card.title}</p>
+                    <p style={{
+                      fontFamily: "var(--font-inter), 'Inter', -apple-system, sans-serif",
+                      fontSize: '13px',
+                      lineHeight: '1.5',
+                      color: '#444',
+                      margin: '0',
+                    }}>{card.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <FixedContinueButton
+            ctaText={screen.ctaText}
+            onClick={handleNext}
+            disabled={isHandlingNext}
+            loadingText="Продолжить"
+          />
         </div>
       </>
     );
