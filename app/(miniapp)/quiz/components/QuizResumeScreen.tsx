@@ -310,18 +310,19 @@ export function QuizResumeScreen({
             disabled={isDisabled || displayQuestionNumber === null}
             style={{
               width: '100%',
-              height: '56px',
+              height: 52,
               background: isDisabled || displayQuestionNumber === null ? '#E0E0E0' : '#D5FE61',
               color: isDisabled || displayQuestionNumber === null ? '#9D9D9D' : '#000000',
               border: 'none',
-              borderRadius: '20px',
+              borderRadius: 0,
               fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 600,
-              fontSize: '16px',
+              fontWeight: 400,
+              fontSize: 'clamp(14px, 4vw, 16px)',
+              textTransform: 'uppercase',
               cursor: isDisabled || displayQuestionNumber === null ? 'not-allowed' : 'pointer',
-              boxShadow: isDisabled || displayQuestionNumber === null ? 'none' : '0 4px 12px rgba(0, 0, 0, 0.1)',
+              boxShadow: 'none',
               opacity: isDisabled || displayQuestionNumber === null ? 0.6 : 1,
-              transition: 'all 0.2s',
+              transition: 'transform 0.2s',
             }}
             suppressHydrationWarning
           >
@@ -334,17 +335,18 @@ export function QuizResumeScreen({
             disabled={isDisabled}
             style={{
               width: '100%',
-              height: '56px',
-              background: 'transparent',
+              height: 52,
+              background: '#FFFFFF',
               color: isDisabled ? '#9D9D9D' : '#000000',
-              border: `2px solid ${isDisabled ? '#9D9D9D' : '#000000'}`,
-              borderRadius: '20px',
+              border: '1px solid #000000',
+              borderRadius: 0,
               fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 600,
-              fontSize: '16px',
+              fontWeight: 400,
+              fontSize: 'clamp(14px, 4vw, 16px)',
+              textTransform: 'uppercase',
               cursor: isDisabled ? 'not-allowed' : 'pointer',
               opacity: isDisabled ? 0.6 : 1,
-              transition: 'all 0.2s',
+              transition: 'transform 0.2s',
             }}
           >
             Начать анкету заново

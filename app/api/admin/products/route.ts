@@ -1,4 +1,3 @@
-// app/api/admin/products/route.ts
 // API для управления продуктами (список и создание)
 
 import { NextRequest, NextResponse } from 'next/server';

@@ -14,25 +14,31 @@ export interface GoalsIntroScreenProps {
   onContinue: () => void;
 }
 
+const PAGE_BG = '#FFFFFF';
+
 function GoalsIntroScreenComponent({
   screen,
   currentInfoScreenIndex,
   onBack,
   onContinue
 }: GoalsIntroScreenProps) {
+  const isSkinFeaturesIntro = screen.id === 'skin_features_intro';
+  const isHealthData = screen.id === 'health_data';
+  const useSameLayoutAsSkinFeatures = isSkinFeaturesIntro || isHealthData;
+
   return (
     <div style={{
       padding: 0,
       margin: 0,
       minHeight: '100vh',
-      background: '#FFFFFF',
+      background: PAGE_BG,
       position: 'relative',
       width: '100%',
     }}>
 
       <BackButtonFixed show={currentInfoScreenIndex > 0} onClick={onBack} />
 
-      {/* Контент с абсолютным позиционированием */}
+      {/* Контент с картинкой и текстом */}
       <div
         className="animate-fade-in"
         style={{
@@ -42,15 +48,20 @@ function GoalsIntroScreenComponent({
           boxSizing: 'border-box',
         }}
       >
-        {/* Картинка с абсолютным позиционированием */}
+        {/* Картинка с градиентом в белый по краям */}
         {screen.image && (
           <div style={{
             position: 'absolute',
             width: '200px',
             height: '241px',
-            top: '120px',
-            left: '60px',
+            top: '104px',
+            left: '50%',
+            transform: 'translateX(-50%)',
             zIndex: 10,
+            background: PAGE_BG,
+            boxShadow: 'none',
+            border: 'none',
+            overflow: 'hidden',
           }}>
             <img
               src={screen.image}
@@ -60,86 +71,74 @@ function GoalsIntroScreenComponent({
                 height: '100%',
                 objectFit: 'contain',
                 display: 'block',
+                margin: 0,
+                padding: 0,
+                border: 'none',
+                boxShadow: 'none',
+                background: PAGE_BG,
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: `linear-gradient(to right, ${PAGE_BG} 0%, transparent 10%, transparent 90%, ${PAGE_BG} 100%), linear-gradient(to bottom, ${PAGE_BG} 0%, transparent 10%, transparent 90%, ${PAGE_BG} 100%)`,
+                pointerEvents: 'none',
               }}
             />
           </div>
         )}
 
-        {/* Заголовок с абсолютным позиционированием */}
-        <h1 style={{
-          position: 'absolute',
-          width: '342px',
-          height: '93px',
-          top: '320px',
-          left: '20px',
-          fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-          fontWeight: 700,
-          fontSize: '32px',
-          lineHeight: '120%',
-          letterSpacing: '0px',
-          textAlign: 'left',
-          color: '#000000',
-          margin: '0',
-          whiteSpace: 'pre-line',
-          zIndex: 10,
-        }}>
-          {screen.title}
-        </h1>
-
-        {/* Подзаголовок с абсолютным позиционированием */}
-        {screen.subtitle && (
-          <div style={{
-            position: 'absolute',
-            width: '342px',
-            height: '93px',
-            top: '430px',
-            left: '20px',
-            fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 400,
-            fontSize: '18px',
-            lineHeight: '140%',
-            letterSpacing: '0px',
-            textAlign: 'left',
-            color: '#000000',
-            whiteSpace: 'pre-line',
-            zIndex: 10,
-          }}>
-            {screen.subtitle}
-          </div>
-        )}
-      </div>
-
-      {/* Фиксированная кнопка "Продолжить" внизу экрана */}
-      <div style={{
-        position: 'fixed',
-        bottom: '40px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: '100%',
-        maxWidth: '320px',
-        padding: '0 20px',
-        boxSizing: 'border-box',
-        zIndex: 100,
-      }}>
-        <button
-          onClick={onContinue}
+        {/* Текстовый блок под картинкой — заголовок и подзаголовок всегда идут друг за другом */}
+        <div
           style={{
-            width: '100%',
-            height: '56px',
-            borderRadius: '20px',
-            background: '#D5FE61',
-            color: '#000000',
-            border: 'none',
-            fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 600,
-            fontSize: '16px',
-            cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+            position: 'relative',
+            paddingTop: useSameLayoutAsSkinFeatures ? '360px' : '356px',
+            paddingLeft: '20px',
+            paddingRight: '20px',
+            paddingBottom: '80px',
+            boxSizing: 'border-box',
           }}
         >
-          {screen.ctaText || 'Продолжить'}
-        </button>
+          <h1
+            style={{
+              fontFamily:
+                "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 700,
+              fontSize: 'clamp(23px, 6vw, 33px)',
+              lineHeight: '120%',
+              letterSpacing: '0px',
+              textAlign: 'left',
+              color: '#000000',
+              margin: 0,
+              whiteSpace: 'pre-line',
+            }}
+          >
+            {screen.title}
+          </h1>
+
+          {screen.subtitle && (
+            <div
+              style={{
+                marginTop: '12px',
+                fontFamily:
+                  "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 400,
+                fontSize: '15px',
+                lineHeight: '140%',
+                letterSpacing: '0px',
+                textAlign: 'left',
+                color: '#000000',
+                whiteSpace: 'pre-line',
+              }}
+            >
+              {screen.subtitle}
+            </div>
+          )}
+        </div>
       </div>
+
+      <FixedContinueButton ctaText={screen.ctaText || 'Продолжить'} onClick={onContinue} />
     </div>
   );
 }

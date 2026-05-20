@@ -9,7 +9,6 @@ import { ApiResponse } from '@/lib/api-response';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { logDbFingerprint } from '@/lib/db-fingerprint';
 
-export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {

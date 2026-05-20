@@ -17,7 +17,7 @@ export function QuizInitialLoader({
   message: _message,
   subMessage: _subMessage,
   onTimeout,
-  timeoutMs = 8000,
+  timeoutMs = 12_000, // 12 сек: даём время на cold start БД (Neon до ~15 сек) и медленную сеть
 }: QuizInitialLoaderProps) {
   const [showReload, setShowReload] = useState(false);
 
@@ -31,21 +31,25 @@ export function QuizInitialLoader({
 
   return (
     <div style={{
-      minHeight: '100vh',
+      position: 'fixed',
+      inset: 0,
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: '#FFFFFF',
       padding: '40px 20px',
+      zIndex: 99998,
     }}>
+      {/* Спиннер идентичный #root-loading в app/layout.tsx — чтобы при
+          переходе React-фоллбэк ↔ статичный HTML не было визуального скачка. */}
       <div style={{
-        width: '60px',
-        height: '60px',
-        border: '4px solid rgba(0, 0, 0, 0.1)',
-        borderTop: '4px solid #000000',
+        width: 40,
+        height: 40,
         borderRadius: '50%',
-        animation: 'spin 1s linear infinite',
+        border: '3px solid rgba(15, 23, 42, 0.12)',
+        borderTopColor: '#111827',
+        animation: 'spin 0.8s linear infinite',
       }} />
       {showReload && (
         <div style={{ marginTop: 24, textAlign: 'center' }}>

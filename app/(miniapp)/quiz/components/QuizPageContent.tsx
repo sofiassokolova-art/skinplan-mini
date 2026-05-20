@@ -86,8 +86,11 @@ export function QuizPageContent(props: QuizPageContentProps) {
   // skin_type может быть single_choice или multi_choice
   const isSkinTypeScreen = currentQuestion?.code === 'skin_type';
 
+  // Экран возраста: хотим такую же ширину/позицию прогресс-бара, как у skin_goals
+  const isAgeScreen = currentQuestion?.code === 'age';
+
   // Верстка "во всю ширину"
-  const isLimeFullWidthScreen = isGoalsScreen || isSkinTypeScreen;
+  const isLimeFullWidthScreen = isGoalsScreen || isSkinTypeScreen || isAgeScreen;
 
   const shouldShowDevTools =
     process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_DEBUG === 'true';

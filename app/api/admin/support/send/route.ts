@@ -1,4 +1,3 @@
-// app/api/admin/support/send/route.ts
 // Отправка ответа админа
 
 import { NextRequest, NextResponse } from 'next/server';

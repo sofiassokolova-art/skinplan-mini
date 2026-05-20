@@ -6,7 +6,6 @@ import { prisma } from '@/lib/db';
 import { invalidateAllUserCache } from '@/lib/cache';
 import { verifyAdminBoolean } from '@/lib/admin-auth';
 
-export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(
@@ -49,118 +48,66 @@ export async function POST(
       tagsCleared: false,
     };
 
-    // 1. Очищаем кэш пользователя (все версии)
     try {
       await invalidateAllUserCache(userId);
       results.cacheCleared = true;
     } catch {
-      // Кэш не критичен, продолжаем
+      // cache is not critical
     }
 
-    // 2. Удаляем данные из БД
-    // 2.1 RecommendationSession
-    results.recommendationSessions = (
-      await prisma.recommendationSession.deleteMany({ where: { userId } })
-    ).count;
+    // All table deletes run in parallel; allSettled so one failure doesn't abort others
+    const [
+      recSessions,
+      planProgress,
+      userAnswers,
+      skinProfiles,
+      planFeedback,
+      wishlist,
+      cart,
+      plan28,
+      clientLogs,
+      questionnaireProgress,
+    ] = await Promise.allSettled([
+      prisma.recommendationSession.deleteMany({ where: { userId } }),
+      prisma.planProgress.deleteMany({ where: { userId } }),
+      prisma.userAnswer.deleteMany({ where: { userId } }),
+      prisma.skinProfile.deleteMany({ where: { userId } }),
+      prisma.planFeedback.deleteMany({ where: { userId } }),
+      prisma.wishlist.deleteMany({ where: { userId } }),
+      prisma.cart.deleteMany({ where: { userId } }),
+      prisma.plan28.deleteMany({ where: { userId } }),
+      prisma.clientLog.deleteMany({ where: { userId } }),
+      prisma.questionnaireProgress.deleteMany({ where: { userId } }),
+    ]);
 
-    // 2.2 PlanProgress
+    results.recommendationSessions = recSessions.status === 'fulfilled' ? recSessions.value.count : 0;
+    results.planProgress = planProgress.status === 'fulfilled' ? planProgress.value.count : 0;
+    results.userAnswers = userAnswers.status === 'fulfilled' ? userAnswers.value.count : 0;
+    results.skinProfiles = skinProfiles.status === 'fulfilled' ? skinProfiles.value.count : 0;
+    results.planFeedback = planFeedback.status === 'fulfilled' ? planFeedback.value.count : 0;
+    results.wishlist = wishlist.status === 'fulfilled' ? wishlist.value.count : 0;
+    results.cart = cart.status === 'fulfilled' ? cart.value.count : 0;
+    results.plan28 = plan28.status === 'fulfilled' ? plan28.value.count : 0;
+    results.clientLogs = clientLogs.status === 'fulfilled' ? clientLogs.value.count : 0;
+    results.questionnaireProgress = questionnaireProgress.status === 'fulfilled' ? questionnaireProgress.value.count : 0;
+
     try {
-      results.planProgress = (
-        await prisma.planProgress.deleteMany({ where: { userId } })
-      ).count;
-    } catch {
-      // возможный рассинхрон схемы — не критично
-    }
-
-    // 2.3 UserAnswer (анкета)
-    results.userAnswers = (
-      await prisma.userAnswer.deleteMany({ where: { userId } })
-    ).count;
-
-    // 2.4 SkinProfile
-    results.skinProfiles = (
-      await prisma.skinProfile.deleteMany({ where: { userId } })
-    ).count;
-
-    // 2.5 PlanFeedback
-    try {
-      results.planFeedback = (
-        await prisma.planFeedback.deleteMany({ where: { userId } })
-      ).count;
-    } catch {
-      // не критично
-    }
-
-    // 2.6 Wishlist
-    try {
-      results.wishlist = (
-        await prisma.wishlist.deleteMany({ where: { userId } })
-      ).count;
-    } catch {
-      // не критично
-    }
-
-    // 2.7 Cart
-    try {
-      results.cart = (
-        await prisma.cart.deleteMany({ where: { userId } })
-      ).count;
-    } catch {
-      // не критично
-    }
-
-    // 2.8 Plan28
-    try {
-      results.plan28 = (
-        await prisma.plan28.deleteMany({ where: { userId } })
-      ).count;
-    } catch {
-      // не критично
-    }
-
-    // 2.9 ClientLog
-    try {
-      results.clientLogs = (
-        await prisma.clientLog.deleteMany({ where: { userId } })
-      ).count;
-    } catch {
-      // не критично
-    }
-
-    // 2.10 QuestionnaireProgress (прогресс анкеты)
-    try {
-      results.questionnaireProgress = (
-        await prisma.questionnaireProgress.deleteMany({ where: { userId } })
-      ).count;
-    } catch {
-      // если таблицы нет — пропускаем
-    }
-
-    // 3. Сбрасываем preferences (флаги ретейка и т.п.)
-    try {
-      const prefs = await prisma.userPreferences.findUnique({
+      const { count } = await prisma.userPreferences.updateMany({
         where: { userId },
+        data: {
+          hasPlanProgress: false,
+          isRetakingQuiz: false,
+          fullRetakeFromHome: false,
+          paymentRetakingCompleted: false,
+          paymentFullRetakeCompleted: false,
+          extra: {},
+        },
       });
-
-      if (prefs) {
-        await prisma.userPreferences.update({
-          where: { userId },
-          data: {
-            hasPlanProgress: false,
-            isRetakingQuiz: false,
-            fullRetakeFromHome: false,
-            paymentRetakingCompleted: false,
-            paymentFullRetakeCompleted: false,
-            extra: {},
-          },
-        });
-        results.userPreferencesReset = true;
-      }
+      results.userPreferencesReset = count > 0;
     } catch {
-      // не критично
+      // not critical
     }
 
-    // 4. Очищаем теги пользователя (включая флаги оплаты)
     try {
       await prisma.user.update({
         where: { id: userId },

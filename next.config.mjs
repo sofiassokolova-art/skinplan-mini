@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 import withBundleAnalyzer from '@next/bundle-analyzer';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
 
 const bundleAnalyzerConfig = withBundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
@@ -9,7 +11,7 @@ const nextConfig = {
   reactStrictMode: true,
   productionBrowserSourceMaps: false,
   images: {
-    unoptimized: false, // РЕФАКТОРИНГ: Включаем оптимизацию изображений для лучшей производительности
+    unoptimized: true, // Cloudflare Pages не поддерживает оптимизацию изображений Next.js
     remotePatterns: [
       {
         protocol: 'https',
@@ -30,14 +32,14 @@ const nextConfig = {
     // Единая CSP для production: eval разрешён (нужен частично для чанков/библиотек), стили — self + внешние
     const cspValue = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org https://*.telegram.org https://vercel.live data:",
-      "connect-src 'self' https://telegram.org https://api.telegram.org https://*.telegram.org https://fonts.googleapis.com https://fonts.gstatic.com https://vercel.live ws: wss:",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org https://*.telegram.org data:",
+      "connect-src 'self' https://telegram.org https://api.telegram.org https://*.telegram.org https://fonts.googleapis.com https://fonts.gstatic.com ws: wss:",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com https://api.fontshare.com",
       "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com https://api.fontshare.com",
       "style-src-attr 'self' 'unsafe-inline'",
       "font-src 'self' data: https://fonts.gstatic.com https://api.fontshare.com",
       "img-src 'self' data: https: blob:",
-      "frame-src https://telegram.org https://*.telegram.org https://vercel.live",
+      "frame-src https://telegram.org https://*.telegram.org",
       "frame-ancestors *",
       "object-src 'none'",
       "base-uri 'self'",
@@ -77,7 +79,15 @@ const nextConfig = {
         ],
       },
       {
-        source: '/:path*',
+        // /api/* — route handlers сами выставляют Cache-Control (через addCacheHeaders),
+        // глобальный no-store здесь перебивал бы их и ломал edge-кеш CF, увеличивая CPU
+        // на воркере. Только security headers.
+        source: '/api/:path*',
+        headers: securityHeaders,
+      },
+      {
+        // Всё остальное (HTML-страницы) — no-store, как было.
+        source: '/((?!api/).*)',
         headers: [
           { key: 'Cache-Control', value: 'no-store, no-cache, max-age=0, must-revalidate' },
           ...securityHeaders,
@@ -90,6 +100,13 @@ const nextConfig = {
   // Исключаем src из сборки (Vite фронтенд)
   // ОПТИМИЗАЦИЯ: Code splitting для уменьшения размера бандла
   webpack: (config, { isServer }) => {
+    // @prisma/client/wasm exports map points to wasm.mjs for ESM imports,
+    // but only wasm.js exists — alias to the .js file explicitly.
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@prisma/client/wasm': require.resolve('@prisma/client/wasm.js'),
+    };
+
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -136,7 +153,7 @@ const nextConfig = {
           prisma: {
             name: 'prisma',
             test: /[\\/]node_modules[\\/]@prisma[\\/]/,
-            chunks: 'async',
+            chunks: 'all',
             priority: 30,
           },
           // Остальные node_modules — в vendor (tanstack, radix и т.д.)
@@ -150,13 +167,6 @@ const nextConfig = {
         },
       };
     }
-    // Исключаем src/pages из сборки Next.js
-    config.module = config.module || {};
-    config.module.rules = config.module.rules || [];
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      // Игнорируем src/pages
-    };
     return config;
   },
 };

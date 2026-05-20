@@ -3,13 +3,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import jwt from 'jsonwebtoken';
+import { signToken } from '@/lib/jwt';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 
 // Используем Node.js runtime для поддержки jsonwebtoken
-export const runtime = 'nodejs';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,14 +34,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Генерируем JWT токен
-    const token = jwt.sign(
-      {
-        userId,
-        telegramId,
-      },
-      JWT_SECRET,
-      { expiresIn: '30d' }
-    );
+    const token = await signToken({ userId, telegramId }, '30d');
 
     return NextResponse.json({
       token,

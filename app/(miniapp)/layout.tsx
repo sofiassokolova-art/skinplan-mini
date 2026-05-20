@@ -14,6 +14,7 @@ import { PaywallVisibilityProvider, usePaywallVisibility } from '@/providers/Pay
 import { ServiceFeedbackPopup } from '@/components/ServiceFeedbackPopup';
 import { useTelegram } from '@/lib/telegram-client';
 import { DEV_TELEGRAM } from '@/lib/config/timeouts';
+import { QuizInitialLoader } from './quiz/components/QuizInitialLoader';
 // INFO_INITIAL_SCREENS_COUNT: кол-во начальных инфо-экранов (без showAfterQuestionCode/showAfterInfoScreenId).
 // Хардкодим чтобы не тянуть весь модуль info-screens в layout-бандл.
 // Обновить если изменится кол-во начальных экранов в info-screens.ts.
@@ -122,6 +123,32 @@ function LayoutContent({
     setBackButtonVisible(idx > 0 && idx < INFO_INITIAL_SCREENS_COUNT);
   }, [isOnQuizPage, pathname]);
   
+  // На страницах анкеты блокируем скролл body и скроллим только контент анкеты
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!isOnQuizPage) return;
+
+    const html = document.documentElement;
+    const body = document.body;
+
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    const prevHtmlHeight = html.style.height;
+    const prevBodyHeight = body.style.height;
+
+    html.style.overflow = 'hidden';
+    body.style.overflow = 'hidden';
+    html.style.height = '100%';
+    body.style.height = '100%';
+
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+      html.style.height = prevHtmlHeight;
+      body.style.height = prevBodyHeight;
+    };
+  }, [isOnQuizPage]);
+  
   return (
     <>
       <NetworkStatus />
@@ -141,38 +168,33 @@ function LayoutContent({
       )}
 
       <PageTransition>
-        {children}
+        {isOnQuizPage ? (
+          <div
+            style={{
+              height: '100vh',
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+            }}
+          >
+            {children}
+          </div>
+        ) : (
+          children
+        )}
       </PageTransition>
       {/* ТЗ: НЕ монтируем BottomNavigation на /quiz для чистого UX без элементов корзины */}
       {/* КРИТИЧНО: Используем hideNav, который включает проверку isOnQuizPage и проверку нового пользователя на главной */}
       {!hideNav && <BottomNavigation />}
-      {/* Сервисный попап для отзывов (показывается раз в неделю, НЕ на странице анкеты) */}
-      {!isOnQuizPage && <ServiceFeedbackPopup />}
+      {/* Сервисный попап для отзывов (не показываем на анкете и когда виден пейвол PaymentGate) */}
+      {!isOnQuizPage && !paywallVisible && <ServiceFeedbackPopup />}
     </>
   );
 }
 
-/** Минимальный fallback во время Suspense — только спиннер, без тяжёлых компонентов */
+/** Fallback во время Suspense — используем тот же лоадер, что и анкета, чтобы не было двух разных вариантов. */
 function LayoutFallback() {
   useRemoveRootLoading();
-  return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: '#FFFFFF',
-    }}>
-      <div style={{
-        width: 48,
-        height: 48,
-        border: '3px solid #E8F5F3',
-        borderTopColor: '#0A5F59',
-        borderRadius: '50%',
-        animation: 'spin 0.8s linear infinite',
-      }} />
-    </div>
-  );
+  return <QuizInitialLoader />;
 }
 
 export default function MiniappLayout({

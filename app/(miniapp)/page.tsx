@@ -141,7 +141,13 @@ export default function RootPage() {
 
       try {
         const { getHasPlanProgress } = await import('@/lib/user-preferences');
-        hasPlanProgress = await getHasPlanProgress();
+        // Race API против быстрого таймаута: если API долго (Neon cold start),
+        // отправляем на /quiz — для нового юзера это правильный путь.
+        // Пользователи с планом обычно уже имеют кеш → попадают в fast-path выше.
+        hasPlanProgress = await Promise.race([
+          getHasPlanProgress(),
+          new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 2500)),
+        ]);
       } catch (error) {
         clientLogger.warn('⚠️ Root check error:', error);
         hasPlanProgress = false;

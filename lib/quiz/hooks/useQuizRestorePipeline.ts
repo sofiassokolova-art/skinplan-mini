@@ -121,6 +121,14 @@ export function useQuizRestorePipeline(params: UseQuizRestorePipelineParams) {
 
   // Флаг для отслеживания, что restore pipeline уже выполнен
   const restoreCompletedRef = useRef(false);
+  // Фикс React #185: не вызывать setSavedProgress повторно при том же прогрессе с сервера
+  const serverResumeProgressFingerprintRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (hasResumed || isStartingOver) {
+      serverResumeProgressFingerprintRef.current = null;
+    }
+  }, [hasResumed, isStartingOver]);
 
   // Утилита для проверки, был ли прогресс очищен
   const isProgressCleared = () =>
@@ -281,9 +289,20 @@ export function useQuizRestorePipeline(params: UseQuizRestorePipelineParams) {
       // Это необходимо для показа резюм-экрана, когда пользователь вернулся после "Начать заново"
       const shouldShowResume = progressAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN;
       
-      if (shouldShowResume && answersCountRef.current === 0 && !savedProgress) {
-        // Если должен показываться резюм-экран и answers пустые, устанавливаем savedProgress
-        // НЕ восстанавливаем answers - они останутся пустыми, что позволит показать резюм-экран
+      // Повторный заход: резюм-экран, answers не трогаем (даже если savedProgress уже есть из sessionStorage)
+      if (shouldShowResume && !hasResumed && !hasResumedRef.current) {
+        // ФИКС: Если пользователь активно проходит анкету (есть текущие ответы), это первое прохождение —
+        // рефетч после авто-сохранения не должен прерывать сессию и показывать резюм-экран.
+        if (answersCountRef.current > 0) {
+          if (isDev) {
+            clientLogger.log('⏸️ [Restore Pipeline Step 2] Пропускаем резюм-логику — пользователь активно отвечает', {
+              answersCount: answersCountRef.current,
+              progressAnswersCount,
+            });
+          }
+          return;
+        }
+        // Устанавливаем/обновляем savedProgress с сервера, answers не восстанавливаем
         // ИСПРАВЛЕНО: Удаляем флаг quiz_progress_cleared, если на сервере есть прогресс >= 2 ответов
         // Это означает, что пользователь вернулся после "Начать заново", но на сервере есть старый прогресс
         if (isProgressCleared() && typeof window !== 'undefined') {
@@ -311,17 +330,21 @@ export function useQuizRestorePipeline(params: UseQuizRestorePipelineParams) {
           }
         }
         
-        if (isDev) {
-          clientLogger.log('🔄 [Restore Pipeline Step 2] Устанавливаем savedProgress из серверного прогресса для резюм-экрана', {
-            answersCount: progressAnswersCount,
-            wasProgressCleared: isProgressCleared(),
+        const progressFingerprint = `${answersId}:${quizProgressFromQuery.progress?.questionIndex ?? 0}:${quizProgressFromQuery.progress?.infoScreenIndex ?? 0}`;
+        if (serverResumeProgressFingerprintRef.current !== progressFingerprint) {
+          serverResumeProgressFingerprintRef.current = progressFingerprint;
+          if (isDev) {
+            clientLogger.log('🔄 [Restore Pipeline Step 2] Устанавливаем savedProgress из серверного прогресса для резюм-экрана', {
+              answersCount: progressAnswersCount,
+              wasProgressCleared: isProgressCleared(),
+            });
+          }
+          setSavedProgress({
+            answers: progressAnswers,
+            questionIndex: quizProgressFromQuery.progress?.questionIndex || 0,
+            infoScreenIndex: quizProgressFromQuery.progress?.infoScreenIndex || 0,
           });
         }
-        setSavedProgress({
-          answers: progressAnswers,
-          questionIndex: quizProgressFromQuery.progress?.questionIndex || 0,
-          infoScreenIndex: quizProgressFromQuery.progress?.infoScreenIndex || 0,
-        });
         // НЕ восстанавливаем answers - они останутся пустыми, что позволит показать резюм-экран
         return;
       }
@@ -367,8 +390,9 @@ export function useQuizRestorePipeline(params: UseQuizRestorePipelineParams) {
   }, [
     isLoadingProgress,
     isStartingOver,
+    hasResumed,
     quizProgressFromQuery, // ФИКС: Используем сам объект вместо вычисления количества ключей
-    savedProgress, // Добавляем для проверки, установлен ли уже savedProgress
+    // savedProgress намеренно не в deps — иначе setSavedProgress → эффект снова → React error #185
   ]);
   
   // Шаг 3: Восстановление индексов из sessionStorage или progress

@@ -3,7 +3,7 @@
 
 import { prisma } from '@/lib/db';
 import { calculateSkinAxes, getDermatologistRecommendations, type QuestionnaireAnswers } from '@/lib/skin-analysis-engine';
-import { calculateSkinIssues } from '@/app/api/analysis/route';
+import { calculateSkinIssues } from '@/lib/skin-issues';
 import { canApplyStep, isStepAllowedForProfile, type StepCategory } from '@/lib/step-category-rules';
 import { selectCarePlanTemplate, type CarePlanProfileInput } from '@/lib/care-plan-templates';
 import type { Plan28, DayPlan, DayStep } from '@/lib/plan-types';

@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { usePaywallVisibility } from '@/providers/PaywallVisibilityContext';
+import { DEV_TELEGRAM } from '@/lib/config/timeouts';
 
 interface PaymentGateProps {
   price?: number;
@@ -23,6 +24,53 @@ const PRODUCT_PRICES: Record<string, number> = {
   retake_full: 99, // Цена за полное перепрохождение анкеты
   subscription_month: 499,
 };
+
+function shouldMockTelegramInitData(): boolean {
+  if (process.env.NODE_ENV === 'development') return true;
+  if (process.env.NEXT_PUBLIC_ALLOW_TEST_INIT_DATA === 'true') return true;
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1' || host.includes('staging.')) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function getInitDataForClient(): string {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+
+  let initData = window.Telegram?.WebApp?.initData || '';
+
+  try {
+    if (!initData) {
+      initData = sessionStorage.getItem('tg_init_data') || '';
+    }
+  } catch {
+    // ignore
+  }
+
+  // Локально / staging: мокаем initData для тестового эмулятора оплаты
+  if (!initData && shouldMockTelegramInitData()) {
+    const testData = DEV_TELEGRAM.buildInitData();
+    if (!(window as any).Telegram) {
+      (window as any).Telegram = { WebApp: { initData: testData, ready() {}, expand() {} } };
+    } else if (!(window as any).Telegram.WebApp) {
+      (window as any).Telegram.WebApp = { initData: testData, ready() {}, expand() {} };
+    } else {
+      try {
+        (window as any).Telegram.WebApp.initData = testData;
+      } catch {
+        // ignore
+      }
+    }
+    initData = testData;
+  }
+
+  return initData || '';
+}
 
 // Глобальный кеш — чтобы множество PaymentGate (на /quiz) не спамили /api/me/entitlements
 let entitlementsCache: { codes: string[]; ts: number } | null = null;
@@ -110,8 +158,7 @@ export function PaymentGate({
     let cancelled = false;
 
     // Если уже есть initData — готовы
-    const current =
-      typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '';
+    const current = getInitDataForClient();
     if (current) {
       setInitDataReady(true);
       return;
@@ -185,8 +232,7 @@ export function PaymentGate({
       try {
         setCheckingDbPayment(true);
 
-        const initData =
-          typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '';
+        const initData = getInitDataForClient();
         if (!initData) {
           // initData ещё не готов — выходим, таймаут установлен отдельно
           return;
@@ -282,8 +328,7 @@ export function PaymentGate({
     if (!paymentId) return;
 
     const checkPaymentStatus = async () => {
-      const initData =
-        typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '';
+      const initData = getInitDataForClient();
       if (!initData) return;
 
       try {
@@ -328,8 +373,13 @@ export function PaymentGate({
     setIsProcessing(true);
 
     try {
-      const initData =
-        typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '';
+      const initData = getInitDataForClient();
+      if (!initData) {
+        toast.error('Откройте приложение через Telegram Mini App для оплаты');
+        setIsProcessing(false);
+        return;
+      }
+
       // После старта оплаты сбрасываем кеш entitlement, чтобы второй экран (план/главная)
       // быстрее увидел "paid_access".
       entitlementsCache = null;
@@ -347,9 +397,18 @@ export function PaymentGate({
       });
 
       if (!response.ok) {
-        const errorText = await response.text().catch(() => '');
-        console.error('Payment creation failed:', response.status, errorText);
-        toast.error('Не удалось создать платеж. Попробуйте ещё раз.');
+        let message = 'Не удалось создать платеж. Попробуйте ещё раз.';
+        try {
+          const errBody = await response.json();
+          if (typeof errBody?.error === 'string' && errBody.error.trim()) {
+            message = errBody.error;
+          }
+        } catch {
+          const errorText = await response.text().catch(() => '');
+          if (errorText) console.error('Payment creation failed:', response.status, errorText);
+        }
+        console.error('Payment creation failed:', response.status, message);
+        toast.error(message);
         setIsProcessing(false);
         return;
       }

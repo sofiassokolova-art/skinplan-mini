@@ -1,4 +1,3 @@
-// app/api/products/alternatives/[productId]/route.ts
 // API для поиска альтернативных продуктов
 
 import { NextRequest, NextResponse } from 'next/server';

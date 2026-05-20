@@ -296,10 +296,10 @@ export function InfoScreenView({
         })()}
       </div>
       
-      {/* Фиксированная кнопка "Продолжить" внизу экрана */}
-      {screen.ctaText && !isTinderScreen && (
+      {/* Унифицированная кнопка для всех инфо-экранов: текст «Продолжить» по умолчанию */}
+      {!isTinderScreen && (
         <FixedContinueButton
-          ctaText={screen.ctaText}
+          ctaText={screen.ctaText || 'Продолжить'}
           onClick={onContinue}
           disabled={isHandlingNext}
           loadingText="Загрузка..."

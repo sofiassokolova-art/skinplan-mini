@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from '@/lib/charts';
 
 interface Stats {
   users: number;
@@ -19,6 +19,9 @@ interface Stats {
   retakingUsers?: number; // Пользователи, которые перепрошли анкету
   newUsersLast7Days?: number;
   newUsersLast30Days?: number;
+  activeUsersLast1Day?: number;
+  activeUsersLast7Days?: number;
+  activeUsersLast30Days?: number;
 }
 
 interface Feedback {
@@ -90,6 +93,9 @@ export default function AdminDashboard() {
           retakingUsers: data.stats?.retakingUsers ?? 0,
           newUsersLast7Days: data.stats?.newUsersLast7Days ?? 0,
           newUsersLast30Days: data.stats?.newUsersLast30Days ?? 0,
+          activeUsersLast1Day: data.stats?.activeUsersLast1Day ?? 0,
+          activeUsersLast7Days: data.stats?.activeUsersLast7Days ?? 0,
+          activeUsersLast30Days: data.stats?.activeUsersLast30Days ?? 0,
         });
         setRecentFeedback(data.recentFeedback || []);
       } else {
@@ -215,7 +221,19 @@ export default function AdminDashboard() {
       color: 'from-blue-600 to-cyan-400'
     },
     { 
-      label: 'Доход партнёрки', 
+      label: 'DAU (за сегодня)', 
+      value: stats.activeUsersLast1Day || 0, 
+      change: null,
+      color: 'from-sky-600 to-cyan-400'
+    },
+    { 
+      label: 'WAU (7 дней)', 
+      value: stats.activeUsersLast7Days || 0, 
+      change: null,
+      color: 'from-teal-600 to-emerald-400'
+    },
+    { 
+      label: 'Доход с планов', 
       value: stats.revenue ? `₽ ${stats.revenue.toLocaleString('ru-RU')}` : '₽ 0', 
       change: null,
       color: 'from-amber-600 to-yellow-400'

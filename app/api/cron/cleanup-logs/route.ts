@@ -1,35 +1,25 @@
 // app/api/cron/cleanup-logs/route.ts
 // Cron job для автоматической очистки логов раз в неделю
-// Настраивается через Vercel Cron Jobs
+// Настраивается через wrangler.toml → [triggers] crons
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
-
-// Проверяем, что запрос пришел от Vercel Cron
-// Vercel Cron передает специальный заголовок x-vercel-cron
+// Cloudflare Workers Cron вызывает scheduled handler, не HTTP.
+// Этот endpoint используется для ручных вызовов через CRON_SECRET.
 function verifyCronRequest(request: NextRequest): boolean {
-  // Проверяем заголовок от Vercel Cron
-  const vercelCronHeader = request.headers.get('x-vercel-cron');
-  if (vercelCronHeader === '1') {
-    return true;
-  }
-  
-  // Fallback: проверяем authorization для ручных вызовов (если CRON_SECRET установлен)
   if (process.env.CRON_SECRET) {
     const authHeader = request.headers.get('authorization');
     return authHeader === `Bearer ${process.env.CRON_SECRET}`;
   }
-  
   return false;
 }
 
 export async function GET(request: NextRequest) {
   try {
-    // Проверяем авторизацию (только Vercel Cron может вызывать этот endpoint)
+    // Проверяем авторизацию через CRON_SECRET
     if (!verifyCronRequest(request)) {
       return NextResponse.json(
         { error: 'Unauthorized' },

@@ -40,3 +40,5 @@ prisma/migrations/
 # Backup files
 *.backup
 *.backup*
+# OpenNext build output
+.open-next/
