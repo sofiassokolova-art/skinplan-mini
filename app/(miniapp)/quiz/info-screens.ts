@@ -149,7 +149,7 @@ export const INFO_SCREENS: InfoScreen[] = [
   // 13) SkinIQ делает уход за кожей простым и понятным
   {
     id: 'simple_care',
-    title: 'SkinIQ делает уход за кожей простым и понятным',
+    title: 'SkinIQ делает уход за кожей простым и понятным',
     image: '/image 1576994977.png',
     type: 'comparison',
     showAfterQuestionCode: 'seasonal_changes',
@@ -208,16 +208,9 @@ export const INFO_SCREENS: InfoScreen[] = [
   {
     id: 'ai_showcase',
     title: 'SkinIQ использует ИИ для подбора ухода, который действительно работает',
-    subtitle: '95% точность рекомендаций\n10M+ анализов кожи по фото\nПоддержка 500+ активных ингредиентов\nОбучено на данных, подтверждённых дерматологами',
-    type: 'products',
-    // ПОСЛЕ вопроса "Выберите ингредиенты, которые вы хотели бы исключить" (avoid_ingredients),
-    // а не сразу после "Применяете ли вы рецептурные кремы..."
+    image: '/image 1576994963.png',
+    // ПОСЛЕ вопроса "Выберите ингредиенты, которые вы хотели бы исключить" (avoid_ingredients)
     showAfterQuestionCode: 'avoid_ingredients',
-    content: [
-      { name: 'Увлажняющий крем', desc: 'Поддерживает барьер кожи', icon: '/products/moisturizer.jpg' },
-      { name: 'Сыворотка с витамином C', desc: 'Осветляет и выравнивает тон', icon: '/products/vitamin_c.jpg' },
-      { name: 'Солнцезащитный крем SPF 50', desc: 'Защищает от фотостарения', icon: '/products/spf.jpg' },
-    ],
     ctaText: 'Продолжить',
   },
   

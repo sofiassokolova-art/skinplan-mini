@@ -181,6 +181,7 @@ export function QuizInfoScreen({
   const isSkinFeaturesIntroScreen = screen.id === 'skin_features_intro';
   const isHabitsMatterScreen = screen.id === 'habits_matter';
   const isHealthTrustScreen = screen.id === 'health_trust';
+  const isAiShowcaseScreen = screen.id === 'ai_showcase';
 
   // ФИКС: Prefetch следующих 1-2 изображений для ускорения загрузки
   // Используем new Image().src для предзагрузки в кэш браузера
@@ -297,19 +298,21 @@ export function QuizInfoScreen({
 
     const glassCard = {
       flex: 1,
+      minWidth: 0,
       backgroundColor: 'rgba(255, 255, 255, 0.45)',
       backdropFilter: 'blur(24px)',
       WebkitBackdropFilter: 'blur(24px)',
       border: '1px solid rgba(255, 255, 255, 0.55)',
-      borderRadius: '24px',
-      paddingTop: '36px',
-      paddingBottom: '24px',
+      borderRadius: '22px',
+      paddingTop: '44px',
+      paddingBottom: '28px',
       paddingLeft: '14px',
       paddingRight: '14px',
       display: 'flex',
       flexDirection: 'column' as const,
       alignItems: 'center',
       boxShadow: '0 8px 32px rgba(0,0,0,0.07)',
+      wordBreak: 'break-word' as const,
     };
 
     const renderCard = (
@@ -339,22 +342,22 @@ export function QuizInfoScreen({
           <p style={{
             fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, sans-serif",
             fontWeight: 700,
-            fontSize: '13px',
+            fontSize: '14px',
             lineHeight: '1.3',
             textAlign: 'center',
             color: '#000',
-            margin: '0 0 14px 0',
+            margin: '0 0 18px 0',
           }}>
             {side.title}
           </p>
           {side.items.map((item, i) => (
             <p key={i} style={{
               fontFamily: "var(--font-inter), 'Inter', -apple-system, sans-serif",
-              fontSize: '13px',
+              fontSize: '13.5px',
               lineHeight: '1.45',
               textAlign: 'center',
               color: '#333',
-              margin: i < side.items.length - 1 ? '0 0 10px 0' : '0',
+              margin: i < side.items.length - 1 ? '0 0 14px 0' : '0',
             }}>
               {item}
             </p>
@@ -382,18 +385,18 @@ export function QuizInfoScreen({
               priority
             />
           )}
-          <div style={{ position: 'relative', zIndex: 1, padding: '80px 20px 24px' }}>
+          <div style={{ position: 'relative', zIndex: 1, padding: '110px 20px 24px' }}>
             <h1 style={{
               fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 700,
               fontSize: '26px',
               lineHeight: '1.25',
               color: '#000000',
-              margin: '0 0 36px 0',
+              margin: '0 0 48px 0',
             }}>
               {screen.title}
             </h1>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'stretch' }}>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'stretch' }}>
               {renderCard(content?.left, '#f0f0f0', '#555', '✕')}
               {renderCard(content?.right, '#D5FE61', '#000', '✓')}
             </div>
@@ -805,7 +808,7 @@ export function QuizInfoScreen({
           <div style={{
             position: 'relative',
             zIndex: 1,
-            padding: '72px 20px 24px',
+            padding: '110px 20px 24px',
             display: 'flex',
             flexDirection: 'column',
             minHeight: '100vh',
@@ -823,7 +826,7 @@ export function QuizInfoScreen({
             }}>
               {screen.title}
             </h1>
-            <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: '8px' }}>
+            <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: '96px' }}>
               {cards.map((card, i) => (
                 <div key={i} style={{
                   background: 'rgba(255,255,255,0.55)',
@@ -858,6 +861,90 @@ export function QuizInfoScreen({
                     }}>{card.desc}</p>
                   </div>
                 </div>
+              ))}
+            </div>
+          </div>
+          <FixedContinueButton
+            ctaText={screen.ctaText}
+            onClick={handleNext}
+            disabled={isHandlingNext}
+            loadingText="Продолжить"
+          />
+        </div>
+      </>
+    );
+  }
+
+  // Экран "SkinIQ использует ИИ для подбора ухода, который действительно работает" (ai_showcase)
+  if (isAiShowcaseScreen) {
+    const items: Array<{ bold: string; text: string }> = [
+      { bold: '95%', text: 'точность рекомендаций' },
+      { bold: 'Поддержка+', text: 'активных ингредиентов' },
+      { bold: 'Обучение', text: 'на данных, подтвержденных дерматологами' },
+    ];
+
+    return (
+      <>
+        {backButton}
+        <div style={{
+          minHeight: '100vh',
+          position: 'relative',
+          overflow: 'hidden',
+          paddingBottom: '100px',
+          background: '#f5f0eb',
+        }}>
+          {screen.image && (
+            <Image
+              src={screen.image}
+              alt=""
+              fill
+              style={{ objectFit: 'cover', objectPosition: 'center top' }}
+              priority
+            />
+          )}
+          <div style={{
+            position: 'relative',
+            zIndex: 1,
+            padding: '72px 20px 24px',
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: '100vh',
+            boxSizing: 'border-box',
+          }}>
+            <h1 style={{
+              fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 700,
+              fontSize: '26px',
+              lineHeight: '1.25',
+              color: '#000000',
+              margin: '0',
+              maxWidth: '260px',
+            }}>
+              {screen.title}
+            </h1>
+            <div style={{
+              marginTop: 'auto',
+              background: 'rgba(255,255,255,0.55)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+              border: '1px solid rgba(255,255,255,0.6)',
+              borderRadius: '24px',
+              padding: '24px 22px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '18px',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.06)',
+            }}>
+              {items.map((it, i) => (
+                <p key={i} style={{
+                  fontFamily: "var(--font-inter), 'Inter', -apple-system, sans-serif",
+                  fontSize: '15px',
+                  lineHeight: '1.4',
+                  color: '#000',
+                  margin: 0,
+                }}>
+                  <strong style={{ fontWeight: 700 }}>{it.bold}</strong> {it.text}
+                </p>
               ))}
             </div>
           </div>
