@@ -502,58 +502,50 @@ export function PaymentGate({
     return <>{children}</>;
   }
 
-  // ИСПРАВЛЕНО: не показываем paywall до первой проверки entitlements,
-  // иначе при повторном входе в приложение будет "снова оплата" на долю секунды.
+  // Ждём первой проверки entitlements — показываем полноэкранный лоадер
   if (!checkedOnce) {
     return (
-      <div style={{ position: 'relative' }}>
+      <div style={{
+        position: 'fixed',
+        inset: 0,
+        background: '#f5f0eb',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+      }}>
         <div style={{
-          filter: 'blur(8px)',
-          pointerEvents: 'none',
-          userSelect: 'none',
-          opacity: 0.5,
+          width: '40px',
+          height: '40px',
+          border: '3px solid rgba(0,0,0,0.1)',
+          borderTop: '3px solid #000',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          marginBottom: '16px',
+        }} />
+        <div style={{
+          fontFamily: "var(--font-inter), 'Inter', sans-serif",
+          fontSize: '15px',
+          fontWeight: 600,
+          color: '#111',
         }}>
-          {children}
+          Проверяем доступ…
         </div>
         <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(10px)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '24px',
-          zIndex: 1000,
-          borderRadius: '24px',
-          textAlign: 'center',
+          fontFamily: "var(--font-inter), 'Inter', sans-serif",
+          fontSize: '13px',
+          color: '#888',
+          marginTop: '6px',
         }}>
-          <div style={{
-            width: '44px',
-            height: '44px',
-            border: '4px solid rgba(10, 95, 89, 0.2)',
-            borderTop: '4px solid #0A5F59',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            marginBottom: '14px',
-          }} />
-          <div style={{ fontSize: '16px', fontWeight: 700, color: '#0A5F59' }}>
-            Проверяем доступ…
-          </div>
-          <div style={{ fontSize: '13px', color: '#475467', marginTop: '6px' }}>
-            {initDataReady ? 'Почти готово' : 'Открываем Telegram Mini App'}
-          </div>
-          <style>{`
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          `}</style>
+          {initDataReady ? 'Почти готово' : 'Открываем Telegram Mini App'}
         </div>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
       </div>
     );
   }
@@ -561,223 +553,339 @@ export function PaymentGate({
   const displayPrice =
     typeof price === 'number' && Number.isFinite(price) ? price : (PRODUCT_PRICES[productCode] ?? 0);
 
-  return (
-    <div style={{ position: 'relative' }}>
-      {/* Замыленный контент */}
-      <div style={{
-        filter: 'blur(8px)',
-        pointerEvents: 'none',
-        userSelect: 'none',
-        opacity: 0.5,
-      }}>
-        {children}
-      </div>
+  const paywallTitle =
+    productCode === 'retake_topic'
+      ? 'Перепройдите тему'
+      : productCode === 'retake_full'
+        ? 'Пройдите анкету заново'
+        : isRetaking
+          ? 'Обновите доступ к плану'
+          : 'Получите полный доступ к плану';
 
-      {/* Overlay с оплатой */}
+  const paywallSubtitle =
+    productCode === 'retake_topic'
+      ? 'Обновите только нужные части рекомендаций'
+      : productCode === 'retake_full'
+        ? 'Пройдите всю анкету заново. Счёт 28 дней начнётся заново'
+        : isRetaking
+          ? 'Персональные рекомендации на основе новых данных'
+          : 'Персональный уход на 28 дней, подобранный под вашу кожу';
+
+  const benefits = [
+    {
+      icon: (
+        <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="#000" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="3" width="12" height="11" rx="2"/>
+          <path d="M5 3V2M11 3V2"/>
+          <path d="M2 7h12"/>
+          <path d="M6 10l1.5 1.5L11 8"/>
+        </svg>
+      ),
+      title: '28-дневный план ухода',
+      desc: 'Пошаговые рекомендации на каждый день',
+    },
+    {
+      icon: (
+        <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="#000" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="8" cy="6" r="3"/>
+          <path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/>
+        </svg>
+      ),
+      title: 'Подбор под ваш тип кожи',
+      desc: 'Средства и ингредиенты именно для вас',
+    },
+    {
+      icon: (
+        <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="#000" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M8 1.5L9.8 5.2L14 5.8L11 8.7L11.7 13L8 11L4.3 13L5 8.7L2 5.8L6.2 5.2L8 1.5Z"/>
+        </svg>
+      ),
+      title: 'Одобрено дерматологами',
+      desc: 'Все рекомендации безопасны и научно обоснованы',
+    },
+    {
+      icon: (
+        <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="#000" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="2,9 6,13 14,4"/>
+        </svg>
+      ),
+      title: 'Видимый результат',
+      desc: 'Первые изменения уже через 2–3 недели',
+    },
+  ];
+
+  const glassStyle: React.CSSProperties = {
+    background: 'rgba(255,255,255,0.52)',
+    backdropFilter: 'blur(24px)',
+    WebkitBackdropFilter: 'blur(24px)',
+    border: '1px solid rgba(255,255,255,0.65)',
+    borderRadius: '24px',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.07)',
+  };
+
+  return (
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      zIndex: 1000,
+      overflowY: 'auto',
+      background: 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(213,254,97,0.22) 0%, transparent 70%), radial-gradient(ellipse 60% 50% at 80% 80%, rgba(10,95,89,0.10) 0%, transparent 60%), #f5f0eb',
+    }}>
       <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        backdropFilter: 'blur(10px)',
+        maxWidth: '480px',
+        margin: '0 auto',
+        padding: 'clamp(48px, 14vw, 72px) clamp(16px, 5vw, 24px) clamp(40px, 10vw, 56px)',
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '32px',
-        zIndex: 1000,
-        borderRadius: '24px',
+        minHeight: '100vh',
+        boxSizing: 'border-box',
       }}>
+
+        {/* Бейдж */}
         <div style={{
-          backgroundColor: 'white',
-          borderRadius: '24px',
-          padding: '32px',
-          maxWidth: '400px',
-          width: '100%',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
-          textAlign: 'center',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          background: 'rgba(213,254,97,0.85)',
+          borderRadius: '100px',
+          padding: '6px 14px',
+          fontSize: 'clamp(11px, 2.8vw, 13px)',
+          fontWeight: 600,
+          color: '#1a1a1a',
+          letterSpacing: '0.3px',
+          marginBottom: '18px',
+          alignSelf: 'flex-start',
+          fontFamily: "var(--font-inter), 'Inter', sans-serif",
         }}>
-          <div style={{
-            fontSize: '48px',
-            marginBottom: '16px',
-          }}>
-            🔒
-          </div>
-          
-          <h2 style={{
-            fontSize: '24px',
-            fontWeight: 'bold',
-            color: '#0A5F59',
-            marginBottom: '12px',
-          }}>
-            {productCode === 'retake_topic'
-              ? 'Перепройдите тему'
-              : productCode === 'retake_full'
-                ? 'Пройдите всю анкету заново'
-                : isRetaking
-                  ? 'Обновите доступ к плану'
-                  : 'Получите полный доступ к плану'}
-          </h2>
-          
-          <p style={{
-            fontSize: '16px',
-            color: '#475467',
-            marginBottom: '24px',
-            lineHeight: '1.6',
-          }}>
-            {productCode === 'retake_topic'
-              ? 'Выберите тему, оплатите 49 ₽ и обновите только затронутые части рекомендаций.'
-              : productCode === 'retake_full'
-                ? 'Оплатите 99 ₽ и пройдите всю анкету заново. Счёт 28 дней начнётся заново.'
-                : isRetaking 
-                  ? 'Обновите свой план ухода и получите персональные рекомендации на основе новых данных'
-                  : 'Оплатите доступ, чтобы увидеть полный план ухода на 28 дней с персональными рекомендациями'}
-          </p>
+          <svg width="12" height="12" viewBox="0 0 13 13" fill="none">
+            <path d="M6.5 1L8.09 4.29L11.72 4.84L9.11 7.38L9.74 11L6.5 9.29L3.26 11L3.89 7.38L1.28 4.84L4.91 4.29L6.5 1Z" fill="#000" stroke="#000" strokeWidth="0.8" strokeLinejoin="round"/>
+          </svg>
+          Ваш план готов
+        </div>
 
-          {/* Цена */}
-          <div style={{
-            marginBottom: '24px',
-            padding: '20px',
-            backgroundColor: '#F5FFFC',
-            borderRadius: '16px',
-            border: '2px solid #0A5F59',
-          }}>
-            <div style={{
-              fontSize: '14px',
-              color: '#6B7280',
-              marginBottom: '4px',
+        {/* Заголовок */}
+        <h1 style={{
+          fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, sans-serif",
+          fontWeight: 700,
+          fontSize: 'clamp(22px, 6.5vw, 30px)',
+          lineHeight: 1.2,
+          color: '#000',
+          letterSpacing: '-0.5px',
+          marginBottom: '8px',
+        }}>
+          {paywallTitle}
+        </h1>
+        <p style={{
+          fontFamily: "var(--font-inter), 'Inter', sans-serif",
+          fontSize: 'clamp(13px, 3.5vw, 15px)',
+          color: '#555',
+          lineHeight: 1.5,
+          marginBottom: '28px',
+        }}>
+          {paywallSubtitle}
+        </p>
+
+        {/* Преимущества */}
+        <div style={{ ...glassStyle, padding: '20px 18px', marginBottom: '16px' }}>
+          {benefits.map((b, i) => (
+            <div key={i} style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '14px',
+              paddingTop: i === 0 ? 0 : '13px',
+              paddingBottom: i === benefits.length - 1 ? 0 : '13px',
+              borderBottom: i < benefits.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none',
             }}>
-              Стоимость
+              <div style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                background: '#D5FE61',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                {b.icon}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                  fontWeight: 600,
+                  fontSize: 'clamp(13px, 3.5vw, 15px)',
+                  color: '#111',
+                  lineHeight: 1.3,
+                }}>
+                  {b.title}
+                </div>
+                <div style={{
+                  fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                  fontSize: 'clamp(11px, 2.8vw, 13px)',
+                  color: '#666',
+                  lineHeight: 1.4,
+                  marginTop: '2px',
+                }}>
+                  {b.desc}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Цена */}
+        <div style={{
+          ...glassStyle,
+          padding: '18px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '20px',
+        }}>
+          <div>
+            <div style={{
+              fontFamily: "var(--font-inter), 'Inter', sans-serif",
+              fontSize: 'clamp(11px, 2.6vw, 12px)',
+              color: '#999',
+              textDecoration: 'line-through',
+              marginBottom: '2px',
+            }}>
+              {displayPrice * 2} ₽
             </div>
             <div style={{
-              fontSize: '36px',
-              fontWeight: 'bold',
-              color: '#0A5F59',
+              fontFamily: "var(--font-inter), 'Inter', sans-serif",
+              fontSize: 'clamp(12px, 3vw, 14px)',
+              color: '#555',
             }}>
-              {displayPrice} ₽
+              Единоразовый доступ
             </div>
           </div>
+          <div style={{
+            fontFamily: "var(--font-unbounded), 'Unbounded', sans-serif",
+            fontWeight: 700,
+            fontSize: 'clamp(26px, 7vw, 34px)',
+            color: '#000',
+            letterSpacing: '-1px',
+          }}>
+            {displayPrice}<sup style={{ fontSize: '50%', verticalAlign: 'super', letterSpacing: 0 }}>₽</sup>
+          </div>
+        </div>
 
-          {/* Чекбокс согласия */}
+        {/* Чекбокс + кнопка */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <label style={{
             display: 'flex',
             alignItems: 'flex-start',
-            gap: '12px',
-            marginBottom: '24px',
+            gap: '10px',
             cursor: 'pointer',
-            textAlign: 'left',
           }}>
             <input
               type="checkbox"
               checked={agreedToTerms}
               onChange={(e) => setAgreedToTerms(e.target.checked)}
               style={{
-                width: '20px',
-                height: '20px',
-                marginTop: '2px',
+                width: '18px',
+                height: '18px',
+                marginTop: '1px',
                 cursor: 'pointer',
-                accentColor: '#0A5F59',
+                accentColor: '#D5FE61',
+                flexShrink: 0,
               }}
             />
             <span style={{
-              fontSize: '14px',
-              color: '#475467',
-              lineHeight: '1.5',
+              fontFamily: "var(--font-inter), 'Inter', sans-serif",
+              fontSize: 'clamp(11px, 2.8vw, 12px)',
+              color: '#777',
+              lineHeight: 1.5,
             }}>
               Я согласен с{' '}
-              <a 
-                href="/terms" 
-                target="_blank"
-                style={{ color: '#0A5F59', textDecoration: 'underline' }}
-              >
+              <a href="/terms" target="_blank" style={{ color: '#000', textDecoration: 'underline' }}>
                 пользовательским соглашением
               </a>
               {' '}и{' '}
-              <a 
-                href="/terms" 
-                target="_blank"
-                style={{ color: '#0A5F59', textDecoration: 'underline' }}
-              >
+              <a href="/terms" target="_blank" style={{ color: '#000', textDecoration: 'underline' }}>
                 политикой конфиденциальности
               </a>
             </span>
           </label>
 
-          {/* Кнопка оплаты */}
+          {/* Кнопка в стиле анкеты */}
           <button
             onClick={handlePayment}
             disabled={!agreedToTerms || isProcessing || !!paymentId}
             style={{
               width: '100%',
-              padding: '16px',
-              borderRadius: '16px',
+              height: '40px',
+              background: agreedToTerms && !isProcessing && !paymentId ? '#D5FE61' : 'rgba(213,254,97,0.4)',
+              color: '#000',
+              fontFamily: "var(--font-inter), 'Inter', sans-serif",
+              fontWeight: 400,
+              fontSize: '14px',
+              letterSpacing: '1px',
+              textTransform: 'uppercase',
               border: 'none',
-              background: agreedToTerms && !isProcessing && !paymentId
-                ? 'linear-gradient(to right, #0A5F59, #059669)'
-                : '#D1D5DB',
-              color: 'white',
-              fontSize: '18px',
-              fontWeight: 'bold',
+              borderRadius: 0,
               cursor: agreedToTerms && !isProcessing && !paymentId ? 'pointer' : 'not-allowed',
-              boxShadow: agreedToTerms && !isProcessing && !paymentId
-                ? '0 8px 24px rgba(10, 95, 89, 0.4)'
-                : 'none',
-              transition: 'all 0.2s',
-              opacity: agreedToTerms && !isProcessing && !paymentId ? 1 : 0.6,
+              transition: 'opacity 0.15s',
             }}
           >
-            {paymentId 
-              ? 'Ожидаем подтверждения оплаты...' 
-              : isProcessing 
-                ? 'Создание платежа...' 
+            {paymentId
+              ? 'Ожидаем подтверждения...'
+              : isProcessing
+                ? 'Создание платежа...'
                 : `Оплатить ${displayPrice} ₽`}
           </button>
 
           {paymentId && (
-            <>
+            <div style={{ textAlign: 'center' }}>
               <p style={{
+                fontFamily: "var(--font-inter), 'Inter', sans-serif",
                 fontSize: '12px',
-                color: '#0A5F59',
-                marginTop: '12px',
+                color: '#555',
+                marginBottom: '6px',
               }}>
-                Платеж создан. Ожидаем подтверждения от платежной системы...
+                Ожидаем подтверждения от платёжной системы…
               </p>
               <p style={{
+                fontFamily: "var(--font-inter), 'Inter', sans-serif",
                 fontSize: '11px',
-                color: '#6B7280',
-                marginTop: '8px',
+                color: '#888',
                 wordBreak: 'break-all',
               }}>
-                Код платежа для поддержки: <strong>{providerPaymentId || paymentId}</strong>
+                Код для поддержки: <strong>{providerPaymentId || paymentId}</strong>
               </p>
-              <p style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '4px' }}>
-                Сохраните код и укажите его в обращении в поддержку сайта, если оплата не прошла.
-              </p>
-            </>
+            </div>
           )}
 
-          <p style={{
-            fontSize: '12px',
-            color: '#9CA3AF',
-            marginTop: paymentId ? '8px' : '16px',
+          {/* Безопасность */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '5px',
+            fontFamily: "var(--font-inter), 'Inter', sans-serif",
+            fontSize: 'clamp(10px, 2.5vw, 11px)',
+            color: '#aaa',
           }}>
-            Платеж обрабатывается безопасно через сервер
-          </p>
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="#bbb" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="5" width="7" height="5" rx="1.5"/>
+              <path d="M3.5 5V3.5A2 2 0 0 1 7.5 3.5V5"/>
+            </svg>
+            Платёж безопасно обрабатывается через сервер
+          </div>
 
           {cancelCta && (
             <button
               type="button"
               onClick={cancelCta.onClick}
               style={{
-                marginTop: '16px',
                 background: 'transparent',
                 border: 'none',
-                color: '#6B7280',
+                color: '#888',
                 textDecoration: 'underline',
                 cursor: 'pointer',
-                fontSize: '14px',
+                fontSize: '13px',
+                fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                textAlign: 'center',
               }}
             >
               {cancelCta.text}
@@ -788,8 +896,6 @@ export function PaymentGate({
               type="button"
               onClick={async () => {
                 if (typeof window !== 'undefined') {
-                  // ИСПРАВЛЕНО: ретейк-ссылка должна открывать экран выбора тем
-                  // (/quiz показывает экран выбора тем, когда is_retaking_quiz=true)
                   try {
                     const { setIsRetakingQuiz } = await import('@/lib/user-preferences');
                     await setIsRetakingQuiz(true);
@@ -800,14 +906,15 @@ export function PaymentGate({
                 }
               }}
               style={{
-                marginTop: '16px',
                 background: 'transparent',
                 border: 'none',
-                color: '#0A5F59',
+                color: '#000',
                 textDecoration: 'underline',
                 cursor: 'pointer',
-                fontSize: '14px',
+                fontSize: '13px',
+                fontFamily: "var(--font-inter), 'Inter', sans-serif",
                 fontWeight: 600,
+                textAlign: 'center',
               }}
             >
               {retakeCta.text}
@@ -815,6 +922,12 @@ export function PaymentGate({
           )}
         </div>
       </div>
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }
