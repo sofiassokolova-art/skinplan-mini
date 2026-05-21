@@ -1,14 +1,15 @@
 // lib/questionnaire-topics.ts
 // Структура тем для частичного перепрохождения анкеты
 
-export type QuestionTopicId = 
+export type QuestionTopicId =
   | 'skin_type'
   | 'concerns_goals'
   | 'diagnoses_sensitivity'
   | 'pregnancy'
   | 'avoid_ingredients'
   | 'habits_lifestyle'
-  | 'spf_sun'
+  // spf_sun удалён: вопросы spf_frequency / sun_exposure убраны из анкеты,
+  // SPF в плане включён по умолчанию для всех.
   | 'current_care'
   | 'budget_preferences'
   | 'motivation';
@@ -68,23 +69,16 @@ export const QUESTION_TOPICS: Record<QuestionTopicId, QuestionTopic> = {
     id: 'habits_lifestyle',
     title: 'Привычки и образ жизни',
     description: 'Образ жизни и ежедневные привычки',
-    questionCodes: ['makeup_frequency', 'lifestyle_factors'],
+    questionCodes: ['makeup_frequency'],
     requiresPlanRebuild: false,
-    affectsFields: ['makeupFrequency', 'lifestyleFactors'],
-  },
-  spf_sun: {
-    id: 'spf_sun',
-    title: 'SPF и солнце',
-    description: 'Привычки использования SPF и пребывания на солнце',
-    questionCodes: ['spf_frequency', 'sun_exposure'],
-    requiresPlanRebuild: false,
-    affectsFields: ['spfHabit'],
+    affectsFields: ['makeupFrequency'],
   },
   current_care: {
     id: 'current_care',
     title: 'Текущий уход и реакция кожи',
     description: 'Текущие средства и реакция кожи на них',
-    questionCodes: ['current_topicals', 'current_oral_meds', 'retinol_reaction', 'aha_bha_reaction'],
+    // retinol_reaction / aha_bha_reaction удалены из анкеты (не использовались downstream).
+    questionCodes: ['current_topicals', 'current_oral_meds'],
     requiresPlanRebuild: true,
     affectsFields: ['currentTopicals', 'currentOralMeds', 'contraindications'],
   },

@@ -780,34 +780,17 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       }
       
       const showAfterQuestionCode = findChainOriginQuestionCode(effectivePendingInfoScreen);
-      
-      // ИСПРАВЛЕНО: Специальная обработка для habits_matter - после него должен показываться вопрос lifestyle_habits
-      // Это необходимо, потому что habits_matter показывается после ai_showcase (который после oral_medications),
-      // но после habits_matter должен показываться вопрос lifestyle_habits, а не следующий после oral_medications
-      if (effectivePendingInfoScreen.id === 'habits_matter') {
-        const lifestyleHabitsQuestionIndex = allQuestions.findIndex(q => q.code === 'lifestyle_habits');
-        if (lifestyleHabitsQuestionIndex >= 0) {
-          const newIndex = lifestyleHabitsQuestionIndex;
-          clientLogger.log('🔧 [handleNext] Специальная обработка для habits_matter - переходим к lifestyle_habits', {
-            newIndex,
-            currentQuestionIndex,
-          });
-          
-          updateQuestionIndex(newIndex, currentQuestionIndexRef, setCurrentQuestionIndex);
-          const questionCode = allQuestions[newIndex]?.code;
-          if (questionCode) {
-            const scopedQuestionCodeKey = QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE, qid);
-            saveIndexToSessionStorage(scopedQuestionCodeKey, questionCode, '💾 Сохранен код вопроса в sessionStorage');
-          }
-          
-          await saveProgressSafely(saveProgress, answers, newIndex, currentInfoScreenIndex);
-          clientLogger.log('✅ Закрыт инфо-экран habits_matter, переходим к вопросу lifestyle_habits', {
-            newIndex,
-          });
-          return;
-        }
-      }
-      
+
+      // FIX: Удалена ошибочная спец-обработка habits_matter, которая прыгала сразу на
+      // lifestyle_habits и тем самым ПРОПУСКАЛА вопросы блока «Привычки»
+      // (makeup_frequency, spf_frequency, sun_exposure). В результате на forward-навигации
+      // пользователь сразу после habits_matter попадал на lifestyle_habits, а
+      // makeup_frequency/spf_frequency/sun_exposure были доступны только при
+      // нажатии «Назад». Цепочка ai_showcase → habits_matter теперь корректно
+      // обрабатывается общей логикой ниже: findChainOriginQuestionCode возвращает
+      // 'oral_medications' (origin цепочки), и newIndex = index('oral_medications') + 1
+      // = index('makeup_frequency'), то есть первый вопрос блока «Привычки».
+
       // ИСПРАВЛЕНО: Если нашли showAfterQuestionCode, находим индекс этого вопроса и переходим к следующему
       let newIndex = currentQuestionIndex + 1;
       if (showAfterQuestionCode) {

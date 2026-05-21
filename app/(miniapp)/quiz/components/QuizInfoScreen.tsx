@@ -10,6 +10,7 @@ import { BackButtonFixed } from '@/components/BackButtonFixed';
 import type { Questionnaire } from '@/lib/quiz/types';
 import type { InfoScreen } from '../info-screens';
 import { getNextInfoScreenAfterScreen } from '../info-screens';
+import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
 import { WelcomeScreen, PersonalAnalysisScreen, GoalsIntroScreen, HowItWorksScreen } from '@/components/quiz/screens';
 import { FixedContinueButton, TinderButtons } from '@/components/quiz/buttons';
 import { TestimonialsCarousel, ProductsGrid } from '@/components/quiz/content';
@@ -140,6 +141,9 @@ interface QuizInfoScreenProps {
   handleBack: () => void; // ИСПРАВЛЕНО: Добавлен handleBack для правильной обработки кнопки "Назад"
   pendingInfoScreenRef?: React.MutableRefObject<InfoScreen | null>;
   isInitialInfoScreen?: boolean; // ФИКС: Флаг для начальных инфо экранов
+  // Ответы пользователя — нужны для персонализированных экранов (skin_preview).
+  // Опционально: начальные инфо-экраны (welcome, goals_intro) рендерятся до ответов.
+  answers?: Record<number, string | string[]>;
 }
 
 export function QuizInfoScreen({
@@ -162,6 +166,7 @@ export function QuizInfoScreen({
   pendingInfoScreenRef,
   handleBack,
   isInitialInfoScreen = false,
+  answers,
 }: QuizInfoScreenProps) {
   const screenId = screen?.id;
 
@@ -177,7 +182,8 @@ export function QuizInfoScreen({
   const isGeneralInfoIntroScreen = screen.id === 'general_info_intro';
   const isHealthDataScreen = screen.id === 'health_data';
   const isSkinFeaturesIntroScreen = screen.id === 'skin_features_intro';
-  const isHabitsMatterScreen = screen.id === 'habits_matter';
+  const isSkinPreviewScreen = screen.id === 'skin_preview';
+  // habits_matter экран удалён — спец-обработка больше не нужна.
 
   // ФИКС: Prefetch следующих 1-2 изображений для ускорения загрузки
   // Используем new Image().src для предзагрузки в кэш браузера
@@ -629,6 +635,146 @@ export function QuizInfoScreen({
     );
   }
 
+  // Экран mid-quiz preview персонализации (skin_preview) — показывается после блока вопросов
+  // про кожу (skin_type, skin_concerns, skin_sensitivity, seasonal_changes). Цель: дать
+  // пользователю промежуточный «вывод» по его ответам — он видит, что машина уже что-то поняла,
+  // и охотнее доходит до конца анкеты.
+  if (isSkinPreviewScreen) {
+    // Резолвим ответы пользователя в человекочитаемые label'ы.
+    const allQuestions = extractQuestionsFromQuestionnaire(questionnaire);
+    const findAnswerLabel = (questionCode: string): string | string[] | null => {
+      const q = allQuestions.find((qq: any) => qq?.code === questionCode);
+      if (!q || !answers) return null;
+      const raw = answers[q.id];
+      if (raw === undefined || raw === null) return null;
+      const options = (q as any).options || (q as any).answerOptions || [];
+      const resolveOne = (v: string): string => {
+        const opt = options.find((o: any) =>
+          String(o.id) === String(v) ||
+          o.value === v ||
+          o.label === v
+        );
+        return opt?.label || v;
+      };
+      if (Array.isArray(raw)) return raw.map(resolveOne);
+      return resolveOne(raw);
+    };
+
+    const skinTypeLabel = findAnswerLabel('skin_type');
+    const concernsRaw = findAnswerLabel('skin_concerns');
+    const sensitivityLabel = findAnswerLabel('skin_sensitivity');
+
+    // Для skin_type оставляем только короткий заголовок (до \n), без длинного описания.
+    const skinTypeShort = typeof skinTypeLabel === 'string'
+      ? skinTypeLabel.split('\n')[0].replace(/^Тип \d+\s*[—-]\s*/, '').trim()
+      : null;
+
+    // Для skin_concerns берём первые 2 жалобы — больше визуально перегружает карточку.
+    const concernsList = Array.isArray(concernsRaw)
+      ? concernsRaw.slice(0, 2).map(c => c.toLowerCase()).join(' · ')
+      : null;
+
+    const sensitivityShort = typeof sensitivityLabel === 'string'
+      ? (sensitivityLabel.match(/^(Практически|Лёгкое|Заметное|Сильное)/i)?.[0] || null)
+      : null;
+
+    return (
+      <>
+        {backButton}
+        <div style={{
+          padding: 0,
+          margin: 0,
+          minHeight: '100vh',
+          background: '#FFFFFF',
+          position: 'relative',
+          width: '100%',
+        }}>
+          <div
+            className="animate-fade-in"
+            style={{
+              position: 'relative',
+              width: '100%',
+              minHeight: '100vh',
+              boxSizing: 'border-box',
+              padding: '120px 20px 140px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '24px',
+            }}
+          >
+            <h1 style={{
+              fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 700,
+              fontSize: '28px',
+              lineHeight: '120%',
+              color: '#000000',
+              margin: 0,
+            }}>
+              Ваш предварительный профиль
+            </h1>
+
+            <p style={{
+              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontSize: '15px',
+              lineHeight: '140%',
+              color: '#666666',
+              margin: 0,
+            }}>
+              На основе ваших ответов мы уже понимаем, как должен выглядеть ваш уход.
+            </p>
+
+            {/* Карточка с резюме ответов */}
+            <div style={{
+              background: '#F5F5F0',
+              borderRadius: '20px',
+              padding: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px',
+              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+            }}>
+              {skinTypeShort && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '13px', color: '#888' }}>Тип кожи</span>
+                  <span style={{ fontSize: '17px', fontWeight: 600, color: '#000' }}>{skinTypeShort}</span>
+                </div>
+              )}
+              {concernsList && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '13px', color: '#888' }}>Главный фокус</span>
+                  <span style={{ fontSize: '17px', fontWeight: 600, color: '#000' }}>{concernsList}</span>
+                </div>
+              )}
+              {sensitivityShort && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '13px', color: '#888' }}>Чувствительность</span>
+                  <span style={{ fontSize: '17px', fontWeight: 600, color: '#000' }}>{sensitivityShort}</span>
+                </div>
+              )}
+            </div>
+
+            <p style={{
+              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontSize: '15px',
+              lineHeight: '140%',
+              color: '#000000',
+              margin: 0,
+            }}>
+              Ещё несколько вопросов — и мы соберём план под ваши предпочтения и бюджет.
+            </p>
+          </div>
+
+          <FixedContinueButton
+            ctaText={screen.ctaText || 'Продолжить'}
+            onClick={handleNext}
+            disabled={isHandlingNext}
+            loadingText="Продолжить"
+          />
+        </div>
+      </>
+    );
+  }
+
   // Экран "Нам важно учесть ваши данные о здоровье" (health_data) - такая же верстка как у general_info_intro
   if (isHealthDataScreen) {
     // Кнопка "Назад" через портал для гарантированной фиксации
@@ -733,109 +879,7 @@ export function QuizInfoScreen({
     );
   }
 
-  // Экран "Каждая привычка отражается на коже" (habits_matter) - такая же верстка как у health_data
-  if (isHabitsMatterScreen) {
-    // Кнопка "Назад" через портал для гарантированной фиксации
-
-    return (
-      <>
-        {backButton}
-        <div style={{
-          padding: 0,
-          margin: 0,
-          minHeight: '100vh',
-          background: '#FFFFFF',
-          position: 'relative',
-          width: '100%',
-        }}>
-
-        {/* Контент с абсолютным позиционированием */}
-        <div
-          className="animate-fade-in"
-          style={{
-            position: 'relative',
-            width: '100%',
-            height: '100vh',
-            boxSizing: 'border-box',
-          }}
-        >
-          {/* Картинка с абсолютным позиционированием - без контейнера для skin_features_intro */}
-          {screen.image && (
-            <div style={{
-              position: 'absolute',
-              width: '200px',
-              height: '241px',
-              top: '120px',
-              left: '60px',
-              zIndex: 10,
-            }}>
-              <img
-                src={screen.image}
-                alt={screen.title}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'contain',
-                  display: 'block',
-                }}
-              />
-            </div>
-          )}
-
-          {/* Заголовок с абсолютным позиционированием */}
-          <h1 style={{
-            position: 'absolute',
-            width: '342px',
-            height: '140px', // Увеличена высота для длинного заголовка
-            top: '320px',
-            left: '20px',
-            fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 700,
-            fontSize: '32px',
-            lineHeight: '120%',
-            letterSpacing: '0px',
-            textAlign: 'left',
-            color: '#000000',
-            margin: '0',
-            whiteSpace: 'pre-line',
-            zIndex: 10,
-          }}>
-            {screen.title}
-          </h1>
-
-          {/* Подзаголовок с абсолютным позиционированием */}
-          {screen.subtitle && (
-            <div style={{
-              position: 'absolute',
-              width: '342px',
-              height: '93px',
-              top: '470px', // Сдвинут ниже из-за увеличенной высоты заголовка
-              left: '20px',
-              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 400,
-              fontSize: '18px',
-              lineHeight: '140%',
-              letterSpacing: '0px',
-              textAlign: 'left',
-              color: '#000000',
-              whiteSpace: 'pre-line',
-              zIndex: 10,
-            }}>
-              {screen.subtitle}
-            </div>
-          )}
-        </div>
-        
-        <FixedContinueButton
-          ctaText={screen.ctaText}
-          onClick={handleNext}
-          disabled={isHandlingNext}
-          loadingText="Продолжить"
-        />
-      </div>
-      </>
-    );
-  }
+  // Спец-рендер для habits_matter удалён вместе с экраном.
 
 
   // Дефолтный рендеринг для остальных инфо-экранов

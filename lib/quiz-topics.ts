@@ -61,26 +61,22 @@ export const QUIZ_TOPICS: QuizTopic[] = [
     id: 'current_care',
     title: 'Текущий уход и реакция кожи',
     description: 'Текущие средства и реакция кожи на них',
-    questionIds: [37, 38, 39, 40], // retinoid_usage, retinoid_reaction, prescription_topical, oral_medications
-    questionCodes: ['retinoid_usage', 'retinoid_reaction', 'prescription_topical', 'oral_medications'],
+    // retinoid_reaction удалён из анкеты (не использовался downstream).
+    // ID-ы оставлены без 38 (retinoid_reaction). Логика обновления тем матчит по questionCodes.
+    questionIds: [37, 39, 40],
+    questionCodes: ['retinoid_usage', 'prescription_topical', 'oral_medications'],
     icon: '💆',
     triggersPlanRebuild: false, // не влияет напрямую на план
   },
-  {
-    id: 'spf_sun',
-    title: 'SPF и солнце',
-    description: 'Привычки использования SPF и пребывания на солнце',
-    questionIds: [42, 43], // spf_frequency, sun_exposure
-    questionCodes: ['spf_frequency', 'sun_exposure'],
-    icon: '☀️',
-    triggersPlanRebuild: false, // не влияет напрямую на план
-  },
+  // spf_sun удалён: вопросы spf_frequency / sun_exposure убраны из анкеты,
+  // SPF в плане включён по умолчанию для всех пользователей.
   {
     id: 'lifestyle',
     title: 'Привычки и образ жизни',
     description: 'Образ жизни и привычки ухода',
-    questionIds: [41, 44], // makeup_frequency, lifestyle_habits
-    questionCodes: ['makeup_frequency', 'lifestyle_habits'],
+    // lifestyle_habits удалён (использовался только для маргинального скоринга сна).
+    questionIds: [41],
+    questionCodes: ['makeup_frequency'],
     icon: '🌱',
     triggersPlanRebuild: false, // не влияет напрямую на план
   },
