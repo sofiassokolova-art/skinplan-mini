@@ -661,6 +661,41 @@ export async function POST(request: NextRequest) {
         extractedData.mainGoals = profileFromRules.mainGoals;
       }
 
+      // ИСПРАВЛЕНО: Прокидываем медицинские противопоказания и текущие препараты из rules engine
+      // в medicalMarkers. Без этого ответы на prescription_topical/oral_medications не влияли
+      // на подбор (плановщик читает medicalMarkers.contraindications и блокирует степы
+      // с avoidIfContraFromProfile=[no_retinol|no_strong_acids|...]).
+      // Источник: lib/skinprofile-rules.json (rules topical_rx, oral_meds).
+      if (Array.isArray(profileFromRules.contraindications) && profileFromRules.contraindications.length > 0) {
+        // Объединяем с уже накопленными в существующих маркерах, чтобы не терять старые контра-флаги.
+        const prevMarkers = (existingProfile?.medicalMarkers as any) || {};
+        const existingContras = Array.isArray(prevMarkers?.contraindications)
+          ? (prevMarkers.contraindications as string[])
+          : [];
+        extractedData.contraindications = Array.from(new Set([...existingContras, ...profileFromRules.contraindications]));
+      }
+      if (Array.isArray(profileFromRules.currentTopicals) && profileFromRules.currentTopicals.length > 0) {
+        extractedData.currentTopicals = Array.from(new Set(profileFromRules.currentTopicals));
+      }
+      if (Array.isArray(profileFromRules.currentOralMeds) && profileFromRules.currentOralMeds.length > 0) {
+        extractedData.currentOralMeds = Array.from(new Set(profileFromRules.currentOralMeds));
+      }
+
+      // Производные медицинские флаги для UI/коуч-резонов:
+      // - photosensitivity: пероральные антибиотики (доксициклин и др.) повышают чувствительность
+      //   к УФ → SPF должен быть подсвечен как обязательный.
+      // - barrierSensitive: топические кортикостероиды истончают барьер → мягкий уход, без кислот.
+      // - onIsotretinoin: терапия изотретиноином → строгое исключение ретиноидов/пилингов.
+      if (extractedData.currentOralMeds?.includes('oral_antibiotics')) {
+        extractedData.photosensitivity = true;
+      }
+      if (extractedData.currentTopicals?.includes('topical_steroids')) {
+        extractedData.barrierSensitive = true;
+      }
+      if (extractedData.currentOralMeds?.includes('isotretinoin')) {
+        extractedData.onIsotretinoin = true;
+      }
+
       // ВАЖНО: Профили делаем append-only: каждая отправка анкеты создает НОВУЮ версию профиля,
       // старые записи не перезаписываются.
       // Берём последнюю версию и инкрементируем её; если профиля не было — стартуем с версии анкеты.

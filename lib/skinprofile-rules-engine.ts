@@ -183,6 +183,8 @@ export function buildSkinProfileFromAnswers(
     'goals_primary': 'goals_primary',
     'skin_concerns': 'concerns_primary',
     'concerns_primary': 'concerns_primary',
+    'prescription_topical': 'topical_rx',
+    'oral_medications': 'oral_meds',
   };
 
   // ИСПРАВЛЕНО: Создаем мапу ответов по кодам для проверки условий в single_choice_conditional
