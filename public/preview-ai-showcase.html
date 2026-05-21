@@ -11,7 +11,8 @@
     font-family: 'Inter', -apple-system, sans-serif;
     background: #f5f0eb;
     min-height: 100vh;
-    width: 390px;
+    width: 100%;
+    max-width: 480px;
     margin: 0 auto;
     position: relative;
     overflow: hidden;
@@ -26,7 +27,7 @@
   .content {
     position: relative;
     z-index: 1;
-    padding: 72px 20px 120px;
+    padding: clamp(56px, 18vw, 80px) clamp(16px, 5vw, 24px) clamp(100px, 25vw, 130px);
     display: flex;
     flex-direction: column;
     min-height: 100vh;
@@ -34,12 +35,12 @@
   h1 {
     font-family: 'Unbounded', sans-serif;
     font-weight: 700;
-    font-size: 26px;
+    font-size: clamp(20px, 6vw, 28px);
     line-height: 1.25;
     color: #000;
     margin-bottom: 0;
     letter-spacing: -0.3px;
-    max-width: 260px;
+    max-width: min(260px, 70%);
   }
   .card {
     margin-top: auto;
@@ -56,7 +57,7 @@
   }
   .item {
     font-family: 'Inter', sans-serif;
-    font-size: 15px;
+    font-size: clamp(13px, 3.8vw, 16px);
     line-height: 1.4;
     color: #000;
   }
@@ -68,14 +69,15 @@
     bottom: 32px;
     left: 50%;
     transform: translateX(-50%);
-    width: 390px;
+    width: 100%;
+    max-width: 480px;
     padding: 0 20px;
     display: flex;
     justify-content: center;
   }
   .btn {
     display: block;
-    width: 300px;
+    width: min(300px, 100%);
     background: #D5FE61;
     color: #000;
     font-family: 'Inter', sans-serif;

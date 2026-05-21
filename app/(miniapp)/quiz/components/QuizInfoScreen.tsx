@@ -342,22 +342,22 @@ export function QuizInfoScreen({
           <p style={{
             fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, sans-serif",
             fontWeight: 700,
-            fontSize: '14px',
+            fontSize: 'clamp(12px, 3.5vw, 15px)',
             lineHeight: '1.3',
             textAlign: 'center',
             color: '#000',
-            margin: '0 0 18px 0',
+            margin: '0 0 clamp(14px, 4vw, 20px) 0',
           }}>
             {side.title}
           </p>
           {side.items.map((item, i) => (
             <p key={i} style={{
               fontFamily: "var(--font-inter), 'Inter', -apple-system, sans-serif",
-              fontSize: '13.5px',
+              fontSize: 'clamp(12px, 3.3vw, 14px)',
               lineHeight: '1.45',
               textAlign: 'center',
               color: '#333',
-              margin: i < side.items.length - 1 ? '0 0 14px 0' : '0',
+              margin: i < side.items.length - 1 ? '0 0 clamp(10px, 3.5vw, 16px) 0' : '0',
             }}>
               {item}
             </p>
@@ -373,7 +373,6 @@ export function QuizInfoScreen({
           minHeight: '100vh',
           position: 'relative',
           overflow: 'hidden',
-          paddingBottom: '100px',
           background: '#f5f0eb',
         }}>
           {screen.image && (
@@ -385,14 +384,20 @@ export function QuizInfoScreen({
               priority
             />
           )}
-          <div style={{ position: 'relative', zIndex: 1, padding: '110px 20px 24px' }}>
+          <div style={{
+            position: 'relative',
+            zIndex: 1,
+            maxWidth: '480px',
+            margin: '0 auto',
+            padding: 'clamp(80px, 25vw, 120px) clamp(16px, 5vw, 24px) clamp(100px, 25vw, 130px)',
+          }}>
             <h1 style={{
               fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 700,
-              fontSize: '26px',
+              fontSize: 'clamp(20px, 6vw, 28px)',
               lineHeight: '1.25',
               color: '#000000',
-              margin: '0 0 48px 0',
+              margin: '0 0 clamp(32px, 10vw, 52px) 0',
             }}>
               {screen.title}
             </h1>
@@ -808,7 +813,10 @@ export function QuizInfoScreen({
           <div style={{
             position: 'relative',
             zIndex: 1,
-            padding: '110px 20px 24px',
+            maxWidth: '480px',
+            margin: '0 auto',
+            width: '100%',
+            padding: 'clamp(80px, 25vw, 120px) clamp(16px, 5vw, 24px) 0',
             display: 'flex',
             flexDirection: 'column',
             minHeight: '100vh',
@@ -817,11 +825,11 @@ export function QuizInfoScreen({
             <h1 style={{
               fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 700,
-              fontSize: '26px',
+              fontSize: 'clamp(20px, 6vw, 28px)',
               lineHeight: '1.25',
               color: '#000000',
               margin: '0',
-              maxWidth: '200px',
+              maxWidth: 'min(200px, 55%)',
               whiteSpace: 'pre-line',
             }}>
               {screen.title}
@@ -847,14 +855,14 @@ export function QuizInfoScreen({
                     <p style={{
                       fontFamily: "var(--font-inter), 'Inter', -apple-system, sans-serif",
                       fontWeight: 600,
-                      fontSize: '15px',
+                      fontSize: 'clamp(13px, 3.8vw, 16px)',
                       color: '#000',
                       margin: '0 0 6px 0',
                       lineHeight: '1.3',
                     }}>{card.title}</p>
                     <p style={{
                       fontFamily: "var(--font-inter), 'Inter', -apple-system, sans-serif",
-                      fontSize: '13px',
+                      fontSize: 'clamp(11px, 3.2vw, 14px)',
                       lineHeight: '1.5',
                       color: '#444',
                       margin: '0',
@@ -905,7 +913,10 @@ export function QuizInfoScreen({
           <div style={{
             position: 'relative',
             zIndex: 1,
-            padding: '72px 20px 24px',
+            maxWidth: '480px',
+            margin: '0 auto',
+            width: '100%',
+            padding: 'clamp(56px, 18vw, 80px) clamp(16px, 5vw, 24px) clamp(100px, 25vw, 130px)',
             display: 'flex',
             flexDirection: 'column',
             minHeight: '100vh',
@@ -914,11 +925,11 @@ export function QuizInfoScreen({
             <h1 style={{
               fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 700,
-              fontSize: '26px',
+              fontSize: 'clamp(20px, 6vw, 28px)',
               lineHeight: '1.25',
               color: '#000000',
               margin: '0',
-              maxWidth: '260px',
+              maxWidth: 'min(260px, 70%)',
             }}>
               {screen.title}
             </h1>
@@ -938,7 +949,7 @@ export function QuizInfoScreen({
               {items.map((it, i) => (
                 <p key={i} style={{
                   fontFamily: "var(--font-inter), 'Inter', -apple-system, sans-serif",
-                  fontSize: '15px',
+                  fontSize: 'clamp(13px, 3.8vw, 16px)',
                   lineHeight: '1.4',
                   color: '#000',
                   margin: 0,
