@@ -1,4 +1,3 @@
-// app/api/admin/brands/[id]/route.ts
 // API для управления конкретным брендом
 
 import { NextRequest, NextResponse } from 'next/server';

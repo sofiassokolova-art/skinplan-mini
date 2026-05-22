@@ -1,4 +1,3 @@
-// app/api/plan/replace-product/route.ts
 // API для замены продукта во всём плане
 
 import { NextRequest, NextResponse } from 'next/server';

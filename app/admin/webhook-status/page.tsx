@@ -148,7 +148,7 @@ export default function WebhookStatusPage() {
             <div className="mt-6 p-4 bg-blue-50 rounded">
               <h3 className="font-semibold mb-2">Пошаговая инструкция:</h3>
               <ol className="list-decimal list-inside space-y-2 text-sm">
-                <li>Убедитесь, что в Vercel установлена переменная окружения <code className="bg-blue-100 px-1 rounded">TELEGRAM_BOT_TOKEN</code></li>
+                <li>Убедитесь, что в Cloudflare установлена переменная окружения <code className="bg-blue-100 px-1 rounded">TELEGRAM_BOT_TOKEN</code></li>
                 <li>Нажмите кнопку <strong>&quot;Установить webhook&quot;</strong> выше</li>
                 <li>Нажмите <strong>&quot;Проверить webhook&quot;</strong> чтобы увидеть текущий статус</li>
                 <li>Если в статусе есть ошибки - проверьте логи ниже</li>
@@ -158,8 +158,8 @@ export default function WebhookStatusPage() {
               <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
                 <p className="font-semibold text-yellow-800 text-sm mb-1">⚠️ Если бот не отвечает:</p>
                 <ul className="text-xs text-yellow-700 list-disc list-inside space-y-1">
-                  <li>Проверьте логи Vercel Functions в разделе &quot;Logs&quot;</li>
-                  <li>Убедитесь, что webhook URL правильный (должен быть <code className="bg-yellow-100 px-1 rounded">https://skinplan-mini.vercel.app/api/telegram/webhook</code>)</li>
+                  <li>Проверьте логи Cloudflare Workers в разделе &quot;Logs&quot;</li>
+                  <li>Убедитесь, что webhook URL правильный (должен быть <code className="bg-yellow-100 px-1 rounded">https://skinplan-mini.pages.dev/api/telegram/webhook</code>)</li>
                   <li>Проверьте, что <code className="bg-yellow-100 px-1 rounded">TELEGRAM_BOT_TOKEN</code> установлен и правильный</li>
                   <li>Подождите 1-2 минуты после установки webhook, затем попробуйте снова</li>
                 </ul>

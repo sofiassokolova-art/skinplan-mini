@@ -1,4 +1,3 @@
-// app/api/admin/support/close/route.ts
 // Закрытие обращения поддержки
 
 import { NextRequest, NextResponse } from 'next/server';

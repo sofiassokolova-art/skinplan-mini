@@ -1,4 +1,3 @@
-// app/api/admin/broadcasts/[id]/route.ts
 // API для управления конкретной рассылкой
 
 import { NextRequest, NextResponse } from 'next/server';

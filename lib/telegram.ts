@@ -1,7 +1,7 @@
 // lib/telegram.ts
 // Утилиты для валидации Telegram WebApp initData
 
-import crypto from 'crypto';
+
 
 interface TelegramInitData {
   user?: {
@@ -20,10 +20,10 @@ interface TelegramInitData {
  * @param initDataRaw - Сырые данные из window.Telegram.WebApp.initData
  * @param botToken - Токен Telegram бота
  */
-export function validateTelegramInitData(
+export async function validateTelegramInitData(
   initDataRaw: string,
   botToken: string
-): { valid: boolean; data?: TelegramInitData; error?: string } {
+): Promise<{ valid: boolean; data?: TelegramInitData; error?: string }> {
   try {
     // Проверяем, что initData не пустой
     if (!initDataRaw || !initDataRaw.trim()) {
@@ -66,7 +66,10 @@ export function validateTelegramInitData(
       if (key === 'hash') {
         hash = value;
       } else if (key) {
-        // Сохраняем значение как есть (может быть URL-encoded)
+        // ВАЖНО: `signature` (Ed25519 подпись из Telegram Mini Apps v2)
+        // ВКЛЮЧАЕТСЯ в data-check-string наравне с остальными полями.
+        // Только `hash` исключается. Проверено локально: HMAC сходится
+        // только если signature учтена в проверке.
         params.set(key, value);
       }
     }
@@ -86,17 +89,18 @@ export function validateTelegramInitData(
       .map(key => `${key}=${params.get(key)}`)
       .join('\n');
 
-    // Создаем секретный ключ: HMAC-SHA256("WebAppData", botToken)
-    const secretKey = crypto
-      .createHmac('sha256', 'WebAppData')
-      .update(botToken)
-      .digest();
+    // Создаем секретный ключ: HMAC-SHA256("WebAppData", botToken) — Web Crypto API
+    const toRawBuffer = (bytes: Uint8Array): ArrayBuffer =>
+      bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 
-    // Вычисляем hash: HMAC-SHA256(secretKey, dataCheckString)
-    let calculatedHash = crypto
-      .createHmac('sha256', secretKey)
-      .update(dataCheckString)
-      .digest('hex');
+    async function hmac(key: Uint8Array, data: string): Promise<Uint8Array> {
+      const k = await crypto.subtle.importKey('raw', toRawBuffer(key), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+      return new Uint8Array(await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(data)));
+    }
+    const secretKey = await hmac(new TextEncoder().encode('WebAppData'), botToken);
+    const toHex = (buf: Uint8Array) => Array.from(buf).map(b => b.toString(16).padStart(2, '0')).join('');
+
+    let calculatedHash = toHex(await hmac(secretKey, dataCheckString));
 
     // Проверяем подпись: вариант 1 — raw значения (как пришли)
     if (calculatedHash !== hash) {
@@ -112,18 +116,15 @@ export function validateTelegramInitData(
         })
         .join('\n');
 
-      const calculatedHashDecoded = crypto
-        .createHmac('sha256', secretKey)
-        .update(dataCheckStringDecoded)
-        .digest('hex');
+      const calculatedHashDecoded = toHex(await hmac(secretKey, dataCheckStringDecoded));
 
       if (calculatedHashDecoded === hash) {
         calculatedHash = calculatedHashDecoded;
       } else {
         console.error('❌ Hash validation failed:', {
-          receivedHash: hash,
+          receivedHash: hash.slice(0, 8) + '…',
           paramsCount: params.size,
-          sortedKeys: sortedKeys.slice(0, 5),
+          sortedKeys: sortedKeys.slice(0, 6),
         });
         return { valid: false, error: 'Invalid hash' };
       }

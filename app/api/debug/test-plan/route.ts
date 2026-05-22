@@ -1,11 +1,9 @@
-// app/api/debug/test-plan/route.ts
 // Отладочный endpoint для проверки генерации плана
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import jwt from 'jsonwebtoken';
+import { verifyToken } from '@/lib/jwt';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,16 +18,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let userId: string;
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-      userId = decoded.userId;
-    } catch {
-      return NextResponse.json(
-        { error: 'Invalid token', step: 'token_verification' },
-        { status: 401 }
-      );
+    const tokenResult = await verifyToken(token);
+    if (!tokenResult.valid || !tokenResult.payload) {
+      return NextResponse.json({ error: 'Invalid token', step: 'token_verification' }, { status: 401 });
     }
+    const userId = tokenResult.payload.userId as string;
 
     // Проверяем каждый шаг
     const checks: Record<string, any> = {

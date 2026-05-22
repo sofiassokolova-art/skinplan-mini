@@ -1,8 +1,8 @@
 # Проверка прод-БД и миграций
 
-## 1. Переменная в Vercel
+## 1. Переменная в Cloudflare
 
-- **Project** → **Settings** → **Environment Variables**
+- **Workers & Pages** → **Your project** → **Settings** → **Variables and Secrets**
 - Должна быть переменная **`DATABASE_URL`** для окружения **Production**
 - Значение — полный URL прод-БД (PostgreSQL, Neon), например:
   `postgresql://USER:PASSWORD@HOST/neondb?sslmode=require`
@@ -26,10 +26,10 @@ npx prisma migrate deploy
 
 ## 3. Автоматическое применение при деплое
 
-При каждом деплое в **Production** на Vercel в `postinstall` запускается:
+При каждом деплое в **Production** на Cloudflare в `postinstall` запускается:
 
 - `prisma generate`
-- при `VERCEL_ENV=production` — `scripts/migrate-deploy-with-retry.sh` → `npx prisma migrate deploy`
+- при `CF_PAGES_BRANCH=main` (или `NODE_ENV=production`) — `scripts/migrate-deploy-with-retry.sh` → `npx prisma migrate deploy`
 
 То есть миграции применяются к той БД, чей URL задан в **Production** переменной `DATABASE_URL`.
 

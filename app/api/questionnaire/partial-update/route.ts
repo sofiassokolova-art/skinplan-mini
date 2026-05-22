@@ -8,8 +8,6 @@ import { getTopicById, shouldRebuildPlan } from '@/lib/quiz-topics';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { requireTelegramAuth, getTelegramInitDataFromHeaders } from '@/lib/auth/telegram-auth';
 
-export const runtime = 'nodejs';
-
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   const method = 'POST';

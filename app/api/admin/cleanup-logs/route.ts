@@ -1,4 +1,3 @@
-// app/api/admin/cleanup-logs/route.ts
 // API для ручной очистки логов старше 7 дней
 
 import { NextRequest, NextResponse } from 'next/server';

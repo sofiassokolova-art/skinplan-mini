@@ -1,4 +1,3 @@
-// app/api/questionnaire/progress/route.ts
 // Сохранение и загрузка прогресса анкеты
 
 import { NextRequest, NextResponse } from 'next/server';

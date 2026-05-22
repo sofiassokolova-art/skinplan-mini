@@ -3,7 +3,7 @@
 
 'use client';
 
-import React, { Suspense, lazy, memo, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useQuizContext } from './QuizProvider';
 import { ScreenErrorBoundary, QuestionErrorBoundary } from '@/components/QuizErrorBoundary';
 
@@ -26,9 +26,8 @@ import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 import type { Question } from '@/lib/quiz/types';
 
 import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
-import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
+import { getInitialInfoScreens, getInfoScreenAfterQuestion } from '@/app/(miniapp)/quiz/info-screens';
 import { useQuizHandlers } from '../hooks/useQuizHandlers';
-
 type Screen = 'LOADER' | 'ERROR' | 'RETAKE' | 'RESUME' | 'INFO' | 'INITIAL_INFO' | 'QUESTION';
 
 /** Откладывает рендер QuizResumeScreen до после монтирования — один и тот же вывод на сервере и при первом клиентском рендере (loader), устраняет hydration mismatch. */
@@ -36,6 +35,7 @@ function ResumeScreenDeferred(props: {
   savedProgress: any;
   questionnaire: any;
   answers: Record<number, string | string[]>;
+  answersRef: React.MutableRefObject<Record<number, string | string[]>>;
   isRetakingQuiz: boolean;
   showRetakeScreen: boolean;
   onResume: () => void;
@@ -224,6 +224,20 @@ export const QuizRenderer = memo(function QuizRenderer({
     }
   }, [questionnaireQuery.data, questionnaireRef, setQuestionnaire]);
 
+  // Синхронизация состояния, когда инфо-экран показан только из ref (useQuizComputed поставил ref, state ещё null).
+  // Чтобы при «Продолжить» handleNext видел currentPendingInfoScreen и вёл в habits_matter, а не в следующий вопрос.
+  // Массив зависимостей — строго 6 примитивов/стабильных ссылок, чтобы размер не менялся между рендерами (React rule).
+  const pendingInfoScreenId = pendingInfoScreen?.id ?? null;
+
+  // Простая синхронизация: если viewMode/экран уже INFO, а экран лежит только в ref —
+  // подтягиваем его в state, чтобы избежать INFO без данных и бесконечного лоадера.
+  useLayoutEffect(() => {
+    if (screen !== 'INFO') return;
+    if (pendingInfoScreenId !== null) return;
+    const refScreen = quizState.pendingInfoScreenRef?.current;
+    if (!refScreen) return;
+    setPendingInfoScreen(refScreen);
+  }, [screen, pendingInfoScreenId, setPendingInfoScreen, quizState.pendingInfoScreenRef]);
 
   const {
     handleResume,
@@ -315,8 +329,7 @@ export const QuizRenderer = memo(function QuizRenderer({
           savedProgress={savedProgress}
           questionnaire={questionnaireFromQuery || questionnaireRef.current || questionnaire}
           answers={answers}
-          isRetakingQuiz={isRetakingQuiz}
-          showRetakeScreen={showRetakeScreen}
+          answersRef={answersRef}          isRetakingQuiz={isRetakingQuiz}          showRetakeScreen={showRetakeScreen}
           onResume={handleResume}
           onStartOver={handleStartOver}
           isBusy={isStartingOver || isSubmitting}
@@ -495,19 +508,19 @@ export const QuizRenderer = memo(function QuizRenderer({
       if (onSubmit && !isSubmitting) {
         onSubmit();
       }
-      // Один лоадер: тот же вид, что и страница /loading (без второго экрана)
+      // Один лоадер: белый фон, черный лоадер и текст (как перед анкетой)
       return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-purple-50 to-white p-4">
+        <div className="flex flex-col items-center justify-center min-h-screen bg-white p-4">
           <div className="w-full max-w-md">
             <div className="mb-8">
               <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500 ease-out"
+                  className="h-full bg-black transition-all duration-500 ease-out"
                   style={{ width: '10%' }}
                 />
               </div>
-              <p className="text-center mt-4 text-gray-600 text-lg font-medium">Сохраняем ответы...</p>
-              <p className="text-center mt-2 text-gray-400 text-sm">Это может занять до 1 минуты</p>
+              <p className="text-center mt-4 text-black text-lg font-medium">Сохраняем ответы...</p>
+              <p className="text-center mt-2 text-black text-sm">Это может занять до 1 минуты</p>
             </div>
           </div>
         </div>
@@ -551,26 +564,26 @@ export const QuizRenderer = memo(function QuizRenderer({
         style={{
           minHeight: '100vh',
           backgroundColor,
-          paddingTop: '48px',
+          paddingTop: '36px',
           paddingBottom: '20px',
         }}
       >
         <Suspense fallback={<QuizInitialLoader />}>
           <QuestionErrorBoundary componentName="QuizQuestion">
             <QuizQuestion
-            key={safeCurrentQuestion.id}
-            question={safeCurrentQuestion}
-            currentQuestionIndex={currentQuestionIndex}
-            allQuestionsLength={allQuestionsLength}
-            answers={answers}
-            isRetakingQuiz={isRetakingQuiz}
-            isSubmitting={isSubmitting}
-            onAnswer={onAnswer}
-            onNext={onNext}
-            onSubmit={onSubmit}
-            onBack={onBack}
-            showBackButton={currentQuestionIndex > 0 || currentInfoScreenIndex > 0}
-          />
+              key={safeCurrentQuestion.id}
+              question={safeCurrentQuestion}
+              currentQuestionIndex={currentQuestionIndex}
+              allQuestionsLength={allQuestionsLength}
+              answers={answers}
+              isRetakingQuiz={isRetakingQuiz}
+              isSubmitting={isSubmitting}
+              onAnswer={onAnswer}
+              onNext={onNext}
+              onSubmit={onSubmit}
+              onBack={onBack}
+              showBackButton={currentQuestionIndex > 0 || currentInfoScreenIndex > 0}
+            />
           </QuestionErrorBoundary>
         </Suspense>
       </div>

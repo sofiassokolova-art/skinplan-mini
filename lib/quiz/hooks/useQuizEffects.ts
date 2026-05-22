@@ -490,13 +490,19 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
           }
 
           // Восстановление answers из React Query или API
+          // КРИТИЧНО: если на сервере >= MIN_ANSWERS ответов, ставим ТОЛЬКО savedProgress
+          // (а answers оставляем пустыми) — иначе currentAnswersCount > 0 и резюм-экран
+          // не показывается. Восстановление ответов произойдёт после нажатия "Продолжить"
+          // на резюм-экране через onResume → setAnswers(savedProgress.answers).
           if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
             if (quizProgressFromQuery?.progress?.answers && Object.keys(quizProgressFromQuery.progress.answers).length > 0) {
               const progressAnswers = quizProgressFromQuery.progress.answers;
-              // // clientLogger.log('🔄 Восстанавливаем ответы из React Query кэша после ремоунта', {
-              //   answersCount: Object.keys(progressAnswers).length,
-              // });
-              setAnswers(progressAnswers);
+              const cnt = Object.keys(progressAnswers).length;
+              const shouldShowResume = cnt >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN;
+              if (!shouldShowResume) {
+                // Меньше порога — это технические ответы, восстанавливаем сразу
+                setAnswers(progressAnswers);
+              }
               setSavedProgress({
                 answers: progressAnswers,
                 questionIndex: quizProgressFromQuery.progress.questionIndex || 0,
@@ -513,10 +519,11 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
                     } | null;
                   };
                   if (response?.progress?.answers && Object.keys(response.progress.answers).length > 0) {
-                    // // clientLogger.log('🔄 Восстанавливаем ответы из API после ремоунта (fallback)', {
-                    //   answersCount: Object.keys(response.progress.answers).length,
-                    // });
-                    setAnswers(response.progress.answers);
+                    const cnt = Object.keys(response.progress.answers).length;
+                    const shouldShowResume = cnt >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN;
+                    if (!shouldShowResume) {
+                      setAnswers(response.progress.answers);
+                    }
                     setSavedProgress({
                       answers: response.progress.answers,
                       questionIndex: response.progress.questionIndex || 0,
@@ -533,14 +540,11 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
           clientLogger.warn('⚠️ Ошибка при восстановлении состояния из sessionStorage:', restoreError);
         }
 
-        // ФИКС: Для Telegram пользователей всегда вызываем init(), даже если quiz_init_done установлен
-        // Это исправляет проблему, когда пользователь застревает на лоадере
-        if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
-          clientLogger.log('🔄 Telegram user detected, forcing init() despite quiz_init_done flag');
-          init();
-          return;
-        }
-
+        // Всегда вызываем init() после ремаунта — init() внутри сам ждёт Telegram initData
+        // через waitForTelegram(). Без этого на MacBook Desktop (где SDK грузится медленно)
+        // loading оставался true вечно, потому что initData ещё не был доступен здесь.
+        clientLogger.log('🔄 Calling init() after remount — will wait for Telegram internally');
+        init();
         return;
       }
       sessionStorage.setItem('quiz_init_done', 'true');

@@ -5,11 +5,10 @@
 @tailwind components;
 @tailwind utilities;
 
-/* CSS переменные для шрифтов (используются с Google Fonts или локальными файлами) */
-:root {
-  --font-unbounded: 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-inter: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-}
+/* --font-unbounded и --font-inter ставятся через next/font на html.className
+ * (см. app/layout.tsx). Не переопределяем здесь — иначе перебиваем хешированное
+ * имя локального шрифта на литералы 'Unbounded'/'Inter' (которых нет в @font-face)
+ * → заголовки слетают на системный fallback. */
 
 /* Шрифты для админки 2025 — применяются только внутри .admin-layout */
 .admin-layout {
@@ -564,20 +563,22 @@ html, body {
   align-items: center;
 }
 
-/* Анимация появления */
+/* Анимация появления — только плавное проявление, без сдвига */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(12px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: fadeIn 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.animate-fade-in-soft {
+  animation: fadeIn 0.9s ease-out;
 }
 
 /* Анимация пульсации для загрузки */

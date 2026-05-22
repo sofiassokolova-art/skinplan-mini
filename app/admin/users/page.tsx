@@ -61,16 +61,7 @@ export default function UsersAdmin() {
   useEffect(() => {
     const userIdFromUrl = searchParams.get('userId');
     if (userIdFromUrl && !loading && users.length > 0) {
-      // Ищем пользователя в текущем списке
-      const user = users.find(u => u.id === userIdFromUrl);
-      if (user) {
-        // Если пользователь найден, открываем его план
-        handleViewPlan(userIdFromUrl);
-      } else {
-        // Если пользователь не найден в текущем списке, 
-        // попробуем открыть план напрямую (может быть на другой странице)
-        handleViewPlan(userIdFromUrl);
-      }
+      handleViewPlan(userIdFromUrl);
       // Убираем параметр из URL
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.delete('userId');
@@ -78,16 +69,26 @@ export default function UsersAdmin() {
     }
   }, [searchParams, users, loading]);
 
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(globalFilter), 400);
+    return () => clearTimeout(t);
+  }, [globalFilter]);
+  useEffect(() => {
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
+  }, [debouncedSearch]);
+
   useEffect(() => {
     loadUsers();
-  }, [pagination.pageIndex]);
+  }, [pagination.pageIndex, debouncedSearch]);
 
   const loadUsers = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('admin_token');
+      const searchParam = debouncedSearch ? `&search=${encodeURIComponent(debouncedSearch)}` : '';
       const response = await fetch(
-        `/api/admin/users?page=${pagination.pageIndex + 1}&limit=${pagination.pageSize}`,
+        `/api/admin/users?page=${pagination.pageIndex + 1}&limit=${pagination.pageSize}${searchParam}`,
         {
         headers: {
           'Content-Type': 'application/json',
@@ -323,7 +324,7 @@ export default function UsersAdmin() {
         },
       },
     ],
-    []
+    [clearingUserId]
   );
 
   const handleViewPlan = async (userId: string) => {

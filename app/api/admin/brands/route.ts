@@ -1,4 +1,3 @@
-// app/api/admin/brands/route.ts
 // API для получения списка брендов (для формы продукта)
 
 import { NextRequest, NextResponse } from 'next/server';

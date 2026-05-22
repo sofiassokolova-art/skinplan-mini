@@ -3,22 +3,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminFromInitData } from '@/lib/get-admin-from-initdata';
-import jwt from 'jsonwebtoken';
+import { signAdminToken, verifyAdminToken } from '@/lib/jwt';
 import { getTelegramInitDataFromHeaders } from '@/lib/auth/telegram-auth';
 
 // ИСПРАВЛЕНО (P0): Убран fallback - критическая уязвимость безопасности
 // ИСПРАВЛЕНО: Возвращаем ошибку вместо throw, чтобы не ломать обработку
-function getJwtSecret(): { valid: boolean; secret?: string; error?: string } {
-  const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    return { valid: false, error: 'JWT_SECRET is not set. Please set JWT_SECRET environment variable.' };
-  }
-  return { valid: true, secret };
-}
-
-// ИСПРАВЛЕНО: Runtime для Node.js (требуется для crypto, jsonwebtoken)
-export const runtime = 'nodejs';
-
+// Runtime для Cloudflare Edge
 // POST - авторизация через Telegram initData
 export async function POST(request: NextRequest) {
   try {
@@ -45,27 +35,11 @@ export async function POST(request: NextRequest) {
     }
 
     // ИСПРАВЛЕНО (P2): Генерируем JWT токен с issuer/audience для безопасности
-    const jwtSecretResult = getJwtSecret();
-    if (!jwtSecretResult.valid || !jwtSecretResult.secret) {
-      return NextResponse.json(
-        { error: jwtSecretResult.error || 'JWT configuration error', code: 'JWT_CONFIG_ERROR' },
-        { status: 500 }
-      );
-    }
-
-    const token = jwt.sign(
-      {
-        adminId: result.admin.id,
-        telegramId: result.admin.telegramId,
-        role: result.admin.role,
-      },
-      jwtSecretResult.secret,
-      {
-        expiresIn: '7d',
-        issuer: 'skiniq-admin',
-        audience: 'skiniq-admin-ui',
-      }
-    );
+    const token = await signAdminToken({
+      adminId: result.admin.id,
+      telegramId: result.admin.telegramId,
+      role: result.admin.role,
+    });
 
     // ИСПРАВЛЕНО (P1): Убрали token из JSON ответа - cookie-only подход
     // ИСПРАВЛЕНО (P0): httpOnly: true для защиты от XSS
@@ -119,39 +93,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ valid: false }, { status: 401 });
     }
 
-    // ИСПРАВЛЕНО (P2): Проверяем JWT_SECRET ДО попытки верификации токена
-    const jwtSecretResult = getJwtSecret();
-    if (!jwtSecretResult.valid || !jwtSecretResult.secret) {
-      console.error('JWT_SECRET not configured in GET /api/admin/auth');
-      return NextResponse.json(
-        { error: jwtSecretResult.error || 'JWT configuration error', code: 'JWT_CONFIG_ERROR' },
-        { status: 500 }
-      );
-    }
-
-    try {
-      const decoded = jwt.verify(token, jwtSecretResult.secret, {
-        issuer: 'skiniq-admin',
-        audience: 'skiniq-admin-ui',
-      }) as {
-        adminId: string;
-        telegramId?: string;
-        role: string;
-      };
-
-      return NextResponse.json({
-        valid: true,
-        admin: {
-          id: decoded.adminId,
-          telegramId: decoded.telegramId ?? '',
-          role: decoded.role,
-        },
-      });
-    } catch (verifyError: any) {
-      // ИСПРАВЛЕНО: Логируем ошибку верификации для отладки
-      console.warn('Token verification failed:', verifyError.message);
+    const decodeResult = await verifyAdminToken(token);
+    if (!decodeResult.valid || !decodeResult.payload) {
+      console.warn('Token verification failed:', decodeResult.error);
       return NextResponse.json({ valid: false }, { status: 401 });
     }
+
+    return NextResponse.json({
+      valid: true,
+      admin: {
+        id: decodeResult.payload.adminId,
+        telegramId: (decodeResult.payload.telegramId as string) ?? '',
+        role: decodeResult.payload.role ?? 'admin',
+      },
+    });
   } catch (error) {
     // ИСПРАВЛЕНО: Показываем реальную причину ошибки для дебага
     console.error('Unexpected error in GET /api/admin/auth:', error);
