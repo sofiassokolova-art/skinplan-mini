@@ -568,7 +568,124 @@ export function QuizInfoScreen({
     );
   }
 
+  // Mini-progress-step экран — рендерится для любого info-screen с заполненным stepNumber.
+  // Сейчас это: general_info_intro (1/4), skin_features_intro (2/4), health_data (3/4),
+  // preferences_intro (4/4). Дизайн в чёрно-лаймовой палитре анкеты:
+  // лаймовая прогресс-полоса наверху + большой заголовок этапа + опциональный subtitle.
+  if (screen.stepNumber !== undefined && screen.totalSteps !== undefined) {
+    const LIME = '#D5FE61';
+    const progressPercent = Math.max(0, Math.min(100, (screen.stepNumber / screen.totalSteps) * 100));
+
+    return (
+      <>
+        {backButton}
+        <div
+          style={{
+            padding: 0,
+            margin: 0,
+            minHeight: '100vh',
+            background: '#FFFFFF',
+            position: 'relative',
+            width: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          {/* Прогресс-бар. Тонкая лаймовая полоса на светло-серой дорожке. */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 'env(safe-area-inset-top, 0px)',
+              left: 0,
+              right: 0,
+              height: '4px',
+              background: '#EEEEEE',
+              zIndex: 5,
+            }}
+          >
+            <div
+              style={{
+                width: `${progressPercent}%`,
+                height: '100%',
+                background: LIME,
+                transition: 'width 400ms ease-out',
+              }}
+            />
+          </div>
+
+          {/* Центровка контента по вертикали */}
+          <div
+            className="animate-fade-in"
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              padding: '40px 24px 140px',
+              gap: '16px',
+            }}
+          >
+            {/* Лейбл этапа: «ШАГ 3 ИЗ 4» — мелкими капсами */}
+            <p
+              style={{
+                margin: 0,
+                fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontSize: '13px',
+                fontWeight: 600,
+                letterSpacing: '0.12em',
+                color: '#888888',
+                textTransform: 'uppercase',
+              }}
+            >
+              Шаг {screen.stepNumber} из {screen.totalSteps}
+            </p>
+
+            {/* Большой заголовок этапа */}
+            <h1
+              style={{
+                margin: 0,
+                fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 700,
+                fontSize: '36px',
+                lineHeight: '110%',
+                letterSpacing: '-0.01em',
+                color: '#000000',
+              }}
+            >
+              {screen.title}
+            </h1>
+
+            {/* Опциональный subtitle */}
+            {screen.subtitle && (
+              <p
+                style={{
+                  margin: 0,
+                  fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontSize: '17px',
+                  lineHeight: '140%',
+                  color: '#444444',
+                  whiteSpace: 'pre-line',
+                }}
+              >
+                {screen.subtitle}
+              </p>
+            )}
+          </div>
+
+          <FixedContinueButton
+            ctaText={screen.ctaText || 'Продолжить'}
+            onClick={handleNext}
+            disabled={isHandlingNext}
+            loadingText="Продолжить"
+          />
+        </div>
+      </>
+    );
+  }
+
   // Экран "Нам важно учесть ваши данные о здоровье" (health_data) - такая же верстка как у general_info_intro
+  // (теперь не используется — health_data конвертирован в progress-step выше; блок оставлен как fallback
+  // на случай, если в БД остался скрин без stepNumber, либо если кто-то поднимет старую анкету).
   if (isHealthDataScreen) {
     // Кнопка "Назад" через портал для гарантированной фиксации
 

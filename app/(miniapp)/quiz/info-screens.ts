@@ -27,6 +27,11 @@ export interface InfoScreen {
   ctaText?: string;
   type?: 'default' | 'testimonials' | 'tinder' | 'comparison' | 'products' | 'transformation'; // Тип экрана для специального рендеринга
   content?: Testimonial[] | InfoScreenProduct[] | any; // Дополнительные данные для кастомного рендеринга
+  // Mini-progress-step: если указано, экран рендерится как «Шаг N из M: <stepLabel>»
+  // с прогресс-баром. Используется для секционных интро между блоками вопросов.
+  stepNumber?: number; // Текущий шаг (1-based)
+  totalSteps?: number; // Всего шагов
+  stepLabel?: string; // Короткое название блока (например, «Особенности кожи»)
 }
 
 // ИСПРАВЛЕНО: Единая функция для получения начальных инфо-экранов
@@ -108,14 +113,34 @@ export const INFO_SCREENS: InfoScreen[] = [
     ctaText: 'Продолжить',
   },
   
-  // general_info_intro УДАЛЁН: однопредложный филлер «Общая информация», не нёс
-  // информационной ценности — сами вопросы age/gender самодостаточны. Цепочка
-  // после testimonials теперь обрывается — пользователь идёт сразу к вопросу age.
+  // Mini-progress-step «Шаг 1 из 4: Общая информация».
+  // Заменил филлерный general_info_intro: тот же якорь в цепочке (после testimonials),
+  // но теперь экран несёт пользу — показывает прогресс и ставит ожидание следующего блока.
+  {
+    id: 'general_info_intro',
+    title: 'Общая информация',
+    subtitle: 'Возраст и пол — чтобы подобрать уход под ваши особенности.',
+    showAfterInfoScreenId: 'testimonials',
+    ctaText: 'Продолжить',
+    stepNumber: 1,
+    totalSteps: 4,
+    stepLabel: 'Общая информация',
+  },
   // Вопросы: Возраст (age), Пол (gender)
 
-  // skin_features_intro УДАЛЁН: однопредложный филлер «Узнаем особенности вашей
-  // кожи». Заголовки вопросов skin_type / skin_concerns / skin_sensitivity сами
-  // дают контекст. После ответа на gender пользователь идёт сразу к skin_type.
+  // Mini-progress-step «Шаг 2 из 4: Особенности кожи».
+  // Заменил филлерный skin_features_intro: тот же якорь (после gender),
+  // тот же текст в субтайтле, добавлена индикация прогресса.
+  {
+    id: 'skin_features_intro',
+    title: 'Особенности кожи',
+    subtitle: 'Поймём ваш тип кожи и как о нём заботиться лучше всего.',
+    showAfterQuestionCode: 'gender',
+    ctaText: 'Продолжить',
+    stepNumber: 2,
+    totalSteps: 4,
+    stepLabel: 'Особенности кожи',
+  },
   // 9) Тип кожи - это вопрос в БД (skin_type)
   // 10) Что вас больше всего беспокоит - это вопрос в БД (skin_concerns)
   // 11) Чувствительность кожи (skin_sensitivity) - вопрос в БД
@@ -147,11 +172,14 @@ export const INFO_SCREENS: InfoScreen[] = [
   // 14) Нам важно учесть ваши данные о здоровье
   {
     id: 'health_data',
-    title: 'Нам важно учесть ваши данные о здоровье',
-    subtitle: 'Ваши данные защищены — они нужны только для точных рекомендаций',
-    image: '/infohealth.jpg', // ИСПРАВЛЕНО: Исправлен путь к изображению (jpg вместо png)
-    showAfterInfoScreenId: 'simple_care', // ИСПРАВЛЕНО: После экрана simple_care, а не вопроса
+    title: 'Данные о здоровье',
+    // Privacy-текст переехал в subtitle progress-step экрана — не теряем гарантию приватности.
+    subtitle: 'Ваши данные защищены и нужны только для точных рекомендаций.',
+    showAfterInfoScreenId: 'simple_care',
     ctaText: 'Продолжить',
+    stepNumber: 3,
+    totalSteps: 4,
+    stepLabel: 'Данные о здоровье',
   },
   // 15) Есть ли у вас диагнозы? - вопрос в БД (medical_diagnoses)
   // 16) Беременность/кормление (только для женщин) - вопрос в БД (pregnancy_breastfeeding)
@@ -195,9 +223,19 @@ export const INFO_SCREENS: InfoScreen[] = [
     ctaText: 'Продолжить',
   },
   
-  // preferences_intro УДАЛЁН: однопредложный филлер. После ai_comparison
-  // пользователь идёт сразу к первому вопросу preferences-блока (makeup_frequency,
-  // потом care_type → care_steps → budget). Цепочка разорвана намеренно.
+  // Mini-progress-step «Шаг 4 из 4: Ваши предпочтения».
+  // Заменил филлерный preferences_intro: тот же якорь в цепочке (после ai_comparison),
+  // теперь экран сигнализирует пользователю «финишная прямая» и показывает прогресс 100%.
+  {
+    id: 'preferences_intro',
+    title: 'Ваши предпочтения',
+    subtitle: 'Финальный блок — какой формат и бюджет ухода вам ближе.',
+    showAfterInfoScreenId: 'ai_comparison',
+    ctaText: 'Продолжить',
+    stepNumber: 4,
+    totalSteps: 4,
+    stepLabel: 'Ваши предпочтения',
+  },
   // 32) Тип ухода - вопрос в БД (care_type)
   // 33) Количество шагов - вопрос в БД (care_steps)
   // 34) Бюджет - вопрос в БД (budget)
