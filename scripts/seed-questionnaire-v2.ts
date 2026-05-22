@@ -374,12 +374,13 @@ async function seedQuestionnaireV2() {
       ],
     },
 
-    // Привычки и образ жизни
-    // Сокращено: только makeup_frequency (триггерит шаг очистки от макияжа в плане).
-    // Удалены spf_frequency, sun_exposure (SPF в плане у всех по умолчанию)
-    // и lifestyle_habits (использовался только для маргинального скоринга сна).
+    // Группа «Привычки и образ жизни» удалена целиком — после удаления
+    // spf_frequency / sun_exposure / lifestyle_habits в ней оставался единственный
+    // вопрос makeup_frequency. Он перемещён в «Предпочтения в уходе» ниже,
+    // т.к. семантически ближе к режиму ухода (тип/шаги/бюджет).
+    // Предпочтения в уходе (теперь включает makeup_frequency)
     {
-      groupTitle: 'Привычки и образ жизни',
+      groupTitle: 'Предпочтения в уходе',
       groupPosition: 6,
       questions: [
         {
@@ -390,19 +391,11 @@ async function seedQuestionnaireV2() {
           isRequired: false,
           options: ['Ежедневно', 'Иногда', 'Почти никогда'],
         },
-      ],
-    },
-
-    // 35-37. Предпочтения в уходе
-    {
-      groupTitle: 'Предпочтения в уходе',
-      groupPosition: 7,
-      questions: [
         {
           code: 'care_type',
           text: 'Какой тип ухода вам ближе?',
           type: 'single_choice',
-          position: 1,
+          position: 2,
           isRequired: false,
           options: [
             'Стандартные продукты популярных брендов',
@@ -415,7 +408,7 @@ async function seedQuestionnaireV2() {
           code: 'care_steps',
           text: 'Сколько шагов в уходе для вас комфортно?',
           type: 'single_choice',
-          position: 2,
+          position: 3,
           isRequired: false,
           options: ['Минимум (1–3 шага)', 'Средний (3–5 шагов)', 'Максимум (5+ шагов)', 'Не знаю'],
         },
@@ -423,7 +416,7 @@ async function seedQuestionnaireV2() {
           code: 'budget',
           text: 'Какой бюджет вам комфортен?',
           type: 'single_choice',
-          position: 3,
+          position: 4,
           isRequired: false,
           options: [
             'Бюджетный сегмент\ndo 2 000 ₽',

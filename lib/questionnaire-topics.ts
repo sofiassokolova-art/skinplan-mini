@@ -7,7 +7,7 @@ export type QuestionTopicId =
   | 'diagnoses_sensitivity'
   | 'pregnancy'
   | 'avoid_ingredients'
-  | 'habits_lifestyle'
+  // habits_lifestyle удалён: единственный вопрос makeup_frequency перемещён в budget_preferences.
   // spf_sun удалён: вопросы spf_frequency / sun_exposure убраны из анкеты,
   // SPF в плане включён по умолчанию для всех.
   | 'current_care'
@@ -65,14 +65,7 @@ export const QUESTION_TOPICS: Record<QuestionTopicId, QuestionTopic> = {
     requiresPlanRebuild: true,
     affectsFields: ['contraindications'],
   },
-  habits_lifestyle: {
-    id: 'habits_lifestyle',
-    title: 'Привычки и образ жизни',
-    description: 'Образ жизни и ежедневные привычки',
-    questionCodes: ['makeup_frequency'],
-    requiresPlanRebuild: false,
-    affectsFields: ['makeupFrequency'],
-  },
+  // habits_lifestyle удалён: makeup_frequency перемещён в budget_preferences.
   current_care: {
     id: 'current_care',
     title: 'Текущий уход и реакция кожи',
@@ -86,9 +79,10 @@ export const QUESTION_TOPICS: Record<QuestionTopicId, QuestionTopic> = {
     id: 'budget_preferences',
     title: 'Бюджет и предпочтения ухода',
     description: 'Бюджетный сегмент и предпочтения по уходу',
-    questionCodes: ['budget', 'care_preference', 'routine_complexity'],
+    // makeup_frequency перенесён сюда из удалённого топика habits_lifestyle.
+    questionCodes: ['makeup_frequency', 'budget', 'care_type', 'care_steps'],
     requiresPlanRebuild: true,
-    affectsFields: ['budgetSegment', 'carePreference', 'routineComplexity'],
+    affectsFields: ['makeupFrequency', 'budgetSegment', 'carePreference', 'routineComplexity'],
   },
   motivation: {
     id: 'motivation',

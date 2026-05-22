@@ -108,26 +108,14 @@ export const INFO_SCREENS: InfoScreen[] = [
     ctaText: 'Продолжить',
   },
   
-  // 7) Общая информация (инфо-экран перед вопросами о возрасте и поле)
-  {
-    id: 'general_info_intro',
-    title: 'Общая информация',
-    subtitle: 'Поможет нам подобрать подходящий уход',
-    image: '/info8.jpg',
-    showAfterInfoScreenId: 'testimonials', // ИСПРАВЛЕНО: После экрана testimonials, а не вопроса
-    ctaText: 'Продолжить',
-  },
+  // general_info_intro УДАЛЁН: однопредложный филлер «Общая информация», не нёс
+  // информационной ценности — сами вопросы age/gender самодостаточны. Цепочка
+  // после testimonials теперь обрывается — пользователь идёт сразу к вопросу age.
   // Вопросы: Возраст (age), Пол (gender)
-  
-  // 8) Узнаем особенности вашей кожи
-  {
-    id: 'skin_features_intro',
-    title: 'Узнаем особенности вашей кожи',
-    subtitle: 'Мы поймем какой у вас тип кожи и как о нем заботиться лучше всего',
-    image: '/featuresinfo.jpg', // ИСПРАВЛЕНО: Добавлено расширение .jpg
-    showAfterQuestionCode: 'gender',
-    ctaText: 'Продолжить',
-  },
+
+  // skin_features_intro УДАЛЁН: однопредложный филлер «Узнаем особенности вашей
+  // кожи». Заголовки вопросов skin_type / skin_concerns / skin_sensitivity сами
+  // дают контекст. После ответа на gender пользователь идёт сразу к skin_type.
   // 9) Тип кожи - это вопрос в БД (skin_type)
   // 10) Что вас больше всего беспокоит - это вопрос в БД (skin_concerns)
   // 11) Чувствительность кожи (skin_sensitivity) - вопрос в БД
@@ -192,28 +180,24 @@ export const INFO_SCREENS: InfoScreen[] = [
   // habits_matter УДАЛЁН: интро к блоку «Привычки», в котором остался единственный вопрос — лишнее.
   // 26) Декоративная косметика - вопрос в БД (makeup_frequency)
 
-  // Больше никакой путаницы — пробивка AI перед блоком предпочтений и бюджета.
-  // ПЕРЕАНКОРИРОВАН: было showAfterQuestionCode: 'lifestyle_habits' (вопрос удалён).
-  // Теперь срабатывает после makeup_frequency — единственного оставшегося вопроса блока «Привычки».
-  // ДОБАВЛЕН price anchor — пользователь идёт в вопрос про бюджет с понятным ориентиром,
-  // что снижает вероятность drop-off при показе плана.
+  // Больше никакой путаницы — пробивка AI ПЕРЕД блоком «Предпочтения в уходе».
+  // ПЕРЕАНКОРИРОВАН: lifestyle_habits → makeup_frequency → oral_medications.
+  // Теперь идёт после oral_medications (последний вопрос блока «Текущий уход»)
+  // и сразу перед preferences-блоком, в который перемещён makeup_frequency.
+  // Поток: medical/current care → AI pitch + price anchor → preferences
+  // (makeup_frequency → care_type → care_steps → budget).
   {
     id: 'ai_comparison',
     title: 'Больше никакой путаницы — AI SkinIQ подберёт уход быстро и точно ✨',
     subtitle: 'Традиционный подбор ухода:\n❌ Долгие поиски советов в интернете\n❌ Сложно понять, что подойдёт именно вам\n\nSkinIQ с AI:\n✅ Точный подбор средств на основе анкеты\n✅ Рекомендации за пару секунд\n\n💡 Большинство персональных планов укладывается в 3–5 средств — от 2 000 ₽/мес в бюджетном сегменте до 5 000+ ₽/мес в премиум.',
     type: 'comparison',
-    showAfterQuestionCode: 'makeup_frequency',
+    showAfterQuestionCode: 'oral_medications',
     ctaText: 'Продолжить',
   },
   
-  // 31) Расскажите о ваших предпочтениях
-  {
-    id: 'preferences_intro',
-    title: '✨ Расскажите о ваших предпочтениях в уходе',
-    subtitle: 'Это поможет учесть ваши ожидания — какие текстуры, форматы и ощущения от ухода вам ближе',
-    showAfterInfoScreenId: 'ai_comparison', // ИСПРАВЛЕНО: После экрана ai_comparison, а не вопроса
-    ctaText: 'Продолжить',
-  },
+  // preferences_intro УДАЛЁН: однопредложный филлер. После ai_comparison
+  // пользователь идёт сразу к первому вопросу preferences-блока (makeup_frequency,
+  // потом care_type → care_steps → budget). Цепочка разорвана намеренно.
   // 32) Тип ухода - вопрос в БД (care_type)
   // 33) Количество шагов - вопрос в БД (care_steps)
   // 34) Бюджет - вопрос в БД (budget)

@@ -70,22 +70,15 @@ export const QUIZ_TOPICS: QuizTopic[] = [
   },
   // spf_sun удалён: вопросы spf_frequency / sun_exposure убраны из анкеты,
   // SPF в плане включён по умолчанию для всех пользователей.
-  {
-    id: 'lifestyle',
-    title: 'Привычки и образ жизни',
-    description: 'Образ жизни и привычки ухода',
-    // lifestyle_habits удалён (использовался только для маргинального скоринга сна).
-    questionIds: [41],
-    questionCodes: ['makeup_frequency'],
-    icon: '🌱',
-    triggersPlanRebuild: false, // не влияет напрямую на план
-  },
+  // Топик 'lifestyle' удалён: единственный оставшийся вопрос makeup_frequency
+  // перемещён в budget_preferences (см. seed-questionnaire-v2.ts).
   {
     id: 'budget_preferences',
     title: 'Бюджет и предпочтения ухода',
     description: 'Бюджет и предпочтения по уходу',
-    questionIds: [45], // care_type (нужно добавить care_steps и budget если есть)
-    questionCodes: ['care_type', 'care_steps', 'budget'],
+    // makeup_frequency перенесён сюда из удалённого топика 'lifestyle'.
+    questionIds: [41, 45],
+    questionCodes: ['makeup_frequency', 'care_type', 'care_steps', 'budget'],
     icon: '💰',
     triggersPlanRebuild: true, // budgetSegment влияет на план
   },
