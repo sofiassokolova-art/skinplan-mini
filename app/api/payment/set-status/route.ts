@@ -8,6 +8,7 @@ import { prisma } from '@/lib/db';
 import { ApiResponse } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
+import { isProductionDeployment } from '@/lib/deployment-env';
 
 /**
  * @deprecated НЕ ИСПОЛЬЗУЙТЕ В ПРОДАКШЕНЕ!
@@ -23,12 +24,7 @@ import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 export async function POST(request: NextRequest) {
   try {
     // В продакшене блокируем этот endpoint.
-    // На Cloudflare Pages: CF_PAGES_BRANCH === 'main' означает production-деплой.
-    const cfBranch = process.env.CF_PAGES_BRANCH;
-    const isProductionDeployment =
-      cfBranch === 'main' || (!cfBranch && process.env.NODE_ENV === 'production');
-
-    if (isProductionDeployment) {
+    if (isProductionDeployment()) {
       // ИСПРАВЛЕНО: не спамим error-логами в проде (часто сканеры/боты дергают /test-* и deprecated пути)
       // и не раскрываем наличие endpoint'а.
       return NextResponse.json({ error: 'Not found' }, { status: 404 });

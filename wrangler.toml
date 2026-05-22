@@ -29,6 +29,9 @@ routes = [
   { pattern = "www.proskiniq.ru/*", zone_name = "proskiniq.ru" },
 ]
 
+[env.production.vars]
+DEPLOYMENT_ENV = "production"
+
 # Cron для prod — настрой вручную в CF Dashboard → skinplan-mini-prod → Triggers
 # [env.production.triggers]
 # crons = ["0 0 * * 0"]
@@ -39,3 +42,6 @@ name = "skinplan-mini-staging"
 routes = [
   { pattern = "staging.proskiniq.ru/*", zone_name = "proskiniq.ru" },
 ]
+
+[env.staging.vars]
+DEPLOYMENT_ENV = "staging"
