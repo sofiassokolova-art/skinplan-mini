@@ -136,9 +136,15 @@ export default async function RootLayout({
     try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {}
   }
   // На Telegram Desktop SDK уже инжектирован до запуска наших скриптов.
-  // Если initData уже есть — вызываем ready() сразу, скрипт скачивать не нужно.
+  // Гейтим по наличию функции ready (а НЕ по initData) — на холодном старте
+  // Desktop объект WebApp уже есть, но initData ещё может быть пустым в этот
+  // микро-момент, и старое условие пропускалось → мы шли грузить SDK по сети,
+  // а Telegram всё это время держал системный лоадер. Вызов своего же SDK
+  // (не TelegramWebviewProxy) безопасен — на iOS/Web WebApp.ready отсутствует
+  // до загрузки SDK, так что для них поведение прежнее.
   try {
-    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
+    var waEarly = window.Telegram && window.Telegram.WebApp;
+    if (waEarly && typeof waEarly.ready === 'function') {
       done();
       return;
     }
