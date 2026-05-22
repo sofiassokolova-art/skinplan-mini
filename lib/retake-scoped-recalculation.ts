@@ -23,8 +23,8 @@ const TOPIC_TO_AXES_MAP: Partial<Record<TopicId, Array<SkinAxis>>> = {
   'diagnoses_sensitivity': ['barrier', 'inflammation'], // Диагнозы и чувствительность влияют на барьер и воспаление
   'pregnancy': ['barrier'], // Беременность влияет на барьер (из-за противопоказаний)
   'avoid_ingredients': ['barrier'], // Исключённые ингредиенты влияют на барьер
-  'habits_lifestyle': ['hydration', 'photoaging'], // Привычки влияют на гидратацию и фотостарение
-  'spf_sun': ['photoaging', 'pigmentation'], // SPF и солнце влияют на фотостарение и пигментацию
+  // habits_lifestyle удалён: makeup_frequency перемещён в budget_preferences.
+  // spf_sun удалён вместе с вопросами spf_frequency / sun_exposure (SPF в плане по умолчанию).
   'current_care': ['barrier', 'inflammation'], // Текущий уход влияет на барьер и воспаление
   'budget_preferences': [], // Бюджет и предпочтения не влияют на оси напрямую
   'motivation': [], // Мотивация не влияет на оси

@@ -27,6 +27,11 @@ export interface InfoScreen {
   ctaText?: string;
   type?: 'default' | 'testimonials' | 'tinder' | 'comparison' | 'products' | 'transformation'; // Тип экрана для специального рендеринга
   content?: Testimonial[] | InfoScreenProduct[] | any; // Дополнительные данные для кастомного рендеринга
+  // Mini-progress-step: если указано, экран рендерится как «Шаг N из M: <stepLabel>»
+  // с прогресс-баром. Используется для секционных интро между блоками вопросов.
+  stepNumber?: number; // Текущий шаг (1-based)
+  totalSteps?: number; // Всего шагов
+  stepLabel?: string; // Короткое название блока (например, «Особенности кожи»)
 }
 
 // ИСПРАВЛЕНО: Единая функция для получения начальных инфо-экранов
@@ -52,8 +57,7 @@ export const INFO_SCREENS: InfoScreen[] = [
   {
     id: 'how_it_works',
     title: 'Как это работает?',
-    subtitle: '1. Пройдите анкету\n2. Получите индивидуальную программу ухода\nи персональные советы\nот дерматологов\n3. Отслеживайте прогресс ежедневно',
-    image: '/ea01dd6e_nano_4K.jpg',
+    subtitle: '1. Пройдите анкету\n2. Получите индивидуальную программу ухода\n3. Узнайте, как изменится ваша кожа уже через 28 дней использования средств',
     ctaText: 'Продолжить',
   },
   
@@ -81,9 +85,13 @@ export const INFO_SCREENS: InfoScreen[] = [
   // 6) Отзывы с горизонтальным скроллом
   {
     id: 'testimonials',
-    title: 'Тысячи пользователей уже\nполучили результат\nсо SkinIQ',
+    title: 'Тысячи пользователей уже получили результат со SkinIQ',
+    subtitle: 'Персональный уход\nпод ваши цели и особенности',
     type: 'testimonials',
     showAfterQuestionCode: 'skin_goals', // После вопроса о целях
+    // Сокращено с 4 до 2 отзывов. По бенчмаркам мобильной карусели прокручивается 1-2 карточки;
+    // 4-я почти никем не видна. Оставляем максимально разнообразную пару (акне + поры/жирность),
+    // чтобы покрыть самые частые цели из skin_goals.
     content: [
       {
         stars: 5,
@@ -92,22 +100,6 @@ export const INFO_SCREENS: InfoScreen[] = [
         city: 'Москва',
         beforeImage: '/отзыв1до.jpeg',
         afterImage: '/отзыв1после.jpg',
-      },
-      {
-        stars: 5,
-        text: '«Кожа стала заметно более увлажнённой и упругой. Раньше постоянно меняла средства, а тут наконец-то попали точно»',
-        author: 'Дарья',
-        city: 'Санкт-Петербург',
-        beforeImage: '/отзыв2до.jpeg',
-        afterImage: '/отзыв2после.jpeg',
-      },
-      {
-        stars: 5,
-        text: '«Была проблема с покраснением и чувствительностью. Уже через месяц кожа стала спокойнее, меньше реагирует на всё подряд»',
-        author: 'Ирина',
-        city: 'Екатеринбург',
-        beforeImage: '/отзыв3до.jpeg',
-        afterImage: '/отзыв3после.jpeg',
       },
       {
         stars: 5,
@@ -121,192 +113,185 @@ export const INFO_SCREENS: InfoScreen[] = [
     ctaText: 'Продолжить',
   },
   
-  // 7) Общая информация (инфо-экран перед вопросами о возрасте и поле)
+  // Mini-progress-step «Шаг 1 из 4: Общая информация».
+  // Заменил филлерный general_info_intro: тот же якорь в цепочке (после testimonials),
+  // но теперь экран несёт пользу — показывает прогресс и ставит ожидание следующего блока.
   {
     id: 'general_info_intro',
     title: 'Общая информация',
-    subtitle: 'Поможет нам подобрать подходящий уход',
-    image: '/information.png',
-    showAfterInfoScreenId: 'testimonials', // ИСПРАВЛЕНО: После экрана testimonials, а не вопроса
+    subtitle: 'Возраст и пол — чтобы подобрать уход под ваши особенности.',
+    showAfterInfoScreenId: 'testimonials',
     ctaText: 'Продолжить',
+    stepNumber: 1,
+    totalSteps: 4,
+    stepLabel: 'Общая информация',
   },
   // Вопросы: Возраст (age), Пол (gender)
-  
-  // 8) Узнаем особенности вашей кожи
+
+  // Mini-progress-step «Шаг 2 из 4: Особенности кожи».
+  // Заменил филлерный skin_features_intro: тот же якорь (после gender),
+  // тот же текст в субтайтле, добавлена индикация прогресса.
   {
     id: 'skin_features_intro',
-    title: 'Узнаем особенности вашей кожи',
-    subtitle: 'Мы поймем какой у вас тип кожи и как о нем заботиться лучше всего',
-    image: '/lookimgclosely.png',
+    title: 'Особенности кожи',
+    subtitle: 'Поймём ваш тип кожи и как о нём заботиться лучше всего.',
     showAfterQuestionCode: 'gender',
     ctaText: 'Продолжить',
+    stepNumber: 2,
+    totalSteps: 4,
+    stepLabel: 'Особенности кожи',
   },
   // 9) Тип кожи - это вопрос в БД (skin_type)
   // 10) Что вас больше всего беспокоит - это вопрос в БД (skin_concerns)
   // 11) Чувствительность кожи (skin_sensitivity) - вопрос в БД
   // 12) Меняется ли состояние кожи в зависимости от сезона? - вопрос в БД (seasonal_changes)
   
-  // 13) SkinIQ делает уход за кожей простым и понятным
+  // Mid-quiz preview персонализации. Показывается сразу после блока скин-вопросов
+  // (skin_type/skin_concerns/skin_sensitivity/seasonal_changes). Цель — показать
+  // пользователю промежуточный «вывод» по его ответам, удержать на следующий блок.
+  // Контент рендерится динамически в QuizInfoScreen.tsx по флагу isSkinPreviewScreen.
   {
-    id: 'simple_care',
-    title: 'SkinIQ делает уход за кожей простым и понятным',
-    image: '/image 1576994977.png',
-    type: 'comparison',
+    id: 'skin_preview',
+    title: 'Ваш предварительный профиль',
     showAfterQuestionCode: 'seasonal_changes',
     ctaText: 'Продолжить',
-    content: {
-      left: {
-        title: 'Традиционный уход',
-        items: ['Часы поиска советов в интернете', 'Тратить деньги на неподходящие средства', 'Результата приходится ждать месяцами'],
-      },
-      right: {
-        title: 'Со SkinIQ',
-        items: ['Персональные рекомендации для вашего типа кожи', 'Сканируйте и отслеживайте прогресс легко', 'Видимые результаты уже через несколько недель'],
-      },
-    },
+  },
+
+  // SkinIQ делает уход за кожей простым и понятным
+  // ПЕРЕАНКОРИРОВАН: раньше срабатывал после вопроса seasonal_changes —
+  // теперь идёт в цепочке после skin_preview, чтобы preview шёл первым.
+  {
+    id: 'simple_care',
+    title: 'SkinIQ делает уход за кожей простым и понятным',
+    subtitle: 'Традиционный уход:\n❌ Часы поиска советов в интернете\n❌ Тратить деньги на неподходящие средства\n❌ Результата приходится ждать месяцами\n\nС SkinIQ:\n✅ Персональные рекомендации для вашего типа кожи\n✅ Сканируйте и отслеживайте прогресс легко\n✅ Видимые результаты уже через несколько недель',
+    type: 'comparison',
+    showAfterInfoScreenId: 'skin_preview',
+    ctaText: 'Продолжить',
   },
   
-  // 14) Нам важно учесть данные о здоровье
+  // 14) Нам важно учесть ваши данные о здоровье
   {
     id: 'health_data',
-    title: 'Нам важно учесть данные о здоровье',
-    subtitle: 'Ваши данные защищены, они нужны только для точных рекомендаций',
-    image: '/healthmatter.png',
-    showAfterInfoScreenId: 'simple_care', // ИСПРАВЛЕНО: После экрана simple_care, а не вопроса
+    title: 'Данные о здоровье',
+    // Privacy-текст переехал в subtitle progress-step экрана — не теряем гарантию приватности.
+    subtitle: 'Ваши данные защищены и нужны только для точных рекомендаций.',
+    showAfterInfoScreenId: 'simple_care',
     ctaText: 'Продолжить',
+    stepNumber: 3,
+    totalSteps: 4,
+    stepLabel: 'Данные о здоровье',
   },
   // 15) Есть ли у вас диагнозы? - вопрос в БД (medical_diagnoses)
   // 16) Беременность/кормление (только для женщин) - вопрос в БД (pregnancy_breastfeeding)
   // 17) Аллергические реакции - вопрос в БД (allergies)
   // 18) Исключить ингредиенты (можно пропустить) - вопрос в БД (avoid_ingredients)
   
-  // 19) SkinIQ заботится о вашем здоровье — после последнего вопроса блока «Данные о здоровье»
+  // SkinIQ заботится о вашем здоровье — trust-экран после блока медицинских вопросов.
+  // ПЕРЕАНКОРИРОВАН: было после avoid_ingredients (который теперь conditional и может быть
+  // пропущен gate-вопросом has_avoid_ingredients). Теперь анкорится на has_avoid_ingredients —
+  // экран показывается одинаково для всех пользователей вне зависимости от пути.
   {
     id: 'health_trust',
-    title: 'SkinIQ заботится\nо вашем здоровье',
-    image: '/image 1576994970.png',
-    // В актуальной анкете последний вопрос блока данных о здоровье — allergies,
-    // поэтому цепочку health_trust → current_care_intro показываем именно после него.
-    showAfterQuestionCode: 'allergies',
+    title: '💙 SkinIQ заботится о вашем здоровье',
+    subtitle: 'Все рекомендации по уходу одобрены врачами-дерматологами и абсолютно безопасны\n\nВся информация остаётся конфиденциальной и используется только для персональных рекомендаций',
+    image: '/dermatologist_examining.jpg',
+    showAfterQuestionCode: 'has_avoid_ingredients',
     ctaText: 'Продолжить',
   },
   
-  // 20) Расскажите о вашем текущем уходе — та же вёрстка, что Общая информация (GoalsIntroScreen)
-  {
-    id: 'current_care_intro',
-    title: 'Расскажите о вашем текущем уходе',
-    subtitle: 'Это поможет нам понять, какие средства вы уже используете и как реагирует ваша кожа',
-    image: '/routine.png',
-    showAfterInfoScreenId: 'health_trust', // FIX: было showAfterQuestionCode — но health_trust это info screen, не question
-    ctaText: 'Продолжить',
-  },
-  // 21) Ретинол - вопрос в БД (retinoid_usage) - если Да, показывается доп. вопрос (retinoid_reaction)
+  // current_care_intro УДАЛЁН: интро к блоку «Текущий уход», лишний экран.
+  // 21) Ретинол - вопрос в БД (retinoid_usage)
   // 22) Рецептурные кремы - вопрос в БД (prescription_topical)
   // 23) Пероральные препараты - вопрос в БД (oral_medications)
-  
-  // 24) SkinIQ использует ИИ
-  {
-    id: 'ai_showcase',
-    title: 'SkinIQ использует ИИ для подбора ухода, который действительно работает',
-    image: '/image 1576994963.png',
-    // ПОСЛЕ вопроса "Выберите ингредиенты, которые вы хотели бы исключить" (avoid_ingredients)
-    showAfterQuestionCode: 'avoid_ingredients',
-    ctaText: 'Продолжить',
-  },
-  
-  // 25) Каждая привычка отражается на коже
-  {
-    id: 'habits_matter',
-    title: 'Каждая привычка отражается на коже',
-    subtitle: 'Давайте посмотрим, что влияет именно на вашу и как ей помочь',
-    image: '/habits2.png',
-    showAfterInfoScreenId: 'ai_showcase', // ИСПРАВЛЕНО: После экрана ai_showcase, а не вопроса
-    ctaText: 'Продолжить',
-  },
+
+  // ai_showcase УДАЛЁН: дубликат продажи AI (есть уже в simple_care).
+  // habits_matter УДАЛЁН: интро к блоку «Привычки», в котором остался единственный вопрос — лишнее.
   // 26) Декоративная косметика - вопрос в БД (makeup_frequency)
-  // 27) Солнцезащитный крем - вопрос в БД (spf_frequency)
-  // 28) Время на солнце - вопрос в БД (sun_exposure)
-  // 29) Привычки (multi_choice) - вопрос в БД (lifestyle_habits)
-  
-  // 30) Больше никакой путаницы
+
+  // Больше никакой путаницы — пробивка AI ПЕРЕД блоком «Предпочтения в уходе».
+  // ПЕРЕАНКОРИРОВАН: lifestyle_habits → makeup_frequency → oral_medications.
+  // Теперь идёт после oral_medications (последний вопрос блока «Текущий уход»)
+  // и сразу перед preferences-блоком, в который перемещён makeup_frequency.
+  // Поток: medical/current care → AI pitch + price anchor → preferences
+  // (makeup_frequency → care_type → care_steps → budget).
   {
     id: 'ai_comparison',
     title: 'Больше никакой путаницы — AI SkinIQ подберёт уход быстро и точно ✨',
-    subtitle: 'Традиционный подбор ухода:\n❌ Долгие поиски советов в интернете\n❌ Сложно понять, что подойдёт именно вам\n\nSkinIQ с AI:\n✅ Точный подбор средств на основе анкеты\n✅ Рекомендации за пару секунд',
+    subtitle: 'Традиционный подбор ухода:\n❌ Долгие поиски советов в интернете\n❌ Сложно понять, что подойдёт именно вам\n\nSkinIQ с AI:\n✅ Точный подбор средств на основе анкеты\n✅ Рекомендации за пару секунд\n\n💡 Большинство персональных планов укладывается в 3–5 средств — от 2 000 ₽/мес в бюджетном сегменте до 5 000+ ₽/мес в премиум.',
     type: 'comparison',
-    showAfterQuestionCode: 'lifestyle_habits',
+    showAfterQuestionCode: 'oral_medications',
     ctaText: 'Продолжить',
   },
   
-  // 31) Расскажите о ваших предпочтениях
+  // Mini-progress-step «Шаг 4 из 4: Ваши предпочтения».
+  // Заменил филлерный preferences_intro: тот же якорь в цепочке (после ai_comparison),
+  // теперь экран сигнализирует пользователю «финишная прямая» и показывает прогресс 100%.
   {
     id: 'preferences_intro',
-    title: '✨ Расскажите о ваших предпочтениях в уходе',
-    subtitle: 'Это поможет учесть ваши ожидания — какие текстуры, форматы и ощущения от ухода вам ближе',
-    showAfterInfoScreenId: 'ai_comparison', // ИСПРАВЛЕНО: После экрана ai_comparison, а не вопроса
+    title: 'Ваши предпочтения',
+    subtitle: 'Финальный блок — какой формат и бюджет ухода вам ближе.',
+    showAfterInfoScreenId: 'ai_comparison',
     ctaText: 'Продолжить',
+    stepNumber: 4,
+    totalSteps: 4,
+    stepLabel: 'Ваши предпочтения',
   },
   // 32) Тип ухода - вопрос в БД (care_type)
   // 33) Количество шагов - вопрос в БД (care_steps)
   // 34) Бюджет - вопрос в БД (budget)
   
-  // 35) Не нужно бояться ошибок
+  // Финальный мотивационный экран перед закрывающей последовательностью.
+  // ИЗМЕНЕНО: убран дубликатный «традиционно ❌ vs SkinIQ ✅» (он уже был в simple_care и
+  // ai_comparison), заменён на sunk-cost framing — «вы уже почти всё сделали».
   {
     id: 'no_mistakes',
-    title: 'Не нужно бояться ошибок — уход должен быть комфортным! ✨',
-    subtitle: '❌ Слишком много средств сразу → ✅ Последовательный уход шаг за шагом\n❌ Ожидать моментальный результат → ✅ Смотреть на долгосрочные изменения\n❌ Копировать чужой уход → ✅ Подбор под особенности вашей кожи\n\nМы поможем выстроить уход, который работает именно для вас — без перегрузки кожи и лишнего стресса.',
+    title: 'Вы уже сделали главное',
+    subtitle: 'Спасибо, что подробно ответили на вопросы — мы уже подбираем средства под ваш тип кожи, цели и бюджет.\n\nОсталось буквально несколько секунд до вашего персонального плана ухода.',
     showAfterQuestionCode: 'budget',
     ctaText: 'Продолжить',
   },
   
-  // 36) Давайте сосредоточимся на вашей мотивации
-  {
-    id: 'motivation_focus',
-    title: '🎯 Давайте сосредоточимся на вашей мотивации',
-    subtitle: 'Исследования показывают: когда вы держите цель перед глазами, это помогает сохранить мотивацию и добиться долгосрочных результатов.',
-    showAfterInfoScreenId: 'no_mistakes', // ИСПРАВЛЕНО: После экрана no_mistakes, а не вопроса
-    ctaText: 'Продолжить',
-  },
-  
+  // motivation_focus УДАЛЁН: чистый мотивационный текст без информационной ценности.
+
   // 37) Вы узнаёте себя в этом? (Tinder-экран 1)
+  // ПЕРЕАНКОРИРОВАН: было после motivation_focus (удалён) — теперь напрямую после no_mistakes.
   {
     id: 'recognize_yourself_1',
     title: 'Вы узнаёте себя в этом?',
     subtitle: '«Я часто чувствую недовольство своей кожей, когда смотрю в зеркало»',
     image: '/illustrations/mirror_concern.jpg',
     type: 'tinder',
-    showAfterInfoScreenId: 'motivation_focus', // ИСПРАВЛЕНО: После экрана motivation_focus, а не вопроса
+    showAfterInfoScreenId: 'no_mistakes',
     ctaText: '', // Кнопки будут отдельными (Нет/Да)
   },
   
-  // 38) Вы узнаёте себя в этом? (Tinder-экран 2)
+  // Второй Tinder перед планом. ИЗМЕНЕН ТОН: раньше было «не знаю какие средства» —
+  // два подряд негативных утверждения (про недовольство в зеркале + растерянность) создавали
+  // эмоциональную просадку прямо перед закрытием. Теперь — позитивный identity-claim:
+  // свайп «Да» строит самоидентификацию вместо подтверждения боли.
   {
     id: 'recognize_yourself_2',
-    title: 'Вы узнаёте себя в этом?',
-    subtitle: '«Я хочу заботиться о своей коже, но не знаю, какие средства выбрать»',
+    title: 'Это похоже на вас?',
+    subtitle: '«Я хочу понимать СВОЮ кожу и подбирать уход осознанно — а не следовать общим советам из интернета»',
     image: '/illustrations/products_confusion.jpg',
     type: 'tinder',
-    showAfterInfoScreenId: 'recognize_yourself_1', // ИСПРАВЛЕНО: После предыдущего инфо-экрана
+    showAfterInfoScreenId: 'recognize_yourself_1',
     ctaText: '', // Кнопки будут отдельными (Нет/Да)
   },
   
-  // 39) SkinIQ создан для людей, как вы!
-  {
-    id: 'created_for_you',
-    title: 'SkinIQ создан для людей, как вы!',
-    subtitle: '✨ 97% пользователей отмечают, что SkinIQ помогает лучше заботиться о коже\n🌿 92% заметили улучшения внешнего вида кожи\n⚡️ 85% увидели первые результаты уже в первый месяц\n\nОсновано на опросах и отзывах реальных пользователей',
-    showAfterInfoScreenId: 'recognize_yourself_2', // ИСПРАВЛЕНО: После экрана recognize_yourself_2, а не вопроса
-    ctaText: 'Продолжить',
-  },
-  
-  // 40) Посмотрите, как меняется ваша кожа!
+  // created_for_you УДАЛЁН: третий повтор соц-прува (есть уже в personal_analysis и testimonials).
+
+  // Посмотрите, как меняется ваша кожа!
+  // ПЕРЕАНКОРИРОВАН: было после created_for_you (удалён) — теперь напрямую после recognize_yourself_2.
+  // ИЗМЕНЕН subtitle: замыкаем обещание «28 дней» из стартового экрана how_it_works.
+  // Без этого замыкания цифра, заявленная в начале анкеты, не подтверждалась нигде дальше.
   {
     id: 'skin_transformation',
     title: 'Посмотрите, как меняется ваша кожа!',
-    subtitle: 'Отслеживайте прогресс и улучшайте состояние кожи',
+    subtitle: 'Первые видимые изменения — уже через 28 дней регулярного ухода. Отслеживайте прогресс и подкручивайте план под себя.',
     image: '/illustrations/skin_transformation.jpg',
     type: 'transformation',
-    showAfterInfoScreenId: 'created_for_you', // ИСПРАВЛЕНО: После экрана created_for_you, а не вопроса
+    showAfterInfoScreenId: 'recognize_yourself_2',
     ctaText: 'Продолжить',
     content: {
       from: 'Сейчас',
@@ -328,9 +313,7 @@ export const INFO_SCREENS: InfoScreen[] = [
 
 // Функция для получения информационного экрана, который нужно показать после вопроса с указанным кодом
 export function getInfoScreenAfterQuestion(questionCode: string): InfoScreen | undefined {
-  if (!questionCode) return undefined;
-  const normalized = questionCode.toLowerCase();
-  return INFO_SCREENS.find((screen) => screen.showAfterQuestionCode?.toLowerCase() === normalized);
+  return INFO_SCREENS.find(screen => screen.showAfterQuestionCode === questionCode);
 }
 
 /** Следующий инфо-экран в цепочке (имеет showAfterInfoScreenId === screenId) */

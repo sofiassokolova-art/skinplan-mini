@@ -201,12 +201,8 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
     return [];
   }
 
-  // ИСПРАВЛЕНО: Используем эффективные ответы (объединение answers и savedProgressAnswers).
-  // Для перепрохождения (isRetakingQuiz && !showRetakeScreen) игнорируем savedProgressAnswers,
-  // чтобы старая анкета не влияла на порядок и фильтрацию вопросов.
-  const effectiveAnswers = isRetakingQuiz && !showRetakeScreen
-    ? { ...(answers || {}) }
-    : getEffectiveAnswers(answers, savedProgressAnswers);
+  // ИСПРАВЛЕНО: Используем эффективные ответы (объединение answers и savedProgressAnswers)
+  const effectiveAnswers = getEffectiveAnswers(answers, savedProgressAnswers);
 
   // ИСПРАВЛЕНО: Проверяем, есть ли ответы вообще
   // Если ответов нет (новый пользователь), показываем все вопросы без фильтрации
@@ -240,9 +236,19 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
   
   const filteredQuestions = questions.filter((question) => {
     try {
-      // ИСПРАВЛЕНО: Если нет ответов, показываем все вопросы
+      // ИСПРАВЛЕНО: Если нет ответов, показываем все вопросы (кроме исключений для retake)
       // Это предотвращает ситуацию, когда все вопросы отфильтрованы при первой загрузке
       if (!hasAnyAnswers) {
+        // При повторном прохождении все равно исключаем вопросы про пол и возраст
+        if (isRetakingQuiz && !showRetakeScreen) {
+          const normalizedCode = question.code?.toLowerCase();
+          if (normalizedCode === 'gender' || normalizedCode === 'age') {
+            excludedCount++;
+            excludedReasons['retake_gender_age'] = (excludedReasons['retake_gender_age'] || 0) + 1;
+            return false;
+          }
+        }
+        // Для нового пользователя показываем все остальные вопросы
         filteredCount++;
         return true;
       }
@@ -250,56 +256,73 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
       // ИСПРАВЛЕНО: Используем normalizedCode для всех проверок
       const normalizedCode = question.code?.toLowerCase();
       
-      // 1. Фильтрация retinoid_reaction на основе retinoid_usage
+      // 1. При повторном прохождении исключаем вопросы про пол и возраст
+      // ИСПРАВЛЕНО: Используем только question.code для стабильности, без проверки text
+      if (isRetakingQuiz && !showRetakeScreen) {
+        if (normalizedCode === 'gender' || normalizedCode === 'age') {
+          return false;
+        }
+      }
+
+      // 2. Условная фильтрация retinoid_reaction УДАЛЕНА вместе с вопросом —
+      // он не использовался downstream. Если в БД остались старые ответы — они
+      // безвредно игнорируются, потому что вопроса больше нет в анкете.
+
+      // 3. Фильтрация вопросов про макияж (только для женщин)
       // ИСПРАВЛЕНО: Используем только question.code для стабильности
-      // ФИКС: Вопрос retinoid_reaction должен показываться до ответа на retinoid_usage
-      const isRetinoidReactionQuestion = normalizedCode === 'retinoid_reaction';
+      const isMakeupQuestion = normalizedCode === 'makeup_frequency';
       
-      if (isRetinoidReactionQuestion) {
-        // ФИКС: Если нет ответов вообще, показываем вопрос (он будет отфильтрован после ответа на retinoid_usage)
-        if (!hasAnyAnswers) {
-          filteredCount++;
-          return true;
-        }
-        
-        const retinoidUsage = getAnswerByCode('retinoid_usage', questions, effectiveAnswers);
-        if (!retinoidUsage.question) {
-          // Вопрос о ретиноле еще не найден - показываем вопрос (он будет скрыт позже)
-          filteredCount++;
+      if (isMakeupQuestion) {
+        const gender = getAnswerByCode('gender', questions, effectiveAnswers);
+        if (!gender.question || !gender.value) {
+          // Пол еще не выбран - показываем вопрос (он будет скрыт позже)
           return true;
         }
 
-        // ФИКС: Проверяем, есть ли ответ на retinoid_usage
-        const hasRetinoidUsageAnswer = retinoidUsage.question.id in effectiveAnswers;
-        if (!hasRetinoidUsageAnswer) {
-          // Ответа еще нет - показываем вопрос
-          filteredCount++;
-          return true;
-        }
-
-        const normalizedValue = getNormalizedAnswerValue(
-          retinoidUsage.question,
-          effectiveAnswers[retinoidUsage.question.id] || '',
-          questions
-        );
-
-        // Показываем только если ответили "yes" (да)
-        const shouldShow = normalizedValue === 'yes';
+        const isMale = isMaleGender(gender.value, gender.option, gender.question, effectiveAnswers);
+        const shouldShow = !isMale; // Показываем только если не мужчина
         if (!shouldShow) {
           excludedCount++;
-          excludedReasons['retinoid_reaction_no'] = (excludedReasons['retinoid_reaction_no'] || 0) + 1;
+          excludedReasons['makeup_male'] = (excludedReasons['makeup_male'] || 0) + 1;
         } else {
           filteredCount++;
         }
         return shouldShow;
       }
 
-      // 3. Фильтрация вопросов про макияж (ранее была только для женщин).
-      // Сейчас упрощаем: всегда показываем makeup_frequency, spf_frequency, sun_exposure,
-      // порядок контролируется через seed + extractQuestions (CANONICAL_ORDER).
-      const isMakeupQuestion = normalizedCode === 'makeup_frequency';
-      
-      if (isMakeupQuestion) {
+      // 3.5. Условная фильтрация avoid_ingredients — показываем только если
+      // на gate-вопрос has_avoid_ingredients ответили положительно.
+      // Если gate не отвечен или ответ «Да, есть» — показываем; «Нет» — скрываем.
+      const isAvoidIngredientsQuestion = normalizedCode === 'avoid_ingredients';
+
+      if (isAvoidIngredientsQuestion) {
+        const gate = getAnswerByCode('has_avoid_ingredients', questions, effectiveAnswers);
+        if (!gate.question) {
+          // gate-вопрос не найден в анкете — показываем avoid_ingredients как раньше
+          // (безопасный fallback при возможном legacy-состоянии БД).
+          filteredCount++;
+          return true;
+        }
+
+        const hasGateAnswer = gate.question.id in effectiveAnswers;
+        if (!hasGateAnswer) {
+          // На gate ещё не ответили — показываем avoid_ingredients (он отфильтруется позже).
+          filteredCount++;
+          return true;
+        }
+
+        // Скрываем, если ответ начинается с «Нет».
+        const gateValue = (gate.value || '').toString().toLowerCase().trim();
+        const isNoAnswer =
+          gateValue.startsWith('нет') ||
+          gateValue.includes('исключать ничего не нужно') ||
+          gateValue === 'no';
+
+        if (isNoAnswer) {
+          excludedCount++;
+          excludedReasons['avoid_ingredients_gate_no'] = (excludedReasons['avoid_ingredients_gate_no'] || 0) + 1;
+          return false;
+        }
         filteredCount++;
         return true;
       }
@@ -414,9 +437,6 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
     return fallbackQuestions;
   }
 
-  // Никак не переупорядочиваем вопросы — полностью доверяем порядку из анкеты.
-  // Фильтрация выше только скрывает отдельные вопросы (например, про беременность для мужчин),
-  // но не меняет относительный порядок оставшихся.
   return filteredQuestions;
 }
 

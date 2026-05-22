@@ -383,6 +383,7 @@ export const QuizRenderer = memo(function QuizRenderer({
             pendingInfoScreenRef={quizState.pendingInfoScreenRef}
             handleBack={onBack}
             isInitialInfoScreen={isPendingInitialScreen}
+            answers={answers}
           />
           </ScreenErrorBoundary>
         </Suspense>
@@ -430,6 +431,7 @@ export const QuizRenderer = memo(function QuizRenderer({
             pendingInfoScreenRef={quizState.pendingInfoScreenRef}
             handleBack={onBack}
             isInitialInfoScreen={true}
+            answers={answers}
           />
           </ScreenErrorBoundary>
         </Suspense>

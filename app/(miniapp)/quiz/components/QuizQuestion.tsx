@@ -360,8 +360,7 @@ export const QuizQuestion = memo(function QuizQuestion({
   const isGoalsQuestion = question?.code === 'skin_goals';
   // Экран «Тип кожи» (skin_type)
   const isSkinTypeQuestion = question?.code === 'skin_type';
-  // Специальный стиль для lifestyle_habits
-  const isLifestyleHabitsQuestion = question?.code === 'lifestyle_habits';
+  // lifestyle_habits удалён из анкеты — спец-стиль больше не нужен.
 
   const [skinTypeContentRevealed, setSkinTypeContentRevealed] = useState(false);
   useEffect(() => {
@@ -437,7 +436,6 @@ export const QuizQuestion = memo(function QuizQuestion({
     hideProgressBar,
     isGoalsQuestion,
     isSkinTypeQuestion,
-    isLifestyleHabitsQuestion,
     useLimeStyle,
     isLastQuestion,
     showSubmitButton
@@ -848,188 +846,10 @@ export const QuizQuestion = memo(function QuizQuestion({
     return content;
   };
 
-  const LifestyleHabits = () => {
-    if (question?.type !== 'multi_choice' || !question?.options || !isLifestyleHabitsQuestion) return null;
-
-    const getHabitIcon = (label: string) => {
-      if (label.includes('Курю')) {
-        return (
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="4" y="8" width="10" height="2" fill="#000000" />
-            <rect x="14" y="7" width="2" height="4" rx="1" fill="#000000" />
-          </svg>
-        );
-      }
-      if (label.includes('алкоголь')) {
-        return (
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M6 4H14V8L16 16H4L6 8V4Z" stroke="#000000" strokeWidth="1.5" fill="none" />
-            <path d="M6 4H14" stroke="#000000" strokeWidth="1.5" />
-            <path d="M4 16H16" stroke="#000000" strokeWidth="1.5" />
-          </svg>
-        );
-      }
-      if (label.includes('высыпаюсь')) {
-        return (
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M8 3C8 3 6 5 6 10C6 15 8 17 8 17C4 16 2 13 2 10C2 7 4 4 8 3Z" fill="#000000" />
-            <circle cx="13" cy="7" r="1" fill="#000000" />
-            <circle cx="15" cy="10" r="1" fill="#000000" />
-            <circle cx="13" cy="13" r="1" fill="#000000" />
-          </svg>
-        );
-      }
-      if (label.includes('стресс')) {
-        return (
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M11 2L4 12H10L9 18L16 8H10L11 2Z" fill="#000000" />
-          </svg>
-        );
-      }
-      if (label.includes('сладкого')) {
-        return (
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="10" cy="10" r="6" stroke="#000000" strokeWidth="1.5" fill="none" />
-            <circle cx="10" cy="10" r="3" stroke="#000000" strokeWidth="1.5" fill="none" />
-            <circle cx="7" cy="7" r="1" fill="#000000" />
-            <circle cx="13" cy="7" r="1" fill="#000000" />
-          </svg>
-        );
-      }
-      if (label.includes('фастфуда')) {
-        return (
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="4" y="6" width="12" height="2" fill="#000000" />
-            <rect x="4" y="9" width="12" height="2" fill="#000000" />
-            <rect x="4" y="12" width="12" height="2" fill="#000000" />
-            <circle cx="6" cy="7" r="0.5" fill="#000000" />
-            <circle cx="14" cy="7" r="0.5" fill="#000000" />
-          </svg>
-        );
-      }
-      if (label.includes('SPF')) {
-        return (
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="10" cy="10" r="4" fill="#000000" />
-            <line x1="10" y1="2" x2="10" y2="4" stroke="#000000" strokeWidth="1.5" />
-            <line x1="10" y1="16" x2="10" y2="18" stroke="#000000" strokeWidth="1.5" />
-            <line x1="2" y1="10" x2="4" y2="10" stroke="#000000" strokeWidth="1.5" />
-            <line x1="16" y1="10" x2="18" y2="10" stroke="#000000" strokeWidth="1.5" />
-            <line x1="4.93" y1="4.93" x2="6.34" y2="6.34" stroke="#000000" strokeWidth="1.5" />
-            <line x1="13.66" y1="13.66" x2="15.07" y2="15.07" stroke="#000000" strokeWidth="1.5" />
-            <line x1="15.07" y1="4.93" x2="13.66" y2="6.34" stroke="#000000" strokeWidth="1.5" />
-            <line x1="6.34" y1="13.66" x2="4.93" y2="15.07" stroke="#000000" strokeWidth="1.5" />
-          </svg>
-        );
-      }
-      if (label.includes('нет таких привычек')) {
-        return (
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 10L8 14L16 6" stroke="#000000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        );
-      }
-      return null;
-    };
-
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {question.options.map((option) => {
-          const currentAnswers = (answers[question.id] as string[]) || [];
-          const isSelected = currentAnswers.includes(option.value);
-
-          return (
-            <button
-              key={option.id}
-              onClick={() => {
-                const newAnswers = isSelected
-                  ? currentAnswers.filter((v) => v !== option.value)
-                  : [...currentAnswers, option.value];
-                onAnswer(question.id, newAnswers);
-              }}
-              style={{
-                padding: '16px',
-                borderRadius: '16px',
-                border: '1px solid #000000',
-                backgroundColor: '#FFFFFF',
-                cursor: 'pointer',
-                textAlign: 'left',
-                fontSize: '16px',
-                color: '#000000',
-                transition: 'all 0.2s',
-                fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                display: 'flex',
-                alignItems: 'center',
-                gap: '16px',
-              }}
-            >
-              <div
-                style={{
-                  width: '56px',
-                  height: '56px',
-                  borderRadius: '50%',
-                  backgroundColor: '#D5FE61',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}
-              >
-                {getHabitIcon(option.label)}
-              </div>
-
-              <span style={{ flex: 1 }}>{option.label}</span>
-
-              <div
-                style={{
-                  width: '24px',
-                  height: '24px',
-                  borderRadius: '50%',
-                  border: '2px solid #000000',
-                  backgroundColor: isSelected ? '#000000' : 'transparent',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}
-              >
-                {isSelected && (
-                  <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
-                    <path d="M1 4.5L4.5 8L11 1.5" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
-              </div>
-            </button>
-          );
-        })}
-
-        {/* Навигация */}
-        {hasAnswer(question.id) ? (
-          showSubmitButton ? (
-            <div style={{ marginTop: '24px', paddingBottom: '100px' }}>
-              {renderSubmitOrContinueDisclaimer()}
-              <FixedContinueButton
-                variant="black"
-                ctaText="Получить план"
-                loadingText="Отправка..."
-                disabled={isSubmitting}
-                onClick={onSubmit}
-              />
-            </div>
-          ) : (
-            <FixedContinueButton
-              variant="black"
-              ctaText="Продолжить"
-              onClick={onNext}
-            />
-          )
-        ) : null}
-      </div>
-    );
-  };
+  // LifestyleHabits компонент удалён вместе с вопросом lifestyle_habits.
 
   const MultiChoiceDefault = () => {
-    if (question?.type !== 'multi_choice' || !question?.options || useLimeStyle || isLifestyleHabitsQuestion) return null;
+    if (question?.type !== 'multi_choice' || !question?.options || useLimeStyle) return null;
 
     const sensitivityCircleColors = ['#F7FFD1', '#E9FF9C', '#D5FE61', '#C1F24A'];
     const isSkinSensitivityForMulti = question?.code === 'skin_sensitivity';
@@ -1312,7 +1132,6 @@ export const QuizQuestion = memo(function QuizQuestion({
             onNext={onNext}
           />
         )}
-        <LifestyleHabits />
         <MultiChoiceDefault />
       </div>
     </>
