@@ -109,10 +109,14 @@ export default async function RootLayout({
             <link rel="preload" href="/icons/face_3_64.png" as="image" />
           </>
         )}
+        {/* ВАЖНО: используем сырой <script dangerouslySetInnerHTML>, а НЕ <Script strategy="beforeInteractive">.
+            В Next.js App Router <Script beforeInteractive> складывает код в self.__next_s.push(...) — строкой.
+            Эта очередь обрабатывается webpack-рантаймом, который грузится async ПОСЛЕ парсинга HTML.
+            Сырой <script> выполняется СРАЗУ при парсинге <head> — именно это нужно для вызова ready()
+            до того, как Telegram Desktop истечёт по таймауту системного лоадера. */}
         {!isAdminRoute && (
-          <Script id="telegram-hash-fallback" strategy="beforeInteractive">
-            {`
-(function(){
+          <script
+            dangerouslySetInnerHTML={{ __html: `(function(){
   if (typeof window === 'undefined') return;
   try {
     var h = window.location.hash.slice(1);
@@ -121,7 +125,6 @@ export default async function RootLayout({
       if (raw) sessionStorage.setItem('tg_init_data', decodeURIComponent(raw));
     }
   } catch (_) {}
-
   function done(){
     try {
       var wa = window.Telegram && window.Telegram.WebApp;
@@ -135,30 +138,17 @@ export default async function RootLayout({
     } catch (_) {}
     try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {}
   }
-  // На Telegram Desktop SDK уже инжектирован до запуска наших скриптов.
-  // Гейтим по наличию функции ready (а НЕ по initData) — на холодном старте
-  // Desktop объект WebApp уже есть, но initData ещё может быть пустым в этот
-  // микро-момент, и старое условие пропускалось → мы шли грузить SDK по сети,
-  // а Telegram всё это время держал системный лоадер. Вызов своего же SDK
-  // (не TelegramWebviewProxy) безопасен — на iOS/Web WebApp.ready отсутствует
-  // до загрузки SDK, так что для них поведение прежнее.
   try {
     var waEarly = window.Telegram && window.Telegram.WebApp;
-    if (waEarly && typeof waEarly.ready === 'function') {
-      done();
-      return;
-    }
+    if (waEarly && typeof waEarly.ready === 'function') { done(); return; }
   } catch (_) {}
   var s = document.createElement('script');
   s.src = 'https://telegram.org/js/telegram-web-app.js';
   s.onload = done;
-  s.onerror = function(){
-    try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {}
-  };
+  s.onerror = function(){ try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {} };
   document.head.appendChild(s);
-})();
-            `}
-          </Script>
+})();` }}
+          />
         )}
         {/* DEV-режим: мок Telegram WebApp для локального браузера (не на /admin) */}
         {isDev && !isAdminRoute && (
