@@ -69,6 +69,33 @@ export function StepCard({
       border: '1px solid #E5E7EB',
       boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
     }}>
+      {/* P0.4: Patch-test баннер — отображается только в первый день введения сильного актива */}
+      {step.requiresPatchTest && (
+        <div
+          role="alert"
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '8px',
+            padding: '10px 12px',
+            marginBottom: '12px',
+            borderRadius: '12px',
+            backgroundColor: '#FFF7ED',
+            border: '1px solid #FED7AA',
+            color: '#9A3412',
+            fontSize: '12px',
+            lineHeight: 1.45,
+          }}
+        >
+          <span aria-hidden="true" style={{ fontSize: '16px', lineHeight: 1 }}>🧪</span>
+          <div>
+            <div style={{ fontWeight: 600, marginBottom: '2px' }}>Сначала patch-test</div>
+            Это первый сильный актив в плане. Нанесите небольшое количество на сгиб локтя
+            и подождите 24 часа. Если появилось жжение, зуд или сыпь — не используйте средство
+            и согласуйте замену.
+          </div>
+        </div>
+      )}
       {/* Заголовок шага */}
       <div style={{ marginBottom: '12px' }}>
         <div style={{ fontSize: '14px', fontWeight: '600', color: '#0A5F59', marginBottom: '4px' }}>

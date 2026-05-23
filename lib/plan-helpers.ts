@@ -297,6 +297,64 @@ export function pickProductForProfileDiversity<T extends { id: number }>(
 }
 
 /**
+ * P1.1: Ограничение «не более N продуктов одного бренда» в финальной выборке плана.
+ *
+ * Зачем: pickProductForProfileDiversity хэширует userId по шагу — но не видит распределения
+ * по брендам. На узком каталоге это легко даёт «утреннюю рутину = один бренд», что
+ * выглядит как реклама и подрывает доверие. Здесь мы пост-фактум заменяем избыточные
+ * продукты на лучшую альтернативу другого бренда. SPF/cleanser неприкосновенны
+ * (для них caliber/protective brand стоит выше эстетики).
+ *
+ * Контракт: на вход — список выбранных продуктов и кандидаты по шагам (id-сет на шаг).
+ * На выход — новый список той же длины с заменами там, где это улучшает diversity.
+ */
+export function enforceBrandDiversity<
+  T extends { id: number; brand?: { id?: number; name?: string } | null; step?: string | null }
+>(
+  selected: T[],
+  candidatesByStep: Map<string, T[]>,
+  maxPerBrand: number = 3,
+): T[] {
+  if (selected.length <= maxPerBrand) return selected;
+
+  // Стартовое распределение по бренду.
+  const counts = new Map<string, number>();
+  const brandKey = (p: T) => String(p.brand?.id ?? p.brand?.name ?? '∅');
+  for (const p of selected) {
+    counts.set(brandKey(p), (counts.get(brandKey(p)) ?? 0) + 1);
+  }
+
+  const protectedSteps = (step: string | null | undefined) =>
+    !!step && (step.startsWith('spf') || step === 'spf' || step.startsWith('cleanser') || step === 'cleanser');
+
+  const result: T[] = [...selected];
+
+  for (let i = 0; i < result.length; i++) {
+    const product = result[i];
+    const key = brandKey(product);
+    const count = counts.get(key) ?? 0;
+    if (count <= maxPerBrand) continue;
+    // SPF/cleanser не трогаем — для них критично «правильный» бренд.
+    if (protectedSteps(product.step)) continue;
+
+    const stepKey = String(product.step ?? '');
+    const candidates = candidatesByStep.get(stepKey) || [];
+    // Берём кандидата с минимальным счётчиком по бренду, отличного от текущего бренда.
+    const replacement = candidates
+      .filter(c => c.id !== product.id && brandKey(c) !== key)
+      .sort((a, b) => (counts.get(brandKey(a)) ?? 0) - (counts.get(brandKey(b)) ?? 0))[0];
+
+    if (replacement) {
+      counts.set(key, count - 1);
+      counts.set(brandKey(replacement), (counts.get(brandKey(replacement)) ?? 0) + 1);
+      result[i] = replacement;
+    }
+  }
+
+  return result;
+}
+
+/**
  * ИСПРАВЛЕНО (P2): Проверяет последовательность шагов в дне
  * Возвращает true, если последовательность правильная
  */

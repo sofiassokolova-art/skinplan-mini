@@ -30,6 +30,17 @@ export interface ProfileClassification {
   seasonality?: string | null;
   carePreference?: string;
   ageGroup?: string | null;
+  // P0.1: Системный изотретиноин (Аккутан/Роаккутан) — hard-блок наружных активов
+  onIsotretinoin?: boolean;
+  // P0.1: Список пероральных препаратов из анкеты (isotretinoin, oral_antibiotics и т.д.)
+  currentOralMeds?: string[];
+  // P0.2: Опыт пользователя с ретинолом — naive (никогда не использовал) или experienced.
+  // Влияет на стартовую частоту в titrationSchedule: naive начинает строже.
+  retinoidExperience?: 'naive' | 'experienced';
+  // P1.3: Фототип Фитцпатрика. Для тёмных типов (V_VI) — повышенный риск пост-воспалительной
+  // гиперпигментации (PIH); агрессивные кислоты противопоказаны. До появления отдельного
+  // вопроса в анкете эвристически выводится из concerns/diagnoses (pigmentation/postacne → III_IV).
+  fitzpatrickType?: 'I_II' | 'III_IV' | 'V_VI';
 }
 
 /**
@@ -134,6 +145,9 @@ export async function replaceInactiveBrandProducts(
         concerns: profileClassification.concerns || [],
         skinType: profileClassification.skinType || undefined,
         sensitivityLevel: profileClassification.sensitivityLevel || undefined,
+        rosaceaRisk: profileClassification.rosaceaRisk || undefined,
+        onIsotretinoin: profileClassification.onIsotretinoin,
+        currentOralMeds: profileClassification.currentOralMeds,
       });
 
   const result: Array<typeof products[0] & { replacementWarning?: string }> = [];

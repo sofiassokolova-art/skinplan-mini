@@ -61,12 +61,13 @@ export const QUIZ_TOPICS: QuizTopic[] = [
     id: 'current_care',
     title: 'Текущий уход и реакция кожи',
     description: 'Текущие средства и реакция кожи на них',
-    // retinoid_reaction удалён из анкеты (не использовался downstream).
-    // ID-ы оставлены без 38 (retinoid_reaction). Логика обновления тем матчит по questionCodes.
-    questionIds: [37, 39, 40],
-    questionCodes: ['retinoid_usage', 'prescription_topical', 'oral_medications'],
+    // P0.2 follow-up: retinoid_reaction возвращён обратно. Влияет на план через
+    // retinoidExperience: irritation/never-used → строгий titration ретинола.
+    // questionIds — пометка: реальные id назначаются prisma на seed, матчинг идёт по questionCodes.
+    questionIds: [37, 38, 39, 40],
+    questionCodes: ['retinoid_usage', 'retinoid_reaction', 'prescription_topical', 'oral_medications'],
     icon: '💆',
-    triggersPlanRebuild: false, // не влияет напрямую на план
+    triggersPlanRebuild: true, // P0.2: ответ влияет на стартовую частоту ретинола в плане
   },
   // spf_sun удалён: вопросы spf_frequency / sun_exposure убраны из анкеты,
   // SPF в плане включён по умолчанию для всех пользователей.

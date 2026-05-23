@@ -11,6 +11,10 @@ export interface DayStep {
   stepCategory: StepCategory;
   productId: string | null;       // рекомендованный продукт
   alternatives: string[];         // ids возможных замен
+  // P0.4 follow-up: первый день введения нового сильного актива (retinol/AHA/BHA/vitC/azelaic).
+  // UI рендерит баннер «сделай patch-test на сгибе локтя за 24 часа». Опциональный флаг —
+  // legacy-планы без него работают как раньше.
+  requiresPatchTest?: boolean;
 }
 
 export interface DayRoutine {

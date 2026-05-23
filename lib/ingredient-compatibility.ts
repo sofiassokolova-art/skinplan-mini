@@ -138,6 +138,29 @@ export const INGREDIENT_GROUPS: Record<string, ActiveIngredient[]> = {
   vitamin_c: ['vitamin_c', 'ascorbic_acid'],
 };
 
+// Раскрытие «зонтичных» ингредиентов в конкретные представители.
+// Зачем: матрица INGREDIENT_CONFLICTS оперирует категориями (`aha`, `bha`, `retinoid`, `vitamin_c`),
+// а extractActiveIngredients возвращает конкретные значения (`glycolic_acid`, `salicylic_acid`,
+// `tretinoin`, `ascorbic_acid`). Без раскрытия конфликт `retinol + aha` не срабатывал,
+// когда у продукта вместо ярлыка «aha» указана `glycolic acid`. См. tests/ingredient-pairs.test.ts.
+// ВАЖНО: vitamin_c НАМЕРЕННО не раскрывается в ascorbic_acid. Для них есть отдельные
+// конфликтные правила (`ascorbic_acid + niacinamide` строже, чем `vitamin_c + niacinamide`).
+// Если раскрыть — более мягкое vitamin_c-правило перекроет специфичное ascorbic_acid-правило.
+const INGREDIENT_GROUP_MEMBERS: Partial<Record<ActiveIngredient, ActiveIngredient[]>> = {
+  aha: ['aha', 'glycolic_acid', 'lactic_acid'],
+  bha: ['bha', 'salicylic_acid'],
+  retinoid: ['retinoid', 'retinol', 'adapalene', 'tretinoin'],
+};
+
+/**
+ * Возвращает множество ингредиентов, эквивалентных переданному, для целей проверки конфликтов.
+ * Для конкретного актива (например, `glycolic_acid`) возвращает только его — раскрытие не нужно.
+ * Для «зонтика» (`aha`) — все известные представители.
+ */
+export function expandIngredientForMatching(ingredient: ActiveIngredient): ActiveIngredient[] {
+  return INGREDIENT_GROUP_MEMBERS[ingredient] ?? [ingredient];
+}
+
 /**
  * Извлекает активные ингредиенты из продукта
  * ИСПРАВЛЕНО (P1): 
@@ -256,20 +279,29 @@ export function checkProductCompatibility(
     // ИСПРАВЛЕНО: Для конфликта из 2 ингредиентов проверяем, что один продукт содержит A, другой содержит B
     if (conflict.ingredients.length === 2) {
       const [a, b] = conflict.ingredients;
-      const p1a = ingredients1.includes(a);
-      const p1b = ingredients1.includes(b);
-      const p2a = ingredients2.includes(a);
-      const p2b = ingredients2.includes(b);
+      // P0 follow-up: раскрываем «зонтичные» ингредиенты (aha → glycolic_acid/lactic_acid/aha,
+      // bha → salicylic_acid/bha, retinoid → retinol/adapalene/tretinoin, vitamin_c → ascorbic_acid).
+      // Без этого `salicylic acid + retinol` не триггерил конфликт `retinol+bha`.
+      const aMembers = expandIngredientForMatching(a);
+      const bMembers = expandIngredientForMatching(b);
+      const p1HasA = aMembers.some(m => ingredients1.includes(m));
+      const p1HasB = bMembers.some(m => ingredients1.includes(m));
+      const p2HasA = aMembers.some(m => ingredients2.includes(m));
+      const p2HasB = bMembers.some(m => ingredients2.includes(m));
 
       // Конфликт есть, если один продукт содержит A, а другой содержит B (в любом порядке)
-      if ((p1a && p2b) || (p1b && p2a)) {
+      if ((p1HasA && p2HasB) || (p1HasB && p2HasA)) {
         return conflict;
       }
     } else {
       // Для конфликтов с >2 ингредиентами используем старую логику (покрытие набора)
       // Пока таких конфликтов нет, но оставляем для будущего расширения
-      const hasIngredient1 = conflict.ingredients.some(ing => ingredients1.includes(ing));
-      const hasIngredient2 = conflict.ingredients.some(ing => ingredients2.includes(ing));
+      const hasIngredient1 = conflict.ingredients.some(ing =>
+        expandIngredientForMatching(ing).some(m => ingredients1.includes(m))
+      );
+      const hasIngredient2 = conflict.ingredients.some(ing =>
+        expandIngredientForMatching(ing).some(m => ingredients2.includes(m))
+      );
 
       if (hasIngredient1 && hasIngredient2) {
         return conflict;

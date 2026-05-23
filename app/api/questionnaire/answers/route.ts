@@ -696,6 +696,22 @@ export async function POST(request: NextRequest) {
         extractedData.onIsotretinoin = true;
       }
 
+      // P1.3 follow-up: маппим ответ fitzpatrick_type на доменное значение в medicalMarkers.
+      // Используем answerOptionLabels (текст ответа), а не value, потому что value автоматически
+      // генерируется как fitzpatrick_type_1/2/3 — порядок неустойчив при пере-сидинге.
+      const fitzAnswer = rawAnswers.find(a => a.questionCode === 'fitzpatrick_type');
+      const fitzLabel = fitzAnswer?.answerOptionLabels?.[0] ?? (typeof fitzAnswer?.answerValue === 'string' ? fitzAnswer.answerValue : '');
+      if (fitzLabel) {
+        const f = fitzLabel.toLowerCase();
+        if (f.includes('очень светлая') || f.includes('всегда сгорает')) {
+          extractedData.fitzpatrickType = 'I_II';
+        } else if (f.includes('средн')) {
+          extractedData.fitzpatrickType = 'III_IV';
+        } else if (f.includes('тёмная') || f.includes('темная') || f.includes('почти не сгорает')) {
+          extractedData.fitzpatrickType = 'V_VI';
+        }
+      }
+
       // ВАЖНО: Профили делаем append-only: каждая отправка анкеты создает НОВУЮ версию профиля,
       // старые записи не перезаписываются.
       // Берём последнюю версию и инкрементируем её; если профиля не было — стартуем с версии анкеты.

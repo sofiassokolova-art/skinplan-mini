@@ -247,6 +247,22 @@ async function seedQuestionnaireV2() {
           isRequired: true,
           options: ['Летом становится жирнее', 'Зимой суше', 'Круглый год одинаково'],
         },
+        // P1.3 follow-up: фототип Фитцпатрика по реакции кожи на солнце (это надёжнее, чем по цвету).
+        // Маппинг ответа → medicalMarkers.fitzpatrickType в app/api/questionnaire/answers/route.ts.
+        // План использует это значение в lib/unified-product-filter.ts (V_VI → hard-блок сильных
+        // эксфолиантов) и в plan-generator.ts (предупреждение про риск ПИВ).
+        {
+          code: 'fitzpatrick_type',
+          text: 'Как ваша кожа реагирует на солнце без защиты?',
+          type: 'single_choice',
+          position: 5,
+          isRequired: false,
+          options: [
+            'Очень светлая, всегда сгорает, не загорает (или почти не загорает)',
+            'Средняя, иногда сгорает, постепенно приобретает загар',
+            'Тёмная, почти не сгорает, легко и сильно загорает',
+          ],
+        },
       ],
     },
 
@@ -341,13 +357,31 @@ async function seedQuestionnaireV2() {
           isRequired: false,
           options: ['Да', 'Нет'],
         },
-        // retinoid_reaction удалён: не использовался downstream (см. domain-context-builder/plan-generator),
-        // только добавлял шаг в анкете. Сокращение для конверсии.
+        // P0.2 follow-up: retinoid_reaction возвращён в анкету.
+        // План использует это поле для определения retinoidExperience (см. lib/plan-generator.ts):
+        //   "Без раздражения"  → experienced (стандартный titration)
+        //   "Раздражение/жжение" → naive (самый строгий cap частоты)
+        //   "Никогда не использовал(а)" → naive (cap, plus подсказка про patch-test)
+        // Вопрос необязательный, чтобы не ронять конверсию: если пропущен, fallback идёт по
+        // retinoid_usage (Да → experienced, иначе → naive).
+        {
+          code: 'retinoid_reaction',
+          text: 'Если использовали ретинол/ретиноиды — какая была реакция кожи?',
+          type: 'single_choice',
+          position: 2,
+          isRequired: false,
+          options: [
+            'Без реакции, кожа спокойно перенесла',
+            'Лёгкое шелушение или сухость — прошли быстро',
+            'Сильное раздражение, жжение, краснота',
+            'Никогда не использовал(а)',
+          ],
+        },
         {
           code: 'prescription_topical',
           text: 'Применяете ли вы рецептурные кремы или гели для кожи?',
           type: 'multi_choice',
-          position: 2,
+          position: 3,
           isRequired: false,
           options: [
             'Азелаиновая кислота (Skinoren, Азелик, Finacea)',
@@ -362,7 +396,7 @@ async function seedQuestionnaireV2() {
           code: 'oral_medications',
           text: 'Принимаете ли вы пероральные препараты?',
           type: 'multi_choice',
-          position: 3,
+          position: 4,
           isRequired: false,
           options: [
             'Изотретиноин (Аккутан, Роаккутан и аналоги)',
