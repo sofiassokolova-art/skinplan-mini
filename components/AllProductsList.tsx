@@ -4,8 +4,10 @@
 'use client';
 
 import { useMemo } from 'react';
+import Image from 'next/image';
 import type { Plan28 } from '@/lib/plan-types';
 import { getStepDescription } from '@/lib/plan-types';
+import { getBaseCategoryIcon } from '@/lib/step-icons';
 
 interface Product {
   id: number;
@@ -234,7 +236,13 @@ export function AllProductsList({
             marginBottom: '16px',
             paddingBottom: '8px',
             borderBottom: '2px solid #E8FBF7',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
           }}>
+            {getBaseCategoryIcon(category) && (
+              <Image src={getBaseCategoryIcon(category)!} alt="" width={24} height={24} style={{ objectFit: 'contain', flexShrink: 0 }} />
+            )}
             {category}
           </h3>
 

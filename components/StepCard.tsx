@@ -4,9 +4,11 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { Heart, ShoppingCart, RefreshCw } from 'lucide-react';
 import type { DayStep } from '@/lib/plan-types';
 import { getStepCategoryLabel, getStepDescription } from '@/lib/plan-types';
+import { getStepCategoryIcon } from '@/lib/step-icons';
 
 interface StepCardProps {
   step: DayStep;
@@ -39,6 +41,7 @@ export function StepCard({
   showTags = true,
 }: StepCardProps) {
   const stepDesc = getStepDescription(step.stepCategory, skinIssues);
+  const icon = getStepCategoryIcon(step.stepCategory);
 
   if (!product) {
     return (
@@ -48,8 +51,13 @@ export function StepCard({
         backgroundColor: '#F9FAFB',
         border: '1px solid #E5E7EB',
       }}>
-        <div style={{ fontSize: '14px', fontWeight: '600', color: '#6B7280', marginBottom: '8px' }}>
-          {stepDesc.name}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+          {icon && (
+            <Image src={icon} alt="" width={28} height={28} style={{ objectFit: 'contain', flexShrink: 0 }} />
+          )}
+          <div style={{ fontSize: '14px', fontWeight: '600', color: '#6B7280' }}>
+            {stepDesc.name}
+          </div>
         </div>
         <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px', fontStyle: 'italic' }}>
           {stepDesc.subtitle}
@@ -98,8 +106,13 @@ export function StepCard({
       )}
       {/* Заголовок шага */}
       <div style={{ marginBottom: '12px' }}>
-        <div style={{ fontSize: '14px', fontWeight: '600', color: '#0A5F59', marginBottom: '4px' }}>
-          {stepDesc.name}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+          {icon && (
+            <Image src={icon} alt="" width={28} height={28} style={{ objectFit: 'contain', flexShrink: 0 }} />
+          )}
+          <div style={{ fontSize: '14px', fontWeight: '600', color: '#0A5F59' }}>
+            {stepDesc.name}
+          </div>
         </div>
         <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '6px', fontStyle: 'italic' }}>
           {stepDesc.subtitle}
