@@ -270,6 +270,16 @@ export const api = {
     return request<PlanResponse>(url);
   },
 
+  // Полный контекст страницы плана (hero, скор, профиль-карусель, фазы,
+  // продукты с состояниями cart/wishlist, советы дерматолога).
+  // Один запрос — все данные для UI.
+  async getPlanPageContext(): Promise<{
+    state: 'ok' | 'no_plan';
+    context?: import('@/lib/plan-page/types').PlanPageContext;
+  }> {
+    return request('/plan/page-context');
+  },
+
   // Генерация плана ухода (28 дней) - явная генерация
   async generatePlan(profileId?: string): Promise<PlanResponse> {
     const url = profileId ? `/plan/generate?profileId=${profileId}` : '/plan/generate';

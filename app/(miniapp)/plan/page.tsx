@@ -9,6 +9,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { PlanPageClientNew } from './plan-client-new';
 import { PlanPageClient } from './plan-client';
+import { PlanPageV2 } from './plan-page-v2';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
 import type { GeneratedPlan, ProfileResponse } from '@/lib/api-types';
 import { clientLogger } from '@/lib/client-logger';
@@ -1598,8 +1599,23 @@ export default function PlanPage() {
   );
 
   // Рендерим план
-  // Используем новый компонент, если есть plan28
+  // V2: новый компонент сам подгружает /api/plan/page-context и
+  // рендерит персонализированный контент (hero / скор / карусель профиля /
+  // фазы / средства / советы / фидбек). Старый PlanPageClientNew оставлен
+  // как fallback на случай feature-flag отката.
   if (planData.plan28) {
+    const usePlanV2 = process.env.NEXT_PUBLIC_PLAN_V2 !== 'false';
+
+    if (usePlanV2) {
+      return (
+        <ErrorBoundary fallback={planErrorFallback}>
+          <Suspense fallback={<PlanLoadingView message="Загружаем план..." />}>
+            <PlanPageV2 />
+          </Suspense>
+        </ErrorBoundary>
+      );
+    }
+
     return (
       <ErrorBoundary fallback={planErrorFallback}>
         <Suspense fallback={<PlanLoadingView message="Загружаем план..." />}>
