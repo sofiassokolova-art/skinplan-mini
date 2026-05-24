@@ -789,8 +789,164 @@ export function QuizInfoScreen({
     );
   }
 
-  // Спец-рендер для habits_matter удалён вместе с экраном.
+  // Экран сравнения simple_care — полноэкранный редизайн с карточками
+  if (isComparisonScreen && screen.id === 'simple_care') {
+    const content = screen.content as {
+      left: { title: string; items: string[] };
+      right: { title: string; items: string[] };
+    };
 
+    const glassCard: React.CSSProperties = {
+      flex: 1,
+      minWidth: 0,
+      backgroundColor: 'rgba(255, 255, 255, 0.45)',
+      backdropFilter: 'blur(24px)',
+      WebkitBackdropFilter: 'blur(24px)',
+      border: '1px solid rgba(255, 255, 255, 0.55)',
+      borderRadius: '22px',
+      paddingTop: '44px',
+      paddingBottom: '28px',
+      paddingLeft: '14px',
+      paddingRight: '14px',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      boxShadow: '0 8px 32px rgba(0,0,0,0.07)',
+      wordBreak: 'break-word',
+    };
+
+    const renderCard = (
+      side: { title: string; items: string[] },
+      iconBg: string,
+      icon: React.ReactNode,
+    ) => (
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div style={{
+          width: '52px', height: '52px', borderRadius: '50%',
+          backgroundColor: iconBg, display: 'flex', alignItems: 'center',
+          justifyContent: 'center', zIndex: 1, flexShrink: 0,
+          marginBottom: '-26px', boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+        }}>
+          {icon}
+        </div>
+        <div style={glassCard}>
+          <p style={{
+            fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, sans-serif",
+            fontWeight: 700, fontSize: 'clamp(12px, 3.5vw, 15px)', lineHeight: '1.3',
+            textAlign: 'center', color: '#000', margin: '0 0 clamp(14px, 4vw, 20px) 0',
+          }}>{side.title}</p>
+          {side.items.map((item, i) => (
+            <p key={i} style={{
+              fontFamily: "var(--font-inter), 'Inter', -apple-system, sans-serif",
+              fontSize: 'clamp(12px, 3.3vw, 14px)', lineHeight: '1.45',
+              textAlign: 'center', color: '#333',
+              margin: i < side.items.length - 1 ? '0 0 clamp(10px, 3.5vw, 16px) 0' : '0',
+            }}>{item}</p>
+          ))}
+        </div>
+      </div>
+    );
+
+    return (
+      <>
+        {backButton}
+        <div style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden', background: '#f5f0eb' }}>
+          {screen.image && (
+            <Image src={screen.image} alt="" fill style={{ objectFit: 'cover', objectPosition: 'center' }} priority />
+          )}
+          <div style={{ position: 'relative', zIndex: 1, maxWidth: '480px', margin: '0 auto', padding: 'clamp(80px, 25vw, 120px) clamp(16px, 5vw, 24px) clamp(100px, 25vw, 130px)' }}>
+            <h1 style={{
+              fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 700, fontSize: 'clamp(20px, 6vw, 28px)', lineHeight: '1.25',
+              color: '#000000', margin: '0 0 clamp(32px, 10vw, 52px) 0',
+            }}>
+              SkinIQ делает уход за&nbsp;кожей простым и&nbsp;понятным
+            </h1>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'stretch' }}>
+              {renderCard(content?.left, '#f0f0f0',
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#555" strokeWidth="1.8" strokeLinecap="round"><line x1="4" y1="4" x2="14" y2="14"/><line x1="14" y1="4" x2="4" y2="14"/></svg>
+              )}
+              {renderCard(content?.right, '#D5FE61',
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="3,9 7,13 15,5"/></svg>
+              )}
+            </div>
+          </div>
+          <FixedContinueButton ctaText={screen.ctaText} onClick={handleNext} disabled={isHandlingNext} loadingText="Продолжить" />
+        </div>
+      </>
+    );
+  }
+
+  // Экран "SkinIQ заботится о вашем здоровье" (health_trust)
+  if (screen.id === 'health_trust') {
+    const cards = [
+      {
+        icon: (
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke="#555" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 3 L30 8 L30 18 C30 25 24 30 18 33 C12 30 6 25 6 18 L6 8 Z"/>
+            <polyline points="13,18 16,21 23,14"/>
+          </svg>
+        ),
+        title: 'Безопасность',
+        desc: 'Все рекомендации по уходу одобрены врачами дерматологами и абсолютно безопасны',
+      },
+      {
+        icon: (
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke="#555" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="8" y="16" width="20" height="16" rx="3"/>
+            <path d="M12 16 L12 11 C12 7.7 14.7 5 18 5 C21.3 5 24 7.7 24 11 L24 16"/>
+            <circle cx="18" cy="24" r="2" fill="#555" stroke="none"/>
+          </svg>
+        ),
+        title: 'Конфиденциальность',
+        desc: 'Вся информация остается конфиденциальной и используется только для персональных рекомендаций',
+      },
+    ];
+
+    return (
+      <>
+        {backButton}
+        <div style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden', background: '#f5f0eb' }}>
+          {screen.image && (
+            <Image src={screen.image} alt="" fill style={{ objectFit: 'cover', objectPosition: 'center top' }} priority />
+          )}
+          <div style={{
+            position: 'relative', zIndex: 1, maxWidth: '480px', margin: '0 auto', width: '100%',
+            padding: 'clamp(80px, 25vw, 120px) clamp(16px, 5vw, 24px) 0',
+            display: 'flex', flexDirection: 'column', minHeight: '100vh', boxSizing: 'border-box',
+          }}>
+            <h1 style={{
+              fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 700, fontSize: 'clamp(20px, 6vw, 28px)', lineHeight: '1.25',
+              color: '#000000', margin: '0', maxWidth: 'min(200px, 55%)', whiteSpace: 'pre-line',
+            }}>
+              {screen.title}
+            </h1>
+            <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: '96px' }}>
+              {cards.map((card, i) => (
+                <div key={i} style={{
+                  background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(24px)',
+                  WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.6)',
+                  borderRadius: '20px', padding: '20px 20px 20px 16px',
+                  display: 'flex', alignItems: 'flex-start', gap: '16px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.06)',
+                }}>
+                  <div style={{ width: '44px', height: '44px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {card.icon}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontFamily: "var(--font-inter), 'Inter', -apple-system, sans-serif", fontWeight: 600, fontSize: 'clamp(13px, 3.8vw, 16px)', color: '#000', margin: '0 0 6px 0', lineHeight: '1.3' }}>{card.title}</p>
+                    <p style={{ fontFamily: "var(--font-inter), 'Inter', -apple-system, sans-serif", fontSize: 'clamp(11px, 3.2vw, 14px)', lineHeight: '1.5', color: '#444', margin: '0' }}>{card.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <FixedContinueButton ctaText={screen.ctaText} onClick={handleNext} disabled={isHandlingNext} loadingText="Продолжить" />
+        </div>
+      </>
+    );
+  }
 
   // Дефолтный рендеринг для остальных инфо-экранов
   return (
