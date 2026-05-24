@@ -35,12 +35,16 @@ function PersonalAnalysisScreenComponent({
         padding: 0,
         margin: 0,
         minHeight: '100vh',
-        background: '#FFFFFF',
+        background: `
+          radial-gradient(60% 30% at 100% 0%, rgba(213,254,97,0.55) 0%, transparent 65%),
+          radial-gradient(70% 30% at 0% 35%, rgba(255,231,200,0.6) 0%, transparent 65%),
+          radial-gradient(80% 25% at 100% 70%, rgba(213,254,97,0.35) 0%, transparent 65%),
+          radial-gradient(80% 30% at 0% 100%, rgba(220,210,196,0.6) 0%, transparent 60%),
+          #F4F2EE`,
         display: 'flex',
         flexDirection: 'column',
         position: 'relative',
         width: '100%',
-        border: '0px solid rgb(229, 231, 235)',
         boxSizing: 'border-box',
       }}>
 
@@ -115,15 +119,18 @@ function PersonalAnalysisScreenComponent({
               style={{
                 width: '100%',
                 minWidth: '100%',
-                minHeight: '96px',
+                minHeight: '80px',
                 display: 'flex',
                 flexDirection: 'row',
                 alignItems: 'center',
-                gap: '12px',
-                backgroundColor: '#FFFFFF',
-                borderRadius: '12px',
-                padding: '14px 16px',
-                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08)',
+                gap: '14px',
+                background: 'rgba(255,255,255,0.55)',
+                backdropFilter: 'blur(24px) saturate(160%)',
+                WebkitBackdropFilter: 'blur(24px) saturate(160%)',
+                border: '1px solid rgba(255,255,255,0.75)',
+                borderRadius: '20px',
+                padding: '16px 18px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.05)',
                 boxSizing: 'border-box',
               }}
             >
@@ -132,7 +139,7 @@ function PersonalAnalysisScreenComponent({
                 src={item.icon}
                 fetchPriority="high"
                 decoding="sync"
-                style={{ width: '32px', height: '32px', objectFit: 'contain', flexShrink: 0 }}
+                style={{ width: '36px', height: '36px', objectFit: 'contain', flexShrink: 0 }}
               />
               <div
                 style={{
@@ -140,10 +147,10 @@ function PersonalAnalysisScreenComponent({
                   fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                   fontWeight: 400,
                   fontSize: '14px',
-                  lineHeight: '120%',
+                  lineHeight: '1.45',
                   letterSpacing: '0px',
                   textAlign: 'left',
-                  color: '#000000',
+                  color: '#1A1A1A',
                 }}
               >
                 {item.text}
