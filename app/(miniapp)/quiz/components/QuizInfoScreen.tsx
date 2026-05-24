@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
 import type { Questionnaire } from '@/lib/quiz/types';
@@ -144,6 +144,26 @@ interface QuizInfoScreenProps {
   // Ответы пользователя — нужны для персонализированных экранов (skin_preview).
   // Опционально: начальные инфо-экраны (welcome, goals_intro) рендерятся до ответов.
   answers?: Record<number, string | string[]>;
+}
+
+// Шаговые интро-экраны (stepNumber !== undefined) теперь невидимы для пользователя:
+// компонент сразу вызывает handleNext, а лейбл «Шаг N: название» показывается
+// над прогресс-баром на следующих вопросах (см. QuizQuestion.tsx → QUESTION_STEP_MAP).
+function StepScreenAutoAdvance({
+  handleNext,
+  isHandlingNext,
+}: {
+  handleNext: () => Promise<void>;
+  isHandlingNext: boolean;
+}) {
+  const calledRef = useRef(false);
+  useEffect(() => {
+    if (calledRef.current || isHandlingNext) return;
+    calledRef.current = true;
+    handleNext();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
 }
 
 export function QuizInfoScreen({
@@ -304,7 +324,12 @@ export function QuizInfoScreen({
                 padding: 0,
                 margin: 0,
                 height: '100vh',
-                background: '#FFFFFF',
+                background: `
+                  radial-gradient(60% 30% at 100% 0%, rgba(213,254,97,0.55) 0%, transparent 65%),
+                  radial-gradient(70% 30% at 0% 35%, rgba(255,231,200,0.6) 0%, transparent 65%),
+                  radial-gradient(80% 25% at 100% 70%, rgba(213,254,97,0.35) 0%, transparent 65%),
+                  radial-gradient(80% 30% at 0% 100%, rgba(220,210,196,0.6) 0%, transparent 60%),
+                  #F4F2EE`,
                 display: 'flex',
                 flexDirection: 'column',
                 position: 'relative',
@@ -316,7 +341,12 @@ export function QuizInfoScreen({
                 margin: 0,
                 minHeight: '100vh',
                 maxHeight: '100vh',
-                background: '#FFFFFF',
+                background: `
+                  radial-gradient(60% 30% at 100% 0%, rgba(213,254,97,0.55) 0%, transparent 65%),
+                  radial-gradient(70% 30% at 0% 35%, rgba(255,231,200,0.6) 0%, transparent 65%),
+                  radial-gradient(80% 25% at 100% 70%, rgba(213,254,97,0.35) 0%, transparent 65%),
+                  radial-gradient(80% 30% at 0% 100%, rgba(220,210,196,0.6) 0%, transparent 60%),
+                  #F4F2EE`,
                 display: 'flex',
                 flexDirection: 'column',
                 position: 'relative',
@@ -336,14 +366,14 @@ export function QuizInfoScreen({
                   paddingLeft: '20px',
                   paddingRight: '20px',
                   paddingBottom: '24px',
-                  background: '#FFFFFF',
+                  background: 'transparent',
                 }
               : {
                   paddingTop: '120px',
                   paddingLeft: '20px',
                   paddingRight: '20px',
                   paddingBottom: '24px',
-                  background: '#FFFFFF',
+                  background: 'transparent',
                 }
           }
         >
@@ -385,11 +415,11 @@ export function QuizInfoScreen({
           style={{
             flex: 1,
             overflow: 'hidden',
-            overflowY: 'visible', // Разрешаем видимость тени сверху/снизу
-            paddingLeft: '20px',
-            paddingRight: '20px',
-            paddingTop: '20px',
-            paddingBottom: '180px',
+            overflowY: 'visible',
+            paddingLeft: 0,
+            paddingRight: 0,
+            paddingTop: 0,
+            paddingBottom: '160px',
             animationDelay: '0.1s',
           }}
         >
@@ -568,119 +598,10 @@ export function QuizInfoScreen({
     );
   }
 
-  // Mini-progress-step экран — рендерится для любого info-screen с заполненным stepNumber.
-  // Сейчас это: general_info_intro (1/4), skin_features_intro (2/4), health_data (3/4),
-  // preferences_intro (4/4). Дизайн в чёрно-лаймовой палитре анкеты:
-  // лаймовая прогресс-полоса наверху + большой заголовок этапа + опциональный subtitle.
+  // Mini-progress-step экран — теперь прозрачно пропускается.
+  // Лейбл «Шаг N: название» показывается над прогресс-баром вопросов (QuizQuestion → QUESTION_STEP_MAP).
   if (screen.stepNumber !== undefined && screen.totalSteps !== undefined) {
-    const LIME = '#D5FE61';
-    const progressPercent = Math.max(0, Math.min(100, (screen.stepNumber / screen.totalSteps) * 100));
-
-    return (
-      <>
-        {backButton}
-        <div
-          style={{
-            padding: 0,
-            margin: 0,
-            minHeight: '100vh',
-            background: '#FFFFFF',
-            position: 'relative',
-            width: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          {/* Прогресс-бар. Тонкая лаймовая полоса на светло-серой дорожке. */}
-          <div
-            style={{
-              position: 'absolute',
-              top: 'env(safe-area-inset-top, 0px)',
-              left: 0,
-              right: 0,
-              height: '4px',
-              background: '#EEEEEE',
-              zIndex: 5,
-            }}
-          >
-            <div
-              style={{
-                width: `${progressPercent}%`,
-                height: '100%',
-                background: LIME,
-                transition: 'width 400ms ease-out',
-              }}
-            />
-          </div>
-
-          {/* Центровка контента по вертикали */}
-          <div
-            className="animate-fade-in"
-            style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              padding: '40px 24px 140px',
-              gap: '16px',
-            }}
-          >
-            {/* Лейбл этапа: «ШАГ 3 ИЗ 4» — мелкими капсами */}
-            <p
-              style={{
-                margin: 0,
-                fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontSize: '13px',
-                fontWeight: 600,
-                letterSpacing: '0.12em',
-                color: '#888888',
-                textTransform: 'uppercase',
-              }}
-            >
-              Шаг {screen.stepNumber} из {screen.totalSteps}
-            </p>
-
-            {/* Большой заголовок этапа */}
-            <h1
-              style={{
-                margin: 0,
-                fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontWeight: 700,
-                fontSize: '36px',
-                lineHeight: '110%',
-                letterSpacing: '-0.01em',
-                color: '#000000',
-              }}
-            >
-              {screen.title}
-            </h1>
-
-            {/* Опциональный subtitle */}
-            {screen.subtitle && (
-              <p
-                style={{
-                  margin: 0,
-                  fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                  fontSize: '17px',
-                  lineHeight: '140%',
-                  color: '#444444',
-                  whiteSpace: 'pre-line',
-                }}
-              >
-                {screen.subtitle}
-              </p>
-            )}
-          </div>
-
-          <FixedContinueButton
-            ctaText={screen.ctaText || 'Продолжить'}
-            onClick={handleNext}
-            disabled={isHandlingNext}
-            loadingText="Продолжить"
-          />
-        </div>
-      </>
-    );
+    return <StepScreenAutoAdvance handleNext={handleNext} isHandlingNext={isHandlingNext} />;
   }
 
   // Экран "Нам важно учесть ваши данные о здоровье" (health_data) - такая же верстка как у general_info_intro

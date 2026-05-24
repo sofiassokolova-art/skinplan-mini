@@ -25,6 +25,34 @@ interface QuizQuestionProps {
   showBackButton: boolean;
 }
 
+// Маппинг вопросов на шаги анкеты (соответствует stepNumber/stepLabel в info-screens.ts).
+// Лейбл «Шаг N: название» рендерится над прогресс-баром вместо отдельного экрана.
+const QUESTION_STEP_MAP: Record<string, { number: number; total: number; label: string }> = {
+  // Шаг 1: Общая информация
+  skin_goals: { number: 1, total: 4, label: 'Общая информация' },
+  age:        { number: 1, total: 4, label: 'Общая информация' },
+  gender:     { number: 1, total: 4, label: 'Общая информация' },
+  // Шаг 2: Особенности кожи
+  skin_type:        { number: 2, total: 4, label: 'Особенности кожи' },
+  skin_concerns:    { number: 2, total: 4, label: 'Особенности кожи' },
+  skin_sensitivity: { number: 2, total: 4, label: 'Особенности кожи' },
+  seasonal_changes: { number: 2, total: 4, label: 'Особенности кожи' },
+  // Шаг 3: Данные о здоровье
+  medical_diagnoses:        { number: 3, total: 4, label: 'Данные о здоровье' },
+  pregnancy_breastfeeding:  { number: 3, total: 4, label: 'Данные о здоровье' },
+  allergies:                { number: 3, total: 4, label: 'Данные о здоровье' },
+  has_avoid_ingredients:    { number: 3, total: 4, label: 'Данные о здоровье' },
+  avoid_ingredients:        { number: 3, total: 4, label: 'Данные о здоровье' },
+  retinoid_usage:           { number: 3, total: 4, label: 'Данные о здоровье' },
+  prescription_topical:     { number: 3, total: 4, label: 'Данные о здоровье' },
+  oral_medications:         { number: 3, total: 4, label: 'Данные о здоровье' },
+  // Шаг 4: Ваши предпочтения
+  makeup_frequency: { number: 4, total: 4, label: 'Ваши предпочтения' },
+  care_type:        { number: 4, total: 4, label: 'Ваши предпочтения' },
+  care_steps:       { number: 4, total: 4, label: 'Ваши предпочтения' },
+  budget:           { number: 4, total: 4, label: 'Ваши предпочтения' },
+};
+
 // Вынесен на уровень модуля, чтобы не пересоздаваться при ре-рендере — иначе картинки на экране «Тип кожи» мигают
 const LimeOptionCard = memo(function LimeOptionCard({
   option,
@@ -515,6 +543,9 @@ export const QuizQuestion = memo(function QuizQuestion({
     setDisplayProgressPercent(targetProgressPercent);
   }, [targetProgressPercent]);
 
+  // Лейбл шага для текущего вопроса (если есть в маппинге)
+  const currentStep = question?.code ? QUESTION_STEP_MAP[question.code] : undefined;
+
   // Прогресс-бар в ширину контента (те же отступы 20px, что и у заголовка/вариантов)
   const ProgressBar = () => {
     if (hideProgressBar) return null;
@@ -532,6 +563,21 @@ export const QuizQuestion = memo(function QuizQuestion({
           boxSizing: 'border-box',
         }}
       >
+        {/* Лейбл шага над прогресс-баром */}
+        {currentStep && (
+          <p
+            style={{
+              margin: '0 0 6px 0',
+              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontSize: '12px',
+              fontWeight: 500,
+              color: '#888888',
+              letterSpacing: '0.02em',
+            }}
+          >
+            Шаг {currentStep.number}: {currentStep.label}
+          </p>
+        )}
         <div
           style={{
             width: '100%',

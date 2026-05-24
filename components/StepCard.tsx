@@ -4,7 +4,6 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import { Heart, ShoppingCart, RefreshCw } from 'lucide-react';
 import type { DayStep } from '@/lib/plan-types';
 import { getStepCategoryLabel, getStepDescription } from '@/lib/plan-types';
@@ -53,7 +52,7 @@ export function StepCard({
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
           {icon && (
-            <Image src={icon} alt="" width={28} height={28} style={{ objectFit: 'contain', flexShrink: 0 }} />
+            <img src={icon} alt="" width={28} height={28} style={{ objectFit: 'contain', flexShrink: 0 }} />
           )}
           <div style={{ fontSize: '14px', fontWeight: '600', color: '#6B7280' }}>
             {stepDesc.name}
@@ -108,7 +107,7 @@ export function StepCard({
       <div style={{ marginBottom: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
           {icon && (
-            <Image src={icon} alt="" width={28} height={28} style={{ objectFit: 'contain', flexShrink: 0 }} />
+            <img src={icon} alt="" width={28} height={28} style={{ objectFit: 'contain', flexShrink: 0 }} />
           )}
           <div style={{ fontSize: '14px', fontWeight: '600', color: '#0A5F59' }}>
             {stepDesc.name}
