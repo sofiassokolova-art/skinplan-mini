@@ -96,8 +96,17 @@ function HowItWorksScreenComponent({
           pointerEvents: 'none',
         }}
       >
+        {/*
+          ВАЖНО: НЕ оборачивать этот контейнер в animate-fade-in (opacity-анимация).
+          У внутреннего блока стоит backdrop-filter: blur(8px). Когда родитель имеет
+          opacity < 1, браузер рендерит поддерево в off-screen буфер, и backdrop-filter
+          теряет доступ к реальному фону страницы — блюр визуально пропадает до конца
+          анимации, а потом резко «щёлкает».
+          Используем transform-only анимацию (animate-rise-in-centered): карточка
+          мягко «всплывает» снизу с лёгким скейлом, блюр активен с первого кадра.
+        */}
         <div
-          className="animate-fade-in"
+          className="animate-rise-in-centered"
           style={{
             position: 'absolute',
             top: '50%',
@@ -110,6 +119,7 @@ function HowItWorksScreenComponent({
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'stretch',
+            willChange: 'transform',
           }}
         >
           {/* Единый прозрачный контейнер для заголовка и шагов */}

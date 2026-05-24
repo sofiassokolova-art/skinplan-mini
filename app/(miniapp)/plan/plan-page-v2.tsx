@@ -5,10 +5,11 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { clientLogger } from '@/lib/client-logger';
 import toast from 'react-hot-toast';
+import { PaymentGate } from '@/components/PaymentGate';
 import type {
   PlanPageContext,
   ProductCard,
@@ -24,10 +25,36 @@ interface ProductActionState {
 
 export function PlanPageV2() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [context, setContext] = useState<PlanPageContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionState, setActionState] = useState<ProductActionState>({ busyId: null });
+  // Перепрохождение анкеты: меняет тексты в PaymentGate (как в plan-client-new)
+  const [isRetaking, setIsRetaking] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getIsRetakingQuiz, getFullRetakeFromHome } = await import('@/lib/user-preferences');
+        const [isRetakingQuiz, fullRetakeFromHome] = await Promise.all([
+          getIsRetakingQuiz(),
+          getFullRetakeFromHome(),
+        ]);
+        if (!cancelled) {
+          setIsRetaking(Boolean(isRetakingQuiz || fullRetakeFromHome));
+        }
+      } catch (err) {
+        if (!cancelled) {
+          clientLogger.warn('PlanPageV2: could not load retaking status', err);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const loadContext = useCallback(async () => {
     try {
@@ -152,51 +179,72 @@ export function PlanPageV2() {
       {/* 2. Personal heading */}
       <h1 className="pv2-personal-heading">{context.heading}</h1>
 
-      {/* 3. Phase + Streak */}
-      <div className="pv2-double-row">
-        <div className="pv2-mini-card">
-          <div className="pv2-mini-label">Текущая фаза</div>
-          <div className="pv2-mini-value">{context.hero.phaseLabel}</div>
-          <div className="pv2-mini-sub">
-            День {context.hero.dayInPhase} из {context.hero.daysInPhase}
+      {/*
+        PaymentGate оборачивает платный контент плана.
+        До оплаты: показывается paywall + блюр контента (и навигация скрыта через usePaywallVisibility).
+        После оплаты: контент разблокирован, URL очищается от paywall/blur → появляется нижняя навигация.
+        Точно такой же паттерн, как в plan-client-new.tsx и home/page.tsx, чтобы пейволл
+        не «протекал» только на /home.
+      */}
+      <PaymentGate
+        price={199}
+        productCode="plan_access"
+        isRetaking={isRetaking}
+        onPaymentComplete={() => {
+          clientLogger.log('✅ Payment completed on plan page (V2)');
+          const q = new URLSearchParams(searchParams?.toString() || '');
+          q.delete('paywall');
+          q.delete('blur');
+          const newSearch = q.toString();
+          router.replace(newSearch ? `/plan?${newSearch}` : '/plan');
+        }}
+      >
+        {/* 3. Phase + Streak */}
+        <div className="pv2-double-row">
+          <div className="pv2-mini-card">
+            <div className="pv2-mini-label">Текущая фаза</div>
+            <div className="pv2-mini-value">{context.hero.phaseLabel}</div>
+            <div className="pv2-mini-sub">
+              День {context.hero.dayInPhase} из {context.hero.daysInPhase}
+            </div>
+          </div>
+          <div className="pv2-mini-card pv2-mini-dark">
+            <div className="pv2-mini-label">SkinIQ streak</div>
+            <div className="pv2-mini-value">{context.streak.label}</div>
+            <div className="pv2-mini-sub">Отмечен ежедневный уход</div>
           </div>
         </div>
-        <div className="pv2-mini-card pv2-mini-dark">
-          <div className="pv2-mini-label">SkinIQ streak</div>
-          <div className="pv2-mini-value">{context.streak.label}</div>
-          <div className="pv2-mini-sub">Отмечен ежедневный уход</div>
-        </div>
-      </div>
 
-      {/* 4. Score */}
-      <ScoreCard
-        score={context.skinScore.score}
-        label={context.skinScore.label}
-        description={context.skinScore.description}
-      />
+        {/* 4. Score */}
+        <ScoreCard
+          score={context.skinScore.score}
+          label={context.skinScore.label}
+          description={context.skinScore.description}
+        />
 
-      {/* 5. Profile carousel */}
-      <ProfileCarousel cards={context.profileCards} />
+        {/* 5. Profile carousel */}
+        <ProfileCarousel cards={context.profileCards} />
 
-      {/* 6. Phases */}
-      <PhasesSection phases={context.phases} />
+        {/* 6. Phases */}
+        <PhasesSection phases={context.phases} />
 
-      {/* 7. Products */}
-      <ProductsSection
-        products={context.products}
-        busyId={actionState.busyId}
-        onReplace={handleReplaceClick}
-        onToggleWishlist={handleToggleWishlist}
-        onToggleCart={handleToggleCart}
-      />
+        {/* 7. Products */}
+        <ProductsSection
+          products={context.products}
+          busyId={actionState.busyId}
+          onReplace={handleReplaceClick}
+          onToggleWishlist={handleToggleWishlist}
+          onToggleCart={handleToggleCart}
+        />
 
-      {/* 8. Expert notes */}
-      <ExpertNotesCard notes={context.expertNotes} onRetakeQuiz={() => router.push('/quiz?retake=1')} />
+        {/* 8. Expert notes */}
+        <ExpertNotesCard notes={context.expertNotes} onRetakeQuiz={() => router.push('/quiz?retake=1')} />
 
-      {/* 9. Feedback */}
-      <FeedbackSection onSubmit={handleFeedback} />
+        {/* 9. Feedback */}
+        <FeedbackSection onSubmit={handleFeedback} />
 
-      <div style={{ height: 100 }} />
+        <div style={{ height: 100 }} />
+      </PaymentGate>
     </div>
   );
 }

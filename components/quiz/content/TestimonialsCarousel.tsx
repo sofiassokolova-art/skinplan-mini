@@ -117,19 +117,17 @@ function TestimonialsCarouselInner({ testimonials, fullWidth }: TestimonialsCaro
                     <div style={{
                       display: 'flex',
                       width: '100%',
-                      minHeight: '60vh',
-                      maxHeight: '70vh',
-                      height: '64vh',
+                      minHeight: '55vh',
+                      maxHeight: '65vh',
+                      height: '60vh',
                       overflow: 'hidden',
-                      borderBottomLeftRadius: '20px',
-                      borderBottomRightRadius: '20px',
                       backfaceVisibility: 'hidden',
                       WebkitBackfaceVisibility: 'hidden',
                       transform: 'translateZ(0)',
                       willChange: 'transform',
                     }}>
                       {testimonial.beforeImage && (
-                        <div style={{ flex: 1, position: 'relative', overflow: 'hidden', borderBottomLeftRadius: '20px', backgroundColor: '#e8e8e8' }}>
+                        <div style={{ flex: 1, position: 'relative', overflow: 'hidden', backgroundColor: '#e8e8e8' }}>
                           <img
                             src={testimonial.beforeImage}
                             alt="До"
@@ -149,7 +147,7 @@ function TestimonialsCarouselInner({ testimonials, fullWidth }: TestimonialsCaro
                         </div>
                       )}
                       {testimonial.afterImage && (
-                        <div style={{ flex: 1, position: 'relative', overflow: 'hidden', borderBottomRightRadius: '20px', backgroundColor: '#e8e8e8' }}>
+                        <div style={{ flex: 1, position: 'relative', overflow: 'hidden', backgroundColor: '#e8e8e8' }}>
                           <img
                             src={testimonial.afterImage}
                             alt="После"
@@ -170,12 +168,27 @@ function TestimonialsCarouselInner({ testimonials, fullWidth }: TestimonialsCaro
                       )}
                     </div>
                   )}
-                  <div style={{ padding: '12px 20px 10px', display: 'flex', flexDirection: 'column', flex: 1, maxWidth: '340px', margin: '0 auto' }}>
-                    <p style={{ fontSize: '14px', color: '#000000', fontWeight: 600, margin: '0 0 6px 0' }}>
-                      {String(testimonial.author || 'Пользователь')}{testimonial.city ? `, ${testimonial.city}` : ''}
-                    </p>
-                    <p style={{ fontSize: '12px', color: '#000000', lineHeight: '1.5', margin: '0 0 auto 0', flex: 1 }}>
+                  <div style={{
+                    margin: '12px 16px 0',
+                    padding: '16px 20px 20px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    background: 'rgba(255,255,255,0.55)',
+                    backdropFilter: 'blur(24px) saturate(160%)',
+                    WebkitBackdropFilter: 'blur(24px) saturate(160%)',
+                    border: '1px solid rgba(255,255,255,0.75)',
+                    borderRadius: '22px',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.05)',
+                  }}>
+                    {/* Звёзды */}
+                    <div style={{ display: 'flex', gap: '3px', marginBottom: '10px' }}>
+                      {Array.from({ length: 5 }).map((_, i) => <LimeStar key={i} />)}
+                    </div>
+                    <p style={{ fontSize: '13px', color: '#1A1A1A', lineHeight: '1.55', margin: '0 0 12px 0' }}>
                       {String(testimonial.text || '')}
+                    </p>
+                    <p style={{ fontSize: '13px', color: '#6B7280', fontWeight: 600, margin: 0 }}>
+                      — {String(testimonial.author || 'Пользователь')}{testimonial.city ? `, ${testimonial.city}` : ''}
                     </p>
                   </div>
                 </div>
@@ -183,7 +196,21 @@ function TestimonialsCarouselInner({ testimonials, fullWidth }: TestimonialsCaro
             );
           })}
         </div>
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', paddingTop: 0, paddingBottom: 0, marginTop: '-8px' }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: '8px',
+          margin: '12px auto 0',
+          padding: '8px 18px',
+          width: 'fit-content',
+          background: 'rgba(255,255,255,0.55)',
+          backdropFilter: 'blur(12px) saturate(140%)',
+          WebkitBackdropFilter: 'blur(12px) saturate(140%)',
+          border: '1px solid rgba(255,255,255,0.75)',
+          borderRadius: '20px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.04)',
+        }}>
           {testimonials.map((_, idx) => (
             <button
               key={idx}
@@ -191,14 +218,14 @@ function TestimonialsCarouselInner({ testimonials, fullWidth }: TestimonialsCaro
               onClick={() => goTo(idx)}
               aria-label={`Отзыв ${idx + 1}`}
               style={{
-                width: activeIndex === idx ? 10 : 8,
+                width: activeIndex === idx ? 20 : 8,
                 height: 8,
                 borderRadius: 4,
                 border: 'none',
                 padding: 0,
                 cursor: 'pointer',
-                backgroundColor: activeIndex === idx ? '#000000' : 'rgba(0, 0, 0, 0.35)',
-                transition: 'background-color 0.2s, width 0.2s',
+                backgroundColor: activeIndex === idx ? '#0A0A0A' : 'rgba(0,0,0,0.2)',
+                transition: 'background-color 0.25s, width 0.25s cubic-bezier(0.22,1,0.36,1)',
               }}
             />
           ))}

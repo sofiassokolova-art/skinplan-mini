@@ -13,6 +13,7 @@ import type { QuizTopic } from '@/lib/quiz-topics';
 import * as userPreferences from '@/lib/user-preferences';
 import { getInitialInfoScreens } from '../info-screens';
 import type { Questionnaire } from '@/lib/quiz/types';
+import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 
 interface QuizRetakeScreenProps {
   questionnaire: Questionnaire | null;
@@ -290,6 +291,28 @@ export function QuizRetakeScreen({
                 clientLogger.warn('Failed to save full retake payment flag:', err);
               }
             }
+
+            // ВАЖНО: при перепрохождении после оплаты НЕ показываем резюм-экран —
+            // полностью сбрасываем сохранённый прогресс и помечаем сессию как "starting over".
+            // Без этого useResumeScreenLogic увидит savedProgress в storage и покажет резюм-экран.
+            setIsStartingOver(true);
+            isStartingOverRef.current = true;
+            setAnswers({});
+            setSavedProgress(null);
+            setHasResumed(false);
+            hasResumedRef.current = false;
+            autoSubmitTriggeredRef.current = false;
+            setAutoSubmitTriggered(false);
+            setError(null);
+
+            // Очищаем флаги перепрохождения в БД, чтобы при следующем входе не было артефактов
+            try {
+              await userPreferences.setIsRetakingQuiz(false);
+              await userPreferences.setFullRetakeFromHome(false);
+            } catch (err) {
+              clientLogger.warn('Failed to clear retake flags after payment:', err);
+            }
+
             setShowFullRetakePaymentGate(false);
             setShowRetakeScreen(false);
             setIsRetakingQuiz(true);

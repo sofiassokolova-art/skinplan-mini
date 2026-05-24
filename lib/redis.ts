@@ -2,7 +2,7 @@
 // Singleton для Upstash Redis
 // ИСПРАВЛЕНО: Явно указываем write токен, чтобы избежать использования read-only токена
 
-import { Redis } from '@upstash/redis/cloudflare';
+import { Redis } from '@upstash/redis';
 
 let redisInstance: Redis | null = null;
 
