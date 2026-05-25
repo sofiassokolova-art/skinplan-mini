@@ -54,7 +54,9 @@ function PersonalAnalysisScreenComponent({
       <div style={{
         padding: 0,
         margin: 0,
-        minHeight: '100vh',
+        height: '100vh',
+        maxHeight: '100vh',
+        overflow: 'hidden',
         background: `
           radial-gradient(60% 30% at 100% 0%, rgba(213,254,97,0.55) 0%, transparent 65%),
           radial-gradient(70% 30% at 0% 35%, rgba(255,231,200,0.6) 0%, transparent 65%),
@@ -63,7 +65,11 @@ function PersonalAnalysisScreenComponent({
           #F4F2EE`,
         display: 'flex',
         flexDirection: 'column',
-        position: 'relative',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
         width: '100%',
         boxSizing: 'border-box',
         fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
@@ -78,11 +84,12 @@ function PersonalAnalysisScreenComponent({
           flexDirection: 'column',
           alignItems: 'stretch',
           justifyContent: 'flex-start',
-          padding: '88px 20px 200px',
+          padding: '72px 20px 130px',
           width: '100%',
           maxWidth: '420px',
           margin: '0 auto',
           boxSizing: 'border-box',
+          overflow: 'hidden',
         }}
       >
         {/* HEADER */}
@@ -90,20 +97,20 @@ function PersonalAnalysisScreenComponent({
           style={{
             fontFamily: "var(--font-unbounded), 'Unbounded', sans-serif",
             fontWeight: 700,
-            fontSize: '28px',
-            lineHeight: '110%',
+            fontSize: '26px',
+            lineHeight: '112%',
             letterSpacing: '-0.6px',
             textAlign: 'left',
             margin: '0 0 6px 4px',
           }}
         >
-          Ваш анализ<br />от SkinIQ
+          Экспертный анализ<br />от SkinIQ
         </h1>
         <p style={{
           fontSize: '14px',
-          lineHeight: 1.5,
+          lineHeight: 1.45,
           color: '#6B7280',
-          margin: '0 0 22px 4px',
+          margin: '0 0 16px 4px',
           letterSpacing: '-0.1px',
         }}>
           Персональный профиль на основе ваших ответов
@@ -115,13 +122,13 @@ function PersonalAnalysisScreenComponent({
           backdropFilter: 'blur(28px) saturate(160%)',
           WebkitBackdropFilter: 'blur(28px) saturate(160%)',
           border: '1px solid rgba(255,255,255,0.75)',
-          borderRadius: '28px',
-          padding: '20px 22px',
-          marginBottom: '14px',
+          borderRadius: '24px',
+          padding: '16px 18px',
+          marginBottom: '10px',
           boxShadow: '0 8px 32px rgba(0,0,0,0.06)',
           display: 'flex',
           alignItems: 'center',
-          gap: '16px',
+          gap: '14px',
         }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
@@ -136,33 +143,33 @@ function PersonalAnalysisScreenComponent({
             <div style={{
               fontFamily: "var(--font-unbounded), 'Unbounded', sans-serif",
               fontWeight: 700,
-              fontSize: '20px',
+              fontSize: '18px',
               lineHeight: '120%',
               letterSpacing: '-0.4px',
             }}>
               Программа под вашу кожу
             </div>
             <div style={{
-              fontSize: '13px',
+              fontSize: '12px',
               color: '#6B7280',
-              marginTop: '6px',
-              lineHeight: 1.45,
+              marginTop: '4px',
+              lineHeight: 1.4,
             }}>
-              Учитываем ваши ответы и 20+ параметров кожи
+              Учитываем ответы и 20+ параметров кожи
             </div>
           </div>
           <div style={{
-            width: '76px',
-            height: '76px',
+            width: '64px',
+            height: '64px',
             borderRadius: '50%',
-            border: '5px solid #D5FE61',
+            border: '4px solid #D5FE61',
             background: 'rgba(255,255,255,0.7)',
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '28px',
+            fontSize: '24px',
             flexShrink: 0,
           }}>
             <span aria-hidden>✨</span>
@@ -173,8 +180,8 @@ function PersonalAnalysisScreenComponent({
         <div style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: '10px',
-          marginBottom: '14px',
+          gap: '8px',
+          marginBottom: '10px',
         }}>
           {features.map((item) => (
             <div
@@ -183,20 +190,20 @@ function PersonalAnalysisScreenComponent({
                 display: 'flex',
                 flexDirection: 'row',
                 alignItems: 'center',
-                gap: '14px',
+                gap: '12px',
                 background: 'rgba(255,255,255,0.55)',
                 backdropFilter: 'blur(24px) saturate(160%)',
                 WebkitBackdropFilter: 'blur(24px) saturate(160%)',
                 border: '1px solid rgba(255,255,255,0.75)',
-                borderRadius: '22px',
-                padding: '14px 16px',
+                borderRadius: '20px',
+                padding: '12px 14px',
                 boxShadow: '0 6px 20px rgba(0,0,0,0.04)',
                 boxSizing: 'border-box',
               }}
             >
               <div style={{
-                width: '48px',
-                height: '48px',
+                width: '42px',
+                height: '42px',
                 borderRadius: '50%',
                 background: 'rgba(213,254,97,0.4)',
                 border: '1px solid rgba(255,255,255,0.8)',
@@ -210,7 +217,7 @@ function PersonalAnalysisScreenComponent({
                   src={item.icon}
                   fetchPriority="high"
                   decoding="sync"
-                  style={{ width: '28px', height: '28px', objectFit: 'contain' }}
+                  style={{ width: '24px', height: '24px', objectFit: 'contain' }}
                 />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -220,14 +227,14 @@ function PersonalAnalysisScreenComponent({
                   lineHeight: 1.3,
                   letterSpacing: '-0.1px',
                   color: '#0A0A0A',
-                  marginBottom: '2px',
+                  marginBottom: '1px',
                 }}>
                   {item.title}
                 </div>
                 <div style={{
                   fontSize: '12px',
                   color: '#6B7280',
-                  lineHeight: 1.4,
+                  lineHeight: 1.35,
                 }}>
                   {item.desc}
                 </div>
@@ -242,8 +249,8 @@ function PersonalAnalysisScreenComponent({
           backdropFilter: 'blur(24px) saturate(140%)',
           WebkitBackdropFilter: 'blur(24px) saturate(140%)',
           border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: '22px',
-          padding: '18px 20px',
+          borderRadius: '20px',
+          padding: '14px 18px',
           display: 'flex',
           alignItems: 'center',
           gap: '14px',
@@ -252,7 +259,7 @@ function PersonalAnalysisScreenComponent({
           <div style={{
             fontFamily: "var(--font-unbounded), 'Unbounded', sans-serif",
             fontWeight: 700,
-            fontSize: '36px',
+            fontSize: '32px',
             lineHeight: 1,
             letterSpacing: '-1px',
             color: '#D5FE61',
@@ -261,11 +268,11 @@ function PersonalAnalysisScreenComponent({
             92%
           </div>
           <div style={{
-            fontSize: '13px',
+            fontSize: '12px',
             color: 'rgba(255,255,255,0.85)',
             lineHeight: 1.4,
           }}>
-            пользователей SkinIQ отмечают улучшение кожи уже за 1 месяц
+            пользователей SkinIQ отмечают улучшение кожи за 1 месяц
           </div>
         </div>
       </div>
