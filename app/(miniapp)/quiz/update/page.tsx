@@ -97,7 +97,7 @@ export default function QuizUpdatePage() {
                   </div>
 
                   <div style={{ fontSize: '12px', color: '#9CA3AF' }}>
-                    {topic.questionIds.length} вопросов
+                    {topic.questionCodes?.length ?? topic.questionIds.length} вопросов
                     {topic.triggersPlanRebuild && (
                       <span style={{ marginLeft: '8px', color: '#0A5F59', fontWeight: '500' }}>
                         • Обновит план

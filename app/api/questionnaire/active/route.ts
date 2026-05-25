@@ -310,9 +310,9 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const responseWithCache = !shouldRedirectToPlan
-      ? addCacheHeaders(response, CachePresets.longCache())
-      : addCacheHeaders(response, CachePresets.noCache());
+    // Анкета может пересидиваться без смены URL, а _meta зависит от пользователя.
+    // Долгий public cache прятал новые вопросы и мог отдавать чужой stale-state.
+    const responseWithCache = addCacheHeaders(response, CachePresets.noCache());
     if (correlationId) addCorrelationIdToHeaders(correlationId, responseWithCache.headers);
     return responseWithCache;
   } catch (error: any) {

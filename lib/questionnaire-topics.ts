@@ -28,10 +28,10 @@ export const QUESTION_TOPICS: Record<QuestionTopicId, QuestionTopic> = {
   skin_type: {
     id: 'skin_type',
     title: 'Тип кожи',
-    description: 'Определение типа кожи и сезонности',
-    questionCodes: ['skin_type', 'seasonal_changes'],
+    description: 'Определение типа кожи, сезонности и фототипа',
+    questionCodes: ['skin_type', 'seasonal_changes', 'fitzpatrick_type'],
     requiresPlanRebuild: true,
-    affectsFields: ['skinType', 'seasonality'],
+    affectsFields: ['skinType', 'seasonality', 'fitzpatrickType'],
   },
   concerns_goals: {
     id: 'concerns_goals',
@@ -45,7 +45,7 @@ export const QUESTION_TOPICS: Record<QuestionTopicId, QuestionTopic> = {
     id: 'diagnoses_sensitivity',
     title: 'Диагнозы и чувствительность',
     description: 'Медицинские диагнозы и уровень чувствительности',
-    questionCodes: ['medical_diagnoses', 'skin_sensitivity', 'allergies'],
+    questionCodes: ['skin_sensitivity', 'medical_diagnoses'],
     requiresPlanRebuild: true,
     affectsFields: ['diagnoses', 'sensitivity', 'contraindications'],
   },
@@ -60,8 +60,8 @@ export const QUESTION_TOPICS: Record<QuestionTopicId, QuestionTopic> = {
   avoid_ingredients: {
     id: 'avoid_ingredients',
     title: 'Нежелательные ингредиенты',
-    description: 'Ингредиенты, которые нужно исключить',
-    questionCodes: ['avoid_ingredients'],
+    description: 'Аллергии и ингредиенты, которые нужно исключить',
+    questionCodes: ['allergies', 'has_avoid_ingredients', 'avoid_ingredients'],
     requiresPlanRebuild: true,
     affectsFields: ['contraindications'],
   },
@@ -70,17 +70,17 @@ export const QUESTION_TOPICS: Record<QuestionTopicId, QuestionTopic> = {
     id: 'current_care',
     title: 'Текущий уход и реакция кожи',
     description: 'Текущие средства и реакция кожи на них',
-    // retinol_reaction / aha_bha_reaction удалены из анкеты (не использовались downstream).
-    questionCodes: ['current_topicals', 'current_oral_meds'],
+    // Реальные id назначаются при seed; для retake и scoped recalculation матчимся по кодам.
+    questionCodes: ['retinoid_usage', 'retinoid_reaction', 'prescription_topical', 'oral_medications'],
     requiresPlanRebuild: true,
-    affectsFields: ['currentTopicals', 'currentOralMeds', 'contraindications'],
+    affectsFields: ['retinoidExperience', 'currentTopicals', 'currentOralMeds', 'contraindications'],
   },
   budget_preferences: {
     id: 'budget_preferences',
     title: 'Бюджет и предпочтения ухода',
     description: 'Бюджетный сегмент и предпочтения по уходу',
     // makeup_frequency перенесён сюда из удалённого топика habits_lifestyle.
-    questionCodes: ['makeup_frequency', 'budget', 'care_type', 'care_steps'],
+    questionCodes: ['makeup_frequency', 'care_type', 'care_steps', 'budget'],
     requiresPlanRebuild: true,
     affectsFields: ['makeupFrequency', 'budgetSegment', 'carePreference', 'routineComplexity'],
   },
@@ -113,4 +113,3 @@ export function topicRequiresPlanRebuild(topicId: QuestionTopicId): boolean {
 export function getQuestionCodesForTopic(topicId: QuestionTopicId): string[] {
   return QUESTION_TOPICS[topicId]?.questionCodes ?? [];
 }
-

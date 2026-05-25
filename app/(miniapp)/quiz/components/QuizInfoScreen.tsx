@@ -440,7 +440,7 @@ export function QuizInfoScreen({
   }
 
   // Экран mid-quiz preview персонализации (skin_preview) — показывается после блока вопросов
-  // про кожу (skin_type, skin_concerns, skin_sensitivity, seasonal_changes). Цель: дать
+  // про кожу (skin_type, skin_concerns, skin_sensitivity, seasonal_changes, fitzpatrick_type). Цель: дать
   // пользователю промежуточный «вывод» по его ответам — он видит, что машина уже что-то поняла,
   // и охотнее доходит до конца анкеты.
   if (isSkinPreviewScreen) {

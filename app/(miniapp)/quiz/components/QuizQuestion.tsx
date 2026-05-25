@@ -37,6 +37,7 @@ const QUESTION_STEP_MAP: Record<string, { number: number; total: number; label: 
   skin_concerns:    { number: 2, total: 4, label: 'Особенности кожи' },
   skin_sensitivity: { number: 2, total: 4, label: 'Особенности кожи' },
   seasonal_changes: { number: 2, total: 4, label: 'Особенности кожи' },
+  fitzpatrick_type: { number: 2, total: 4, label: 'Особенности кожи' },
   // Шаг 3: Данные о здоровье
   medical_diagnoses:        { number: 3, total: 4, label: 'Данные о здоровье' },
   pregnancy_breastfeeding:  { number: 3, total: 4, label: 'Данные о здоровье' },
@@ -44,6 +45,7 @@ const QUESTION_STEP_MAP: Record<string, { number: number; total: number; label: 
   has_avoid_ingredients:    { number: 3, total: 4, label: 'Данные о здоровье' },
   avoid_ingredients:        { number: 3, total: 4, label: 'Данные о здоровье' },
   retinoid_usage:           { number: 3, total: 4, label: 'Данные о здоровье' },
+  retinoid_reaction:        { number: 3, total: 4, label: 'Данные о здоровье' },
   prescription_topical:     { number: 3, total: 4, label: 'Данные о здоровье' },
   oral_medications:         { number: 3, total: 4, label: 'Данные о здоровье' },
   // Шаг 4: Ваши предпочтения

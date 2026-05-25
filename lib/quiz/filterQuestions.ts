@@ -264,9 +264,9 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
         }
       }
 
-      // 2. Условная фильтрация retinoid_reaction УДАЛЕНА вместе с вопросом —
-      // он не использовался downstream. Если в БД остались старые ответы — они
-      // безвредно игнорируются, потому что вопроса больше нет в анкете.
+      // 2. retinoid_reaction оставляем видимым без gate-фильтра.
+      // В вопросе есть вариант "Никогда не использовал(а)", поэтому при полном
+      // перепрохождении он не должен пропадать, даже если retinoid_usage ещё пустой.
 
       // 3. Фильтрация вопросов про макияж (только для женщин)
       // ИСПРАВЛЕНО: Используем только question.code для стабильности
@@ -439,4 +439,3 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
 
   return filteredQuestions;
 }
-

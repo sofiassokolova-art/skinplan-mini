@@ -24,9 +24,9 @@ export const QUIZ_TOPICS: QuizTopic[] = [
   {
     id: 'skin_type',
     title: 'Тип кожи',
-    description: 'Определение типа кожи и сезонности',
-    questionIds: [29, 32], // skin_type, seasonal_changes
-    questionCodes: ['skin_type', 'seasonal_changes'],
+    description: 'Определение типа кожи, сезонности и фототипа',
+    questionIds: [29, 32], // skin_type, seasonal_changes (реальные id назначаются Prisma)
+    questionCodes: ['skin_type', 'seasonal_changes', 'fitzpatrick_type'],
     icon: '🎨',
     triggersPlanRebuild: true, // skinType влияет на план
   },
@@ -52,8 +52,8 @@ export const QUIZ_TOPICS: QuizTopic[] = [
     id: 'excluded_ingredients',
     title: 'Нежелательные ингредиенты',
     description: 'Ингредиенты, которые нужно исключить',
-    questionIds: [35, 36], // allergies, avoid_ingredients
-    questionCodes: ['allergies', 'avoid_ingredients'],
+    questionIds: [35, 36], // legacy ids; matching goes by questionCodes
+    questionCodes: ['allergies', 'has_avoid_ingredients', 'avoid_ingredients'],
     icon: '🚫',
     triggersPlanRebuild: true, // противопоказания влияют на план
   },
@@ -100,4 +100,3 @@ export function shouldRebuildPlan(topicId: string): boolean {
   const topic = getTopicById(topicId);
   return topic?.triggersPlanRebuild || false;
 }
-

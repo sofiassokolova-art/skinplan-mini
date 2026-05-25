@@ -32,6 +32,25 @@ export interface ResumeQuizParams {
   resumeCompletedRef: React.MutableRefObject<boolean>;
 }
 
+export function getNextQuestionIndexForResume(
+  filteredQuestions: Array<{ id: number }>,
+  answeredQuestionIds: number[],
+  savedQuestionIndex: number
+): number {
+  if (!filteredQuestions || filteredQuestions.length === 0) {
+    return savedQuestionIndex;
+  }
+
+  const answeredIds = new Set(answeredQuestionIds);
+  const firstUnansweredQuestionIndex = filteredQuestions.findIndex(q => !answeredIds.has(q.id));
+
+  if (firstUnansweredQuestionIndex >= 0) {
+    return firstUnansweredQuestionIndex;
+  }
+
+  return filteredQuestions.length - 1;
+}
+
 export function resumeQuiz(params: ResumeQuizParams): void {
   // КРИТИЧНО: Проверяем флаг quiz_just_submitted ПЕРЕД восстановлением прогресса
   // Это предотвращает редирект на первый экран после отправки ответов
@@ -180,72 +199,21 @@ export function resumeQuiz(params: ResumeQuizParams): void {
       allQuestionsIds: params.allQuestions.slice(0, 5).map(q => q.id), // Первые 5 для лога
     });
     
-    // ИСПРАВЛЕНО: Если пользователь ответил на большинство вопросов (все или все кроме одного),
-    // ВСЕГДА переходим к последнему вопросу, независимо от savedQuestionIndex
-    // Это соответствует тому, что резюм-экран показывает "Продолжить с вопроса 22" (последний)
-    const hasAnsweredMostQuestions = answeredCount >= totalQuestions - 1; // Ответили на все или все кроме одного
-    
-    clientLogger.warn('🔍 resumeQuiz: Проверка hasAnsweredMostQuestions', {
-      hasAnsweredMostQuestions,
+    nextQuestionIndex = getNextQuestionIndexForResume(
+      filteredQuestions,
+      answeredQuestionIds,
+      savedQuestionIndex
+    );
+
+    clientLogger.log('✅ resumeQuiz: выбран первый неотвеченный вопрос в актуальной анкете', {
+      savedQuestionIndex,
       answeredCount,
       totalQuestions,
-      condition: `${answeredCount} >= ${totalQuestions - 1}`,
+      lastQuestionIndex,
+      nextQuestionIndex,
+      filteredQuestionsLength: filteredQuestions.length,
+      originalAllQuestionsLength: params.allQuestions.length,
     });
-    
-    if (hasAnsweredMostQuestions) {
-      // Всегда переходим к последнему вопросу, если пользователь ответил на большинство вопросов
-      nextQuestionIndex = lastQuestionIndex;
-      clientLogger.log('✅ resumeQuiz: Пользователь ответил на большинство вопросов, переходим к последнему', {
-        savedQuestionIndex,
-        answeredCount,
-        totalQuestions,
-        lastQuestionIndex,
-        nextQuestionIndex,
-        filteredQuestionsLength: filteredQuestions.length,
-        originalAllQuestionsLength: params.allQuestions.length,
-      });
-    } else if (savedQuestionIndex >= lastQuestionIndex - 1) {
-      // Пользователь был на последнем или предпоследнем вопросе - переходим к последнему
-      nextQuestionIndex = lastQuestionIndex;
-      clientLogger.log('✅ resumeQuiz: Пользователь был на последнем вопросе, переходим к последнему', {
-        savedQuestionIndex,
-        lastQuestionIndex,
-        nextQuestionIndex,
-        filteredQuestionsLength: filteredQuestions.length,
-        originalAllQuestionsLength: params.allQuestions.length,
-      });
-    } else {
-      // Пользователь не был на последнем вопросе - ищем следующий неотвеченный вопрос
-      // ИСПРАВЛЕНО: Используем filteredQuestions вместо params.allQuestions
-      const nextUnansweredQuestion = filteredQuestions.find((q, index) => {
-        return !answeredQuestionIds.includes(q.id) && index >= progressToRestore.questionIndex;
-      });
-      
-      if (nextUnansweredQuestion) {
-        nextQuestionIndex = filteredQuestions.findIndex(q => q.id === nextUnansweredQuestion.id);
-      } else {
-        // Если все вопросы после сохраненного индекса отвечены, проверяем, все ли вопросы отвечены
-        // ИСПРАВЛЕНО: Используем filteredQuestions вместо params.allQuestions
-        const allQuestionsAnswered = filteredQuestions.every(q => answeredQuestionIds.includes(q.id));
-        
-        if (allQuestionsAnswered) {
-          // Все вопросы отвечены - переходим к последнему
-          nextQuestionIndex = lastQuestionIndex;
-        } else {
-          // Есть неотвеченные вопросы раньше - ищем первый неотвеченный с начала
-          // ИСПРАВЛЕНО: Используем filteredQuestions вместо params.allQuestions
-          const firstUnansweredQuestion = filteredQuestions.find((q) => {
-            return !answeredQuestionIds.includes(q.id);
-          });
-          if (firstUnansweredQuestion) {
-            nextQuestionIndex = filteredQuestions.findIndex(q => q.id === firstUnansweredQuestion.id);
-          } else {
-            // Если все вопросы отвечены, переходим к последнему
-            nextQuestionIndex = lastQuestionIndex;
-          }
-        }
-      }
-    }
     
     // Если nextQuestionIndex получился -1 (не найден), используем сохраненный индекс или последний
     if (nextQuestionIndex === -1) {
@@ -420,4 +388,3 @@ export function resumeQuiz(params: ResumeQuizParams): void {
     }
   }, 200);
 }
-

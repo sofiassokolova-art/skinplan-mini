@@ -2,7 +2,7 @@
 // Юнит-тесты для связки: вопросы анкеты ↔ инфо-экраны ↔ цепочки экранов.
 // ОБНОВЛЕНО под новую структуру воронки (после оптимизации конверсии):
 // — удалены: current_care_intro, ai_showcase, habits_matter, motivation_focus,
-//   created_for_you, вопросы spf_frequency/sun_exposure/lifestyle_habits/retinoid_reaction;
+//   created_for_you, вопросы spf_frequency/sun_exposure/lifestyle_habits;
 // — добавлен gate-вопрос has_avoid_ingredients;
 // — УДАЛЕНЫ полностью: general_info_intro, skin_features_intro, health_data,
 //   preferences_intro — были progress-step без UI и давали белую вспышку при переходе.
@@ -63,13 +63,14 @@ describe('Quiz info screens config & chains', () => {
     }
   });
 
-  it('skin_preview шёл после seasonal_changes и тянет цепочку до simple_care (health_data удалён)', () => {
-    const first = getInfoScreenAfterQuestion('seasonal_changes');
+  it('skin_preview идёт после fitzpatrick_type и тянет цепочку до simple_care (health_data удалён)', () => {
+    const first = getInfoScreenAfterQuestion('fitzpatrick_type');
     expect(first?.id).toBe('skin_preview');
 
     const chain = first ? walkInfoScreenChain(first) : [];
     const ids = chain.map((s) => s.id);
     expect(ids).toEqual(['skin_preview', 'simple_care']);
+    expect(getInfoScreenAfterQuestion('seasonal_changes')).toBeUndefined();
   });
 
   it('health_trust теперь анкорится на has_avoid_ingredients (был avoid_ingredients/allergies)', () => {
@@ -133,8 +134,8 @@ describe('Quiz info screens config & chains', () => {
   it('findChainOriginQuestionCode корректно находит origin для любого экрана цепочки', () => {
     const pairs: Array<{ originQuestionCode: string; midScreenId: string }> = [
       { originQuestionCode: 'skin_goals', midScreenId: 'testimonials' },
-      { originQuestionCode: 'seasonal_changes', midScreenId: 'skin_preview' },
-      { originQuestionCode: 'seasonal_changes', midScreenId: 'simple_care' },
+      { originQuestionCode: 'fitzpatrick_type', midScreenId: 'skin_preview' },
+      { originQuestionCode: 'fitzpatrick_type', midScreenId: 'simple_care' },
       { originQuestionCode: 'has_avoid_ingredients', midScreenId: 'health_trust' },
       { originQuestionCode: 'oral_medications', midScreenId: 'ai_comparison' },
       { originQuestionCode: 'budget', midScreenId: 'no_mistakes' },
