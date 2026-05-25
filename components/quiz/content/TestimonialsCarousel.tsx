@@ -117,10 +117,11 @@ function TestimonialsCarouselInner({ testimonials, fullWidth }: TestimonialsCaro
                     <div style={{
                       display: 'flex',
                       width: '100%',
-                      minHeight: '55vh',
-                      maxHeight: '65vh',
-                      height: '60vh',
+                      minHeight: '48vh',
+                      maxHeight: '56vh',
+                      height: '52vh',
                       overflow: 'hidden',
+                      borderRadius: '22px',
                       backfaceVisibility: 'hidden',
                       WebkitBackfaceVisibility: 'hidden',
                       transform: 'translateZ(0)',
@@ -169,8 +170,8 @@ function TestimonialsCarouselInner({ testimonials, fullWidth }: TestimonialsCaro
                     </div>
                   )}
                   <div style={{
-                    margin: '12px 16px 0',
-                    padding: '16px 20px 20px',
+                    margin: '12px 0 0',
+                    padding: '16px 18px 18px',
                     display: 'flex',
                     flexDirection: 'column',
                     background: 'rgba(255,255,255,0.55)',

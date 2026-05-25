@@ -27,10 +27,30 @@ function PersonalAnalysisScreenComponent({
     onBack?.();
     setTimeout(() => window.scrollTo(scrollLeft, scrollTop), 0);
   };
+  const features = [
+    {
+      icon: '/icons/detailed_3_64.png',
+      alt: 'Точная оценка',
+      title: 'Точная оценка кожи',
+      desc: 'Анализ типа, чувствительности и сезонности',
+    },
+    {
+      icon: '/icons/hydration_3_64.png',
+      alt: 'Индивидуальный уход',
+      title: 'Индивидуальные средства',
+      desc: 'Подбор под ваши цели и бюджет',
+    },
+    {
+      icon: '/icons/face_3_64.png',
+      alt: 'Умная рутина',
+      title: 'Умная рутина',
+      desc: 'Работает в 3 раза эффективнее',
+    },
+  ];
+
   return (
     <>
       <BackButtonFixed show={shouldShowBackButton} onClick={handleBackWithScroll} />
-      {/* Кнопка "Назад" - будет рендерится общей логикой в QuizInfoScreen */}
       <div style={{
         padding: 0,
         margin: 0,
@@ -46,6 +66,8 @@ function PersonalAnalysisScreenComponent({
         position: 'relative',
         width: '100%',
         boxSizing: 'border-box',
+        fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+        color: '#0A0A0A',
       }}>
 
       <div
@@ -54,72 +76,110 @@ function PersonalAnalysisScreenComponent({
           flex: '1 1 0%',
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center',
+          alignItems: 'stretch',
           justifyContent: 'flex-start',
-          padding: '64px 20px 100px',
+          padding: '88px 20px 200px',
           width: '100%',
+          maxWidth: '420px',
+          margin: '0 auto',
           boxSizing: 'border-box',
         }}
       >
+        {/* HEADER */}
         <h1
-          className="quiz-title"
           style={{
-            fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontStyle: 'normal',
-            fontSize: '22px',
-            lineHeight: '120%',
-            letterSpacing: '0px',
-            textAlign: 'center',
-            color: '#000000',
-            margin: '0 0 12px 0',
-            maxWidth: '311px',
+            fontFamily: "var(--font-unbounded), 'Unbounded', sans-serif",
+            fontWeight: 700,
+            fontSize: '28px',
+            lineHeight: '110%',
+            letterSpacing: '-0.6px',
+            textAlign: 'left',
+            margin: '0 0 6px 4px',
           }}
         >
-          <span style={{ fontWeight: 700 }}>SkinIQ</span>
-          <span style={{ fontWeight: 400 }}> — ваш персональный анализ кожи</span>
+          Ваш анализ<br />от <span style={{ color: '#0A0A0A' }}>SkinIQ</span><span style={{ color: '#9CA383' }}>.AI</span>
         </h1>
+        <p style={{
+          fontSize: '14px',
+          lineHeight: 1.5,
+          color: '#6B7280',
+          margin: '0 0 22px 4px',
+          letterSpacing: '-0.1px',
+        }}>
+          Персональный профиль на основе ваших ответов
+        </p>
 
-        {/* Subtitle перенесён к кнопке «Продолжить» */}
-
-        <div
-          style={{
-            width: '360px',
-            maxWidth: '100%',
-            minWidth: 0,
+        {/* HERO CARD */}
+        <div style={{
+          background: 'rgba(255,255,255,0.55)',
+          backdropFilter: 'blur(28px) saturate(160%)',
+          WebkitBackdropFilter: 'blur(28px) saturate(160%)',
+          border: '1px solid rgba(255,255,255,0.75)',
+          borderRadius: '28px',
+          padding: '20px 22px',
+          marginBottom: '14px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.06)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+        }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontSize: '12px',
+              color: '#6B7280',
+              marginBottom: '4px',
+              letterSpacing: '0.2px',
+              textTransform: 'uppercase',
+            }}>
+              AI · 30 сек
+            </div>
+            <div style={{
+              fontFamily: "var(--font-unbounded), 'Unbounded', sans-serif",
+              fontWeight: 700,
+              fontSize: '20px',
+              lineHeight: '120%',
+              letterSpacing: '-0.4px',
+            }}>
+              Скан, разбор, план
+            </div>
+            <div style={{
+              fontSize: '13px',
+              color: '#6B7280',
+              marginTop: '6px',
+              lineHeight: 1.45,
+            }}>
+              Анализируем 20+ параметров кожи
+            </div>
+          </div>
+          <div style={{
+            width: '76px',
+            height: '76px',
+            borderRadius: '50%',
+            border: '5px solid #D5FE61',
+            background: 'rgba(255,255,255,0.7)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
             display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-            marginTop: '16px',
-            marginBottom: '40px',
-          }}
-        >
-          {[
-            {
-              icon: '/icons/detailed_3_64.png',
-              alt: 'Точная оценка',
-              text: 'Точная оценка состояния кожи',
-            },
-            {
-              icon: '/icons/hydration_3_64.png',
-              alt: 'Индивидуальный уход',
-              text: 'Индивидуально подобранные средства ухода',
-            },
-            {
-              icon: '/icons/face_3_64.png',
-              alt: 'Умная рутина',
-              text: (
-                <>
-                  Умная рутина, которая работает <span style={{ fontWeight: 700 }}>в 3 раза эффективнее</span>
-                </>
-              ),
-            },
-          ].map((item) => (
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '28px',
+            flexShrink: 0,
+          }}>
+            <span aria-hidden>✨</span>
+          </div>
+        </div>
+
+        {/* FEATURE CARDS */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+          marginBottom: '14px',
+        }}>
+          {features.map((item) => (
             <div
               key={item.alt}
               style={{
-                width: '100%',
-                minWidth: '100%',
-                minHeight: '80px',
                 display: 'flex',
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -128,69 +188,87 @@ function PersonalAnalysisScreenComponent({
                 backdropFilter: 'blur(24px) saturate(160%)',
                 WebkitBackdropFilter: 'blur(24px) saturate(160%)',
                 border: '1px solid rgba(255,255,255,0.75)',
-                borderRadius: '20px',
-                padding: '16px 18px',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.05)',
+                borderRadius: '22px',
+                padding: '14px 16px',
+                boxShadow: '0 6px 20px rgba(0,0,0,0.04)',
                 boxSizing: 'border-box',
               }}
             >
-              <img
-                alt={item.alt}
-                src={item.icon}
-                fetchPriority="high"
-                decoding="sync"
-                style={{ width: '36px', height: '36px', objectFit: 'contain', flexShrink: 0 }}
-              />
-              <div
-                style={{
-                  flex: 1,
-                  fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                  fontWeight: 400,
+              <div style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '50%',
+                background: 'rgba(213,254,97,0.4)',
+                border: '1px solid rgba(255,255,255,0.8)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <img
+                  alt={item.alt}
+                  src={item.icon}
+                  fetchPriority="high"
+                  decoding="sync"
+                  style={{ width: '28px', height: '28px', objectFit: 'contain' }}
+                />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
                   fontSize: '14px',
-                  lineHeight: '1.45',
-                  letterSpacing: '0px',
-                  textAlign: 'left',
-                  color: '#1A1A1A',
-                }}
-              >
-                {item.text}
+                  fontWeight: 600,
+                  lineHeight: 1.3,
+                  letterSpacing: '-0.1px',
+                  color: '#0A0A0A',
+                  marginBottom: '2px',
+                }}>
+                  {item.title}
+                </div>
+                <div style={{
+                  fontSize: '12px',
+                  color: '#6B7280',
+                  lineHeight: 1.4,
+                }}>
+                  {item.desc}
+                </div>
               </div>
             </div>
           ))}
         </div>
-      </div>
 
-      {/* Подзаголовок фиксированно над кнопкой «Продолжить», адаптивные размеры под экран */}
-      {screen.subtitle && (
-        <div
-          style={{
-            position: 'fixed',
-            left: 0,
-            right: 0,
-            bottom: '120px',
-            zIndex: 99,
-            padding: '0 max(16px, min(24px, 6vw))',
-            boxSizing: 'border-box',
-            maxWidth: '100%',
-          }}
-        >
-          <div
-            style={{
-              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 400,
-              fontSize: 'clamp(11px, 2.8vw, 14px)',
-              lineHeight: '140%',
-              letterSpacing: '0px',
-              textAlign: 'center',
-              color: '#9D9D9D',
-              maxWidth: '100%',
-              margin: '0 auto',
-            }}
-          >
-            {screen.subtitle}
+        {/* DARK STAT CARD */}
+        <div style={{
+          background: 'rgba(10,10,10,0.88)',
+          backdropFilter: 'blur(24px) saturate(140%)',
+          WebkitBackdropFilter: 'blur(24px) saturate(140%)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: '22px',
+          padding: '18px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '14px',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+        }}>
+          <div style={{
+            fontFamily: "var(--font-unbounded), 'Unbounded', sans-serif",
+            fontWeight: 700,
+            fontSize: '36px',
+            lineHeight: 1,
+            letterSpacing: '-1px',
+            color: '#D5FE61',
+            flexShrink: 0,
+          }}>
+            92%
+          </div>
+          <div style={{
+            fontSize: '13px',
+            color: 'rgba(255,255,255,0.85)',
+            lineHeight: 1.4,
+          }}>
+            пользователей SkinIQ отмечают улучшение кожи уже за 1 месяц
           </div>
         </div>
-      )}
+      </div>
 
       <FixedContinueButton ctaText={screen.ctaText || 'Продолжить'} onClick={onContinue} />
     </div>

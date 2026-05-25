@@ -4,8 +4,9 @@
 // — удалены: current_care_intro, ai_showcase, habits_matter, motivation_focus,
 //   created_for_you, вопросы spf_frequency/sun_exposure/lifestyle_habits/retinoid_reaction;
 // — добавлен gate-вопрос has_avoid_ingredients;
-// — health_data/general_info_intro/skin_features_intro/preferences_intro переведены
-//   в формат mini-progress-step (поля stepNumber/totalSteps/stepLabel);
+// — УДАЛЕНЫ полностью: general_info_intro, skin_features_intro, health_data,
+//   preferences_intro — были progress-step без UI и давали белую вспышку при переходе.
+//   Шаги (1..4) теперь показываются только в QUESTION_STEP_MAP над прогресс-баром вопросов;
 // — health_trust теперь анкорится на has_avoid_ingredients, а не на allergies/avoid_ingredients;
 // — ai_comparison переанкорен на oral_medications.
 
@@ -49,27 +50,24 @@ describe('Quiz info screens config & chains', () => {
       'habits_matter',
       'motivation_focus',
       'created_for_you',
+      // Progress-step филлеры, удалённые из-за белой вспышки при auto-advance:
+      'general_info_intro',
+      'skin_features_intro',
+      'health_data',
+      'preferences_intro',
     ];
     for (const id of removed) {
       expect(INFO_SCREENS.find((s) => s.id === id)).toBeUndefined();
     }
   });
 
-  it('skin_preview шёл после seasonal_changes и тянет цепочку simple_care → health_data', () => {
+  it('skin_preview шёл после seasonal_changes и тянет цепочку до simple_care (health_data удалён)', () => {
     const first = getInfoScreenAfterQuestion('seasonal_changes');
     expect(first?.id).toBe('skin_preview');
 
     const chain = first ? walkInfoScreenChain(first) : [];
     const ids = chain.map((s) => s.id);
-    expect(ids).toEqual(['skin_preview', 'simple_care', 'health_data']);
-  });
-
-  it('health_data — это mini-progress-step (Шаг 3 из 4)', () => {
-    const screen = INFO_SCREENS.find((s) => s.id === 'health_data');
-    expect(screen).toBeDefined();
-    expect(screen!.stepNumber).toBe(3);
-    expect(screen!.totalSteps).toBe(4);
-    expect(screen!.stepLabel).toBe('Данные о здоровье');
+    expect(ids).toEqual(['skin_preview', 'simple_care']);
   });
 
   it('health_trust теперь анкорится на has_avoid_ingredients (был avoid_ingredients/allergies)', () => {
@@ -81,33 +79,27 @@ describe('Quiz info screens config & chains', () => {
     expect(getInfoScreenAfterQuestion('avoid_ingredients')).toBeUndefined();
   });
 
-  it('ai_comparison переанкорен на oral_medications и тянет preferences_intro', () => {
+  it('ai_comparison идёт после oral_medications (preferences_intro удалён)', () => {
     const first = getInfoScreenAfterQuestion('oral_medications');
     expect(first?.id).toBe('ai_comparison');
 
     const chain = first ? walkInfoScreenChain(first) : [];
     const ids = chain.map((s) => s.id);
-    expect(ids).toEqual(['ai_comparison', 'preferences_intro']);
-
-    // origin для preferences_intro — именно oral_medications
-    const prefs = INFO_SCREENS.find((s) => s.id === 'preferences_intro');
-    expect(prefs).toBeDefined();
-    expect(findChainOriginQuestionCode(prefs!)).toBe('oral_medications');
+    expect(ids).toEqual(['ai_comparison']);
   });
 
-  it('preferences_intro и general_info_intro и skin_features_intro — все mini-progress-step', () => {
-    const progressSteps: Array<[string, number, number]> = [
-      ['general_info_intro', 1, 4],
-      ['skin_features_intro', 2, 4],
-      ['health_data', 3, 4],
-      ['preferences_intro', 4, 4],
-    ];
-    for (const [id, expectedNum, expectedTotal] of progressSteps) {
-      const screen = INFO_SCREENS.find((s) => s.id === id);
-      expect(screen, `screen ${id} should exist`).toBeDefined();
-      expect(screen!.stepNumber).toBe(expectedNum);
-      expect(screen!.totalSteps).toBe(expectedTotal);
-    }
+  it('после testimonials больше нет вложенной цепочки (general_info_intro удалён)', () => {
+    const testimonials = INFO_SCREENS.find((s) => s.id === 'testimonials');
+    expect(testimonials).toBeDefined();
+    const next = getNextInfoScreenAfterScreen('testimonials');
+    expect(next).toBeUndefined();
+  });
+
+  it('в INFO_SCREENS не осталось progress-step экранов (stepNumber/totalSteps удалены)', () => {
+    const stepScreens = INFO_SCREENS.filter(
+      (s) => s.stepNumber !== undefined || s.totalSteps !== undefined,
+    );
+    expect(stepScreens).toEqual([]);
   });
 
   it('финальная цепочка после budget: no_mistakes → recognize_yourself_1 → recognize_yourself_2 → skin_transformation → want_improve', () => {
@@ -141,10 +133,8 @@ describe('Quiz info screens config & chains', () => {
       { originQuestionCode: 'skin_goals', midScreenId: 'testimonials' },
       { originQuestionCode: 'seasonal_changes', midScreenId: 'skin_preview' },
       { originQuestionCode: 'seasonal_changes', midScreenId: 'simple_care' },
-      { originQuestionCode: 'seasonal_changes', midScreenId: 'health_data' },
       { originQuestionCode: 'has_avoid_ingredients', midScreenId: 'health_trust' },
       { originQuestionCode: 'oral_medications', midScreenId: 'ai_comparison' },
-      { originQuestionCode: 'oral_medications', midScreenId: 'preferences_intro' },
       { originQuestionCode: 'budget', midScreenId: 'no_mistakes' },
       { originQuestionCode: 'budget', midScreenId: 'recognize_yourself_1' },
       { originQuestionCode: 'budget', midScreenId: 'recognize_yourself_2' },

@@ -113,34 +113,13 @@ export const INFO_SCREENS: InfoScreen[] = [
     ctaText: 'Продолжить',
   },
   
-  // Mini-progress-step «Шаг 1 из 4: Общая информация».
-  // Заменил филлерный general_info_intro: тот же якорь в цепочке (после testimonials),
-  // но теперь экран несёт пользу — показывает прогресс и ставит ожидание следующего блока.
-  {
-    id: 'general_info_intro',
-    title: 'Общая информация',
-    subtitle: 'Возраст и пол — чтобы подобрать уход под ваши особенности.',
-    showAfterInfoScreenId: 'testimonials',
-    ctaText: 'Продолжить',
-    stepNumber: 1,
-    totalSteps: 4,
-    stepLabel: 'Общая информация',
-  },
-  // Вопросы: Возраст (age), Пол (gender)
-
-  // Mini-progress-step «Шаг 2 из 4: Особенности кожи».
-  // Заменил филлерный skin_features_intro: тот же якорь (после gender),
-  // тот же текст в субтайтле, добавлена индикация прогресса.
-  {
-    id: 'skin_features_intro',
-    title: 'Особенности кожи',
-    subtitle: 'Поймём ваш тип кожи и как о нём заботиться лучше всего.',
-    showAfterQuestionCode: 'gender',
-    ctaText: 'Продолжить',
-    stepNumber: 2,
-    totalSteps: 4,
-    stepLabel: 'Особенности кожи',
-  },
+  // general_info_intro и skin_features_intro УДАЛЕНЫ полностью:
+  // оба были progress-step-экранами без UI (StepScreenAutoAdvance → null),
+  // что давало белую вспышку при переходе. Лейблы «Шаг N: название»
+  // продолжают показываться над прогресс-баром вопросов через QUESTION_STEP_MAP
+  // (см. QuizQuestion.tsx). Вопросы Возраст (age), Пол (gender) и далее
+  // Тип кожи / Особенности — идут напрямую после соответствующих экранов
+  // без промежуточных филлеров.
   // 9) Тип кожи - это вопрос в БД (skin_type)
   // 10) Что вас больше всего беспокоит - это вопрос в БД (skin_concerns)
   // 11) Чувствительность кожи (skin_sensitivity) - вопрос в БД
@@ -187,18 +166,9 @@ export const INFO_SCREENS: InfoScreen[] = [
     ctaText: 'Продолжить',
   },
   
-  // 14) Нам важно учесть ваши данные о здоровье
-  {
-    id: 'health_data',
-    title: 'Данные о здоровье',
-    // Privacy-текст переехал в subtitle progress-step экрана — не теряем гарантию приватности.
-    subtitle: 'Ваши данные защищены и нужны только для точных рекомендаций.',
-    showAfterInfoScreenId: 'simple_care',
-    ctaText: 'Продолжить',
-    stepNumber: 3,
-    totalSteps: 4,
-    stepLabel: 'Данные о здоровье',
-  },
+  // health_data УДАЛЁН: был progress-step без UI, давал белую вспышку.
+  // Гарантия приватности теперь нативно отображается в самой анкете (см. health-related вопросы).
+  // Лейбл «Шаг 3: Данные о здоровье» сохранён в QUESTION_STEP_MAP.
   // 15) Есть ли у вас диагнозы? - вопрос в БД (medical_diagnoses)
   // 16) Беременность/кормление (только для женщин) - вопрос в БД (pregnancy_breastfeeding)
   // 17) Аллергические реакции - вопрос в БД (allergies)
@@ -240,19 +210,8 @@ export const INFO_SCREENS: InfoScreen[] = [
     ctaText: 'Продолжить',
   },
   
-  // Mini-progress-step «Шаг 4 из 4: Ваши предпочтения».
-  // Заменил филлерный preferences_intro: тот же якорь в цепочке (после ai_comparison),
-  // теперь экран сигнализирует пользователю «финишная прямая» и показывает прогресс 100%.
-  {
-    id: 'preferences_intro',
-    title: 'Ваши предпочтения',
-    subtitle: 'Финальный блок — какой формат и бюджет ухода вам ближе.',
-    showAfterInfoScreenId: 'ai_comparison',
-    ctaText: 'Продолжить',
-    stepNumber: 4,
-    totalSteps: 4,
-    stepLabel: 'Ваши предпочтения',
-  },
+  // preferences_intro УДАЛЁН: был progress-step без UI, давал белую вспышку.
+  // Лейбл «Шаг 4: Ваши предпочтения» сохранён в QUESTION_STEP_MAP.
   // 32) Тип ухода - вопрос в БД (care_type)
   // 33) Количество шагов - вопрос в БД (care_steps)
   // 34) Бюджет - вопрос в БД (budget)

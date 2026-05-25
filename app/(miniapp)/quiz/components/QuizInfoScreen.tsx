@@ -416,9 +416,9 @@ export function QuizInfoScreen({
             flex: 1,
             overflow: 'hidden',
             overflowY: 'visible',
-            paddingLeft: 0,
-            paddingRight: 0,
-            paddingTop: 0,
+            paddingLeft: '16px',
+            paddingRight: '16px',
+            paddingTop: '8px',
             paddingBottom: '160px',
             animationDelay: '0.1s',
           }}
