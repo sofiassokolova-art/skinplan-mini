@@ -489,7 +489,13 @@ export function QuizInfoScreen({
           padding: 0,
           margin: 0,
           minHeight: '100vh',
-          background: '#FFFFFF',
+          background: `
+            radial-gradient(60% 30% at 100% 0%, rgba(213,254,97,0.55) 0%, transparent 65%),
+            radial-gradient(70% 30% at 0% 35%, rgba(255,231,200,0.6) 0%, transparent 65%),
+            radial-gradient(80% 25% at 100% 70%, rgba(213,254,97,0.35) 0%, transparent 65%),
+            radial-gradient(80% 30% at 0% 100%, rgba(220,210,196,0.6) 0%, transparent 60%),
+            #F4F2EE
+          `,
           position: 'relative',
           width: '100%',
         }}>
@@ -501,6 +507,8 @@ export function QuizInfoScreen({
               minHeight: '100vh',
               boxSizing: 'border-box',
               padding: '120px 20px 140px',
+              maxWidth: '420px',
+              margin: '0 auto',
               display: 'flex',
               flexDirection: 'column',
               gap: '24px',
@@ -521,7 +529,7 @@ export function QuizInfoScreen({
               fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
               fontSize: '15px',
               lineHeight: '140%',
-              color: '#666666',
+              color: '#4B5563',
               margin: 0,
             }}>
               На основе ваших ответов мы уже понимаем, как должен выглядеть ваш уход.
@@ -529,12 +537,16 @@ export function QuizInfoScreen({
 
             {/* Карточка с резюме ответов */}
             <div style={{
-              background: '#F5F5F0',
-              borderRadius: '20px',
-              padding: '20px',
+              background: 'rgba(255,255,255,0.55)',
+              backdropFilter: 'blur(28px) saturate(160%)',
+              WebkitBackdropFilter: 'blur(28px) saturate(160%)',
+              border: '1px solid rgba(255,255,255,0.7)',
+              borderRadius: '28px',
+              padding: '22px',
               display: 'flex',
               flexDirection: 'column',
               gap: '14px',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.06)',
               fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
             }}>
               {skinTypeShort && (
