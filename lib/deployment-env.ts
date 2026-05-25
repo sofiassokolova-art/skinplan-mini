@@ -2,21 +2,19 @@
 // Единая проверка production-деплоя (Cloudflare Workers / Pages / Node)
 
 /**
- * Production-деплой, если:
+ * Production-деплой ТОЛЬКО при явном маркере:
  *  - DEPLOYMENT_ENV === 'production' (CF Workers: задаётся в [env.production.vars] в wrangler.toml)
- *  - CF_PAGES_BRANCH === 'main' (legacy CF Pages)
- *  - либо NODE_ENV=production без явных маркеров деплоя (fail-safe для прода)
+ *  - либо CF_PAGES_BRANCH === 'main' (legacy CF Pages)
  *
- * Staging явно помечается DEPLOYMENT_ENV === 'staging' — тогда возвращаем false,
- * чтобы включить симулятор оплаты вместо ЮKassa.
+ * Всё остальное (staging, preview, local dev, отсутствующие маркеры) — НЕ прод,
+ * включается симулятор оплаты вместо ЮKassa. Fallback на NODE_ENV=production
+ * убран намеренно: в собранном worker'е NODE_ENV всегда 'production', и без явного
+ * DEPLOYMENT_ENV staging-воркер ошибочно считался продом.
  */
 export function isProductionDeployment(): boolean {
-  const deployEnv = process.env.DEPLOYMENT_ENV;
-  if (deployEnv === 'production') return true;
-  if (deployEnv === 'staging') return false;
-
-  const cfBranch = process.env.CF_PAGES_BRANCH;
-  return cfBranch === 'main' || (!cfBranch && process.env.NODE_ENV === 'production');
+  if (process.env.DEPLOYMENT_ENV === 'production') return true;
+  if (process.env.CF_PAGES_BRANCH === 'main') return true;
+  return false;
 }
 
 /** Тестовый Telegram initData (локально / staging / preview) */
