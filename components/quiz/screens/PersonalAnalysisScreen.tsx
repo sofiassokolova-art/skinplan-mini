@@ -1,6 +1,9 @@
 // components/quiz/screens/PersonalAnalysisScreen.tsx
-// Компонент для экрана "SkinIQ — ваш персональный анализ кожи"
-// Вынесен из renderInfoScreen для улучшения читаемости
+// Экран «Экспертный анализ от SkinIQ» — статичный (position: fixed, без скролла),
+// фон — кремовая текстура (та же, что на simple_care/health_trust) с лаймовыми
+// углами-overlay. Hero: 92% социального пруфа. Ниже — стеклянная карточка
+// «Что входит в программу» с тремя пунктами (Диагностика / Подбор средств /
+// Протокол ухода). CTA — стандартная FixedContinueButton.
 
 import React from 'react';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
@@ -14,255 +17,328 @@ export interface PersonalAnalysisScreenProps {
   onBack?: () => void;
 }
 
+const CHECKLIST: Array<{ title: string; desc: string }> = [
+  {
+    title: 'Диагностика',
+    desc: 'Тип, чувствительность и активные проблемы кожи',
+  },
+  {
+    title: 'Подбор средств',
+    desc: '3–5 продуктов под цели и бюджет',
+  },
+  {
+    title: 'Протокол ухода',
+    desc: 'Последовательность и время применения',
+  },
+];
+
+function CheckIcon() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="#0A0A0A"
+      strokeWidth="3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
 function PersonalAnalysisScreenComponent({
   screen,
   currentInfoScreenIndex,
   onContinue,
-  onBack
+  onBack,
 }: PersonalAnalysisScreenProps) {
-  const shouldShowBackButton = currentInfoScreenIndex > 0 && screen.id !== 'welcome' && !!onBack;
+  const shouldShowBackButton =
+    currentInfoScreenIndex > 0 && screen.id !== 'welcome' && !!onBack;
   const handleBackWithScroll = () => {
-    const scrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
-    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft || document.body.scrollLeft || 0;
+    const scrollTop =
+      window.pageYOffset ||
+      document.documentElement.scrollTop ||
+      document.body.scrollTop ||
+      0;
+    const scrollLeft =
+      window.pageXOffset ||
+      document.documentElement.scrollLeft ||
+      document.body.scrollLeft ||
+      0;
     onBack?.();
     setTimeout(() => window.scrollTo(scrollLeft, scrollTop), 0);
   };
-  const features = [
-    {
-      icon: '/icons/detailed_3_64.png',
-      alt: 'Точная оценка',
-      title: 'Точная оценка кожи',
-      desc: 'Анализ типа, чувствительности и сезонности',
-    },
-    {
-      icon: '/icons/hydration_3_64.png',
-      alt: 'Индивидуальный уход',
-      title: 'Индивидуальные средства',
-      desc: 'Подбор под ваши цели и бюджет',
-    },
-    {
-      icon: '/icons/face_3_64.png',
-      alt: 'Умная рутина',
-      title: 'Умная рутина',
-      desc: 'Работает в 3 раза эффективнее',
-    },
-  ];
 
   return (
     <>
       <BackButtonFixed show={shouldShowBackButton} onClick={handleBackWithScroll} />
-      <div style={{
-        padding: 0,
-        margin: 0,
-        height: '100vh',
-        maxHeight: '100vh',
-        overflow: 'hidden',
-        background: `
-          radial-gradient(60% 30% at 100% 0%, rgba(213,254,97,0.55) 0%, transparent 65%),
-          radial-gradient(70% 30% at 0% 35%, rgba(255,231,200,0.6) 0%, transparent 65%),
-          radial-gradient(80% 25% at 100% 70%, rgba(213,254,97,0.35) 0%, transparent 65%),
-          radial-gradient(80% 30% at 0% 100%, rgba(220,210,196,0.6) 0%, transparent 60%),
-          #F4F2EE`,
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        width: '100%',
-        boxSizing: 'border-box',
-        fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-        color: '#0A0A0A',
-      }}>
-
+      {/* ROOT: статичный экран, нет скролла, кремовый фон-картинка */}
       <div
-        className="animate-fade-in"
         style={{
-          flex: '1 1 0%',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'stretch',
-          justifyContent: 'flex-start',
-          padding: '72px 20px 130px',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
           width: '100%',
-          maxWidth: '420px',
-          margin: '0 auto',
-          boxSizing: 'border-box',
+          height: '100vh',
+          maxHeight: '100vh',
           overflow: 'hidden',
+          backgroundColor: '#FFFFFF',
+          fontFamily:
+            "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+          color: '#0A0A0A',
         }}
       >
-        {/* HEADER */}
-        <h1
+        {/* Кремовая картинка-фон (та же, что на simple_care/health_trust) */}
+        <img
+          src="/image%201576994977.png"
+          alt=""
+          aria-hidden
           style={{
-            fontFamily: "var(--font-unbounded), 'Unbounded', sans-serif",
-            fontWeight: 700,
-            fontSize: '26px',
-            lineHeight: '112%',
-            letterSpacing: '-0.6px',
-            textAlign: 'left',
-            margin: '0 0 6px 4px',
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center',
+            zIndex: 0,
+            pointerEvents: 'none',
+          }}
+        />
+        {/* Лаймовый overlay-акцент по углам */}
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 1,
+            pointerEvents: 'none',
+            background: `
+              radial-gradient(45% 25% at 100% 0%, rgba(213,254,97,0.45) 0%, transparent 60%),
+              radial-gradient(40% 20% at 0% 100%, rgba(213,254,97,0.25) 0%, transparent 60%)
+            `,
+          }}
+        />
+
+        {/* CONTENT */}
+        <div
+          className="animate-fade-in"
+          style={{
+            position: 'relative',
+            zIndex: 2,
+            width: '100%',
+            height: '100%',
+            maxWidth: '420px',
+            margin: '0 auto',
+            padding: '80px 20px 110px',
+            boxSizing: 'border-box',
+            display: 'flex',
+            flexDirection: 'column',
           }}
         >
-          Экспертный анализ<br />от SkinIQ
-        </h1>
-        <p style={{
-          fontSize: '14px',
-          lineHeight: 1.45,
-          color: '#6B7280',
-          margin: '0 0 16px 4px',
-          letterSpacing: '-0.1px',
-        }}>
-          Персональный профиль на основе ваших ответов
-        </p>
+          {/* HEADER */}
+          <h1
+            style={{
+              fontFamily:
+                "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 700,
+              fontSize: '24px',
+              lineHeight: '115%',
+              letterSpacing: '-0.5px',
+              textAlign: 'left',
+              margin: '0 0 22px 4px',
+              color: '#0A0A0A',
+            }}
+          >
+            Экспертный анализ
+            <br />
+            от SkinIQ
+          </h1>
 
-        {/* HERO CARD */}
-        <div style={{
-          background: 'rgba(255,255,255,0.55)',
-          backdropFilter: 'blur(28px) saturate(160%)',
-          WebkitBackdropFilter: 'blur(28px) saturate(160%)',
-          border: '1px solid rgba(255,255,255,0.75)',
-          borderRadius: '24px',
-          padding: '16px 18px',
-          marginBottom: '10px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.06)',
-          display: 'flex',
-          flexDirection: 'column',
-        }}>
-          <div style={{
-            fontSize: '12px',
-            color: '#6B7280',
-            marginBottom: '4px',
-            letterSpacing: '0.2px',
-            textTransform: 'uppercase',
-          }}>
-            30 секунд
-          </div>
-          <div style={{
-            fontFamily: "var(--font-unbounded), 'Unbounded', sans-serif",
-            fontWeight: 700,
-            fontSize: '18px',
-            lineHeight: '120%',
-            letterSpacing: '-0.4px',
-          }}>
-            Программа под вашу кожу
-          </div>
-          <div style={{
-            fontSize: '12px',
-            color: '#6B7280',
-            marginTop: '4px',
-            lineHeight: 1.4,
-          }}>
-            Учитываем ответы и 20+ параметров кожи
-          </div>
-        </div>
-
-        {/* FEATURE CARDS */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-          marginBottom: '10px',
-        }}>
-          {features.map((item) => (
+          {/* HERO: 92% социальный пруф */}
+          <div
+            style={{
+              position: 'relative',
+              background: 'rgba(255,255,255,0.55)',
+              backdropFilter: 'blur(28px) saturate(160%)',
+              WebkitBackdropFilter: 'blur(28px) saturate(160%)',
+              border: '1px solid rgba(255,255,255,0.75)',
+              borderRadius: '24px',
+              padding: '24px 22px 22px',
+              marginBottom: '14px',
+              boxShadow: '0 10px 32px rgba(0,0,0,0.06)',
+            }}
+          >
+            {/* Бейдж справа сверху */}
             <div
-              key={item.alt}
               style={{
-                display: 'flex',
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: '12px',
-                background: 'rgba(255,255,255,0.55)',
-                backdropFilter: 'blur(24px) saturate(160%)',
-                WebkitBackdropFilter: 'blur(24px) saturate(160%)',
-                border: '1px solid rgba(255,255,255,0.75)',
-                borderRadius: '20px',
-                padding: '12px 14px',
-                boxShadow: '0 6px 20px rgba(0,0,0,0.04)',
-                boxSizing: 'border-box',
+                position: 'absolute',
+                top: 20,
+                right: 20,
+                fontSize: '11px',
+                fontWeight: 600,
+                letterSpacing: '0.3px',
+                textTransform: 'uppercase',
+                color: '#4B5563',
+                background: 'rgba(213,254,97,0.5)',
+                border: '1px solid rgba(213,254,97,0.8)',
+                padding: '4px 10px',
+                borderRadius: '999px',
               }}
             >
-              <div style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: '50%',
-                background: 'rgba(213,254,97,0.4)',
-                border: '1px solid rgba(255,255,255,0.8)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}>
-                <img
-                  alt={item.alt}
-                  src={item.icon}
-                  fetchPriority="high"
-                  decoding="sync"
-                  style={{ width: '24px', height: '24px', objectFit: 'contain' }}
-                />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  lineHeight: 1.3,
-                  letterSpacing: '-0.1px',
-                  color: '#0A0A0A',
-                  marginBottom: '1px',
-                }}>
-                  {item.title}
-                </div>
-                <div style={{
-                  fontSize: '12px',
-                  color: '#6B7280',
-                  lineHeight: 1.35,
-                }}>
-                  {item.desc}
-                </div>
-              </div>
+              по данным SkinIQ
             </div>
-          ))}
+            <div
+              style={{
+                fontFamily:
+                  "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 700,
+                fontSize: '64px',
+                lineHeight: 0.95,
+                letterSpacing: '-2px',
+                color: '#0A0A0A',
+                display: 'flex',
+                alignItems: 'baseline',
+                gap: '4px',
+              }}
+            >
+              92
+              <span
+                style={{
+                  fontSize: '22px',
+                  fontWeight: 700,
+                  color: '#6B7280',
+                }}
+              >
+                %
+              </span>
+            </div>
+            <div
+              style={{
+                width: '56px',
+                height: '4px',
+                background: '#D5FE61',
+                borderRadius: '2px',
+                margin: '14px 0 12px',
+              }}
+            />
+            <p
+              style={{
+                fontSize: '14px',
+                fontWeight: 400,
+                lineHeight: 1.5,
+                color: '#1A1A1A',
+                maxWidth: '280px',
+                margin: 0,
+              }}
+            >
+              пользователей отмечают улучшение кожи за 4 недели
+            </p>
+          </div>
+
+          {/* SECTION: что входит в программу — стеклянная карточка */}
+          <div
+            style={{
+              background: 'rgba(255,255,255,0.55)',
+              backdropFilter: 'blur(28px) saturate(160%)',
+              WebkitBackdropFilter: 'blur(28px) saturate(160%)',
+              border: '1px solid rgba(255,255,255,0.75)',
+              borderRadius: '24px',
+              padding: '20px 22px 22px',
+              boxShadow: '0 10px 32px rgba(0,0,0,0.06)',
+            }}
+          >
+            <h2
+              style={{
+                fontFamily:
+                  "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 700,
+                fontSize: '16px',
+                lineHeight: 1.2,
+                letterSpacing: '-0.3px',
+                color: '#0A0A0A',
+                margin: '0 0 16px 0',
+              }}
+            >
+              Что входит в программу
+            </h2>
+
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px',
+              }}
+            >
+              {CHECKLIST.map((item) => (
+                <div
+                  key={item.title}
+                  style={{
+                    display: 'flex',
+                    gap: '14px',
+                    alignItems: 'flex-start',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '50%',
+                      background: '#D5FE61',
+                      border: '1px solid rgba(0,0,0,0.08)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      marginTop: '1px',
+                      boxShadow: '0 2px 6px rgba(213,254,97,0.4)',
+                    }}
+                  >
+                    <CheckIcon />
+                  </div>
+                  <div>
+                    <div
+                      style={{
+                        fontSize: '16px',
+                        fontWeight: 700,
+                        lineHeight: 1.25,
+                        letterSpacing: '-0.2px',
+                        color: '#0A0A0A',
+                        marginBottom: '3px',
+                      }}
+                    >
+                      {item.title}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: '13px',
+                        fontWeight: 500,
+                        lineHeight: 1.45,
+                        color: '#4B5563',
+                      }}
+                    >
+                      {item.desc}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
-        {/* DARK STAT CARD */}
-        <div style={{
-          background: 'rgba(10,10,10,0.88)',
-          backdropFilter: 'blur(24px) saturate(140%)',
-          WebkitBackdropFilter: 'blur(24px) saturate(140%)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: '20px',
-          padding: '14px 18px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '14px',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
-        }}>
-          <div style={{
-            fontFamily: "var(--font-unbounded), 'Unbounded', sans-serif",
-            fontWeight: 700,
-            fontSize: '32px',
-            lineHeight: 1,
-            letterSpacing: '-1px',
-            color: '#D5FE61',
-            flexShrink: 0,
-          }}>
-            92%
-          </div>
-          <div style={{
-            fontSize: '12px',
-            color: 'rgba(255,255,255,0.85)',
-            lineHeight: 1.4,
-          }}>
-            пользователей SkinIQ отмечают улучшение кожи за 1 месяц
-          </div>
-        </div>
+        <FixedContinueButton
+          ctaText={screen.ctaText || 'Продолжить'}
+          onClick={onContinue}
+        />
       </div>
-
-      <FixedContinueButton ctaText={screen.ctaText || 'Продолжить'} onClick={onContinue} />
-    </div>
     </>
   );
 }
 
-// ФИКС: Оптимизация рендеринга - мемоизируем компонент для предотвращения лишних перерендеров
+// ФИКС: Мемоизация для предотвращения лишних перерендеров.
 export const PersonalAnalysisScreen = React.memo(PersonalAnalysisScreenComponent);
