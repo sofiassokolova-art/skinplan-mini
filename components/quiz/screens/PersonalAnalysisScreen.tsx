@@ -97,7 +97,7 @@ function PersonalAnalysisScreenComponent({
             margin: '0 0 6px 4px',
           }}
         >
-          Ваш анализ<br />от <span style={{ color: '#0A0A0A' }}>SkinIQ</span><span style={{ color: '#9CA383' }}>.AI</span>
+          Ваш анализ<br />от SkinIQ
         </h1>
         <p style={{
           fontSize: '14px',
@@ -131,7 +131,7 @@ function PersonalAnalysisScreenComponent({
               letterSpacing: '0.2px',
               textTransform: 'uppercase',
             }}>
-              AI · 30 сек
+              30 секунд
             </div>
             <div style={{
               fontFamily: "var(--font-unbounded), 'Unbounded', sans-serif",
@@ -140,7 +140,7 @@ function PersonalAnalysisScreenComponent({
               lineHeight: '120%',
               letterSpacing: '-0.4px',
             }}>
-              Скан, разбор, план
+              Программа под вашу кожу
             </div>
             <div style={{
               fontSize: '13px',
@@ -148,7 +148,7 @@ function PersonalAnalysisScreenComponent({
               marginTop: '6px',
               lineHeight: 1.45,
             }}>
-              Анализируем 20+ параметров кожи
+              Учитываем ваши ответы и 20+ параметров кожи
             </div>
           </div>
           <div style={{
