@@ -11,7 +11,7 @@ import type { Questionnaire } from '@/lib/quiz/types';
 import type { InfoScreen } from '../info-screens';
 import { getNextInfoScreenAfterScreen } from '../info-screens';
 import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
-import { WelcomeScreen, PersonalAnalysisScreen, GoalsIntroScreen, HowItWorksScreen } from '@/components/quiz/screens';
+import { WelcomeScreen, PersonalAnalysisScreen, HowItWorksScreen } from '@/components/quiz/screens';
 import { FixedContinueButton, TinderButtons } from '@/components/quiz/buttons';
 import { TestimonialsCarousel, ProductsGrid } from '@/components/quiz/content';
 import { clientLogger } from '@/lib/client-logger';
@@ -142,7 +142,7 @@ interface QuizInfoScreenProps {
   pendingInfoScreenRef?: React.MutableRefObject<InfoScreen | null>;
   isInitialInfoScreen?: boolean; // ФИКС: Флаг для начальных инфо экранов
   // Ответы пользователя — нужны для персонализированных экранов (skin_preview).
-  // Опционально: начальные инфо-экраны (welcome, goals_intro) рендерятся до ответов.
+  // Опционально: начальные инфо-экраны (welcome, personal_analysis) рендерятся до ответов.
   answers?: Record<number, string | string[]>;
 }
 
@@ -198,7 +198,6 @@ export function QuizInfoScreen({
   const isWelcomeScreen = screen.id === 'welcome';
   const isHowItWorksScreen = screen.id === 'how_it_works';
   const isPersonalAnalysisScreen = screen.id === 'personal_analysis';
-  const isGoalsIntroScreen = screen.id === 'goals_intro';
   // general_info_intro и skin_features_intro УДАЛЕНЫ как филлер-экраны (см. info-screens.ts).
   const isHealthDataScreen = screen.id === 'health_data';
   const isSkinPreviewScreen = screen.id === 'skin_preview';
@@ -298,7 +297,7 @@ export function QuizInfoScreen({
     );
   }
 
-  // Экран "SkinIQ — ваш персональный анализ кожи" - абсолютное позиционирование как у goals_intro
+  // Экран "SkinIQ — ваш персональный анализ кожи"
   if (isPersonalAnalysisScreen) {
     return (
       <PersonalAnalysisScreen
@@ -439,24 +438,6 @@ export function QuizInfoScreen({
       </>
     );
   }
-
-  // Экран "Какую цель вы ставите перед собой?" (goals_intro)
-  if (isGoalsIntroScreen) {
-    return (
-      <GoalsIntroScreen
-        screen={screen}
-        currentInfoScreenIndex={currentInfoScreenIndex}
-        onBack={handleBack}
-        onContinue={() => {
-          if (!handleNextInProgressRef.current && !isHandlingNext) {
-            handleNext();
-          }
-        }}
-      />
-    );
-  }
-
-
 
   // Экран mid-quiz preview персонализации (skin_preview) — показывается после блока вопросов
   // про кожу (skin_type, skin_concerns, skin_sensitivity, seasonal_changes). Цель: дать

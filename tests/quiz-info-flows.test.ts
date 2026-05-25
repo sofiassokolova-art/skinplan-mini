@@ -32,7 +32,7 @@ describe('Quiz info screens config & chains', () => {
   it('начальные инфо-экраны корректно определяются (нет showAfterQuestionCode/showAfterInfoScreenId)', () => {
     const initial = getInitialInfoScreens();
 
-    // Должны быть хотя бы welcome/how_it_works/personal_analysis/goals_intro
+    // Должны быть хотя бы welcome/how_it_works/personal_analysis
     const initialIds = initial.map((s) => s.id);
     expect(initialIds.length).toBeGreaterThanOrEqual(3);
 
@@ -55,6 +55,8 @@ describe('Quiz info screens config & chains', () => {
       'skin_features_intro',
       'health_data',
       'preferences_intro',
+      // Удалённый филлер перед вопросом про цели:
+      'goals_intro',
     ];
     for (const id of removed) {
       expect(INFO_SCREENS.find((s) => s.id === id)).toBeUndefined();
