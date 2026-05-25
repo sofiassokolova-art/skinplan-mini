@@ -121,13 +121,13 @@ export const INFO_SCREENS: InfoScreen[] = [
   // 12) Меняется ли состояние кожи в зависимости от сезона? - вопрос в БД (seasonal_changes)
   
   // Mid-quiz preview персонализации. Показывается сразу после блока скин-вопросов
-  // (skin_type/skin_concerns/skin_sensitivity/seasonal_changes). Цель — показать
+  // (skin_type/skin_concerns/skin_sensitivity/seasonal_changes/fitzpatrick_type). Цель — показать
   // пользователю промежуточный «вывод» по его ответам, удержать на следующий блок.
   // Контент рендерится динамически в QuizInfoScreen.tsx по флагу isSkinPreviewScreen.
   {
     id: 'skin_preview',
     title: 'Ваш предварительный профиль',
-    showAfterQuestionCode: 'seasonal_changes',
+    showAfterQuestionCode: 'fitzpatrick_type',
     ctaText: 'Продолжить',
   },
 

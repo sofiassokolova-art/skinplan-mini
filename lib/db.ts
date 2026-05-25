@@ -2,9 +2,10 @@
 // Prisma Client для работы с базой данных (Neon PostgreSQL)
 // Использует @prisma/adapter-neon для совместимости с Cloudflare Workers/Pages
 
-// Используем /wasm entry — он загружает движок через import() а не fs.readdir
-// Это единственный вариант совместимый с CF Workers + driverAdapters
-import { PrismaClient } from '@prisma/client/wasm';
+// Импортируем основной entry Prisma Client: generated package сам выбирает
+// Node index.js в локальном Next dev и wasm.js в workerd/edge через conditions.
+// Прямой @prisma/client/wasm(.js) в Node dev ломается на import() query_engine_bg.wasm.
+import { PrismaClient, type Prisma } from '@prisma/client';
 import { PrismaNeon } from '@prisma/adapter-neon';
 import { neonConfig } from '@neondatabase/serverless';
 import { currentPrismaRequestId, resetPrismaForRequest } from './db-request-scope';
@@ -15,15 +16,31 @@ import { currentPrismaRequestId, resetPrismaForRequest } from './db-request-scop
 // между запросами CF Workers выбрасывает "Cannot perform I/O on behalf of a different request".
 neonConfig.poolQueryViaFetch = true;
 
+function isLocalDatabaseUrl(url: string): boolean {
+  try {
+    const { hostname } = new URL(url);
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+  } catch {
+    return false;
+  }
+}
+
 function createPrismaClient() {
   const url = process.env.DATABASE_URL;
   if (!url) {
     throw new Error('DATABASE_URL is not set');
   }
-  const adapter = new PrismaNeon({ connectionString: url });
+
+  const log: Prisma.LogLevel[] = process.env.NODE_ENV === 'development'
+    ? ['query', 'error', 'warn']
+    : ['error'];
+  if (isLocalDatabaseUrl(url)) {
+    return new PrismaClient({ log });
+  }
+
   return new PrismaClient({
-    adapter,
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    adapter: new PrismaNeon({ connectionString: url }),
+    log,
   });
 }
 
