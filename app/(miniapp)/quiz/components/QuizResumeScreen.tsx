@@ -83,34 +83,20 @@ export function QuizResumeScreen({
     setIsMounted(true);
   }, []);
   
-  // ИСПРАВЛЕНО: Мемоизируем вычисление номера вопроса, чтобы он не пересчитывался при каждом рендере
-  // ИСПРАВЛЕНО: Не вычисляем номер вопроса, пока данные не готовы, чтобы избежать показа "вопрос 1"
-  // ИСПРАВЛЕНО: Добавлена обработка ошибок для предотвращения краша компонента
+  // Вычисляем номер вопроса в нумерации ОТФИЛЬТРОВАННОГО списка (то, что видит пользователь).
+  // savedProgress.questionIndex намеренно НЕ используем: сервер считает его по полному списку,
+  // а здесь нумерация после filterQuestions — индексы не совпадают и старая логика всегда
+  // возвращала последний вопрос.
   const computedQuestionNumber = useMemo(() => {
     try {
-      // Если questionnaire еще не загружен, возвращаем null (будет показан placeholder)
-      if (!questionnaire) {
-        return null;
-      }
-      
-      // ИСПРАВЛЕНО: Проверяем наличие savedProgress перед использованием
-      if (!savedProgress) {
-        return null;
-      }
-      
-      // Получаем все вопросы с фильтрацией
+      if (!questionnaire || !savedProgress) return null;
+
       const allQuestionsRaw = [
         ...(questionnaire.groups || []).flatMap((g) => g?.questions || []),
         ...(questionnaire.questions || []),
       ];
-      
-      // Если нет вопросов, возвращаем null
-      if (allQuestionsRaw.length === 0) {
-        return null;
-      }
-      
-      // Используем единую функцию filterQuestions
-      // ИСПРАВЛЕНО: Добавлена дополнительная обработка ошибок при вызове filterQuestions
+      if (allQuestionsRaw.length === 0) return null;
+
       let allQuestions: any[] = [];
       try {
         allQuestions = filterQuestions({
@@ -123,82 +109,34 @@ export function QuizResumeScreen({
         });
       } catch (filterError) {
         clientLogger.error('❌ Ошибка при фильтрации вопросов в QuizResumeScreen:', filterError);
-        // В случае ошибки фильтрации возвращаем null
         return null;
       }
 
-      // Если после фильтрации нет вопросов, возвращаем null
-      if (allQuestions.length === 0) {
-        return null;
+      if (allQuestions.length === 0) return null;
+
+      const visibleIds = new Set(
+        allQuestions
+          .map((q) => q?.id)
+          .filter((id): id is number => typeof id === 'number')
+      );
+
+      const visibleAnsweredIds = new Set(
+        Object.keys(savedProgress?.answers || {})
+          .map((id) => Number(id))
+          .filter((id) => !Number.isNaN(id) && visibleIds.has(id))
+      );
+
+      const firstUnansweredIndex = allQuestions.findIndex(
+        (q) => q && typeof q.id === 'number' && !visibleAnsweredIds.has(q.id)
+      );
+
+      if (firstUnansweredIndex >= 0) {
+        return firstUnansweredIndex + 1;
       }
 
-      // ИСПРАВЛЕНО: Логика должна совпадать с resumeQuiz
-      // Вычисляем номер следующего неотвеченного вопроса
-      const answeredQuestionIds = Object.keys(savedProgress?.answers || {}).map(id => {
-        const numId = Number(id);
-        return isNaN(numId) ? null : numId;
-      }).filter((id): id is number => id !== null);
-      
-      const savedQuestionIndex = (savedProgress?.questionIndex !== undefined && savedProgress.questionIndex !== null) 
-        ? savedProgress.questionIndex 
-        : 0;
-      
-      const lastQuestionIndex = allQuestions.length - 1;
-      const answeredCount = answeredQuestionIds.length;
-      const totalQuestions = allQuestions.length;
-      
-      // ИСПРАВЛЕНО: Если пользователь ответил на большинство вопросов (все или все кроме одного),
-      // ВСЕГДА показываем последний вопрос, независимо от savedQuestionIndex
-      // Это соответствует тому, что резюм-экран показывает "Продолжить с вопроса 22" (последний)
-      const hasAnsweredMostQuestions = answeredCount >= totalQuestions - 1; // Ответили на все или все кроме одного
-      
-      if (hasAnsweredMostQuestions) {
-        // Всегда показываем последний вопрос, если пользователь ответил на большинство вопросов
-        return lastQuestionIndex + 1; // Номер последнего вопроса (индекс + 1)
-      } else if (savedQuestionIndex >= lastQuestionIndex - 1) {
-        // Пользователь был на последнем или предпоследнем вопросе - показываем последний
-        return lastQuestionIndex + 1;
-      } else {
-        // Пользователь не был на последнем вопросе - ищем следующий неотвеченный вопрос
-        const nextUnansweredQuestion = allQuestions.find((q, index) => {
-          if (!q || !q.id) return false;
-          return !answeredQuestionIds.includes(q.id) && index >= savedQuestionIndex;
-        });
-        
-        if (nextUnansweredQuestion && nextUnansweredQuestion.id) {
-          const nextIndex = allQuestions.findIndex(q => q?.id === nextUnansweredQuestion.id);
-          if (nextIndex !== -1 && nextIndex >= 0) {
-            return nextIndex + 1;
-          }
-        }
-        
-        // Если все вопросы после сохраненного индекса отвечены, проверяем, все ли вопросы отвечены
-        const allQuestionsAnswered = allQuestions.every(q => q && q.id && answeredQuestionIds.includes(q.id));
-        
-        if (allQuestionsAnswered) {
-          // Все вопросы отвечены - показываем последний вопрос
-          return lastQuestionIndex + 1;
-        } else {
-          // Есть неотвеченные вопросы раньше - ищем первый неотвеченный с начала
-          const firstUnansweredQuestion = allQuestions.find((q) => {
-            return q && q.id && !answeredQuestionIds.includes(q.id);
-          });
-          
-          if (firstUnansweredQuestion && firstUnansweredQuestion.id) {
-            const firstIndex = allQuestions.findIndex(q => q?.id === firstUnansweredQuestion.id);
-            if (firstIndex !== -1 && firstIndex >= 0) {
-              return firstIndex + 1;
-            }
-          }
-          
-          // Если все вопросы отвечены, показываем последний
-          return lastQuestionIndex + 1;
-        }
-      }
-      
-      return null;
+      // Все видимые вопросы отвечены — показываем последний
+      return allQuestions.length;
     } catch (error) {
-      // ИСПРАВЛЕНО: Обрабатываем ошибки при вычислении номера вопроса
       clientLogger.error('❌ Ошибка при вычислении номера вопроса в QuizResumeScreen:', error);
       return null;
     }
