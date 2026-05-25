@@ -8,6 +8,7 @@ export interface FixedContinueButtonProps {
   onClick: () => void;
   disabled?: boolean;
   loadingText?: string;
+  maxWidth?: number | string;
   /** На инфо-экранах — зелёная (lime), на вопросах — чёрная */
   variant?: 'lime' | 'black';
 }
@@ -17,6 +18,7 @@ export function FixedContinueButton({
   onClick,
   disabled = false,
   loadingText = 'Продолжить',
+  maxWidth = 640,
   variant = 'lime',
 }: FixedContinueButtonProps) {
   const displayText = ctaText ?? loadingText ?? 'Продолжить';
@@ -52,7 +54,7 @@ export function FixedContinueButton({
         disabled={disabled}
         style={{
           width: '100%',
-          maxWidth: 640,
+          maxWidth,
           height: 52,
           borderRadius: 0,
           background: bgColor,
@@ -84,4 +86,3 @@ export function FixedContinueButton({
     </div>
   );
 }
-

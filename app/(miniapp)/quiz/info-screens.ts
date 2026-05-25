@@ -190,16 +190,17 @@ export const INFO_SCREENS: InfoScreen[] = [
   // habits_matter УДАЛЁН: интро к блоку «Привычки», в котором остался единственный вопрос — лишнее.
   // 26) Декоративная косметика - вопрос в БД (makeup_frequency)
 
-  // Больше никакой путаницы — пробивка AI ПЕРЕД блоком «Предпочтения в уходе».
+  // Уход, который вам подходит — pitch ПЕРЕД блоком «Предпочтения в уходе».
   // ПЕРЕАНКОРИРОВАН: lifestyle_habits → makeup_frequency → oral_medications.
   // Теперь идёт после oral_medications (последний вопрос блока «Текущий уход»)
   // и сразу перед preferences-блоком, в который перемещён makeup_frequency.
-  // Поток: medical/current care → AI pitch + price anchor → preferences
+  // Поток: medical/current care → SkinIQ подбор → preferences
   // (makeup_frequency → care_type → care_steps → budget).
   {
     id: 'ai_comparison',
-    title: 'Больше никакой путаницы — AI SkinIQ подберёт уход быстро и точно ✨',
-    subtitle: 'Традиционный подбор ухода:\n❌ Долгие поиски советов в интернете\n❌ Сложно понять, что подойдёт именно вам\n\nSkinIQ с AI:\n✅ Точный подбор средств на основе анкеты\n✅ Рекомендации за пару секунд\n\n💡 Большинство персональных планов укладывается в 3–5 средств — от 2 000 ₽/мес в бюджетном сегменте до 5 000+ ₽/мес в премиум.',
+    title: 'Уход, который вам подходит',
+    subtitle: 'SkinIQ понимает вашу кожу, убирает лишнее и выстраивает понятный ритуал.',
+    image: '/image 1576994977.png',
     type: 'comparison',
     showAfterQuestionCode: 'oral_medications',
     ctaText: 'Продолжить',

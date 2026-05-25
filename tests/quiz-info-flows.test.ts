@@ -85,6 +85,8 @@ describe('Quiz info screens config & chains', () => {
   it('ai_comparison идёт после oral_medications (preferences_intro удалён)', () => {
     const first = getInfoScreenAfterQuestion('oral_medications');
     expect(first?.id).toBe('ai_comparison');
+    expect(first?.title).toBe('Уход, который вам подходит');
+    expect(`${first?.title ?? ''}\n${first?.subtitle ?? ''}`).not.toMatch(/Больше никакой путаницы|AI SkinIQ/i);
 
     const chain = first ? walkInfoScreenChain(first) : [];
     const ids = chain.map((s) => s.id);
