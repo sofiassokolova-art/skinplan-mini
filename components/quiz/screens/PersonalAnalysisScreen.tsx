@@ -127,52 +127,33 @@ function PersonalAnalysisScreenComponent({
           marginBottom: '10px',
           boxShadow: '0 8px 32px rgba(0,0,0,0.06)',
           display: 'flex',
-          alignItems: 'center',
-          gap: '14px',
+          flexDirection: 'column',
         }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{
-              fontSize: '12px',
-              color: '#6B7280',
-              marginBottom: '4px',
-              letterSpacing: '0.2px',
-              textTransform: 'uppercase',
-            }}>
-              30 секунд
-            </div>
-            <div style={{
-              fontFamily: "var(--font-unbounded), 'Unbounded', sans-serif",
-              fontWeight: 700,
-              fontSize: '18px',
-              lineHeight: '120%',
-              letterSpacing: '-0.4px',
-            }}>
-              Программа под вашу кожу
-            </div>
-            <div style={{
-              fontSize: '12px',
-              color: '#6B7280',
-              marginTop: '4px',
-              lineHeight: 1.4,
-            }}>
-              Учитываем ответы и 20+ параметров кожи
-            </div>
+          <div style={{
+            fontSize: '12px',
+            color: '#6B7280',
+            marginBottom: '4px',
+            letterSpacing: '0.2px',
+            textTransform: 'uppercase',
+          }}>
+            30 секунд
           </div>
           <div style={{
-            width: '64px',
-            height: '64px',
-            borderRadius: '50%',
-            border: '4px solid #D5FE61',
-            background: 'rgba(255,255,255,0.7)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '24px',
-            flexShrink: 0,
+            fontFamily: "var(--font-unbounded), 'Unbounded', sans-serif",
+            fontWeight: 700,
+            fontSize: '18px',
+            lineHeight: '120%',
+            letterSpacing: '-0.4px',
           }}>
-            <span aria-hidden>✨</span>
+            Программа под вашу кожу
+          </div>
+          <div style={{
+            fontSize: '12px',
+            color: '#6B7280',
+            marginTop: '4px',
+            lineHeight: 1.4,
+          }}>
+            Учитываем ответы и 20+ параметров кожи
           </div>
         </div>
 
