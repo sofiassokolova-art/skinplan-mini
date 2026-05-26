@@ -2,16 +2,14 @@
 // Автотесты для старта анкеты
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
-import { PrismaClient } from '@prisma/client';
 import { NextRequest } from 'next/server';
 import { GET as getActiveQuestionnaire } from '@/app/api/questionnaire/active/route';
 import { GET as getQuestionnaireProgress } from '@/app/api/questionnaire/progress/route';
 import type { TelegramAuthContext } from '@/lib/auth/telegram-auth';
+import { createPrismaTestClient, hasTestDatabase } from './prisma-test-client';
 
-const hasDatabase = !!process.env.DATABASE_URL;
-const prismaTest = hasDatabase
-  ? new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL! } } })
-  : new PrismaClient();
+const hasDatabase = hasTestDatabase;
+const prismaTest = createPrismaTestClient();
 
 // Тестовые данные
 const testUserId = 'test-user-questionnaire-start';
@@ -104,10 +102,7 @@ vi.mock('@/lib/auth/telegram-auth', async () => {
     requireTelegramAuth: vi.fn(async (request: NextRequest, options?: { ensureUser?: boolean }) => {
       // Используем prismaTest из замыкания (будет установлен в beforeAll)
       if (!mockPrisma) {
-        const { PrismaClient } = await import('@prisma/client');
-        mockPrisma = new PrismaClient({
-          datasources: { db: { url: process.env.DATABASE_URL! } },
-        });
+        mockPrisma = prismaTest;
       }
       
       // Извлекаем userId из заголовка для тестов
@@ -786,4 +781,3 @@ describe.skipIf(!hasDatabase)('Questionnaire Start', () => {
     });
   });
 });
-

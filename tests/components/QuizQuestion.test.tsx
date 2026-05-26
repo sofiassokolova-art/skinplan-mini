@@ -242,6 +242,35 @@ describe('QuizQuestion', () => {
     expect(screen.getByText('Шаг 3: Данные о здоровье')).toBeInTheDocument();
   });
 
+  it('показывает шаг 3 для legacy-кода retinol_reaction', () => {
+    const retinolReactionQuestion: Question = {
+      ...mockQuestion,
+      id: 13,
+      code: 'retinol_reaction',
+      type: 'single_choice',
+      text: 'Если использовали ретинол/ретиноиды — какая была реакция кожи?',
+      options: [
+        { id: 1, label: 'Нормальная', value: 'normal' },
+        { id: 2, label: 'Было раздражение', value: 'irritation' },
+      ],
+    };
+
+    render(
+      <QuizQuestion
+        question={retinolReactionQuestion}
+        currentQuestionIndex={12}
+        allQuestionsLength={20}
+        answers={{}}
+        isRetakingQuiz={false}
+        isSubmitting={false}
+        {...mockHandlers}
+        showBackButton={true}
+      />
+    );
+
+    expect(screen.getByText('Шаг 3: Данные о здоровье')).toBeInTheDocument();
+  });
+
   it('не должен показывать прогресс-бар для вопроса user_name', () => {
     const nameQuestion: Question = {
       ...mockQuestion,

@@ -18,10 +18,11 @@ DEPLOYMENT_ENV = "staging"
 directory = ".open-next/assets"
 binding = "ASSETS"
 
-# WASM modules — Prisma query engine (handled as native WebAssembly, not bundled into JS)
+# WASM modules — Prisma query compiler (native WebAssembly for Workers)
 [[rules]]
 type = "CompiledWasm"
 globs = ["**/*.wasm"]
+fallthrough = true
 
 # Cron только для prod — настраивается вручную в CF Dashboard для staging
 # [triggers]

@@ -3,13 +3,11 @@
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 import { GET as generatePlan } from '@/app/api/plan/generate/route';
+import { createPrismaTestClient, hasTestDatabase } from '../prisma-test-client';
 
-const hasDatabase = !!process.env.DATABASE_URL;
-const prismaTest = hasDatabase
-  ? new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL! } } })
-  : new PrismaClient();
+const hasDatabase = hasTestDatabase;
+const prismaTest = createPrismaTestClient();
 
 const testUserId = 'test-user-api-plan-generate';
 

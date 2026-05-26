@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { usePaywallVisibility } from '@/providers/PaywallVisibilityContext';
 import { DEV_TELEGRAM } from '@/lib/config/timeouts';
@@ -137,6 +137,7 @@ export function PaymentGate({
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentId, setPaymentId] = useState<string | null>(null);
   const [providerPaymentId, setProviderPaymentId] = useState<string | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // hasPaid = "уверены, что оплата есть" (проверяется через Entitlement)
@@ -146,6 +147,16 @@ export function PaymentGate({
   const [checkedOnce, setCheckedOnce] = useState(false);
   const [initDataReady, setInitDataReady] = useState(false);
   const { setPaywallVisible } = usePaywallVisibility();
+
+  const resetPendingPayment = useCallback(() => {
+    setPaymentId(null);
+    setProviderPaymentId(null);
+    setPaymentError(null);
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  }, []);
 
   // Сообщаем layout, что пейвол виден — скрыть нижнюю навигацию (на /plan и /home)
   useEffect(() => {
@@ -323,38 +334,53 @@ export function PaymentGate({
     };
   }, [isRetaking, productCode, refreshTick, initDataReady]);
 
+  const checkPaymentAccessNow = useCallback(async (showPendingToast = true): Promise<boolean> => {
+    const initData = getInitDataForClient();
+    if (!initData) {
+      if (showPendingToast) toast.error('Откройте приложение через Telegram Mini App для проверки оплаты');
+      return false;
+    }
+
+    try {
+      const codes = await fetchEntitlementCodes(initData);
+      entitlementsCache = { codes, ts: Date.now() };
+      const required = requiredEntitlementCode(productCode);
+
+      if (codes.includes(required)) {
+        setHasPaid(true);
+        setPaymentId(null);
+        setProviderPaymentId(null);
+        setPaymentError(null);
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
+        toast.success('Оплата успешно обработана!');
+        setTimeout(() => {
+          onPaymentComplete();
+        }, 500);
+        return true;
+      }
+
+      if (showPendingToast) {
+        toast('Пока не видим подтверждение. Попробуйте ещё раз через пару секунд.', { duration: 2500 });
+      }
+    } catch (error) {
+      console.warn('Could not check payment status:', error);
+      if (showPendingToast) toast.error('Не удалось проверить оплату. Попробуйте ещё раз.');
+    }
+
+    return false;
+  }, [onPaymentComplete, productCode]);
+
   // Polling для проверки статуса оплаты после создания платежа
   useEffect(() => {
     if (!paymentId) return;
 
-    const checkPaymentStatus = async () => {
-      const initData = getInitDataForClient();
-      if (!initData) return;
-
-      try {
-        const codes = await fetchEntitlementCodes(initData);
-        entitlementsCache = { codes, ts: Date.now() };
-        const required = requiredEntitlementCode(productCode);
-
-        if (codes.includes(required)) {
-          setHasPaid(true);
-          setPaymentId(null);
-          if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-            pollingIntervalRef.current = null;
-          }
-          toast.success('Оплата успешно обработана!');
-          setTimeout(() => {
-            onPaymentComplete();
-          }, 500);
-        }
-      } catch (error) {
-        console.warn('Could not check payment status:', error);
-      }
-    };
-
     // Проверяем каждые 2 секунды
-    pollingIntervalRef.current = setInterval(checkPaymentStatus, 2000);
+    pollingIntervalRef.current = setInterval(() => {
+      void checkPaymentAccessNow(false);
+    }, 2000);
 
     return () => {
       if (pollingIntervalRef.current) {
@@ -362,7 +388,7 @@ export function PaymentGate({
         pollingIntervalRef.current = null;
       }
     };
-  }, [paymentId, onPaymentComplete, productCode]);
+  }, [paymentId, checkPaymentAccessNow]);
 
   const handlePayment = async () => {
     if (!agreedToTerms) {
@@ -371,6 +397,7 @@ export function PaymentGate({
     }
 
     setIsProcessing(true);
+    setPaymentError(null);
 
     try {
       const initData = getInitDataForClient();
@@ -439,6 +466,7 @@ export function PaymentGate({
 
       if (paymentData.paymentId) {
         setPaymentId(paymentData.paymentId);
+        setPaymentError(null);
       }
       if (typeof paymentData.providerPaymentId === 'string' && paymentData.providerPaymentId) {
         setProviderPaymentId(paymentData.providerPaymentId);
@@ -456,7 +484,7 @@ export function PaymentGate({
           toast('Тестовый платеж создан. Симулируем оплату...', { duration: 2000 });
           setTimeout(async () => {
             try {
-              await fetch('/api/payments/test-webhook', {
+              const testWebhookRes = await fetch('/api/payments/test-webhook', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -464,10 +492,30 @@ export function PaymentGate({
                 },
                 body: JSON.stringify({ paymentId: paymentData.paymentId }),
               });
-              // Polling добьёт entitlement; дополнительно держим paymentId установленным.
+
+              if (!testWebhookRes.ok) {
+                const err = await testWebhookRes.json().catch(() => ({}));
+                const message = typeof err?.error === 'string'
+                  ? err.error
+                  : 'Не удалось подтвердить тестовую оплату';
+                throw new Error(message);
+              }
+
+              entitlementsCache = null;
               setPaymentId(paymentData.paymentId);
+              const completed = await checkPaymentAccessNow(false);
+              if (!completed) {
+                setRefreshTick((t) => t + 1);
+              }
             } catch (error) {
+              const message = error instanceof Error
+                ? error.message
+                : 'Не удалось подтвердить тестовую оплату';
               console.warn('Failed to simulate webhook:', error);
+              setPaymentError(message);
+              setPaymentId(null);
+              setProviderPaymentId(null);
+              toast.error(message);
             }
           }, 800);
         } else {
@@ -853,7 +901,60 @@ export function PaymentGate({
               }}>
                 Код для поддержки: <strong>{providerPaymentId || paymentId}</strong>
               </p>
+              <div style={{
+                display: 'flex',
+                gap: '8px',
+                justifyContent: 'center',
+                marginTop: '10px',
+                flexWrap: 'wrap',
+              }}>
+                <button
+                  type="button"
+                  onClick={() => void checkPaymentAccessNow(true)}
+                  style={{
+                    border: '1px solid rgba(0,0,0,0.16)',
+                    background: 'rgba(255,255,255,0.5)',
+                    color: '#111',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                    padding: '7px 10px',
+                    borderRadius: 0,
+                  }}
+                >
+                  Проверить сейчас
+                </button>
+                <button
+                  type="button"
+                  onClick={resetPendingPayment}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    color: '#555',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                    padding: '7px 10px',
+                    textDecoration: 'underline',
+                  }}
+                >
+                  Создать новый платёж
+                </button>
+              </div>
             </div>
+          )}
+
+          {paymentError && !paymentId && (
+            <p style={{
+              fontFamily: "var(--font-inter), 'Inter', sans-serif",
+              fontSize: '12px',
+              color: '#8A3A22',
+              lineHeight: 1.45,
+              textAlign: 'center',
+              margin: 0,
+            }}>
+              {paymentError}. Можно попробовать оплату ещё раз.
+            </p>
           )}
 
           {/* Безопасность */}
@@ -931,4 +1032,3 @@ export function PaymentGate({
     </div>
   );
 }
-

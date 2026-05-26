@@ -1,11 +1,17 @@
 /** @type {import('next').NextConfig} */
 import withBundleAnalyzer from '@next/bundle-analyzer';
 import { createRequire } from 'module';
+import { fileURLToPath } from 'url';
 const require = createRequire(import.meta.url);
 
 const bundleAnalyzerConfig = withBundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
 });
+
+const isCloudflareBuild = process.env.SKINIQ_CF_BUILD === '1';
+const prismaRuntimePath = fileURLToPath(new URL('./lib/prisma-client-runtime.ts', import.meta.url));
+const prismaRuntimePathNoExt = fileURLToPath(new URL('./lib/prisma-client-runtime', import.meta.url));
+const prismaRuntimeCfPath = fileURLToPath(new URL('./lib/prisma-client-runtime.cf.ts', import.meta.url));
 
 const nextConfig = {
   reactStrictMode: true,
@@ -105,6 +111,14 @@ const nextConfig = {
     config.resolve.alias = {
       ...config.resolve.alias,
       '@prisma/client/wasm': require.resolve('@prisma/client/wasm.js'),
+      ...(isCloudflareBuild
+        ? {
+            '@/lib/prisma-client-runtime': prismaRuntimeCfPath,
+            [prismaRuntimePath]: prismaRuntimeCfPath,
+            [prismaRuntimePathNoExt]: prismaRuntimeCfPath,
+            '@prisma/client$': require.resolve('@prisma/client/wasm.js'),
+          }
+        : {}),
     };
 
     if (!isServer) {
@@ -172,4 +186,3 @@ const nextConfig = {
 };
 
 export default bundleAnalyzerConfig(nextConfig);
-

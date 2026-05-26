@@ -1,7 +1,7 @@
 /**
  * Патч для Prisma WASM loader — native .wasm подход для Cloudflare Workers.
  *
- * Проблема: wasm-worker-loader.mjs делает `import('./query_engine_bg.wasm')`
+ * Проблема: wasm-worker-loader.mjs делает `import('./query_compiler_bg.wasm')`
  * что webpack пытается парсить как JS → "Module parse failed".
  *
  * Решение: webpackIgnore:true — webpack пропускает импорт полностью.
@@ -15,7 +15,7 @@
  */
 
 import { writeFileSync, existsSync } from 'fs';
-import { resolve, dirname } from 'path';
+import { resolve, dirname, basename } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -31,10 +31,16 @@ if (!existsSync(loaderPath)) {
 // Абсолютный путь к WASM бинарю — вычисляется здесь, при патче.
 // esbuild resolve(dirname(importer), absPath) = absPath (абсолютный путь остаётся абсолютным).
 // Wrangler затем включает WASM как CompiledWasm через [[rules]] в wrangler.toml.
-const wasmBinaryPath = resolve(projectRoot, 'node_modules/.prisma/client/query_engine_bg.wasm');
+const wasmCandidates = [
+  'query_compiler_bg.wasm',
+  'query_engine_bg.wasm',
+];
+const wasmBinaryPath = wasmCandidates
+  .map((fileName) => resolve(projectRoot, 'node_modules/.prisma/client', fileName))
+  .find((path) => existsSync(path));
 
-if (!existsSync(wasmBinaryPath)) {
-  console.error('❌ query_engine_bg.wasm not found — run prisma generate first');
+if (!wasmBinaryPath) {
+  console.error('❌ Prisma WASM binary not found — run prisma generate first');
   process.exit(1);
 }
 
@@ -50,4 +56,5 @@ export default import(/* webpackIgnore: true */ ${JSON.stringify(wasmBinaryPath)
 
 writeFileSync(loaderPath, patchedContent, 'utf8');
 console.log('✅ Patched Prisma WASM loader: webpackIgnore + absolute path → wrangler CompiledWasm');
+console.log('   WASM file:', basename(wasmBinaryPath));
 console.log('   WASM path:', wasmBinaryPath);

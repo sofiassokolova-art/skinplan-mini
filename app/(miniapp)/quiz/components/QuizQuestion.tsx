@@ -55,6 +55,23 @@ const QUESTION_STEP_MAP: Record<string, { number: number; total: number; label: 
   budget:           { number: 4, total: 4, label: 'Ваши предпочтения' },
 };
 
+const QUESTION_STEP_ALIASES: Record<string, string> = {
+  retinol_usage: 'retinoid_usage',
+  retinol_reaction: 'retinoid_reaction',
+  retinoidusage: 'retinoid_usage',
+  retinolusage: 'retinoid_usage',
+  retinoidreaction: 'retinoid_reaction',
+  retinolreaction: 'retinoid_reaction',
+};
+
+function getQuestionStep(questionCode?: string | null) {
+  const normalizedCode = questionCode?.trim().toLowerCase();
+  if (!normalizedCode) return undefined;
+
+  const canonicalCode = QUESTION_STEP_ALIASES[normalizedCode] ?? normalizedCode;
+  return QUESTION_STEP_MAP[canonicalCode];
+}
+
 // Вынесен на уровень модуля, чтобы не пересоздаваться при ре-рендере — иначе картинки на экране «Тип кожи» мигают
 const LimeOptionCard = memo(function LimeOptionCard({
   option,
@@ -546,7 +563,7 @@ export const QuizQuestion = memo(function QuizQuestion({
   }, [targetProgressPercent]);
 
   // Лейбл шага для текущего вопроса (если есть в маппинге)
-  const currentStep = question?.code ? QUESTION_STEP_MAP[question.code] : undefined;
+  const currentStep = getQuestionStep(question?.code);
 
   // Прогресс-бар в ширину контента (те же отступы 20px, что и у заголовка/вариантов)
   const ProgressBar = () => {

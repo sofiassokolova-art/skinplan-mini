@@ -57,11 +57,11 @@
     "check:product-coverage": "tsx scripts/check-product-coverage-by-skintype.ts",
     "add:combo-rules": "tsx scripts/add-combo-skin-rules.ts",
     "add:comprehensive-rules": "tsx scripts/add-comprehensive-rules.ts",
-    "build:cf": "prisma generate && node scripts/patch-prisma-wasm-loader.mjs && npx @opennextjs/cloudflare build && node scripts/patch-worker-buffer-response.mjs",
+    "build:cf": "SKINIQ_CF_BUILD=1 prisma generate && node scripts/patch-prisma-wasm-loader.mjs && SKINIQ_CF_BUILD=1 npx @opennextjs/cloudflare build && node scripts/patch-worker-buffer-response.mjs",
     "deploy:cf": "npx wrangler deploy",
-    "preview:cf": "npx @opennextjs/cloudflare build && npx wrangler dev",
-    "deploy:prod": "npx wrangler deploy --env production",
-    "deploy:staging": "npx wrangler deploy --env staging"
+    "preview:cf": "npm run build:cf && npx wrangler dev",
+    "deploy:prod": "npm run build:cf && npx wrangler deploy --env production",
+    "deploy:staging": "npm run build:cf && npx wrangler deploy --env staging"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

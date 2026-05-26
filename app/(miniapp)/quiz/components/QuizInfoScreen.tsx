@@ -6,6 +6,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
+import { Check } from 'lucide-react';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
 import type { Questionnaire } from '@/lib/quiz/types';
 import type { InfoScreen } from '../info-screens';
@@ -489,7 +490,13 @@ export function QuizInfoScreen({
           padding: 0,
           margin: 0,
           minHeight: '100vh',
-          background: '#FFFFFF',
+          background: `
+            radial-gradient(60% 30% at 100% 0%, rgba(213,254,97,0.55) 0%, transparent 65%),
+            radial-gradient(70% 30% at 0% 35%, rgba(255,231,200,0.6) 0%, transparent 65%),
+            radial-gradient(80% 25% at 100% 70%, rgba(213,254,97,0.35) 0%, transparent 65%),
+            radial-gradient(80% 30% at 0% 100%, rgba(220,210,196,0.6) 0%, transparent 60%),
+            #F4F2EE
+          `,
           position: 'relative',
           width: '100%',
         }}>
@@ -501,6 +508,8 @@ export function QuizInfoScreen({
               minHeight: '100vh',
               boxSizing: 'border-box',
               padding: '120px 20px 140px',
+              maxWidth: '420px',
+              margin: '0 auto',
               display: 'flex',
               flexDirection: 'column',
               gap: '24px',
@@ -521,7 +530,7 @@ export function QuizInfoScreen({
               fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
               fontSize: '15px',
               lineHeight: '140%',
-              color: '#666666',
+              color: '#4B5563',
               margin: 0,
             }}>
               На основе ваших ответов мы уже понимаем, как должен выглядеть ваш уход.
@@ -529,12 +538,16 @@ export function QuizInfoScreen({
 
             {/* Карточка с резюме ответов */}
             <div style={{
-              background: '#F5F5F0',
-              borderRadius: '20px',
-              padding: '20px',
+              background: 'rgba(255,255,255,0.55)',
+              backdropFilter: 'blur(28px) saturate(160%)',
+              WebkitBackdropFilter: 'blur(28px) saturate(160%)',
+              border: '1px solid rgba(255,255,255,0.7)',
+              borderRadius: '28px',
+              padding: '22px',
               display: 'flex',
               flexDirection: 'column',
               gap: '14px',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.06)',
               fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
             }}>
               {skinTypeShort && (
@@ -583,6 +596,256 @@ export function QuizInfoScreen({
   // Лейбл «Шаг N: название» показывается над прогресс-баром вопросов (QuizQuestion → QUESTION_STEP_MAP).
   if (screen.stepNumber !== undefined && screen.totalSteps !== undefined) {
     return <StepScreenAutoAdvance handleNext={handleNext} isHandlingNext={isHandlingNext} />;
+  }
+
+  // Финальный экран после бюджета — закрепляет «всё готово» и допродаёт ценность плана.
+  // Светлый фирменный фон (как в ai_comparison/personal_analysis):
+  //  1) светлая стеклянная карточка «Что мы учли» со статусом «Готово» и чек-листом данных
+  //  2) лёгкая карточка «В вашем плане» с коротким value-summary
+  if (screen.id === 'no_mistakes') {
+    const collected = [
+      'Тип и состояние кожи',
+      'Цели и приоритеты',
+      'Чувствительность и здоровье',
+      'Бюджет и формат',
+    ];
+    const CheckIcon = ({ color = 'currentColor' }: { color?: string }) => (
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke={color} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <polyline points="2,5 4.2,7.2 8,3.4" />
+      </svg>
+    );
+
+    return (
+      <>
+        {backButton}
+        <div style={{
+          minHeight: '100vh',
+          position: 'relative',
+          background: `
+            radial-gradient(60% 30% at 100% 0%, rgba(213,254,97,0.55) 0%, transparent 65%),
+            radial-gradient(70% 30% at 0% 35%, rgba(255,231,200,0.6) 0%, transparent 65%),
+            radial-gradient(80% 25% at 100% 70%, rgba(213,254,97,0.35) 0%, transparent 65%),
+            radial-gradient(80% 30% at 0% 100%, rgba(220,210,196,0.6) 0%, transparent 60%),
+            #F4F2EE
+          `,
+          color: '#1C1C1C',
+          width: '100%',
+          overflowX: 'hidden',
+        }}>
+          <div
+            className="animate-fade-in"
+            style={{
+              position: 'relative',
+              zIndex: 1,
+              width: '100%',
+              maxWidth: '430px',
+              minHeight: '100vh',
+              margin: '0 auto',
+              padding: 'clamp(76px, 11vh, 88px) 20px 140px',
+              boxSizing: 'border-box',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'clamp(12px, 2vh, 16px)',
+            }}
+          >
+            {/* Kicker: статус готовности */}
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              width: 'fit-content',
+              padding: '7px 12px 7px 9px',
+              background: '#0A0A0A',
+              color: '#D5FE61',
+              borderRadius: '999px',
+              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontSize: '11px',
+              fontWeight: 700,
+              letterSpacing: '0.6px',
+              textTransform: 'uppercase',
+            }}>
+              <span style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                background: '#D5FE61',
+                boxShadow: '0 0 0 4px rgba(213,254,97,0.25)',
+              }} />
+              Профиль готов
+            </span>
+
+            {/* Заголовок: фокус на «завершён» */}
+            <h1 className="quiz-title" style={{
+              fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 700,
+              fontSize: 'clamp(26px, 7.2vw, 32px)',
+              lineHeight: 1.06,
+              letterSpacing: 0,
+              color: '#0A0A0A',
+              margin: 0,
+              maxWidth: '360px',
+            }}>
+              Анализ вашей кожи{' '}
+              <span style={{
+                background: 'linear-gradient(180deg, transparent 62%, #D5FE61 62%)',
+                padding: '0 4px',
+              }}>
+                завершён
+              </span>
+            </h1>
+
+            {/* Лид */}
+            <p style={{
+              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontSize: '15px',
+              lineHeight: 1.45,
+              color: '#3A3A3A',
+              margin: 0,
+              maxWidth: '360px',
+            }}>
+              Все данные собраны. На их основе формируем персональный протокол ухода.
+            </p>
+
+            {/* Светлая карточка: что мы учли */}
+            <div style={{
+              background: 'rgba(255,255,255,0.6)',
+              backdropFilter: 'blur(24px) saturate(160%)',
+              WebkitBackdropFilter: 'blur(24px) saturate(160%)',
+              border: '1px solid rgba(255,255,255,0.7)',
+              borderRadius: '24px',
+              padding: 'clamp(16px, 2.4vh, 18px)',
+              boxShadow: '0 10px 30px rgba(0,0,0,0.06)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'clamp(12px, 2vh, 14px)',
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '10px',
+              }}>
+                <span style={{
+                  fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: '#1C1C1C',
+                  letterSpacing: '0.1px',
+                }}>Что мы учли</span>
+
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '5px 9px 5px 7px',
+                  background: '#D5FE61',
+                  color: '#0A0A0A',
+                  borderRadius: '999px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  letterSpacing: '0.4px',
+                  textTransform: 'uppercase',
+                }}>
+                  <CheckIcon color="#0A0A0A" />
+                  Готово
+                </span>
+              </div>
+
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '10px 14px',
+                fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              }}>
+                {collected.map((item) => (
+                  <div key={item} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '13px',
+                    color: '#1C1C1C',
+                    fontWeight: 500,
+                  }}>
+                    <span style={{
+                      width: '18px',
+                      height: '18px',
+                      borderRadius: '50%',
+                      background: '#0A0A0A',
+                      color: '#D5FE61',
+                      display: 'grid',
+                      placeItems: 'center',
+                      flexShrink: 0,
+                    }}>
+                      <CheckIcon />
+                    </span>
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Лёгкая карточка: что вы получаете в плане (re-sell value) */}
+            <div style={{
+              background: 'rgba(255,255,255,0.48)',
+              backdropFilter: 'blur(22px) saturate(155%)',
+              WebkitBackdropFilter: 'blur(22px) saturate(155%)',
+              border: '1px solid rgba(255,255,255,0.64)',
+              borderRadius: '24px',
+              padding: '16px',
+              color: '#1C1C1C',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.045)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '11px',
+            }}>
+              <span style={{
+                fontSize: '10px',
+                fontWeight: 700,
+                color: '#0A0A0A',
+                letterSpacing: '0.8px',
+                textTransform: 'uppercase',
+                fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              }}>В вашем плане</span>
+
+              <h2 style={{
+                fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontSize: 'clamp(16px, 4.4vw, 17px)',
+                fontWeight: 700,
+                lineHeight: 1.18,
+                color: '#0A0A0A',
+                margin: 0,
+              }}>
+                Уход под{' '}
+                <span style={{
+                  background: 'linear-gradient(180deg, transparent 62%, #D5FE61 62%)',
+                  padding: '0 3px',
+                }}>
+                  вашу
+                </span>{' '}
+                кожу, а не под среднюю
+              </h2>
+
+              <p style={{
+                fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontSize: '13px',
+                lineHeight: 1.4,
+                color: '#3A3A3A',
+                margin: 0,
+              }}>
+                Ритуал, совместимые активы и средства в рамках бюджета.
+              </p>
+            </div>
+          </div>
+
+          <FixedContinueButton
+            ctaText={screen.ctaText}
+            onClick={handleNext}
+            disabled={isHandlingNext}
+            loadingText="Продолжить"
+          />
+        </div>
+      </>
+    );
   }
 
   // Экран "Нам важно учесть ваши данные о здоровье" (health_data) - такая же верстка как у general_info_intro
@@ -687,6 +950,251 @@ export function QuizInfoScreen({
           loadingText="Продолжить"
         />
       </div>
+      </>
+    );
+  }
+
+  // Экран "Уход, который вам подходит" — отдельный pitch перед предпочтениями.
+  // Перенесён из mockup-skiniq-redesign.html: без AI-лейбла, с фокусом на понятный подбор.
+  if (isComparisonScreen && screen.id === 'ai_comparison') {
+    const steps = [
+      {
+        num: '01',
+        title: 'Понимаем вашу кожу',
+        desc: 'Что у вас за тип, чего она хочет и чего избегает.',
+      },
+      {
+        num: '02',
+        title: 'Убираем лишнее',
+        desc: 'Несовместимые активы, аллергены и то, что вам не подойдёт.',
+      },
+      {
+        num: '03',
+        title: 'Выстраиваем ритуал',
+        desc: 'Утренние и вечерние шаги в правильном порядке.',
+      },
+    ];
+
+    return (
+      <>
+        {backButton}
+        <div style={{
+          minHeight: '100vh',
+          position: 'relative',
+          overflowX: 'hidden',
+          overflowY: 'auto',
+          background: '#FDF7F6',
+          color: '#1C1C1C',
+        }}>
+          <Image
+            src="/image 1576994977.png"
+            alt=""
+            fill
+            style={{ objectFit: 'cover', objectPosition: 'center' }}
+            priority
+          />
+          <div
+            aria-hidden
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 1,
+              background: 'linear-gradient(180deg, rgba(253,247,246,0) 0%, rgba(253,247,246,0.25) 60%, rgba(253,247,246,0.55) 100%)',
+              pointerEvents: 'none',
+            }}
+          />
+
+          <div
+            className="animate-fade-in"
+            style={{
+              position: 'relative',
+              zIndex: 2,
+              width: '100%',
+              maxWidth: '420px',
+              minHeight: '100vh',
+              margin: '0 auto',
+              padding: '72px 22px 150px',
+              boxSizing: 'border-box',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            <h1 style={{
+              fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 700,
+              fontSize: '32px',
+              lineHeight: 1.04,
+              letterSpacing: '0px',
+              color: '#1C1C1C',
+              margin: '0 0 28px 0',
+            }}>
+              Уход,<br />
+              который вам{' '}
+              <span style={{
+                background: 'linear-gradient(180deg, transparent 62%, #D5FE61 62%)',
+                padding: '0 4px',
+              }}>
+                подходит
+              </span>
+            </h1>
+
+            <div style={{
+              background: 'rgba(255,255,255,0.55)',
+              backdropFilter: 'blur(20px) saturate(160%)',
+              WebkitBackdropFilter: 'blur(20px) saturate(160%)',
+              border: '1px solid rgba(255,255,255,0.7)',
+              borderRadius: '24px',
+              padding: '20px 18px 12px',
+              boxShadow: '0 10px 30px rgba(0,0,0,0.05)',
+              marginBottom: '18px',
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '12px',
+                marginBottom: '10px',
+                padding: '0 2px',
+              }}>
+                <div style={{
+                  fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: '#1C1C1C',
+                }}>
+                  Принцип подбора
+                </div>
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  background: '#D5FE61',
+                  color: '#1C1C1C',
+                  padding: '4px 9px',
+                  borderRadius: '999px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  letterSpacing: '0px',
+                  whiteSpace: 'nowrap',
+                }}>
+                  <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#1C1C1C' }} />
+                  SkinIQ
+                </div>
+              </div>
+
+              {steps.map((step, index) => (
+                <div
+                  key={step.num}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '30px 1fr',
+                    gap: '12px',
+                    padding: '15px 2px',
+                    borderTop: index === 0 ? 'none' : '1px solid rgba(28,28,28,0.08)',
+                  }}
+                >
+                  <div style={{
+                    width: '30px',
+                    height: '30px',
+                    borderRadius: '50%',
+                    background: '#0A0A0A',
+                    color: '#D5FE61',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    letterSpacing: '0px',
+                  }}>
+                    {step.num}
+                  </div>
+                  <div>
+                    <h3 style={{
+                      fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      lineHeight: 1.2,
+                      color: '#1C1C1C',
+                      margin: '0 0 2px',
+                    }}>
+                      {step.title}
+                    </h3>
+                    <p style={{
+                      fontSize: '12px',
+                      lineHeight: 1.35,
+                      color: '#6F6F6F',
+                      margin: 0,
+                    }}>
+                      {step.desc}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{
+              background: '#0A0A0A',
+              borderRadius: '24px',
+              padding: '20px',
+              color: '#FFFFFF',
+              position: 'relative',
+              overflow: 'hidden',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', position: 'relative', zIndex: 1 }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  background: '#D5FE61',
+                  color: '#1C1C1C',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}>
+                  <Check size={16} strokeWidth={3} aria-hidden="true" />
+                </div>
+                <div>
+                  <div style={{
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    color: '#D5FE61',
+                    letterSpacing: '0px',
+                    textTransform: 'uppercase',
+                    marginBottom: '3px',
+                  }}>
+                    Результат
+                  </div>
+                  <h2 style={{
+                    fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+                    fontSize: '15px',
+                    lineHeight: 1.15,
+                    fontWeight: 600,
+                    margin: '0 0 4px',
+                  }}>
+                    Уход без сомнений
+                  </h2>
+                  <p style={{
+                    fontSize: '11px',
+                    lineHeight: 1.4,
+                    color: 'rgba(255,255,255,0.65)',
+                    margin: 0,
+                  }}>
+                    Каждое средство на своём месте. Работает в комплекте, а не по отдельности.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <FixedContinueButton
+            ctaText={screen.ctaText}
+            onClick={handleNext}
+            disabled={isHandlingNext}
+            loadingText="Продолжить"
+            maxWidth={420}
+          />
+        </div>
       </>
     );
   }
