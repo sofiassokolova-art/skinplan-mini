@@ -2,10 +2,9 @@
 // Prisma Client для работы с базой данных (Neon PostgreSQL)
 // Использует @prisma/adapter-neon для совместимости с Cloudflare Workers/Pages
 
-// Импортируем основной entry Prisma Client: generated package сам выбирает
-// Node index.js в локальном Next dev и wasm.js в workerd/edge через conditions.
-// Прямой @prisma/client/wasm(.js) в Node dev ломается на import() query_engine_bg.wasm.
-import { PrismaClient, type Prisma } from '@prisma/client';
+// Runtime модуль оставляет Node entry для локальной разработки и подменяется
+// на wasm entry во время Cloudflare-сборки.
+import { PrismaClient, type Prisma } from '@/lib/prisma-client-runtime';
 import { PrismaNeon } from '@prisma/adapter-neon';
 import { neonConfig } from '@neondatabase/serverless';
 import { currentPrismaRequestId, resetPrismaForRequest } from './db-request-scope';
