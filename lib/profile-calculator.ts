@@ -1,7 +1,7 @@
 // lib/profile-calculator.ts
 // Логика расчета профиля кожи на основе ответов анкеты
 
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import { normalizeSkinTypeForRules, type SkinTypeKey } from './skin-type-normalizer';
 
 interface AnswerScore {

@@ -42,7 +42,6 @@ class Logger {
       try {
         // Динамический импорт для избежания циклических зависимостей
         const { prisma } = await import('@/lib/db');
-        const { Prisma } = await import('@prisma/client');
         
         await prisma.clientLog.create({
           data: {
@@ -270,4 +269,3 @@ export function logApiError(
 
 // Экспортируем типы для использования в других модулях
 export type { LogLevel, LogContext, ClientLogOptions };
-
