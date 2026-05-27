@@ -39,6 +39,35 @@ interface PlanPageClientNewProps {
   planExpired?: boolean; // Флаг истечения плана (28+ дней)
 }
 
+function getAnswerText(answer: any): string | null {
+  const rawValue = answer?.answerValue;
+  if (typeof rawValue === 'string' && rawValue.trim().length > 0) {
+    return rawValue.trim();
+  }
+
+  if (Array.isArray(answer?.answerValues)) {
+    const firstValue = answer.answerValues.find((value: unknown) => typeof value === 'string' && value.trim().length > 0);
+    return typeof firstValue === 'string' ? firstValue.trim() : null;
+  }
+
+  return null;
+}
+
+function getNameFromQuestionnaireAnswers(userAnswers: any[]): string | null {
+  const nameCodeCandidates = new Set(['user_name', 'username', 'name', 'first_name']);
+  const byCode = userAnswers.find((answer: any) => {
+    const code = String(answer?.question?.code || '').trim().toLowerCase();
+    return nameCodeCandidates.has(code);
+  });
+
+  const byQuestionText = userAnswers.find((answer: any) => {
+    const text = String(answer?.question?.text || '').trim().toLowerCase();
+    return text.includes('имя') || text.includes('зовут');
+  });
+
+  return getAnswerText(byCode) || getAnswerText(byQuestionText);
+}
+
 export function PlanPageClientNew({
   plan28,
   products: productsProp,
@@ -116,20 +145,16 @@ export function PlanPageClientNew({
     
     const loadUserName = async () => {
       try {
-        // ИСПРАВЛЕНО: Имя всегда берется с сервера, не из localStorage
-        // Приоритет: ответ USER_NAME > профиль
-        // Запрашиваем ответы из API (кэш больше не используется, данные в БД)
+        // Приоритет: ответ анкеты (USER_NAME / альтернативные коды) > профиль.
         const userAnswers = await api.getUserAnswers() as any;
         if (!cancelled && isMountedRef.current && userAnswers && Array.isArray(userAnswers)) {
-          const nameAnswer = userAnswers.find((a: any) => a.question?.code === 'USER_NAME');
-          if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
-            const userNameFromAnswer = String(nameAnswer.answerValue).trim();
+          const userNameFromAnswer = getNameFromQuestionnaireAnswers(userAnswers);
+          if (userNameFromAnswer) {
             setUserName(userNameFromAnswer);
-            clientLogger.log('✅ User name loaded from USER_NAME answer:', userNameFromAnswer);
+            clientLogger.log('✅ User name loaded from questionnaire answer');
             return;
           }
         }
-        // Если имени нет в ответах, пробуем из профиля
         if (!cancelled && isMountedRef.current) {
           const userProfile = await api.getUserProfile();
           if (userProfile?.firstName) {
@@ -469,9 +494,11 @@ export function PlanPageClientNew({
 
   return (
     <div style={{
-      minHeight: '100vh',
-      background: '#FFFFFF',
-      paddingBottom: '100px',
+      minHeight: '100svh',
+      background: 'linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 68%, #F5FFFC 100%)',
+      paddingBottom: '76px',
+      overflowX: 'hidden',
+      overscrollBehaviorY: 'contain',
     }}>
       {/* Hero — black */}
       <div style={{
@@ -626,7 +653,7 @@ export function PlanPageClientNew({
         )}
 
         {/* Блок обратной связи в конце страницы */}
-        <div style={{ marginTop: '48px', marginBottom: '24px' }}>
+        <div style={{ marginTop: '48px', marginBottom: '8px' }}>
           <FeedbackBlock onSubmit={handleFeedbackSubmit} feedbackType="plan_recommendations" />
         </div>
 
