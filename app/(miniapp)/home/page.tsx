@@ -11,6 +11,7 @@ import { api } from '@/lib/api';
 import { clientLogger } from '@/lib/client-logger';
 import { PaymentGate } from '@/components/PaymentGate';
 import { getBaseStepFromStepCategory } from '@/lib/plan-helpers';
+import { AppLoader } from '@/components/AppLoader';
 interface RoutineItem {
   id: string;
   title: string;
@@ -40,12 +41,16 @@ interface Recommendation {
 }
 
 const ICONS: Record<string, string> = {
-  cleanser: '/icons/cleanser1.PNG',
-  toner: '/icons/toner1.PNG',
-  serum: '/icons/serum.PNG',
-  cream: '/icons/cream.PNG',
-  spf: '/icons/spf1.PNG',
-  acid: '/icons/acid1.PNG',
+  cleanser: '/icons/cleanser_true.png',
+  toner: '/icons/toner_true.png',
+  serum: '/icons/serum_true.png',
+  cream: '/icons/cream_true.png',
+  spf: '/icons/spf_true.png',
+  acid: '/icons/treatment_true.png',
+  treatment: '/icons/treatment_true.png',
+  oil: '/icons/oil_true.png',
+  mask: '/icons/claymask_true.png',
+  lip: '/icons/lipbalm_true.png',
 };
 
 export default function HomePage() {
@@ -271,7 +276,7 @@ export default function HomePage() {
               };
             } else if (baseStep === 'serum' || baseStep === 'treatment') {
               title = time === 'AM' ? 'Актив' : 'Сыворотка';
-              icon = ICONS.serum;
+              icon = baseStep === 'treatment' ? ICONS.treatment : ICONS.serum;
               howto = {
                 steps: ['3–6 капель на сухую кожу', 'Равномерно нанесите и дайте впитаться 1–2 минуты'],
                 volume: '3–6 капель',
@@ -295,7 +300,7 @@ export default function HomePage() {
               };
             } else if (baseStep === 'lip_care') {
               title = 'Бальзам для губ';
-              icon = ICONS.cream;
+              icon = ICONS.lip;
               howto = {
                 steps: ['Нанести на губы тонким слоем', 'Обновлять по необходимости в течение дня'],
                 volume: 'Тонкий слой',
@@ -386,7 +391,7 @@ export default function HomePage() {
               };
             } else if (baseStep === 'serum' || baseStep === 'treatment') {
               title = time === 'AM' ? 'Актив' : 'Сыворотка';
-              icon = ICONS.serum;
+              icon = baseStep === 'treatment' ? ICONS.treatment : ICONS.serum;
               howto = {
                 steps: ['3–6 капель на сухую кожу', 'Равномерно нанесите и дайте впитаться 1–2 минуты'],
                 volume: '3–6 капель',
@@ -410,7 +415,7 @@ export default function HomePage() {
               };
             } else if (baseStep === 'lip_care') {
               title = 'Бальзам для губ';
-              icon = ICONS.cream;
+              icon = ICONS.lip;
               howto = {
                 steps: ['Нанести на губы тонким слоем', 'Обновлять по необходимости в течение дня'],
                 volume: 'Тонкий слой',
@@ -525,7 +530,7 @@ export default function HomePage() {
           id: 'morning-active',
           title: 'Актив',
           subtitle: data?.steps?.treatment?.[0]?.name || 'Активное средство',
-          icon: ICONS.serum,
+          icon: ICONS.treatment,
           howto: {
             steps: ['1–2 пипетки на сухую кожу', 'Наносите на T‑зону и щеки', 'Подождите 1–2 минуты до крема'],
             volume: '4–6 капель',
@@ -571,7 +576,7 @@ export default function HomePage() {
           id: 'morning-lip-balm',
           title: 'Бальзам для губ',
           subtitle: data?.steps?.lip_care?.[0]?.name || 'Бальзам для губ',
-          icon: ICONS.cream, // Используем иконку крема как временную
+          icon: ICONS.lip,
           howto: {
             steps: ['Нанести на губы тонким слоем', 'Обновлять по необходимости в течение дня'],
             volume: 'Тонкий слой',
@@ -715,38 +720,7 @@ export default function HomePage() {
   };
 
   if (!mounted || loading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        background: '#FFFFFF',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '24px',
-        paddingBottom: '120px',
-        boxSizing: 'border-box',
-      }}>
-        <div style={{
-          width: '44px',
-          height: '44px',
-          border: '4px solid rgba(0,0,0,0.08)',
-          borderTop: '4px solid #0A0A0A',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
-          marginBottom: '16px',
-        }} />
-        <div style={{ color: '#0A0A0A', fontSize: '16px', fontWeight: 500 }}>
-          Загрузка плана...
-        </div>
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
-      </div>
-    );
+    return <AppLoader fullScreen variant="light" />;
   }
 
   // Получаем текущие элементы в зависимости от вкладки
