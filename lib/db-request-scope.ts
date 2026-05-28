@@ -1,21 +1,55 @@
 // lib/db-request-scope.ts
-// Тонкий модуль БЕЗ зависимостей на @prisma/* — можно безопасно
-// импортить из middleware.ts (Edge Runtime).
+// Per-request scope для Prisma в Cloudflare Workers.
 //
-// PrismaClient в CF Workers нельзя кешировать между запросами:
-// его внутренний fetch-pool привязан к request-context первого вызова,
-// последующие запросы получают "Cannot perform I/O on behalf of a different request".
-// Решение: сбрасывать кэш в начале КАЖДОГО request handler-а.
+// Проблема: PrismaClient в CF Workers нельзя кешировать на globalThis между
+// запросами — Neon-адаптер держит fetch-state, привязанный к request-context
+// первого запроса. Конкурентные запросы в одном изоляте видят чужой клиент и
+// получают "Cannot perform I/O on behalf of a different request" → 500/таймауты/
+// обрезанные ответы. Глобальная переменная reqId НЕ изолирует по запросу:
+// globalThis в CF Workers общий для всех конкурентных запросов изолята, и более
+// поздний request перетирал reqId, ломая ещё не завершившийся ранний handler.
 //
-// Сам кэш лежит в lib/db.ts; здесь только функция reset, которую дёргает middleware.
+// Решение: AsyncLocalStorage. CF Workers (nodejs_compat_v2) инициализирует свежий
+// async-контекст на каждый fetch event, а enterWith() прокидывает значение по
+// всему async-дереву ЭТОГО запроса. Конкурентные запросы в одном изоляте видят
+// независимые сторы.
+//
+// Тонкий модуль БЕЗ зависимостей на @prisma/* — безопасно импортится из
+// middleware.ts (Edge Runtime под CF Workers с nodejs_compat_v2).
 
-const REQ_ID_KEY = Symbol.for('skiniq.prismaRequestId');
-const store = globalThis as unknown as { [REQ_ID_KEY]?: string };
+import { AsyncLocalStorage } from 'node:async_hooks';
 
-export function resetPrismaForRequest(): void {
-  store[REQ_ID_KEY] = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+// Тип клиента НЕ импортируем (это притянуло бы @prisma/* в middleware).
+// lib/db.ts кладёт сюда свой PrismaClient через прозрачный контейнер.
+export interface PrismaScope {
+  client?: unknown;
 }
 
-export function currentPrismaRequestId(): string {
-  return store[REQ_ID_KEY] || '';
+const storage = new AsyncLocalStorage<PrismaScope>();
+
+/**
+ * Вызывается middleware'ом в начале каждого request handler-а.
+ * Создаёт свежий стор для текущего async-контекста. Все async-операции,
+ * запущенные после этого вызова в той же цепочке, увидят этот стор.
+ */
+export function resetPrismaForRequest(): void {
+  storage.enterWith({});
+}
+
+/**
+ * Возвращает per-request scope. Если middleware не успел его поставить
+ * (Node-скрипты, cron без middleware, или оборвавшийся async-контекст) —
+ * лениво инициализирует свежий стор для текущей async-цепочки.
+ *
+ * Гарантия: внутри одного route handler-а все вызовы возвращают один и тот же
+ * объект scope (через ALS), поэтому Prisma-клиент в нём шарится между всеми
+ * prisma.X.Y вызовами одного запроса.
+ */
+export function getPrismaScope(): PrismaScope {
+  let scope = storage.getStore();
+  if (!scope) {
+    scope = {};
+    storage.enterWith(scope);
+  }
+  return scope;
 }

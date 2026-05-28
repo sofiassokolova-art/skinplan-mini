@@ -8,7 +8,7 @@
 import { PrismaClient, type Prisma } from '@prisma/client';
 import { PrismaNeon } from '@prisma/adapter-neon';
 import { neonConfig } from '@neondatabase/serverless';
-import { currentPrismaRequestId, resetPrismaForRequest } from './db-request-scope';
+import { getPrismaScope, resetPrismaForRequest } from './db-request-scope';
 
 // CF Workers: HTTP fetch транспорт через poolQueryViaFetch=true.
 // webSocketConstructor НЕ ставим — даже неиспользуемая ссылка на globalThis.WebSocket
@@ -45,39 +45,32 @@ function createPrismaClient() {
 }
 
 // КРИТИЧНО: в CF Workers НЕ кэшируем PrismaClient между запросами.
-// Pool держит fetch-state (HTTP keep-alive, Response объекты), привязанный
-// к контексту первого request-а. Следующий request видит "Cannot perform I/O
-// on behalf of a different request" → "Connection terminated" → 500/обрезанные ответы.
+// Neon-адаптер держит fetch-state, привязанный к request-context первого
+// запроса. Следующий request видит "Cannot perform I/O on behalf of a different
+// request" → "Connection terminated" → 500/обрезанные ответы.
 //
-// Кешируем по-request: вешаем клиент на globalThis под уникальным ключом, который
-// сбрасывается на каждом новом request-handler-е через requestPrismaScopeKey.
-// В пределах одного request все вызовы prisma.* возвращают тот же клиент.
-const PRISMA_SCOPE_KEY = Symbol.for('skiniq.prismaPerRequest');
-const prismaStore = globalThis as unknown as {
-  [PRISMA_SCOPE_KEY]?: { id: string; client: PrismaClient };
-};
+// Изоляция per-request через AsyncLocalStorage (см. lib/db-request-scope.ts):
+// внутри одного request все вызовы prisma.* возвращают тот же клиент,
+// конкурентные запросы в одном изоляте получают независимые клиенты.
 
 // Re-export для удобства (route handlers могут вызвать reset напрямую если нужно)
 export { resetPrismaForRequest };
 
+/**
+ * Возвращает PrismaClient, привязанный к текущему request-context через
+ * AsyncLocalStorage. В пределах одного request все вызовы возвращают тот же
+ * клиент; конкурентные запросы в одном CF Workers isolate — разные клиенты.
+ */
 export const getPrisma = (): PrismaClient => {
-  const reqId = currentPrismaRequestId();
-  const cached = prismaStore[PRISMA_SCOPE_KEY];
-  // В пределах одного request-а возвращаем тот же клиент.
-  // На новом request middleware ставит новый reqId — старый кэш инвалидируется.
-  if (cached && reqId && cached.id === reqId) {
-    return cached.client;
+  const scope = getPrismaScope();
+  if (!scope.client) {
+    scope.client = createPrismaClient();
   }
-  // Fallback: если reqId не выставлен (Node/scripts), кэшируем как обычно
-  if (!reqId && cached) {
-    return cached.client;
-  }
-  const client = createPrismaClient();
-  prismaStore[PRISMA_SCOPE_KEY] = { id: reqId, client };
-  return client;
+  return scope.client as PrismaClient;
 };
 
-// Обратная совместимость — proxy который инициализируется при первом обращении
+// Обратная совместимость — proxy, который при каждом обращении достаёт
+// per-request клиент из ALS-скоупа.
 export const prisma = new Proxy({} as PrismaClient, {
   get(_target, prop) {
     return (getPrisma() as any)[prop];
