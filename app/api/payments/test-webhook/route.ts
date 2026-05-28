@@ -9,7 +9,7 @@ import { NextResponse } from 'next/server';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 
 import { entitlementCodeForProduct, calculateValidUntil } from '@/lib/payment-helpers';
-import { isProductionDeployment } from '@/lib/deployment-env';
+import { isExplicitNonProd } from '@/lib/deployment-env';
 
 /**
  * Тестовый endpoint для симуляции успешного платежа через вебхук ЮKassa
@@ -20,9 +20,9 @@ import { isProductionDeployment } from '@/lib/deployment-env';
  * Body: { paymentId: "payment_id_from_db" }
  */
 export async function POST(request: NextRequest) {
-  if (isProductionDeployment()) {
-    // ИСПРАВЛЕНО: не спамим error-логами в проде (часто сканеры/боты дергают /test-* пути)
-    // и не раскрываем наличие endpoint'а.
+  // FAIL-CLOSED: тестовый вебхук доступен ТОЛЬКО в явно не-прод окружении.
+  // Неизвестный/потерянный DEPLOYMENT_ENV => 404 (не раскрываем endpoint).
+  if (!isExplicitNonProd()) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 

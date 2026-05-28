@@ -8,7 +8,7 @@ import { prisma } from '@/lib/db';
 import { ApiResponse } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
-import { isProductionDeployment } from '@/lib/deployment-env';
+import { isExplicitNonProd } from '@/lib/deployment-env';
 
 /**
  * @deprecated НЕ ИСПОЛЬЗУЙТЕ В ПРОДАКШЕНЕ!
@@ -23,10 +23,9 @@ import { isProductionDeployment } from '@/lib/deployment-env';
  */
 export async function POST(request: NextRequest) {
   try {
-    // В продакшене блокируем этот endpoint.
-    if (isProductionDeployment()) {
-      // ИСПРАВЛЕНО: не спамим error-логами в проде (часто сканеры/боты дергают /test-* и deprecated пути)
-      // и не раскрываем наличие endpoint'а.
+    // FAIL-CLOSED: deprecated endpoint доступен ТОЛЬКО в явно не-прод окружении.
+    // Неизвестный/потерянный DEPLOYMENT_ENV => 404 (не раскрываем endpoint).
+    if (!isExplicitNonProd()) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
