@@ -99,7 +99,7 @@ const nextConfig = {
   
   // Исключаем src из сборки (Vite фронтенд)
   // ОПТИМИЗАЦИЯ: Code splitting для уменьшения размера бандла
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, webpack }) => {
     // @prisma/client/wasm exports map points to wasm.mjs for ESM imports,
     // but only wasm.js exists — alias to the .js file explicitly.
     config.resolve.alias = {
@@ -114,7 +114,20 @@ const nextConfig = {
         net: false,
         tls: false,
       };
-      
+
+      // node:async_hooks тянется в client-бандл по цепочке
+      // page.tsx → lib/logger.ts (await import('@/lib/db')) → lib/db.ts →
+      // lib/db-request-scope.ts. На клиенте этой схемы нет → UnhandledSchemeError.
+      // Подменяем на no-op стаб ТОЛЬКО в client-бандле; на сервере (nodejs) и
+      // edge остаётся настоящий node:async_hooks (там AsyncLocalStorage работает).
+      config.plugins = config.plugins || [];
+      config.plugins.push(
+        new webpack.NormalModuleReplacementPlugin(
+          /^node:async_hooks$/,
+          require.resolve('./lib/stubs/async-hooks-browser.js'),
+        ),
+      );
+
       // ОПТИМИЗАЦИЯ: Разделяем большие библиотеки на отдельные чанки
       config.optimization = config.optimization || {};
       config.optimization.splitChunks = {
