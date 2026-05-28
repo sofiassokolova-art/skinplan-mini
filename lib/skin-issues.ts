@@ -101,7 +101,7 @@ export function calculateSkinIssues(
   }
 
   // 2. Жирность и блеск кожи (согласно ТЗ)
-  const oilinessScore = skinScores.find(s => s.axis === 'oiliness')?.value || 50;
+  const oilinessScore = skinScores.find(s => s.axis === 'oiliness')?.value ?? 50;
   // Нет прямого вопроса о времени блеска, используем тип кожи
   const shineTime = answersMap.skin_type === 'oily' || answersMap.skin_type === 'combination_oily' ? '2-3_hours' : null;
 
@@ -128,7 +128,7 @@ export function calculateSkinIssues(
   }
 
   // 3. Сухость/стянутость
-  const hydrationScore = skinScores.find(s => s.axis === 'hydration')?.value || 100;
+  const hydrationScore = skinScores.find(s => s.axis === 'hydration')?.value ?? 100;
   if (hydrationScore <= 60) {
     const hasAtopic = answersMap.medical_diagnoses?.includes('atopic_dermatitis') ||
                      answersMap.medical_diagnoses?.includes('атопический дерматит');
@@ -150,7 +150,7 @@ export function calculateSkinIssues(
   }
 
   // 4. Неровный тон / пигментация
-  const pigmentationScore = skinScores.find(s => s.axis === 'pigmentation')?.value || 50;
+  const pigmentationScore = skinScores.find(s => s.axis === 'pigmentation')?.value ?? 50;
   const spfFrequency = answersMap.spf_frequency;
   const sunExposure = answersMap.sun_exposure;
   if (pigmentationScore >= 40 || (spfFrequency === 'never' && sunExposure === 'more_than_3_hours')) {
@@ -166,7 +166,7 @@ export function calculateSkinIssues(
 
   // 5. Морщины (согласно ТЗ: возраст + жалоба)
   const ageGroup = profile.ageGroup || '';
-  const photoagingScore = skinScores.find(s => s.axis === 'photoaging')?.value || 0;
+  const photoagingScore = skinScores.find(s => s.axis === 'photoaging')?.value ?? 0;
   const hasWrinkleConcern = answersMap.skin_concerns?.some((c: string) =>
     c.includes('Морщины') || c.includes('wrinkles') || c.includes('морщины')
   );
@@ -188,7 +188,7 @@ export function calculateSkinIssues(
 
   // 6. Краснота, раздражение, чувствительность
   const sensitivityLevel = profile.sensitivityLevel || 'low';
-  const rednessScore = skinScores.find(s => s.axis === 'redness')?.value || 50;
+  const rednessScore = skinScores.find(s => s.axis === 'redness')?.value ?? 50;
   const hasRosacea = answersMap.medical_diagnoses?.includes('rosacea') ||
                     answersMap.medical_diagnoses?.includes('розацеа');
   const hasDermatitis = answersMap.medical_diagnoses?.includes('dermatitis') ||
@@ -239,7 +239,7 @@ export function calculateSkinIssues(
   }
 
   // 9. Защитный барьер кожи
-  const barrierScore = skinScores.find(s => s.axis === 'barrier')?.value || 100;
+  const barrierScore = skinScores.find(s => s.axis === 'barrier')?.value ?? 100;
   if (barrierScore <= 60) {
     issues.push({
       id: 'barrier',

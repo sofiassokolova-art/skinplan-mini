@@ -6,6 +6,41 @@ import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 
+const YOOKASSA_API = 'https://api.yookassa.ru/v3/payments';
+
+/**
+ * Независимая ре-верификация платежа напрямую в ЮKassa API.
+ * Защита от подделки вебхука: ЮKassa не шлёт кастомные заголовки, поэтому
+ * verifyWebhookSignature без секрета принимает любой «похожий» body. Перед
+ * выдачей доступа мы сами запрашиваем статус платежа у ЮKassa по его id.
+ *
+ * retryable=true → временная ошибка (сеть/5xx), стоит вернуть 5xx чтобы ЮKassa
+ * повторила вебхук. retryable=false → платёж не найден у провайдера (подделка).
+ */
+async function fetchYooKassaPaymentStatus(
+  paymentId: string,
+  shopId: string,
+  secretKey: string,
+): Promise<{ status: string; amountKopecks: number | null } | { error: string; retryable: boolean }> {
+  const auth = Buffer.from(`${shopId}:${secretKey}`).toString('base64');
+  try {
+    const res = await fetch(`${YOOKASSA_API}/${encodeURIComponent(paymentId)}`, {
+      method: 'GET',
+      headers: { Authorization: `Basic ${auth}` },
+    });
+    if (!res.ok) {
+      return { error: `HTTP ${res.status}`, retryable: res.status >= 500 };
+    }
+    const data = (await res.json()) as { status?: string; amount?: { value?: string } };
+    const status = typeof data.status === 'string' ? data.status : '';
+    const amountKopecks =
+      data.amount?.value != null ? Math.round(parseFloat(String(data.amount.value)) * 100) : null;
+    return { status, amountKopecks };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'request_failed', retryable: true };
+  }
+}
+
 /** Проверяет, что тело запроса похоже на уведомление ЮKassa (event + object.id) */
 async function looksLikeYooKassaBody(request: NextRequest): Promise<boolean> {
   try {
@@ -177,6 +212,64 @@ export async function POST(request: NextRequest) {
       newStatus,
       providerStatus,
     });
+
+    // SECURITY: перед выдачей доступа независимо подтверждаем платёж у ЮKassa.
+    // verifyWebhookSignature без PAYMENTS_WEBHOOK_SECRET принимает любой похожий
+    // body, поэтому succeeded-вебхук можно подделать. Сверяемся с источником.
+    // Ре-верификация только при настроенной реальной ЮKassa (в проде ключи
+    // обязательны — см. /api/payments/create). На staging/симуляторе ключей нет,
+    // и успешные платежи идут через отдельный /api/payments/test-webhook.
+    if (provider === 'yookassa' && newStatus === 'succeeded') {
+      const shopId = process.env.YOOKASSA_SHOP_ID?.trim() || '';
+      const secretKey = process.env.YOOKASSA_SECRET_KEY?.trim() || '';
+      if (shopId && secretKey) {
+        const verified = await fetchYooKassaPaymentStatus(providerPaymentId, shopId, secretKey);
+        if ('error' in verified) {
+          if (verified.retryable) {
+            logger.error('Webhook re-verification: transient error, asking provider to retry', {
+              paymentId: payment.id,
+              providerPaymentId,
+              error: verified.error,
+            });
+            return NextResponse.json({ error: 'Verification temporarily unavailable' }, { status: 503 });
+          }
+          logger.error('Webhook re-verification: payment not confirmed by YooKassa (possible forgery)', {
+            paymentId: payment.id,
+            providerPaymentId,
+            error: verified.error,
+          });
+          return NextResponse.json({ error: 'Payment not verified' }, { status: 400 });
+        }
+
+        const verifiedStatus = mapProviderStatus('yookassa', verified.status);
+        if (verifiedStatus !== 'succeeded') {
+          logger.warn('Webhook re-verification: YooKassa status is not succeeded — not granting access', {
+            paymentId: payment.id,
+            providerPaymentId,
+            providerStatus: verified.status,
+          });
+          // Не выдаём доступ; настоящий succeeded-вебхук придёт отдельно.
+          return NextResponse.json({ ok: true, processed: false, reason: 'not_succeeded_on_provider' });
+        }
+
+        if (verified.amountKopecks != null && verified.amountKopecks !== payment.amount) {
+          logger.error('Webhook re-verification: amount mismatch with YooKassa', {
+            paymentId: payment.id,
+            providerPaymentId,
+            expectedAmount: payment.amount,
+            verifiedAmount: verified.amountKopecks,
+          });
+          return NextResponse.json({ error: 'Amount mismatch' }, { status: 400 });
+        }
+
+        logger.info('Webhook re-verification passed', { paymentId: payment.id, providerPaymentId });
+      } else {
+        logger.warn('Webhook: YooKassa keys not configured — skipping API re-verification (non-prod/simulator)', {
+          paymentId: payment.id,
+          providerPaymentId,
+        });
+      }
+    }
 
     // Транзакция: обновляем Payment и создаем/обновляем Entitlement
     await prisma.$transaction(async (tx) => {
