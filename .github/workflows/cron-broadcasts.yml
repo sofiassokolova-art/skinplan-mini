@@ -1,0 +1,44 @@
+# Внешний планировщик для отложенных рассылок и чистки логов (PROD).
+#
+# Почему так: Cloudflare Workers Cron вызывает scheduled() handler воркера,
+# а не HTTP-роуты Next.js. Поэтому /api/cron/* дёргаем извне с CRON_SECRET
+# (см. app/api/cron/broadcasts/route.ts и app/api/cron/cleanup-logs/route.ts).
+#
+# Частота рассылок: каждые 30 минут.
+#   ~1440 job-запусков/мес ≈ 1440 бесплатных минут (лимит приватного репо — 2000/мес).
+#   Нужно чаще/точнее бесплатно — используй cron-job.org (granularity 1 мин, без лимита минут):
+#     URL:    https://proskiniq.ru/api/cron/broadcasts
+#     Header: Authorization: Bearer <CRON_SECRET>
+#   GitHub Actions cron НЕточен: тики могут опаздывать на 5–15 мин и иногда пропускаться.
+#
+# Секрет CRON_SECRET хранится в Settings → Secrets and variables → Actions
+# и ДОЛЖЕН совпадать с секретом prod-воркера (wrangler secret put CRON_SECRET --env production).
+name: Cron — broadcasts & log cleanup (prod)
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'   # отложенные рассылки — каждые 30 минут
+    - cron: '17 3 * * 0'     # чистка client_logs — еженедельно, вс 03:17 UTC
+  workflow_dispatch: {}        # ручной запуск из вкладки Actions
+
+concurrency:
+  group: cron-broadcasts-prod
+  cancel-in-progress: false
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger scheduled broadcasts
+        run: |
+          curl -fsS --max-time 90 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://proskiniq.ru/api/cron/broadcasts"
+
+      - name: Weekly client_logs cleanup
+        if: github.event.schedule == '17 3 * * 0'
+        run: |
+          curl -fsS --max-time 90 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://proskiniq.ru/api/cron/cleanup-logs"
