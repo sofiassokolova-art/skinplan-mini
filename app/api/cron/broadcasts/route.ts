@@ -1,13 +1,15 @@
-// Настраивается через wrangler.toml → [triggers] crons
+// Cron-эндпоинт отложенных рассылок.
+// Настраивается через внешний планировщик (GitHub Actions / cron-job.org),
+// который дёргает этот URL с CRON_SECRET. См. .github/workflows/cron-broadcasts.yml.
 
 import { NextRequest, NextResponse } from 'next/server';
+import { runBroadcastWorker } from '@/lib/broadcast-worker';
 
 export async function GET(request: NextRequest) {
   try {
-    // ИСПРАВЛЕНО: Проверка секрета для защиты от несанкционированных вызовов
     const authHeader = request.headers.get('authorization');
     const cronSecret = process.env.CRON_SECRET;
-    
+
     if (!cronSecret) {
       console.error('CRON_SECRET not configured');
       return NextResponse.json(
@@ -16,11 +18,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Проверяем секрет (Vercel Cron автоматически добавляет заголовок)
-    // Или можно использовать query параметр ?secret=...
+    // Секрет можно передать как ?secret=... или Authorization: Bearer ...
     const { searchParams } = new URL(request.url);
     const secret = searchParams.get('secret') || authHeader?.replace('Bearer ', '');
-    
+
     if (secret !== cronSecret) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -28,24 +29,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Вызываем worker
-    const workerUrl = new URL('/api/admin/broadcasts/worker', request.url);
-    workerUrl.protocol = request.url.startsWith('https') ? 'https:' : 'http:';
-    
-    const workerResponse = await fetch(workerUrl.toString(), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${cronSecret}`,
-      },
-    });
-
-    const workerData = await workerResponse.json();
+    // ВАЖНО: вызываем логику воркера НАПРЯМУЮ, без HTTP self-subrequest.
+    // Раньше тут был fetch на собственный /api/admin/broadcasts/worker, который
+    // на Cloudflare Workers падал с "error code: 522" (worker → свой публичный хост).
+    const worker = await runBroadcastWorker();
 
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
-      worker: workerData,
+      worker,
     });
   } catch (error: any) {
     console.error('Error in cron broadcasts:', error);
@@ -55,4 +47,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
