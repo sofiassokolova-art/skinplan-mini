@@ -2,10 +2,15 @@
 // Prisma Client для работы с базой данных (Neon PostgreSQL)
 // Использует @prisma/adapter-neon для совместимости с Cloudflare Workers/Pages
 
-// Импортируем основной entry Prisma Client: generated package сам выбирает
-// Node index.js в локальном Next dev и wasm.js в workerd/edge через conditions.
-// Прямой @prisma/client/wasm(.js) в Node dev ломается на import() query_engine_bg.wasm.
-import { PrismaClient, type Prisma } from '@prisma/client';
+// CF Workers: импортируем wasm-сборку клиента ЯВНО (а не основной `@prisma/client`).
+// Причина: Next externalize'ит `@prisma/client`, и в воркер попадает Node-сборка
+// (runtime/client.js), которая на старте автозагружает .env через dotenv/fs.readFileSync
+// и инстанцирует движок через fs.readdir — в workerd эти fs-вызовы не реализованы
+// ("[unenv] fs.readFileSync/readdir is not implemented yet"), и ВСЕ запросы к БД падают.
+// wasm-сборка (runtime/wasm-compiler-edge, engineType="client") не трогает файловую систему
+// и грузит query_compiler_bg.wasm через import-loader (webpackIgnore → esbuild external →
+// wrangler CompiledWasm). Алиас `@prisma/client/wasm` → wasm.js задан в next.config.mjs.
+import { PrismaClient, type Prisma } from '@prisma/client/wasm';
 import { PrismaNeon } from '@prisma/adapter-neon';
 import { neonConfig } from '@neondatabase/serverless';
 import { currentPrismaRequestId, resetPrismaForRequest } from './db-request-scope';

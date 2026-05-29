@@ -31,10 +31,16 @@ if (!existsSync(loaderPath)) {
 // Абсолютный путь к WASM бинарю — вычисляется здесь, при патче.
 // esbuild resolve(dirname(importer), absPath) = absPath (абсолютный путь остаётся абсолютным).
 // Wrangler затем включает WASM как CompiledWasm через [[rules]] в wrangler.toml.
-const wasmBinaryPath = resolve(projectRoot, 'node_modules/.prisma/client/query_engine_bg.wasm');
+//
+// engineType="client" (Rust-free queryCompiler) генерит query_compiler_bg.wasm,
+// engineType="library" — query_engine_bg.wasm. Берём то, что реально сгенерено
+// (loader wasm-worker-loader.mjs импортирует именно его).
+const compilerWasm = resolve(projectRoot, 'node_modules/.prisma/client/query_compiler_bg.wasm');
+const engineWasm = resolve(projectRoot, 'node_modules/.prisma/client/query_engine_bg.wasm');
+const wasmBinaryPath = existsSync(compilerWasm) ? compilerWasm : engineWasm;
 
 if (!existsSync(wasmBinaryPath)) {
-  console.error('❌ query_engine_bg.wasm not found — run prisma generate first');
+  console.error('❌ query_compiler_bg.wasm / query_engine_bg.wasm not found — run prisma generate first');
   process.exit(1);
 }
 

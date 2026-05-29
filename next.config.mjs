@@ -107,6 +107,14 @@ const nextConfig = {
       '@prisma/client/wasm': require.resolve('@prisma/client/wasm.js'),
     };
 
+    // CF Workers: lib/db.ts импортирует `@prisma/client/wasm` (wasm-compiler-edge сборка),
+    // чтобы не тянуть Node-runtime с dotenv/fs.readFileSync и движком через fs.readdir.
+    // В dev (next dev) loader НЕ пропатчен и делает import('./query_compiler_bg.wasm') —
+    // включаем asyncWebAssembly, чтобы webpack умел резолвить .wasm как модуль.
+    // В build:cf patch-prisma-wasm-loader делает import webpackIgnore, так что прод-сборку
+    // это не задевает (webpack пропускает импорт, .wasm уходит во wrangler как CompiledWasm).
+    config.experiments = { ...(config.experiments || {}), asyncWebAssembly: true };
+
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
