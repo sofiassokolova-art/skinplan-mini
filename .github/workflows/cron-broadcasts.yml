@@ -1,13 +1,17 @@
 # Внешний планировщик для отложенных рассылок и чистки логов (PROD).
 #
 # Почему так: Cloudflare Workers Cron вызывает scheduled() handler воркера,
-# а не HTTP-роуты Next.js. Поэтому /api/cron/* дёргаем извне с CRON_SECRET
-# (см. app/api/cron/broadcasts/route.ts и app/api/cron/cleanup-logs/route.ts).
+# а не HTTP-роуты Next.js. Поэтому эндпоинты дёргаем извне с CRON_SECRET.
+#
+# ВАЖНО: рассылки бьём НАПРЯМУЮ в /api/admin/broadcasts/worker (POST) — он
+# поддерживает cron-вызов через "Authorization: Bearer <CRON_SECRET>" (isCronCall).
+# НЕ через /api/cron/broadcasts: тот делает self-subrequest воркера на собственный
+# публичный хост, что на CF Workers падает с "error code: 522" (connection timed out).
 #
 # Частота рассылок: каждые 30 минут.
 #   ~1440 job-запусков/мес ≈ 1440 бесплатных минут (лимит приватного репо — 2000/мес).
 #   Нужно чаще/точнее бесплатно — используй cron-job.org (granularity 1 мин, без лимита минут):
-#     URL:    https://proskiniq.ru/api/cron/broadcasts
+#     URL:    https://proskiniq.ru/api/admin/broadcasts/worker  (метод POST)
 #     Header: Authorization: Bearer <CRON_SECRET>
 #   GitHub Actions cron НЕточен: тики могут опаздывать на 5–15 мин и иногда пропускаться.
 #
@@ -30,11 +34,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Trigger scheduled broadcasts
+      - name: Process scheduled broadcasts
         run: |
-          curl -fsS --max-time 90 \
+          curl -fsS --max-time 90 -X POST \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "https://proskiniq.ru/api/cron/broadcasts"
+            "https://proskiniq.ru/api/admin/broadcasts/worker"
 
       - name: Weekly client_logs cleanup
         if: github.event.schedule == '17 3 * * 0'
