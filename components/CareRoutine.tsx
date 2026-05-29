@@ -238,17 +238,6 @@ export function CareRoutine({
                       }}>
                         {product.brand.name}
                       </p>
-                      {product.price && (
-                        <p style={{
-                          fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                          fontSize: '14px',
-                          fontWeight: 600,
-                          color: '#0A5F59',
-                          marginBottom: '4px',
-                        }}>
-                          {product.price.toLocaleString('ru-RU')} ₽
-                        </p>
-                      )}
                       {/* Теги продукта */}
                       {product.tags && product.tags.length > 0 && (
                         <div style={{

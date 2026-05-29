@@ -177,11 +177,6 @@ export default function FeedbackModal({
                     <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#0A5F59', marginBottom: '8px' }}>
                       {alt.name}
                     </div>
-                    {alt.price && (
-                      <div style={{ fontSize: '14px', color: '#475467', marginBottom: '8px' }}>
-                        от {alt.price} ₽
-                      </div>
-                    )}
                     <div
                       style={{
                         fontSize: '12px',

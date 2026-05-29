@@ -189,11 +189,6 @@ export function ReplaceProductModal({ product, isOpen, onClose, onReplace }: Rep
                 <div style={{ fontWeight: 600, color: '#1F2937', marginBottom: '4px' }}>
                   {alt.brand.name} {alt.name}
                 </div>
-                {alt.price && (
-                  <div style={{ fontSize: '14px', color: '#6B7280', marginBottom: '8px' }}>
-                    {alt.price} ₽
-                  </div>
-                )}
                 <div style={{ fontSize: '12px', color: '#8B5CF6' }}>
                   {alt.whyBetter}
                 </div>

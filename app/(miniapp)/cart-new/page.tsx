@@ -65,7 +65,6 @@ function CartPageContent() {
     }
   };
 
-  const totalPrice = cartItems.reduce((sum, item) => sum + ((item.product.price || 0) * item.quantity), 0);
   const firstStore = cartItems.map((i) => getStore(i.product)).find(Boolean) || null;
 
   const bg =
@@ -103,7 +102,6 @@ function CartPageContent() {
         .cart-rd .crd-brand{font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#6B7280;}
         .cart-rd .crd-name{font-size:14px;font-weight:700;line-height:1.22;letter-spacing:-0.15px;color:#0A0A0A;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
         .cart-rd .crd-meta{display:flex;align-items:center;gap:8px;}
-        .cart-rd .crd-price{font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:14px;font-weight:700;color:#0A0A0A;letter-spacing:-0.3px;}
         .cart-rd .crd-qty{font-size:11px;color:#9CA3AF;}
         .cart-rd .crd-store{font-size:10.5px;font-weight:600;color:#6B7280;}
         .cart-rd .crd-store::before{content:"\\2197 ";color:#9CA3AF;}
@@ -113,9 +111,6 @@ function CartPageContent() {
         .cart-rd .crd-empty-cta{display:inline-block;background:#0A0A0A;color:#D5FE61;padding:14px 28px;border-radius:0;text-decoration:none;font-family:var(--font-inter),sans-serif;font-size:13px;font-weight:400;text-transform:uppercase;letter-spacing:0.02em;}
         .cart-rd .crd-checkout{position:fixed;left:0;right:0;bottom:96px;padding:0 20px;z-index:900;display:flex;justify-content:center;}
         .cart-rd .crd-checkout-inner{width:100%;max-width:420px;}
-        .cart-rd .crd-total{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;padding:0 2px;}
-        .cart-rd .crd-total-label{font-size:13px;color:#6B7280;}
-        .cart-rd .crd-total-value{font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:22px;font-weight:700;color:#0A0A0A;letter-spacing:-0.6px;}
         .cart-rd .crd-checkout-btn{width:100%;height:52px;border:0;border-radius:0;background:#0A0A0A;color:#fff;font-family:var(--font-inter),sans-serif;font-weight:400;font-size:15px;text-transform:uppercase;letter-spacing:0.02em;cursor:pointer;}
         .cart-rd .crd-checkout-btn:active{transform:scale(0.99);}
       `}</style>
@@ -157,7 +152,6 @@ function CartPageContent() {
                     <div className="crd-brand">{item.product.brand?.name || 'Unknown'}</div>
                     <div className="crd-name">{item.product.name}</div>
                     <div className="crd-meta">
-                      <span className="crd-price">{item.product.price ? `${item.product.price} ₽` : '—'}</span>
                       {item.quantity > 1 && <span className="crd-qty">× {item.quantity}</span>}
                     </div>
                     {store && <div className="crd-store">{store.name}</div>}
@@ -177,10 +171,6 @@ function CartPageContent() {
 
           <div className="crd-checkout">
             <div className="crd-checkout-inner">
-              <div className="crd-total">
-                <span className="crd-total-label">Итого</span>
-                <span className="crd-total-value">{totalPrice} ₽</span>
-              </div>
               {firstStore && (
                 <button
                   className="crd-checkout-btn"

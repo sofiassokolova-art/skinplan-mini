@@ -166,7 +166,7 @@ export function RecommendedProducts({
                     {product.name}
                   </h4>
                   <p className="text-sm text-gray-600 mb-2">
-                    {product.brand.name} {product.price && `• ${product.price} ₽`}
+                    {product.brand.name}
                   </p>
 
                   {/* Кнопки действий */}
