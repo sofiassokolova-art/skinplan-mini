@@ -7,8 +7,6 @@ import { logger } from '@/lib/logger';
 import { ApiResponse } from '@/lib/api-response';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 
-export const runtime = 'nodejs';
-
 interface DailyTipRequest {
   currentDay?: number;
   skinType?: string;

@@ -1,4 +1,3 @@
-// app/api/admin/support/messages/route.ts
 // Получение сообщений чата
 
 import { NextRequest, NextResponse } from 'next/server';

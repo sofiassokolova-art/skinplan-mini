@@ -10,8 +10,8 @@ const REQUIRED_ENV_VARS = {
 
 const OPTIONAL_ENV_VARS = {
   ADMIN_SECRET: 'Секретное слово для входа в админ-панель (опционально)',
-  KV_REST_API_URL: 'Vercel KV REST API URL (опционально, для кэширования)',
-  KV_REST_API_TOKEN: 'Vercel KV REST API Token (опционально, для кэширования)',
+  KV_REST_API_URL: 'Upstash Redis REST API URL (опционально, для кэширования)',
+  KV_REST_API_TOKEN: 'Upstash Redis REST API Token (опционально, для кэширования)',
   UPSTASH_REDIS_REST_URL: 'Upstash Redis URL (опционально, для rate limiting)',
   UPSTASH_REDIS_REST_TOKEN: 'Upstash Redis Token (опционально, для rate limiting)',
   SENTRY_DSN: 'Sentry DSN для мониторинга ошибок',
@@ -73,12 +73,9 @@ export function logEnvStatus(): void {
 // При сборке Next.js переменные окружения могут быть недоступны
 // В Vercel переменные окружения доступны только в runtime, не во время сборки
 // Проверка выполняется только когда код действительно выполняется (в API routes или server components)
-if (typeof window === 'undefined' && 
-    process.env.NODE_ENV !== 'test' && 
-    process.env.NEXT_PHASE !== 'phase-production-build' &&
-    !process.env.VERCEL_ENV) {
-  // В Vercel переменные окружения доступны только в runtime
-  // Проверяем только если это не фаза сборки и не Vercel build
+if (typeof window === 'undefined' &&
+    process.env.NODE_ENV !== 'test' &&
+    process.env.NEXT_PHASE !== 'phase-production-build') {
   logEnvStatus();
 }
 

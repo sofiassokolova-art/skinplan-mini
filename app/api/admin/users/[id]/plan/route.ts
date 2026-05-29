@@ -1,4 +1,3 @@
-// app/api/admin/users/[id]/plan/route.ts
 // API для получения плана пользователя
 
 import { NextRequest, NextResponse } from 'next/server';

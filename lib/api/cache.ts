@@ -3,7 +3,7 @@
 
 const requestCache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_TTL = 2000; // 2 секунды кэш для одинаковых запросов
-const QUESTIONNAIRE_CACHE_TTL = 600000; // 10 минут для /questionnaire/active
+const QUESTIONNAIRE_CACHE_TTL = CACHE_TTL; // анкета должна быстро обновляться после reseed/deploy
 
 /**
  * Получает данные из кэша, если они еще актуальны

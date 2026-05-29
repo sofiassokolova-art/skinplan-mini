@@ -7,10 +7,7 @@ import { prisma } from '@/lib/db';
 import { ApiResponse } from '@/lib/api-response';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
-import { randomBytes } from 'crypto';
 import { rateLimit } from '@/lib/rate-limit';
-
-export const runtime = 'nodejs';
 
 const YOOKASSA_API = 'https://api.yookassa.ru/v3/payments';
 
@@ -140,6 +137,7 @@ const PRODUCTS: Record<string, { amount: number; currency: string }> = {
 
 // ИСПРАВЛЕНО: Используем единую функцию из shared модуля
 import { entitlementCodeForProduct } from '@/lib/payment-helpers';
+import { isExplicitNonProd } from '@/lib/deployment-env';
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
@@ -150,23 +148,23 @@ export async function POST(request: NextRequest) {
   try {
     const origin = request.nextUrl.origin;
 
-    // ВАЖНО: На Vercel `NODE_ENV=production` может быть и в preview окружениях.
-    // Для разделения "боевой прод" vs "тест/preview" используем `VERCEL_ENV`.
-    // - production: запрещаем симуляцию (нужна реальная интеграция)
-    // - preview/development/локально: разрешаем симуляцию
-    const vercelEnv = process.env.VERCEL_ENV; // 'production' | 'preview' | 'development' | undefined
-    const isProductionDeployment =
-      vercelEnv === 'production' || (!vercelEnv && process.env.NODE_ENV === 'production');
+    // Симулятор оплаты разрешён ТОЛЬКО в явно не-прод окружении (fail-closed).
+    // Неизвестный/потерянный DEPLOYMENT_ENV => симулятор выключен, иначе мисконфиг
+    // прод-воркера раздавал бы бесплатный доступ.
+    const allowSimulator = isExplicitNonProd();
 
     const shopId = process.env.YOOKASSA_SHOP_ID?.trim() || '';
     const secretKey = process.env.YOOKASSA_SECRET_KEY?.trim() || '';
-    const useRealYooKassa = Boolean(shopId && secretKey);
+    // Реальная ЮKassa, если есть ключи и мы НЕ в явном не-прод окружении
+    // (в не-прод всегда работает симулятор, даже если ключи случайно заданы).
+    const useRealYooKassa = Boolean(shopId && secretKey) && !allowSimulator;
 
-    // В production обязательна реальная ЮKassa (env переменные).
-    if (isProductionDeployment && !useRealYooKassa) {
+    // FAIL-CLOSED: если ни реальная ЮKassa не настроена, ни симулятор не разрешён —
+    // НЕ создаём платёж. Покрывает: прод без ключей И неизвестное окружение.
+    if (!useRealYooKassa && !allowSimulator) {
       const duration = Date.now() - startTime;
       logApiRequest(method, path, 501, duration);
-      return ApiResponse.error('Payments are not configured in production (set YOOKASSA_SHOP_ID and YOOKASSA_SECRET_KEY)', 501);
+      return ApiResponse.error('Payments are not configured (set YOOKASSA_SHOP_ID and YOOKASSA_SECRET_KEY)', 501);
     }
 
     const auth = await requireTelegramAuth(request, { ensureUser: true });
@@ -233,7 +231,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Генерируем idempotencyKey если не передан
-    const finalIdempotencyKey = idempotencyKey || randomBytes(16).toString('hex');
+    const finalIdempotencyKey = idempotencyKey || Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join('');
 
     // Проверяем, не создан ли уже платеж с таким ключом
     const existingPayment = await prisma.payment.findUnique({
@@ -269,8 +267,8 @@ export async function POST(request: NextRequest) {
       if (useRealYooKassa && existingPayment.providerPayload && typeof existingPayment.providerPayload === 'object') {
         const conf = (existingPayment.providerPayload as { confirmation?: { confirmation_url?: string } }).confirmation;
         existingPaymentUrl = conf?.confirmation_url ?? null;
-      } else if (existingPayment.providerPaymentId) {
-        existingPaymentUrl = `${origin}/payments/test?payment_id=${existingPayment.providerPaymentId}`;
+      } else if (!useRealYooKassa) {
+        existingPaymentUrl = `${origin}/payments/test?payment_id=${existingPayment.id}`;
       }
       return ApiResponse.success({
         paymentId: existingPayment.id,
@@ -340,9 +338,8 @@ export async function POST(request: NextRequest) {
       paymentUrl = yoo.confirmationUrl;
       providerPayload = (yoo.raw as Record<string, unknown>) ?? {};
     } else {
-      const crypto = await import('crypto');
       providerPaymentId = crypto.randomUUID();
-      paymentUrl = `${origin}/payments/test?payment_id=${providerPaymentId}`;
+      paymentUrl = `${origin}/payments/test?payment_id=${payment.id}`;
       providerPayload = {
         id: providerPaymentId,
         status: 'pending',

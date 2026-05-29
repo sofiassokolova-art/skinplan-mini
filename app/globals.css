@@ -5,11 +5,21 @@
 @tailwind components;
 @tailwind utilities;
 
-/* CSS переменные для шрифтов (используются с Google Fonts или локальными файлами) */
-:root {
-  --font-unbounded: 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-inter: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+@keyframes skinplan-loader-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.84);
+    opacity: 0.55;
+  }
 }
+
+/* --font-unbounded и --font-inter ставятся через next/font на html.className
+ * (см. app/layout.tsx). Не переопределяем здесь — иначе перебиваем хешированное
+ * имя локального шрифта на литералы 'Unbounded'/'Inter' (которых нет в @font-face)
+ * → заголовки слетают на системный fallback. */
 
 /* Шрифты для админки 2025 — применяются только внутри .admin-layout */
 .admin-layout {
@@ -564,20 +574,43 @@ html, body {
   align-items: center;
 }
 
-/* Анимация появления */
+/* Анимация появления — только плавное проявление, без сдвига */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(12px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: fadeIn 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.animate-fade-in-soft {
+  animation: fadeIn 0.9s ease-out;
+}
+
+/*
+  Анимация «всплытия» — для элементов с backdrop-filter (стеклянные карточки).
+  НЕ трогает opacity, чтобы не ломать backdrop-filter:
+  при opacity < 1 браузер композитит поддерево в off-screen буфер, и фильтр
+  теряет доступ к реальному фону страницы — блюр визуально пропадает,
+  а потом резко «щёлкает» в конце fade-in. Здесь анимируем только transform.
+  Сохраняем translate(-50%, -50%) для элементов, центрированных через transform.
+*/
+@keyframes riseInCentered {
+  from {
+    transform: translate(-50%, calc(-50% + 12px)) scale(0.98);
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.animate-rise-in-centered {
+  animation: riseInCentered 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Анимация пульсации для загрузки */

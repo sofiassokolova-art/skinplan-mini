@@ -4,18 +4,10 @@
 type Questionnaire = any;
 type Question = any;
 
-// WeakMap кеш: один и тот же объект questionnaire → один и тот же результат.
-// Не утекает память: как только questionnaire GC-ится, запись удаляется.
-const _cache = new WeakMap<object, Question[]>();
-
 /**
  * Извлекает все вопросы из questionnaire (из groups и questions).
- * Результат кешируется по ссылке объекта (WeakMap).
  */
 export function extractQuestionsFromQuestionnaire(questionnaire: Questionnaire | null): Question[] {
-  if (questionnaire && _cache.has(questionnaire)) {
-    return _cache.get(questionnaire)!;
-  }
   if (!questionnaire) {
     return [];
   }
@@ -61,12 +53,75 @@ export function extractQuestionsFromQuestionnaire(questionnaire: Questionnaire |
 
   let result = Array.from(questionsMap.values());
 
+  // Глобальная защита от дубликатов по коду вопроса:
+  // если в анкете по ошибке есть несколько вопросов с одинаковым code,
+  // используем только первый экземпляр (по порядку в groups/questions).
+  const seenCodes = new Set<string>();
+  const dedupedByCode: Question[] = [];
+  for (const q of result) {
+    const code = (q as any)?.code ? String((q as any).code).toLowerCase() : '';
+    if (!code || !seenCodes.has(code)) {
+      dedupedByCode.push(q);
+      if (code) {
+        seenCodes.add(code);
+      }
+    }
+  }
+  result = dedupedByCode;
+
   // Вопрос про имя (USER_NAME) всегда первым — и после инфо-экранов пользователь сразу его видит
   const nameCode = 'user_name';
   const nameQuestions = result.filter((q: any) => (q?.code || '').toLowerCase() === nameCode);
   const otherQuestions = result.filter((q: any) => (q?.code || '').toLowerCase() !== nameCode);
+
+  // Жёстко заданный порядок кодов вопросов согласно seed-questionnaire-v2 (QUIZ_FLOW.md).
+  // Это устраняет «рандомный» порядок, если БД возвращает группы/вопросы в другом порядке.
+  const CANONICAL_ORDER = [
+    'user_name',
+    'skin_goals',
+    'age',
+    'gender',
+    'skin_type',
+    'skin_concerns',
+    'skin_sensitivity',
+    'seasonal_changes',
+    'fitzpatrick_type',
+    'medical_diagnoses',
+    'pregnancy_breastfeeding',
+    'allergies',
+    'has_avoid_ingredients',
+    'avoid_ingredients',
+    'retinoid_usage',
+    'retinoid_reaction',
+    'prescription_topical',
+    'oral_medications',
+    'makeup_frequency',
+    'care_type',
+    'care_steps',
+    'budget',
+  ];
+
+  const orderMap = new Map<string, number>();
+  CANONICAL_ORDER.forEach((code, index) => {
+    orderMap.set(code, index);
+  });
+
+  const sortedOthers = otherQuestions.slice().sort((a: any, b: any) => {
+    const ca = (a?.code || '').toLowerCase();
+    const cb = (b?.code || '').toLowerCase();
+    const ia = orderMap.has(ca) ? (orderMap.get(ca) as number) : Number.MAX_SAFE_INTEGER;
+    const ib = orderMap.has(cb) ? (orderMap.get(cb) as number) : Number.MAX_SAFE_INTEGER;
+    if (ia !== ib) return ia - ib;
+    // стабильный дополнительный критерий — по id
+    const idA = typeof a?.id === 'number' ? a.id : 0;
+    const idB = typeof b?.id === 'number' ? b.id : 0;
+    return idA - idB;
+  });
+
   if (nameQuestions.length > 0) {
-    result = [...nameQuestions, ...otherQuestions];
+    result = [...nameQuestions, ...sortedOthers];
+  } else {
+    result = sortedOthers;
   }
   
   if (result.length === 0 && (groups.length > 0 || questions.length > 0)) {
@@ -75,10 +130,6 @@ export function extractQuestionsFromQuestionnaire(questionnaire: Questionnaire |
       groupsCount: groups.length,
       questionsCount: questions.length,
     });
-  }
-
-  if (questionnaire) {
-    _cache.set(questionnaire, result);
   }
   return result;
 }

@@ -12,7 +12,6 @@ import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { logDbFingerprint } from '@/lib/db-fingerprint';
 import { normalizeProfileData, normalizeMedicalMarkers } from '@/lib/profile-normalizer';
 
-export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 interface AnswerInput {
@@ -169,6 +168,27 @@ export async function POST(request: NextRequest) {
 
     if (!questionnaire) {
       return ApiResponse.notFound('Questionnaire not found');
+    }
+
+    // ИСПРАВЛЕНО: дополнительная серверная валидация — фильтруем ответы,
+    // чьи questionId не существуют в текущей анкете, чтобы не ловить FK-ошибки
+    const questionnaireQuestions = await prisma.question.findMany({
+      where: { questionnaireId: questionnaire.id },
+      select: { id: true },
+    });
+    const validQuestionIds = new Set<number>(questionnaireQuestions.map((q) => q.id));
+    const beforeFkFilterCount = validAnswers.length;
+    validAnswers = validAnswers.filter((a: any) => validQuestionIds.has(a.questionId));
+
+    if (validAnswers.length === 0) {
+      logger.error('No answers left after FK validation against questionnaire questions', {
+        userId,
+        questionnaireId,
+        beforeFkFilterCount,
+        totalAnswers: answers.length,
+        questionnaireQuestionsCount: questionnaireQuestions.length,
+      });
+      return ApiResponse.badRequest('No valid answers for this questionnaire');
     }
 
     // Идемпотентность: если клиент прислал clientSubmissionId и мы уже обрабатывали этот сабмит,
@@ -639,6 +659,57 @@ export async function POST(request: NextRequest) {
       // ИСПРАВЛЕНО: Используем mainGoals из buildSkinProfileFromAnswers вместо concernsAnswer
       if (profileFromRules.mainGoals && Array.isArray(profileFromRules.mainGoals) && profileFromRules.mainGoals.length > 0) {
         extractedData.mainGoals = profileFromRules.mainGoals;
+      }
+
+      // ИСПРАВЛЕНО: Прокидываем медицинские противопоказания и текущие препараты из rules engine
+      // в medicalMarkers. Без этого ответы на prescription_topical/oral_medications не влияли
+      // на подбор (плановщик читает medicalMarkers.contraindications и блокирует степы
+      // с avoidIfContraFromProfile=[no_retinol|no_strong_acids|...]).
+      // Источник: lib/skinprofile-rules.json (rules topical_rx, oral_meds).
+      if (Array.isArray(profileFromRules.contraindications) && profileFromRules.contraindications.length > 0) {
+        // Объединяем с уже накопленными в существующих маркерах, чтобы не терять старые контра-флаги.
+        const prevMarkers = (existingProfile?.medicalMarkers as any) || {};
+        const existingContras = Array.isArray(prevMarkers?.contraindications)
+          ? (prevMarkers.contraindications as string[])
+          : [];
+        extractedData.contraindications = Array.from(new Set([...existingContras, ...profileFromRules.contraindications]));
+      }
+      if (Array.isArray(profileFromRules.currentTopicals) && profileFromRules.currentTopicals.length > 0) {
+        extractedData.currentTopicals = Array.from(new Set(profileFromRules.currentTopicals));
+      }
+      if (Array.isArray(profileFromRules.currentOralMeds) && profileFromRules.currentOralMeds.length > 0) {
+        extractedData.currentOralMeds = Array.from(new Set(profileFromRules.currentOralMeds));
+      }
+
+      // Производные медицинские флаги для UI/коуч-резонов:
+      // - photosensitivity: пероральные антибиотики (доксициклин и др.) повышают чувствительность
+      //   к УФ → SPF должен быть подсвечен как обязательный.
+      // - barrierSensitive: топические кортикостероиды истончают барьер → мягкий уход, без кислот.
+      // - onIsotretinoin: терапия изотретиноином → строгое исключение ретиноидов/пилингов.
+      if (extractedData.currentOralMeds?.includes('oral_antibiotics')) {
+        extractedData.photosensitivity = true;
+      }
+      if (extractedData.currentTopicals?.includes('topical_steroids')) {
+        extractedData.barrierSensitive = true;
+      }
+      if (extractedData.currentOralMeds?.includes('isotretinoin')) {
+        extractedData.onIsotretinoin = true;
+      }
+
+      // P1.3 follow-up: маппим ответ fitzpatrick_type на доменное значение в medicalMarkers.
+      // Используем answerOptionLabels (текст ответа), а не value, потому что value автоматически
+      // генерируется как fitzpatrick_type_1/2/3 — порядок неустойчив при пере-сидинге.
+      const fitzAnswer = rawAnswers.find(a => a.questionCode === 'fitzpatrick_type');
+      const fitzLabel = fitzAnswer?.answerOptionLabels?.[0] ?? (typeof fitzAnswer?.answerValue === 'string' ? fitzAnswer.answerValue : '');
+      if (fitzLabel) {
+        const f = fitzLabel.toLowerCase();
+        if (f.includes('очень светлая') || f.includes('всегда сгорает')) {
+          extractedData.fitzpatrickType = 'I_II';
+        } else if (f.includes('средн')) {
+          extractedData.fitzpatrickType = 'III_IV';
+        } else if (f.includes('тёмная') || f.includes('темная') || f.includes('почти не сгорает')) {
+          extractedData.fitzpatrickType = 'V_VI';
+        }
       }
 
       // ВАЖНО: Профили делаем append-only: каждая отправка анкеты создает НОВУЮ версию профиля,

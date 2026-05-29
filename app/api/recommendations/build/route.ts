@@ -1,6 +1,3 @@
-// app/api/recommendations/build/route.ts
-// ИСПРАВЛЕНО: Отдельный endpoint для создания RecommendationSession и product-matching
-// Вынесен из POST /api/questionnaire/answers для атомарности и производительности
 // Идемпотентный: можно вызывать несколько раз с тем же profileId
 
 import { NextRequest } from 'next/server';

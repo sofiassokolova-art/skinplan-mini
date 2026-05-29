@@ -334,20 +334,34 @@ export function checkTitrationSchedule(
   // Это гарантирует использование реальных activeIngredients и stepCategory как fallback
   const ingredients = getIngredientsForProduct(product, context);
   const schedule = context.protocol.titrationSchedule || [];
+  // P0.2: для retinoid-naive держим самый строгий старт даже если протокол позволяет больше.
+  const retinoidNaive = context.profileClassification.retinoidExperience === 'naive';
+  const naiveCap: Record<number, number> = { 1: 1, 2: 2, 3: 3, 4: 4 };
 
   for (const ingredient of ingredients) {
     // ИСПРАВЛЕНО (P0): Проверяем и titrationSchedule, и cyclingRules через getIngredientSchedule
     const weekSchedule = getIngredientSchedule(ingredient, context.protocol, context.week);
-    
+
     // ИСПРАВЛЕНО (P1): frequency: null означает "нет ограничений" - пропускаем проверку
     if (weekSchedule.frequency === null || weekSchedule.frequency === undefined) {
       continue; // Нет ограничений для этого ингредиента
     }
-    
+
+    // P0.2: жёсткий cap по неделям для тех, кто впервые встречает ретиноид/AHA.
+    if (
+      retinoidNaive &&
+      (ingredient === 'retinol' || ingredient === 'retinoid' || ingredient === 'aha' || ingredient === 'bha')
+    ) {
+      const cap = naiveCap[context.week] ?? weekSchedule.frequency;
+      if (typeof weekSchedule.frequency === 'number' && weekSchedule.frequency > cap) {
+        weekSchedule.frequency = cap;
+      }
+    }
+
     // ИСПРАВЛЕНО (P0): Проверяем фиксированные дни из cyclingRules (приоритет)
     const dayOfWeek = ((context.day - 1) % 7) + 1;
     const allowedDays = weekSchedule.days || [];
-    
+
     if (allowedDays.length > 0 && !allowedDays.includes(dayOfWeek)) {
       return {
         product,

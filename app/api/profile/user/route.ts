@@ -1,4 +1,3 @@
-// app/api/profile/user/route.ts
 // API для работы с данными пользователя (имя, телефон)
 
 import { NextRequest, NextResponse } from 'next/server';

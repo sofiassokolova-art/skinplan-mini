@@ -2,6 +2,7 @@
 // Unit тесты для логики shouldResumeNow с фиксом startedThisSession
 
 import { describe, it, expect } from 'vitest';
+import { getNextQuestionIndexForResume } from '@/lib/quiz/handlers/resumeQuiz';
 
 describe('Quiz Resume Logic', () => {
   const QUIZ_CONFIG = {
@@ -185,5 +186,27 @@ describe('Quiz Resume Logic', () => {
     });
 
     expect(result).toBe(false);
+  });
+});
+
+describe('getNextQuestionIndexForResume', () => {
+  const questions = Array.from({ length: 10 }, (_, index) => ({ id: index + 1 }));
+
+  it('возвращает первый неотвеченный вопрос даже если сохраненный индекс ушел дальше', () => {
+    const answeredIds = [1, 2, 3, 4, 6, 7, 8, 9];
+
+    expect(getNextQuestionIndexForResume(questions, answeredIds, 8)).toBe(4);
+  });
+
+  it('не прыгает на последний вопрос, когда после reseed появился новый неотвеченный вопрос в середине', () => {
+    const answeredIds = [1, 2, 3, 4, 5, 7, 8, 9];
+
+    expect(getNextQuestionIndexForResume(questions, answeredIds, 9)).toBe(5);
+  });
+
+  it('если все вопросы отвечены, возвращает последний вопрос как безопасный fallback', () => {
+    const answeredIds = questions.map(q => q.id);
+
+    expect(getNextQuestionIndexForResume(questions, answeredIds, 9)).toBe(9);
   });
 });

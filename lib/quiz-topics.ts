@@ -24,9 +24,9 @@ export const QUIZ_TOPICS: QuizTopic[] = [
   {
     id: 'skin_type',
     title: 'Тип кожи',
-    description: 'Определение типа кожи и сезонности',
-    questionIds: [29, 32], // skin_type, seasonal_changes
-    questionCodes: ['skin_type', 'seasonal_changes'],
+    description: 'Определение типа кожи, сезонности и фототипа',
+    questionIds: [29, 32], // skin_type, seasonal_changes (реальные id назначаются Prisma)
+    questionCodes: ['skin_type', 'seasonal_changes', 'fitzpatrick_type'],
     icon: '🎨',
     triggersPlanRebuild: true, // skinType влияет на план
   },
@@ -52,8 +52,8 @@ export const QUIZ_TOPICS: QuizTopic[] = [
     id: 'excluded_ingredients',
     title: 'Нежелательные ингредиенты',
     description: 'Ингредиенты, которые нужно исключить',
-    questionIds: [35, 36], // allergies, avoid_ingredients
-    questionCodes: ['allergies', 'avoid_ingredients'],
+    questionIds: [35, 36], // legacy ids; matching goes by questionCodes
+    questionCodes: ['allergies', 'has_avoid_ingredients', 'avoid_ingredients'],
     icon: '🚫',
     triggersPlanRebuild: true, // противопоказания влияют на план
   },
@@ -61,35 +61,25 @@ export const QUIZ_TOPICS: QuizTopic[] = [
     id: 'current_care',
     title: 'Текущий уход и реакция кожи',
     description: 'Текущие средства и реакция кожи на них',
-    questionIds: [37, 38, 39, 40], // retinoid_usage, retinoid_reaction, prescription_topical, oral_medications
+    // P0.2 follow-up: retinoid_reaction возвращён обратно. Влияет на план через
+    // retinoidExperience: irritation/never-used → строгий titration ретинола.
+    // questionIds — пометка: реальные id назначаются prisma на seed, матчинг идёт по questionCodes.
+    questionIds: [37, 38, 39, 40],
     questionCodes: ['retinoid_usage', 'retinoid_reaction', 'prescription_topical', 'oral_medications'],
     icon: '💆',
-    triggersPlanRebuild: false, // не влияет напрямую на план
+    triggersPlanRebuild: true, // P0.2: ответ влияет на стартовую частоту ретинола в плане
   },
-  {
-    id: 'spf_sun',
-    title: 'SPF и солнце',
-    description: 'Привычки использования SPF и пребывания на солнце',
-    questionIds: [42, 43], // spf_frequency, sun_exposure
-    questionCodes: ['spf_frequency', 'sun_exposure'],
-    icon: '☀️',
-    triggersPlanRebuild: false, // не влияет напрямую на план
-  },
-  {
-    id: 'lifestyle',
-    title: 'Привычки и образ жизни',
-    description: 'Образ жизни и привычки ухода',
-    questionIds: [41, 44], // makeup_frequency, lifestyle_habits
-    questionCodes: ['makeup_frequency', 'lifestyle_habits'],
-    icon: '🌱',
-    triggersPlanRebuild: false, // не влияет напрямую на план
-  },
+  // spf_sun удалён: вопросы spf_frequency / sun_exposure убраны из анкеты,
+  // SPF в плане включён по умолчанию для всех пользователей.
+  // Топик 'lifestyle' удалён: единственный оставшийся вопрос makeup_frequency
+  // перемещён в budget_preferences (см. seed-questionnaire-v2.ts).
   {
     id: 'budget_preferences',
     title: 'Бюджет и предпочтения ухода',
     description: 'Бюджет и предпочтения по уходу',
-    questionIds: [45], // care_type (нужно добавить care_steps и budget если есть)
-    questionCodes: ['care_type', 'care_steps', 'budget'],
+    // makeup_frequency перенесён сюда из удалённого топика 'lifestyle'.
+    questionIds: [41, 45],
+    questionCodes: ['makeup_frequency', 'care_type', 'care_steps', 'budget'],
     icon: '💰',
     triggersPlanRebuild: true, // budgetSegment влияет на план
   },
@@ -110,4 +100,3 @@ export function shouldRebuildPlan(topicId: string): boolean {
   const topic = getTopicById(topicId);
   return topic?.triggersPlanRebuild || false;
 }
-

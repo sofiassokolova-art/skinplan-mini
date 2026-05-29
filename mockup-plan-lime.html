@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkinIQ — Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --lime: #D5FE61;
+    --black: #0A0A0A;
+    --white: #FFFFFF;
+    --gray: #F4F4F4;
+    --line: #EBEBEB;
+    --muted: #6B7280;
+  }
+
+  body {
+    background: #E8E8E8;
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px 64px;
+    gap: 24px;
+  }
+
+  /* ─── Page switcher tabs ─── */
+  .page-tabs {
+    display: flex;
+    gap: 8px;
+    background: #fff;
+    border-radius: 20px;
+    padding: 6px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  .page-tabs button {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 8px 24px;
+    border-radius: 14px;
+    border: none;
+    cursor: pointer;
+    background: transparent;
+    color: var(--muted);
+    transition: background 0.18s, color 0.18s;
+  }
+  .page-tabs button.active {
+    background: var(--black);
+    color: var(--lime);
+  }
+
+  /* ─── Phone shell ─── */
+  .phone {
+    width: 390px;
+    background: var(--white);
+    border-radius: 44px;
+    overflow: hidden;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.10);
+    position: relative;
+    display: none;
+    flex-direction: column;
+  }
+  .phone.visible { display: flex; }
+
+  /* Notch bar */
+  .phone-notch {
+    background: var(--black);
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: 44px 44px 0 0;
+  }
+  .notch-pill {
+    width: 120px;
+    height: 34px;
+    background: #000;
+    border-radius: 20px;
+    border: 2px solid #1a1a1a;
+  }
+
+  /* Scrollable content area */
+  .phone-scroll {
+    max-height: 820px;
+    overflow-y: auto;
+    padding-bottom: 100px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    position: relative;
+  }
+  .phone-scroll::-webkit-scrollbar { display: none; }
+
+  /* Sticky topbar */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--white);
+    border-bottom: 1px solid var(--line);
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    flex-shrink: 0;
+  }
+  .topbar-logo {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--black);
+    letter-spacing: -0.3px;
+  }
+  .topbar-logo span { color: var(--lime); }
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .day-pill {
+    background: var(--black);
+    color: var(--lime);
+    font-family: 'Unbounded', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+
+  /* ─── Bottom Nav (floating glass pill, absolute inside phone) ─── */
+  .bnav {
+    position: absolute;
+    bottom: 20px;
+    left: 4%;
+    width: 92%;
+    height: 64px;
+    background: rgba(255,255,255,0.72);
+    backdrop-filter: blur(28px) saturate(200%);
+    -webkit-backdrop-filter: blur(28px) saturate(200%);
+    border: 1px solid rgba(255,255,255,0.95);
+    border-radius: 34px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.10);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    z-index: 100;
+  }
+  .bnav-tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 20px;
+    border-radius: 22px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .bnav-tab.active {
+    background: var(--lime);
+  }
+  .bnav-tab svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: #CCCCCC;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .bnav-tab.active svg { stroke: var(--black); }
+
+  /* ─── HOME page ─── */
+  .home-header {
+    padding: 20px 20px 16px;
+  }
+  .home-greeting {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .home-name {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--black);
+    margin-bottom: 4px;
+  }
+  .home-subtitle {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* Streak banner */
+  .home-streak-banner {
+    margin: 0 20px 20px;
+    background: var(--black);
+    border-radius: 16px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .streak-icon { font-size: 28px; }
+  .streak-text { color: var(--white); }
+  .streak-text strong {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--lime);
+    display: block;
+    margin-bottom: 2px;
+  }
+  .streak-text span {
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+  }
+
+  /* AM/PM toggle */
+  .ampm-toggle {
+    display: flex;
+    background: var(--gray);
+    border-radius: 12px;
+    padding: 4px;
+    margin: 0 20px 20px;
+  }
+  .ampm-btn {
+    flex: 1;
+    padding: 9px;
+    border: none;
+    border-radius: 9px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    background: transparent;
+    color: var(--muted);
+    transition: all 0.15s;
+  }
+  .ampm-btn.active {
+    background: var(--black);
+    color: var(--lime);
+  }
+
+  /* Section label */
+  .section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0 20px;
+    margin-bottom: 12px;
+  }
+
+  /* Routine list */
+  .routine-list {
+    padding: 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .routine-card {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .routine-step-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--gray);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Unbounded', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--black);
+    flex-shrink: 0;
+  }
+  .routine-card.done .routine-step-num { background: var(--lime); }
+  .routine-card-info { flex: 1; min-width: 0; }
+  .routine-card-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--black);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .routine-card-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .routine-card-tag {
+    font-size: 10px;
+    font-weight: 500;
+    background: var(--gray);
+    color: var(--muted);
+    padding: 3px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* ─── PLAN page ─── */
+
+  /* Hero */
+  .plan-hero {
+    background: var(--black);
+    padding: 20px 20px 24px;
+  }
+  .hero-day-pill {
+    display: inline-flex;
+    align-items: center;
+    background: var(--lime);
+    color: var(--black);
+    font-family: 'Unbounded', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 5px 12px;
+    border-radius: 20px;
+    margin-bottom: 14px;
+    letter-spacing: 0.03em;
+  }
+  .hero-heading {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--white);
+    line-height: 1.2;
+    margin-bottom: 6px;
+  }
+  .hero-sub {
+    font-size: 13px;
+    color: rgba(255,255,255,0.55);
+    margin-bottom: 20px;
+  }
+  .progress-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .progress-label {
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+    font-weight: 500;
+  }
+  .progress-value {
+    font-size: 12px;
+    color: var(--lime);
+    font-weight: 600;
+  }
+  .progress-track {
+    width: 100%;
+    height: 5px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 25%;
+    background: var(--lime);
+    border-radius: 3px;
+  }
+  .hero-chips {
+    display: flex;
+    gap: 10px;
+  }
+  .glass-black {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 12px;
+    padding: 8px 14px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.85);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* Skin analysis section */
+  .plan-section {
+    padding: 24px 20px 20px;
+    background: var(--white);
+    border-top: 1px solid var(--line);
+  }
+  .plan-section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .plan-heading {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--black);
+    line-height: 1.25;
+    margin-bottom: 10px;
+  }
+  .plan-para {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
+
+  /* Issue rows */
+  .issue-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .issue-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 11px 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  }
+  .issue-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .issue-dot.black { background: var(--black); }
+  .issue-dot.gray  { background: #C4C4C4; }
+  .issue-name {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--black);
+  }
+  .issue-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+  .issue-badge.priority   { background: var(--black); color: var(--lime); }
+  .issue-badge.in-progress { background: var(--gray);  color: var(--muted); }
+
+  /* Phase section */
+  .plan-phase-section {
+    padding: 24px 20px 20px;
+    background: var(--white);
+    border-top: 1px solid var(--line);
+  }
+  .phase-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 12px 0 14px;
+  }
+  .phase-card {
+    border-radius: 14px;
+    padding: 14px;
+    min-height: 90px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .phase-card.black-card { background: var(--black); }
+  .phase-card.gray-card  { background: var(--gray); }
+  .phase-card.lime-card  { background: var(--lime); }
+
+  .phase-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .black-card .phase-label { color: var(--lime); }
+  .gray-card  .phase-label { color: var(--muted); }
+  .lime-card  .phase-label { color: rgba(10,10,10,0.6); }
+
+  .phase-name {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 6px;
+  }
+  .black-card .phase-name { color: var(--white); }
+  .gray-card  .phase-name { color: var(--black); }
+  .lime-card  .phase-name { color: var(--black); }
+
+  .phase-desc { font-size: 10px; line-height: 1.4; }
+  .black-card .phase-desc { color: rgba(255,255,255,0.55); }
+  .gray-card  .phase-desc { color: var(--muted); }
+  .lime-card  .phase-desc { color: rgba(10,10,10,0.6); }
+
+  .today-pill-row { display: flex; justify-content: center; }
+  .today-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--lime);
+    color: var(--black);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 7px 14px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .today-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--black);
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+
+  /* Products section */
+  .plan-products-section {
+    padding: 24px 20px 20px;
+    background: var(--white);
+    border-top: 1px solid var(--line);
+  }
+  .product-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .product-card {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 14px;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    background: var(--white);
+  }
+  .product-img {
+    width: 52px;
+    height: 52px;
+    background: var(--gray);
+    border-radius: 12px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .product-img-inner {
+    width: 32px;
+    height: 32px;
+    background: var(--line);
+    border-radius: 8px;
+    opacity: 0.7;
+  }
+  .product-info { flex: 1; min-width: 0; }
+  .product-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--black);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
+  }
+  .product-brand {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .product-tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 500;
+    background: var(--gray);
+    color: var(--muted);
+    padding: 3px 8px;
+    border-radius: 6px;
+  }
+  .product-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .product-actions svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: #CCCCCC;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    cursor: pointer;
+  }
+  .product-actions svg.favorited {
+    fill: var(--black);
+    stroke: var(--black);
+  }
+  .cart-badge {
+    font-size: 9px;
+    font-weight: 700;
+    background: var(--lime);
+    color: var(--black);
+    padding: 3px 7px;
+    border-radius: 6px;
+    white-space: nowrap;
+    line-height: 1.5;
+  }
+
+  /* Feedback section */
+  .plan-feedback-section {
+    background: var(--lime);
+    padding: 24px 20px;
+  }
+  .feedback-heading {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--black);
+    margin-bottom: 6px;
+    line-height: 1.25;
+  }
+  .feedback-sub {
+    font-size: 13px;
+    color: rgba(10,10,10,0.55);
+    margin-bottom: 18px;
+    line-height: 1.5;
+  }
+  .feedback-btns {
+    display: flex;
+    gap: 10px;
+  }
+  .fb-btn {
+    flex: 1;
+    border: none;
+    border-radius: 12px;
+    padding: 13px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .fb-btn.primary   { background: var(--black); color: var(--lime); }
+  .fb-btn.secondary { background: rgba(0,0,0,0.10); color: var(--black); }
+</style>
+</head>
+<body>
+
+<div class="page-tabs">
+  <button class="active" onclick="show('home-phone', this)">Главная</button>
+  <button onclick="show('plan-phone', this)">План</button>
+</div>
+
+<!-- ══════════════════════════════════════════
+     HOME PHONE
+══════════════════════════════════════════ -->
+<div class="phone visible" id="home-phone">
+  <div class="phone-notch"><div class="notch-pill"></div></div>
+
+  <div class="phone-scroll">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="topbar-logo">Skin<span>IQ</span></div>
+      <div class="topbar-right">
+        <svg width="22" height="22" fill="none" stroke="#0A0A0A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Greeting -->
+    <div class="home-header">
+      <p class="home-greeting">Доброе утро 👋</p>
+      <p class="home-name">Анна</p>
+      <p class="home-subtitle">День 7 · продолжай в том же духе</p>
+    </div>
+
+    <!-- Streak banner -->
+    <div class="home-streak-banner">
+      <div class="streak-icon">🔥</div>
+      <div class="streak-text">
+        <strong>7 дней подряд</strong>
+        <span>Ты на верном пути к чистой коже</span>
+      </div>
+    </div>
+
+    <!-- Section label -->
+    <div style="padding: 20px 0 0;">
+      <p class="section-label">Сегодняшний уход</p>
+    </div>
+
+    <!-- AM/PM toggle -->
+    <div class="ampm-toggle">
+      <button class="ampm-btn active" onclick="switchTab('am')">☀ Утро</button>
+      <button class="ampm-btn" onclick="switchTab('pm')">🌙 Вечер</button>
+    </div>
+
+    <!-- AM routine -->
+    <div id="routine-am">
+      <p class="section-label">3 шага · утренняя рутина</p>
+      <div class="routine-list">
+        <div class="routine-card done">
+          <div class="routine-step-num">1</div>
+          <div class="routine-card-info">
+            <div class="routine-card-name">Гель для умывания</div>
+            <div class="routine-card-sub">La Roche-Posay Effaclar · 60 сек</div>
+          </div>
+          <div class="routine-card-tag">Готово ✓</div>
+        </div>
+        <div class="routine-card done">
+          <div class="routine-step-num">2</div>
+          <div class="routine-card-info">
+            <div class="routine-card-name">Балансирующий тонер</div>
+            <div class="routine-card-sub">COSRX AHA/BHA · ватным диском</div>
+          </div>
+          <div class="routine-card-tag">Готово ✓</div>
+        </div>
+        <div class="routine-card">
+          <div class="routine-step-num">3</div>
+          <div class="routine-card-info">
+            <div class="routine-card-name">Солнцезащитный крем SPF50</div>
+            <div class="routine-card-sub">Bioderma · последний шаг</div>
+          </div>
+          <div class="routine-card-tag">Сделать</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PM routine (hidden) -->
+    <div id="routine-pm" style="display:none">
+      <p class="section-label">4 шага · вечерняя рутина</p>
+      <div class="routine-list">
+        <div class="routine-card">
+          <div class="routine-step-num">1</div>
+          <div class="routine-card-info">
+            <div class="routine-card-name">Гель для умывания</div>
+            <div class="routine-card-sub">La Roche-Posay Effaclar · 60 сек</div>
+          </div>
+          <div class="routine-card-tag">Сделать</div>
+        </div>
+        <div class="routine-card">
+          <div class="routine-step-num">2</div>
+          <div class="routine-card-info">
+            <div class="routine-card-name">Балансирующий тонер</div>
+            <div class="routine-card-sub">COSRX AHA/BHA · ватным диском</div>
+          </div>
+          <div class="routine-card-tag">Сделать</div>
+        </div>
+        <div class="routine-card">
+          <div class="routine-step-num">3</div>
+          <div class="routine-card-info">
+            <div class="routine-card-name">Сыворотка с ниацинамидом</div>
+            <div class="routine-card-sub">The Ordinary · 2–3 капли</div>
+          </div>
+          <div class="routine-card-tag">Сделать</div>
+        </div>
+        <div class="routine-card">
+          <div class="routine-step-num">4</div>
+          <div class="routine-card-info">
+            <div class="routine-card-name">Ночная сыворотка с ретинолом</div>
+            <div class="routine-card-sub">The Ordinary Retinol 0.2% · горошина</div>
+          </div>
+          <div class="routine-card-tag">Сделать</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /phone-scroll -->
+
+  <!-- Bottom nav — Home active -->
+  <div class="bnav">
+    <div class="bnav-tab active">
+      <svg viewBox="0 0 24 24">
+        <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
+        <path d="M9 21V12h6v9"/>
+      </svg>
+    </div>
+    <div class="bnav-tab">
+      <svg viewBox="0 0 24 24">
+        <rect x="5" y="2" width="14" height="20" rx="2"/>
+        <path d="M9 7h6M9 11h6M9 15h3"/>
+        <path d="M15 16.5l1 1 2-2"/>
+      </svg>
+    </div>
+    <div class="bnav-tab">
+      <svg viewBox="0 0 24 24">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+      </svg>
+    </div>
+    <div class="bnav-tab">
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="8" r="4"/>
+        <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+      </svg>
+    </div>
+  </div>
+
+</div><!-- /home-phone -->
+
+
+<!-- ══════════════════════════════════════════
+     PLAN PHONE
+══════════════════════════════════════════ -->
+<div class="phone" id="plan-phone">
+  <div class="phone-notch"><div class="notch-pill"></div></div>
+
+  <div class="phone-scroll">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="topbar-logo">Skin<span>IQ</span></div>
+      <div class="topbar-right">
+        <div class="day-pill">День 7 / 28</div>
+      </div>
+    </div>
+
+    <!-- ── Section 1: Hero ── -->
+    <div class="plan-hero">
+      <div class="hero-day-pill">День 7 / 28</div>
+      <h1 class="hero-heading">Твой план ухода</h1>
+      <p class="hero-sub">Персональный 28-дневный план</p>
+
+      <div class="progress-row">
+        <span class="progress-label">Прогресс</span>
+        <span class="progress-value">25% · неделя 1 из 4</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill"></div>
+      </div>
+
+      <div class="hero-chips">
+        <div class="glass-black">
+          <span>☀</span><span>Утро · 3 шага</span>
+        </div>
+        <div class="glass-black">
+          <span>🌙</span><span>Вечер · 4 шага</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 2: Skin analysis ── -->
+    <div class="plan-section">
+      <p class="plan-section-label">Анализ кожи</p>
+      <h2 class="plan-heading">Жирная кожа с расширенными порами и склонностью к акне</h2>
+      <p class="plan-para">На основе ваших ответов мы определили: повышенная выработка себума, расширенные поры в Т-зоне, периодические высыпания. Plan направлен на балансировку и очищение без пересушивания.</p>
+
+      <div class="issue-list">
+        <div class="issue-row">
+          <span class="issue-dot black"></span>
+          <span class="issue-name">Жирный блеск</span>
+          <span class="issue-badge priority">Приоритет</span>
+        </div>
+        <div class="issue-row">
+          <span class="issue-dot gray"></span>
+          <span class="issue-name">Расширенные поры</span>
+          <span class="issue-badge in-progress">В работе</span>
+        </div>
+        <div class="issue-row">
+          <span class="issue-dot gray"></span>
+          <span class="issue-name">Акне</span>
+          <span class="issue-badge in-progress">В работе</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 3: 28-day phases ── -->
+    <div class="plan-phase-section">
+      <p class="plan-section-label">28-дневный план</p>
+
+      <div class="phase-grid">
+        <div class="phase-card black-card">
+          <div>
+            <p class="phase-label">Фаза 1 · Дни 1–7</p>
+            <p class="phase-name">Адаптация</p>
+          </div>
+          <p class="phase-desc">Мягкое введение активов, формирование привычки</p>
+        </div>
+        <div class="phase-card gray-card">
+          <div>
+            <p class="phase-label">Фаза 2 · Дни 8–14</p>
+            <p class="phase-name">Активация</p>
+          </div>
+          <p class="phase-desc">Усиление действия, добавление кислот</p>
+        </div>
+        <div class="phase-card gray-card">
+          <div>
+            <p class="phase-label">Фаза 3 · Дни 15–21</p>
+            <p class="phase-name">Интенсив</p>
+          </div>
+          <p class="phase-desc">Максимальная эффективность</p>
+        </div>
+        <div class="phase-card lime-card">
+          <div>
+            <p class="phase-label">Фаза 4 · Дни 22–28</p>
+            <p class="phase-name">Закрепление</p>
+          </div>
+          <p class="phase-desc">Поддержание результата</p>
+        </div>
+      </div>
+
+      <div class="today-pill-row">
+        <div class="today-pill">
+          <span class="today-dot"></span>
+          Сегодня: День 7 — Фаза 1 · Адаптация
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 4: Products ── -->
+    <div class="plan-products-section">
+      <p class="plan-section-label">Все средства · 6 позиций</p>
+
+      <div class="product-list">
+
+        <!-- 1: favorited -->
+        <div class="product-card">
+          <div class="product-img"><div class="product-img-inner"></div></div>
+          <div class="product-info">
+            <div class="product-name">Гель для умывания</div>
+            <div class="product-brand">La Roche-Posay Effaclar</div>
+            <span class="product-tag">Очищение</span>
+          </div>
+          <div class="product-actions">
+            <svg class="favorited" viewBox="0 0 24 24">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            <svg viewBox="0 0 24 24">
+              <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+            </svg>
+            <svg viewBox="0 0 24 24">
+              <path d="M1 4v6h6"/><path d="M23 20v-6h-6"/>
+              <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- 2: in cart -->
+        <div class="product-card">
+          <div class="product-img"><div class="product-img-inner"></div></div>
+          <div class="product-info">
+            <div class="product-name">Балансирующий тонер</div>
+            <div class="product-brand">COSRX AHA/BHA</div>
+            <span class="product-tag">Тоник</span>
+          </div>
+          <div class="product-actions">
+            <svg viewBox="0 0 24 24">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            <div class="cart-badge">В корзине ×1</div>
+            <svg viewBox="0 0 24 24">
+              <path d="M1 4v6h6"/><path d="M23 20v-6h-6"/>
+              <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- 3 -->
+        <div class="product-card">
+          <div class="product-img"><div class="product-img-inner"></div></div>
+          <div class="product-info">
+            <div class="product-name">Сыворотка с ниацинамидом</div>
+            <div class="product-brand">The Ordinary</div>
+            <span class="product-tag">Сыворотка</span>
+          </div>
+          <div class="product-actions">
+            <svg viewBox="0 0 24 24">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            <svg viewBox="0 0 24 24">
+              <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+            </svg>
+            <svg viewBox="0 0 24 24">
+              <path d="M1 4v6h6"/><path d="M23 20v-6h-6"/>
+              <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- 4 -->
+        <div class="product-card">
+          <div class="product-img"><div class="product-img-inner"></div></div>
+          <div class="product-info">
+            <div class="product-name">Увлажняющий крем</div>
+            <div class="product-brand">Neutrogena Hydro Boost</div>
+            <span class="product-tag">Увлажнение</span>
+          </div>
+          <div class="product-actions">
+            <svg viewBox="0 0 24 24">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            <svg viewBox="0 0 24 24">
+              <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+            </svg>
+            <svg viewBox="0 0 24 24">
+              <path d="M1 4v6h6"/><path d="M23 20v-6h-6"/>
+              <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- 5 -->
+        <div class="product-card">
+          <div class="product-img"><div class="product-img-inner"></div></div>
+          <div class="product-info">
+            <div class="product-name">Солнцезащитный крем SPF50</div>
+            <div class="product-brand">Bioderma</div>
+            <span class="product-tag">SPF защита</span>
+          </div>
+          <div class="product-actions">
+            <svg viewBox="0 0 24 24">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            <svg viewBox="0 0 24 24">
+              <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+            </svg>
+            <svg viewBox="0 0 24 24">
+              <path d="M1 4v6h6"/><path d="M23 20v-6h-6"/>
+              <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- 6 -->
+        <div class="product-card">
+          <div class="product-img"><div class="product-img-inner"></div></div>
+          <div class="product-info">
+            <div class="product-name">Ночная сыворотка с ретинолом</div>
+            <div class="product-brand">The Ordinary Retinol 0.2%</div>
+            <span class="product-tag">Сыворотка</span>
+          </div>
+          <div class="product-actions">
+            <svg viewBox="0 0 24 24">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            <svg viewBox="0 0 24 24">
+              <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+            </svg>
+            <svg viewBox="0 0 24 24">
+              <path d="M1 4v6h6"/><path d="M23 20v-6h-6"/>
+              <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/>
+            </svg>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Section 5: Feedback ── -->
+    <div class="plan-feedback-section">
+      <h2 class="feedback-heading">Как ощущения от плана?</h2>
+      <p class="feedback-sub">Это помогает нам улучшать рекомендации</p>
+      <div class="feedback-btns">
+        <button class="fb-btn primary">Помогает</button>
+        <button class="fb-btn secondary">Есть вопросы</button>
+      </div>
+    </div>
+
+    <div style="height:8px; background:var(--gray);"></div>
+
+  </div><!-- /phone-scroll -->
+
+  <!-- Bottom nav — Plan active -->
+  <div class="bnav">
+    <div class="bnav-tab">
+      <svg viewBox="0 0 24 24">
+        <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
+        <path d="M9 21V12h6v9"/>
+      </svg>
+    </div>
+    <div class="bnav-tab active">
+      <svg viewBox="0 0 24 24">
+        <rect x="5" y="2" width="14" height="20" rx="2"/>
+        <path d="M9 7h6M9 11h6M9 15h3"/>
+        <path d="M15 16.5l1 1 2-2"/>
+      </svg>
+    </div>
+    <div class="bnav-tab">
+      <svg viewBox="0 0 24 24">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+      </svg>
+    </div>
+    <div class="bnav-tab">
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="8" r="4"/>
+        <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+      </svg>
+    </div>
+  </div>
+
+</div><!-- /plan-phone -->
+
+<script>
+  function show(id, btn) {
+    document.querySelectorAll('.phone').forEach(function(p) {
+      p.classList.remove('visible');
+    });
+    document.getElementById(id).classList.add('visible');
+    document.querySelectorAll('.page-tabs button').forEach(function(b) {
+      b.classList.remove('active');
+    });
+    btn.classList.add('active');
+  }
+
+  function switchTab(tab) {
+    var am   = document.getElementById('routine-am');
+    var pm   = document.getElementById('routine-pm');
+    var btns = document.querySelectorAll('.ampm-btn');
+    if (tab === 'am') {
+      am.style.display = 'block';
+      pm.style.display = 'none';
+      btns[0].classList.add('active');
+      btns[1].classList.remove('active');
+    } else {
+      am.style.display = 'none';
+      pm.style.display = 'block';
+      btns[0].classList.remove('active');
+      btns[1].classList.add('active');
+    }
+  }
+</script>
+
+</body>
+</html>

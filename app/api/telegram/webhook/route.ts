@@ -1,19 +1,27 @@
-// app/api/telegram/webhook/route.ts
 // Webhook для Telegram бота
 
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
 import { prisma } from '@/lib/db';
 import { getUserIdFromTelegramId } from '@/lib/get-user-from-telegram-id';
 import { verifyAdmin } from '@/lib/admin-auth';
+
+// Edge-compatible constant-time comparison
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  const aBytes = new TextEncoder().encode(a);
+  const bBytes = new TextEncoder().encode(b);
+  let diff = 0;
+  for (let i = 0; i < aBytes.length; i++) diff |= aBytes[i] ^ bBytes[i];
+  return diff === 0;
+}
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 // Секретный токен опционален - используется только если установлен в переменных окружения
 // Для генерации токена: node -e "const crypto = require('crypto'); console.log(crypto.randomBytes(32).toString('hex'))"
 const TELEGRAM_SECRET_TOKEN = process.env.TELEGRAM_SECRET_TOKEN;
-/** Секрет для установки webhook без входа в админку (curl / CI). Задайте WEBHOOK_SET_SECRET в Vercel. */
+/** Секрет для установки webhook без входа в админку (curl / CI). Задайте WEBHOOK_SET_SECRET в Cloudflare. */
 const WEBHOOK_SET_SECRET = process.env.WEBHOOK_SET_SECRET;
-const MINI_APP_URL = process.env.NEXT_PUBLIC_MINI_APP_URL || 'https://skinplan-mini.vercel.app';
+const MINI_APP_URL = process.env.NEXT_PUBLIC_MINI_APP_URL || 'https://skinplan-mini.pages.dev';
 
 interface TelegramUpdate {
   update_id: number;
@@ -137,9 +145,7 @@ export async function POST(request: NextRequest) {
         console.warn('⚠️ Webhook: отсутствует X-Telegram-Bot-Api-Secret-Token');
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
-      const expected = Buffer.from(TELEGRAM_SECRET_TOKEN, 'utf8');
-      const actual = Buffer.from(headerToken, 'utf8');
-      if (expected.length !== actual.length || !crypto.timingSafeEqual(expected, actual)) {
+      if (!timingSafeEqual(TELEGRAM_SECRET_TOKEN, headerToken)) {
         console.warn('⚠️ Webhook: неверный X-Telegram-Bot-Api-Secret-Token');
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
@@ -751,14 +757,7 @@ export async function GET(request: NextRequest) {
   // Для check/set-webhook: допуск по админ-сессии ИЛИ по секрету WEBHOOK_SET_SECRET (curl без браузера)
   if (action === 'check' || action === 'set-webhook') {
     const secret = searchParams.get('secret') ?? request.headers.get('x-webhook-set-secret') ?? '';
-    const expected = WEBHOOK_SET_SECRET ? Buffer.from(WEBHOOK_SET_SECRET, 'utf8') : null;
-    const actual = secret ? Buffer.from(secret, 'utf8') : null;
-    const allowedBySecret = !!(
-      expected &&
-      actual &&
-      expected.length === actual.length &&
-      crypto.timingSafeEqual(expected, actual)
-    );
+    const allowedBySecret = !!(WEBHOOK_SET_SECRET && secret && timingSafeEqual(WEBHOOK_SET_SECRET, secret));
     if (!allowedBySecret) {
       const adminAuth = await verifyAdmin(request);
       if (!adminAuth.valid) {

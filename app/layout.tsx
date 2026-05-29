@@ -4,7 +4,6 @@
 import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
 import Script from 'next/script';
-import { Analytics } from '@vercel/analytics/react';
 import localFont from 'next/font/local';
 import './globals.css';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -12,7 +11,6 @@ import { WebVitalsTracker } from './(miniapp)/components/WebVitals';
 import { Toaster } from '@/components/Toaster';
 import { GlobalErrorHandler } from '@/components/GlobalErrorHandler';
 import { ServiceWorker } from '@/components/ServiceWorker';
-import { TelegramScript } from '@/components/TelegramScript';
 
 // Загружаем шрифты локально из public/fonts
 // Файлы шрифтов загружены в public/fonts/
@@ -65,6 +63,8 @@ export const metadata: Metadata = {
   icons: { icon: '/icons/icon_sparkles.svg', apple: '/icons/icon_sparkles.svg' },
 };
 
+const DEV_TELEGRAM_ID = process.env.NEXT_PUBLIC_DEV_TELEGRAM_ID || '987654322';
+
 export default async function RootLayout({
   children,
 }: {
@@ -82,72 +82,90 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        {/* На мобильном Telegram передаёт initData в hash (#tgWebAppData=...). Парсим и сохраняем в sessionStorage. Stub-объект WebApp создаётся только для данных, ready() НЕ подменяем — его должен вызвать настоящий SDK. */}
+        {/* Preload SDK параллельно с Next.js бандлом — скачивание стартует
+            при парсинге <head>, до того как beforeInteractive запустится.
+            Когда appendChid(s) выполняется в beforeInteractive, SDK уже
+            в кеше браузера → onload стреляет сразу → ready() намного раньше.
+            БЕЗ crossOrigin: динамический <script> ниже создаётся без
+            crossOrigin → match → preload реально переиспользуется. */}
         {!isAdminRoute && (
-          <Script id="telegram-hash-fallback" strategy="beforeInteractive">
-            {`
-(function(){
-  if (typeof window === 'undefined') return;
-
-  var initData = '';
-
-  // 1. Пробуем hash
-  var h = window.location.hash.slice(1);
-  if (h) {
-    try {
-      var p = new URLSearchParams(h);
-      var raw = p.get('tgWebAppData');
-      if (raw) initData = decodeURIComponent(raw);
-    } catch (_) {}
-  }
-
-  // 2. Fallback — sessionStorage (после редиректа hash теряется)
-  if (!initData) {
-    try { initData = sessionStorage.getItem('tg_init_data') || ''; } catch (_) {}
-  }
-
-  if (!initData) return;
-
-  // Сохраняем/обновляем в sessionStorage
-  try { sessionStorage.setItem('tg_init_data', initData); } catch (_) {}
-
-  if (!window.Telegram) window.Telegram = {};
-  if (!window.Telegram.WebApp || !window.Telegram.WebApp.initData) {
-    var w = window.Telegram.WebApp = window.Telegram.WebApp || {};
-    w.initData = initData;
-    w.initDataUnsafe = w.initDataUnsafe || {};
-    try {
-      var userMatch = initData.match(/user=([^&]+)/);
-      if (userMatch) w.initDataUnsafe.user = JSON.parse(decodeURIComponent(userMatch[1]));
-    } catch (_) {}
-    w.ready = w.ready || function(){};
-    w.expand = w.expand || function(){};
-    w.close = w.close || function(){};
-    w.sendData = w.sendData || function(){};
-    w.showPopup = w.showPopup || function(){};
-    w.openLink = w.openLink || function(url){ window.open(url); };
-    w.openTelegramLink = w.openTelegramLink || function(url){ window.open(url); };
-  }
-})();
-            `}
-          </Script>
+          <link
+            rel="preload"
+            href="https://telegram.org/js/telegram-web-app.js"
+            as="script"
+          />
         )}
-        {/* Telegram WebApp: после первого рендера, чтобы в WebView не зависало на загрузке telegram.org */}
-        {!isAdminRoute && <TelegramScript />}
+        {/* Preload картинок первых двух info-экранов (welcome + personal_analysis):
+            до этого фоновая картинка грузилась после рендера → контент
+            на экране появлялся "по очереди" (контейнер + потом картинка хлоп).
+            Иконки списка оптимизированы (64×64 PNG вместо 880×880 JPEG-as-PNG)
+            — экономия ~258KB (с 277KB до 19KB суммарно). */}
+        {!isAdminRoute && (
+          <>
+            <link rel="preload" href="/792c9598_nano_4K.jpg" as="image" fetchPriority="high" />
+            <link rel="preload" href="/ea01dd6e_nano_4K.jpg" as="image" fetchPriority="high" />
+            <link rel="preload" href="/icons/detailed_3_64.png" as="image" />
+            <link rel="preload" href="/icons/hydration_3_64.png" as="image" />
+            <link rel="preload" href="/icons/face_3_64.png" as="image" />
+          </>
+        )}
+        {/* ВАЖНО: используем сырой <script dangerouslySetInnerHTML>, а НЕ <Script strategy="beforeInteractive">.
+            В Next.js App Router <Script beforeInteractive> складывает код в self.__next_s.push(...) — строкой.
+            Эта очередь обрабатывается webpack-рантаймом, который грузится async ПОСЛЕ парсинга HTML.
+            Сырой <script> выполняется СРАЗУ при парсинге <head> — именно это нужно для вызова ready()
+            до того, как Telegram Desktop истечёт по таймауту системного лоадера. */}
+        {!isAdminRoute && (
+          <script
+            dangerouslySetInnerHTML={{ __html: `(function(){
+  if (typeof window === 'undefined') return;
+  try {
+    var h = window.location.hash.slice(1);
+    if (h) {
+      var raw = new URLSearchParams(h).get('tgWebAppData');
+      if (raw) sessionStorage.setItem('tg_init_data', decodeURIComponent(raw));
+    }
+  } catch (_) {}
+  function done(){
+    try {
+      var wa = window.Telegram && window.Telegram.WebApp;
+      if (wa) {
+        if (typeof wa.ready === 'function') wa.ready();
+        if (typeof wa.expand === 'function') wa.expand();
+        if (wa.initData) {
+          try { sessionStorage.setItem('tg_init_data', wa.initData); } catch (_) {}
+        }
+      }
+    } catch (_) {}
+    try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {}
+  }
+  try {
+    var waEarly = window.Telegram && window.Telegram.WebApp;
+    if (waEarly && typeof waEarly.ready === 'function') { done(); return; }
+  } catch (_) {}
+  var s = document.createElement('script');
+  s.src = 'https://telegram.org/js/telegram-web-app.js';
+  s.onload = done;
+  s.onerror = function(){ try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {} };
+  document.head.appendChild(s);
+})();` }}
+          />
+        )}
         {/* DEV-режим: мок Telegram WebApp для локального браузера (не на /admin) */}
         {isDev && !isAdminRoute && (
           <Script id="telegram-dev-mock" strategy="beforeInteractive">
             {`
               (function () {
                 if (typeof window === 'undefined') return;
-                if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) return;
-
                 var host = window.location.hostname;
                 if (host !== 'localhost' && host !== '127.0.0.1') return;
 
-                var TEST_TELEGRAM_ID = '987654321';
+                // В dev на localhost всегда используем нашего тестового пользователя (перезаписываем старый tg_init_data)
+                try { sessionStorage.removeItem('tg_init_data'); } catch (_) {}
+
+                // Локальный dev-пользователь Telegram — ID берём из NEXT_PUBLIC_DEV_TELEGRAM_ID (fallback: 987654322)
+                var TEST_TELEGRAM_ID = '${DEV_TELEGRAM_ID}';
                 var authDate = Math.floor(Date.now() / 1000);
-                var testInitData = 'user=%7B%22id%22%3A' + TEST_TELEGRAM_ID + '%2C%22first_name%22%3A%22Test%22%2C%22last_name%22%3A%22User%22%2C%22username%22%3A%22testuser%22%2C%22language_code%22%3A%22ru%22%7D&auth_date=' + authDate + '&hash=test_hash_for_development_only';
+                var testInitData = 'user=%7B%22id%22%3A' + TEST_TELEGRAM_ID + '%2C%22first_name%22%3A%22Local%22%2C%22last_name%22%3A%22User2%22%2C%22username%22%3A%22local_test_user_2%22%2C%22language_code%22%3A%22ru%22%7D&auth_date=' + authDate + '&hash=test_hash_for_development_only';
 
                 if (!window.Telegram) {
                   window.Telegram = { WebApp: null };
@@ -158,9 +176,9 @@ export default async function RootLayout({
                     initDataUnsafe: {
                       user: {
                         id: parseInt(TEST_TELEGRAM_ID, 10),
-                        first_name: 'Test',
-                        last_name: 'User',
-                        username: 'testuser',
+                        first_name: 'Local',
+                        last_name: 'User2',
+                        username: 'local_test_user_2',
                         language_code: 'ru',
                       },
                     },
@@ -174,19 +192,18 @@ export default async function RootLayout({
                   };
                 } else {
                   var w = window.Telegram.WebApp;
-                  if (!w.initData || w.initData === 'dev-init-data=1') {
+                  try {
+                    w.initData = testInitData;
+                  } catch (e) {
                     try {
-                      w.initData = testInitData;
-                    } catch (e) {
-                      try {
-                        Object.defineProperty(w, 'initData', { value: testInitData, writable: true });
-                      } catch (e2) {}
-                    }
-                    if (w.initDataUnsafe && w.initDataUnsafe.user) {
-                      w.initDataUnsafe.user.id = parseInt(TEST_TELEGRAM_ID, 10);
-                    }
+                      Object.defineProperty(w, 'initData', { value: testInitData, writable: true });
+                    } catch (e2) {}
+                  }
+                  if (w.initDataUnsafe && w.initDataUnsafe.user) {
+                    w.initDataUnsafe.user.id = parseInt(TEST_TELEGRAM_ID, 10);
                   }
                 }
+                try { sessionStorage.setItem('tg_init_data', testInitData); } catch (_) {}
 
                 console.log('[DEV TG] Telegram WebApp mocked for local development (test initData)');
               })();
@@ -205,30 +222,56 @@ export default async function RootLayout({
           backgroundColor: '#FFFFFF',
         }}
       >
+        {/* Извлекаем initData из hash до загрузки SDK — чтобы не потерять,
+            если Telegram передал данные только в hash и сбросит его потом.
+            НЕ зовём web_app_ready напрямую — SDK делает важную init-последовательность
+            (request_viewport, request_theme), которую мы пропустить не можем. */}
+        {!isAdminRoute && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `try{var _h=window.location.hash.slice(1);if(_h){var _r=new URLSearchParams(_h).get('tgWebAppData');if(_r)sessionStorage.setItem('tg_init_data',decodeURIComponent(_r))}}catch(_){}`,
+            }}
+          />
+        )}
+        {/* Контейнер для кнопки «Назад» — первый ребёнок body, блок 80×80 в углу */}
+        <div
+          id="back-button-fixed-container"
+          aria-hidden="true"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: 80,
+            height: 80,
+            background: 'transparent',
+            pointerEvents: 'none',
+            zIndex: 99999,
+          }}
+        />
         {/* Лоадер при открытии — показываем ВСЕГДА (кроме /admin).
             React удалит его при монтировании через useRemoveRootLoading().
             Не зависим от process.env.VERCEL — Vercel build cache может не подставлять его. */}
         {!isAdminRoute && (
           <div
             id="root-loading"
+            suppressHydrationWarning
             style={{
               position: 'fixed',
               inset: 0,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: '#FFFFFF',
+              backgroundColor: '#000000',
               zIndex: 99998,
             }}
           >
             <div
               style={{
-                width: 40,
-                height: 40,
+                width: 88,
+                height: 88,
                 borderRadius: '50%',
-                border: '3px solid rgba(15, 23, 42, 0.12)',
-                borderTopColor: '#111827',
-                animation: 'spin 0.8s linear infinite',
+                background: '#D5FE61',
+                animation: 'skinplan-loader-pulse 1.6s ease-in-out infinite',
               }}
             />
           </div>
@@ -241,7 +284,7 @@ export default async function RootLayout({
 (function(){
   var fallbackCss = "display:block;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;padding:12px 20px;background:rgba(10,95,89,0.95);color:#fff;border-radius:12px;font-family:system-ui,sans-serif;font-size:14px;box-shadow:0 4px 20px rgba(0,0,0,0.2);";
   var fallbackHtml = 'Не удалось загрузить приложение. <a href="javascript:location.reload()" style="color:#fff;text-decoration:underline;font-weight:600">Обновить</a>';
-  var reloadKey = 'skinplan_chunk_reload_done_' + ('${process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.slice(0,8) || Date.now()}');
+  var reloadKey = 'skinplan_chunk_reload_done_' + ('${process.env.CF_PAGES_COMMIT_SHA?.slice(0,8) || Date.now()}');
   window.__skiniq_mounted = false;
   function showFallback(){
     var e = document.getElementById("loading-timeout-fallback");
@@ -315,7 +358,6 @@ export default async function RootLayout({
         </noscript>
         {/* Обёртка для React DevTools и селекторов: в App Router нет #__next по умолчанию */}
         <div id="__next">
-          {/* Контейнер для кнопки «Назад» — внутри React-дерева, чтобы избежать NotFoundError при reconciliation */}
           <div id="back-button-portal-root" />
           <ErrorBoundary>
             <GlobalErrorHandler />
@@ -323,7 +365,7 @@ export default async function RootLayout({
             <ServiceWorker />
             {children}
             <Toaster />
-            <Analytics />
+            {/* <Analytics /> */}
           </ErrorBoundary>
         </div>
       </body>

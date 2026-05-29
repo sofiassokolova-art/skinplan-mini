@@ -399,20 +399,23 @@
         {
           "label": "Ретиноиды наружные (Адапален — Дифферин, Адаклин; Изотретиноин — Изотрекс)",
           "actions": [
-            { "op": "addToArray", "path": "currentTopicals", "value": "topical_retinoids" }
+            { "op": "addToArray", "path": "currentTopicals", "value": "topical_retinoids" },
+            { "op": "addToArray", "path": "contraindications", "value": "no_retinol" }
           ]
         },
         {
           "label": "Бензоилпероксид (Базирон АС, Эффезел)",
           "actions": [
-            { "op": "addToArray", "path": "currentTopicals", "value": "benzoyl_peroxide" }
+            { "op": "addToArray", "path": "currentTopicals", "value": "benzoyl_peroxide" },
+            { "op": "addToArray", "path": "contraindications", "value": "no_retinol" }
           ]
         },
         {
           "label": "Кортикостероидные кремы/мази (Гидрокортизон, Адвантан, Локоид)",
           "actions": [
             { "op": "addToArray", "path": "currentTopicals", "value": "topical_steroids" },
-            { "op": "addToArray", "path": "contraindications", "value": "no_aggressive_acids" }
+            { "op": "addToArray", "path": "contraindications", "value": "no_aggressive_acids" },
+            { "op": "addToArray", "path": "contraindications", "value": "no_strong_acids" }
           ]
         },
         {
@@ -431,7 +434,9 @@
           "actions": [
             { "op": "addToArray", "path": "currentOralMeds", "value": "isotretinoin" },
             { "op": "addToArray", "path": "contraindications", "value": "no_additional_retinoids" },
-            { "op": "addToArray", "path": "contraindications", "value": "no_aggressive_acids" }
+            { "op": "addToArray", "path": "contraindications", "value": "no_aggressive_acids" },
+            { "op": "addToArray", "path": "contraindications", "value": "no_retinol" },
+            { "op": "addToArray", "path": "contraindications", "value": "no_strong_acids" }
           ]
         },
         {

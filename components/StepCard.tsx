@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { Heart, ShoppingCart, RefreshCw } from 'lucide-react';
 import type { DayStep } from '@/lib/plan-types';
 import { getStepCategoryLabel, getStepDescription } from '@/lib/plan-types';
+import { getStepCategoryIcon } from '@/lib/step-icons';
 
 interface StepCardProps {
   step: DayStep;
@@ -39,6 +40,7 @@ export function StepCard({
   showTags = true,
 }: StepCardProps) {
   const stepDesc = getStepDescription(step.stepCategory, skinIssues);
+  const icon = getStepCategoryIcon(step.stepCategory);
 
   if (!product) {
     return (
@@ -48,8 +50,13 @@ export function StepCard({
         backgroundColor: '#F9FAFB',
         border: '1px solid #E5E7EB',
       }}>
-        <div style={{ fontSize: '14px', fontWeight: '600', color: '#6B7280', marginBottom: '8px' }}>
-          {stepDesc.name}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+          {icon && (
+            <img src={icon} alt="" width={28} height={28} style={{ objectFit: 'contain', flexShrink: 0 }} />
+          )}
+          <div style={{ fontSize: '14px', fontWeight: '600', color: '#6B7280' }}>
+            {stepDesc.name}
+          </div>
         </div>
         <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px', fontStyle: 'italic' }}>
           {stepDesc.subtitle}
@@ -69,10 +76,42 @@ export function StepCard({
       border: '1px solid #E5E7EB',
       boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
     }}>
+      {/* P0.4: Patch-test баннер — отображается только в первый день введения сильного актива */}
+      {step.requiresPatchTest && (
+        <div
+          role="alert"
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '8px',
+            padding: '10px 12px',
+            marginBottom: '12px',
+            borderRadius: '12px',
+            backgroundColor: '#FFF7ED',
+            border: '1px solid #FED7AA',
+            color: '#9A3412',
+            fontSize: '12px',
+            lineHeight: 1.45,
+          }}
+        >
+          <span aria-hidden="true" style={{ fontSize: '16px', lineHeight: 1 }}>🧪</span>
+          <div>
+            <div style={{ fontWeight: 600, marginBottom: '2px' }}>Сначала patch-test</div>
+            Это первый сильный актив в плане. Нанесите небольшое количество на сгиб локтя
+            и подождите 24 часа. Если появилось жжение, зуд или сыпь — не используйте средство
+            и согласуйте замену.
+          </div>
+        </div>
+      )}
       {/* Заголовок шага */}
       <div style={{ marginBottom: '12px' }}>
-        <div style={{ fontSize: '14px', fontWeight: '600', color: '#0A5F59', marginBottom: '4px' }}>
-          {stepDesc.name}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+          {icon && (
+            <img src={icon} alt="" width={28} height={28} style={{ objectFit: 'contain', flexShrink: 0 }} />
+          )}
+          <div style={{ fontSize: '14px', fontWeight: '600', color: '#0A5F59' }}>
+            {stepDesc.name}
+          </div>
         </div>
         <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '6px', fontStyle: 'italic' }}>
           {stepDesc.subtitle}

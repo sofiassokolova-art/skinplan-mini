@@ -4,6 +4,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { AppLoader } from '@/components/AppLoader';
 
 interface QuizInitialLoaderProps {
   message?: string;
@@ -14,10 +15,10 @@ interface QuizInitialLoaderProps {
 }
 
 export function QuizInitialLoader({
-  message: _message,
-  subMessage: _subMessage,
+  message,
+  subMessage,
   onTimeout,
-  timeoutMs = 8000,
+  timeoutMs = 12_000, // 12 сек: даём время на cold start БД (Neon до ~15 сек) и медленную сеть
 }: QuizInitialLoaderProps) {
   const [showReload, setShowReload] = useState(false);
 
@@ -30,37 +31,27 @@ export function QuizInitialLoader({
   }, [onTimeout, timeoutMs]);
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: '#FFFFFF',
-      padding: '40px 20px',
-    }}>
-      <div style={{
-        width: '60px',
-        height: '60px',
-        border: '4px solid rgba(0, 0, 0, 0.1)',
-        borderTop: '4px solid #000000',
-        borderRadius: '50%',
-        animation: 'spin 1s linear infinite',
-      }} />
+    <AppLoader
+      fullScreen
+      variant="light"
+      message={message}
+      subMessage={subMessage}
+    >
       {showReload && (
-        <div style={{ marginTop: 24, textAlign: 'center' }}>
-          <p style={{ color: '#666', fontSize: 14, marginBottom: 12 }}>
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ color: '#A3A3A3', fontSize: 14, marginBottom: 12 }}>
             Загрузка занимает больше времени, чем обычно
           </p>
           <button
             onClick={() => window.location.reload()}
             style={{
               padding: '10px 24px',
-              background: '#0A5F59',
-              color: '#fff',
+              background: '#D5FE61',
+              color: '#0A0A0A',
               border: 'none',
-              borderRadius: 8,
+              borderRadius: 999,
               fontSize: 14,
+              fontWeight: 700,
               cursor: 'pointer',
             }}
           >
@@ -68,6 +59,6 @@ export function QuizInitialLoader({
           </button>
         </div>
       )}
-    </div>
+    </AppLoader>
   );
 }

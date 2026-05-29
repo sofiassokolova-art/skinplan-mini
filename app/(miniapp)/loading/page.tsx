@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
+import { AppLoader } from '@/components/AppLoader';
 
 type LoadingStep =
   | 'saving_answers'
@@ -147,44 +148,47 @@ export default function LoadingPage() {
     };
   }, [router, searchParams]);
 
-  const progress = STEP_PROGRESS[step];
-  const label = STEP_LABELS[step];
-
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-purple-50 to-white p-4">
-      <div className="w-full max-w-md">
-        {/* Прогресс бар */}
-        <div className="mb-8">
-          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500 ease-out"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <p className="text-center mt-4 text-gray-600 text-lg font-medium">
-            {label}
+    <AppLoader
+      variant="light"
+      progress={step === 'error' ? undefined : STEP_PROGRESS[step]}
+      showProgressPercent={false}
+      showAnimation={step !== 'error'}
+      message={STEP_LABELS[step]}
+      subMessage={step !== 'error' && step !== 'done' ? 'Это может занять до 1 минуты' : undefined}
+    >
+      {step === 'error' && error && (
+        <div
+          style={{
+            background: '#1A1A1A',
+            border: '1px solid #D5FE61',
+            borderRadius: '16px',
+            padding: '20px',
+          }}
+        >
+          <p style={{ color: '#FFFFFF', fontSize: '14px', lineHeight: '140%', margin: 0 }}>
+            {error}
           </p>
-          {step !== 'error' && step !== 'done' && (
-            <p className="text-center mt-2 text-gray-400 text-sm">
-              Это может занять до 1 минуты
-            </p>
-          )}
+          <button
+            onClick={() => router.push('/quiz')}
+            style={{
+              marginTop: '16px',
+              width: '100%',
+              background: '#D5FE61',
+              color: '#000000',
+              padding: '14px 16px',
+              borderRadius: '999px',
+              border: 'none',
+              fontSize: '16px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            Вернуться к анкете
+          </button>
         </div>
-
-        {/* Ошибка */}
-        {step === 'error' && error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-            <p className="text-red-800 text-sm">{error}</p>
-            <button
-              onClick={() => router.push('/quiz')}
-              className="mt-4 w-full bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 transition-colors"
-            >
-              Вернуться к анкете
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
+      )}
+    </AppLoader>
   );
 }
-

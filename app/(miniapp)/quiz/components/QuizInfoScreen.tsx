@@ -4,13 +4,14 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
 import type { Questionnaire } from '@/lib/quiz/types';
 import type { InfoScreen } from '../info-screens';
 import { getNextInfoScreenAfterScreen } from '../info-screens';
-import { WelcomeScreen, PersonalAnalysisScreen, GoalsIntroScreen, HowItWorksScreen } from '@/components/quiz/screens';
+import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
+import { WelcomeScreen, PersonalAnalysisScreen, HowItWorksScreen } from '@/components/quiz/screens';
 import { FixedContinueButton, TinderButtons } from '@/components/quiz/buttons';
 import { TestimonialsCarousel, ProductsGrid } from '@/components/quiz/content';
 import { clientLogger } from '@/lib/client-logger';
@@ -140,6 +141,29 @@ interface QuizInfoScreenProps {
   handleBack: () => void; // ИСПРАВЛЕНО: Добавлен handleBack для правильной обработки кнопки "Назад"
   pendingInfoScreenRef?: React.MutableRefObject<InfoScreen | null>;
   isInitialInfoScreen?: boolean; // ФИКС: Флаг для начальных инфо экранов
+  // Ответы пользователя — нужны для персонализированных экранов (skin_preview).
+  // Опционально: начальные инфо-экраны (welcome, personal_analysis) рендерятся до ответов.
+  answers?: Record<number, string | string[]>;
+}
+
+// Шаговые интро-экраны (stepNumber !== undefined) теперь невидимы для пользователя:
+// компонент сразу вызывает handleNext, а лейбл «Шаг N: название» показывается
+// над прогресс-баром на следующих вопросах (см. QuizQuestion.tsx → QUESTION_STEP_MAP).
+function StepScreenAutoAdvance({
+  handleNext,
+  isHandlingNext,
+}: {
+  handleNext: () => Promise<void>;
+  isHandlingNext: boolean;
+}) {
+  const calledRef = useRef(false);
+  useEffect(() => {
+    if (calledRef.current || isHandlingNext) return;
+    calledRef.current = true;
+    handleNext();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
 }
 
 export function QuizInfoScreen({
@@ -162,6 +186,7 @@ export function QuizInfoScreen({
   pendingInfoScreenRef,
   handleBack,
   isInitialInfoScreen = false,
+  answers,
 }: QuizInfoScreenProps) {
   const screenId = screen?.id;
 
@@ -173,11 +198,10 @@ export function QuizInfoScreen({
   const isWelcomeScreen = screen.id === 'welcome';
   const isHowItWorksScreen = screen.id === 'how_it_works';
   const isPersonalAnalysisScreen = screen.id === 'personal_analysis';
-  const isGoalsIntroScreen = screen.id === 'goals_intro';
-  const isGeneralInfoIntroScreen = screen.id === 'general_info_intro';
+  // general_info_intro и skin_features_intro УДАЛЕНЫ как филлер-экраны (см. info-screens.ts).
   const isHealthDataScreen = screen.id === 'health_data';
-  const isSkinFeaturesIntroScreen = screen.id === 'skin_features_intro';
-  const isHabitsMatterScreen = screen.id === 'habits_matter';
+  const isSkinPreviewScreen = screen.id === 'skin_preview';
+  // habits_matter экран удалён — спец-обработка больше не нужна.
 
   // ФИКС: Prefetch следующих 1-2 изображений для ускорения загрузки
   // Используем new Image().src для предзагрузки в кэш браузера
@@ -273,7 +297,7 @@ export function QuizInfoScreen({
     );
   }
 
-  // Экран "SkinIQ — ваш персональный анализ кожи" - абсолютное позиционирование как у goals_intro
+  // Экран "SkinIQ — ваш персональный анализ кожи"
   if (isPersonalAnalysisScreen) {
     return (
       <PersonalAnalysisScreen
@@ -299,7 +323,12 @@ export function QuizInfoScreen({
                 padding: 0,
                 margin: 0,
                 height: '100vh',
-                background: '#FFFFFF',
+                background: `
+                  radial-gradient(60% 30% at 100% 0%, rgba(213,254,97,0.55) 0%, transparent 65%),
+                  radial-gradient(70% 30% at 0% 35%, rgba(255,231,200,0.6) 0%, transparent 65%),
+                  radial-gradient(80% 25% at 100% 70%, rgba(213,254,97,0.35) 0%, transparent 65%),
+                  radial-gradient(80% 30% at 0% 100%, rgba(220,210,196,0.6) 0%, transparent 60%),
+                  #F4F2EE`,
                 display: 'flex',
                 flexDirection: 'column',
                 position: 'relative',
@@ -311,7 +340,12 @@ export function QuizInfoScreen({
                 margin: 0,
                 minHeight: '100vh',
                 maxHeight: '100vh',
-                background: '#FFFFFF',
+                background: `
+                  radial-gradient(60% 30% at 100% 0%, rgba(213,254,97,0.55) 0%, transparent 65%),
+                  radial-gradient(70% 30% at 0% 35%, rgba(255,231,200,0.6) 0%, transparent 65%),
+                  radial-gradient(80% 25% at 100% 70%, rgba(213,254,97,0.35) 0%, transparent 65%),
+                  radial-gradient(80% 30% at 0% 100%, rgba(220,210,196,0.6) 0%, transparent 60%),
+                  #F4F2EE`,
                 display: 'flex',
                 flexDirection: 'column',
                 position: 'relative',
@@ -331,14 +365,14 @@ export function QuizInfoScreen({
                   paddingLeft: '20px',
                   paddingRight: '20px',
                   paddingBottom: '24px',
-                  background: '#FFFFFF',
+                  background: 'transparent',
                 }
               : {
                   paddingTop: '120px',
                   paddingLeft: '20px',
                   paddingRight: '20px',
                   paddingBottom: '24px',
-                  background: '#FFFFFF',
+                  background: 'transparent',
                 }
           }
         >
@@ -380,11 +414,11 @@ export function QuizInfoScreen({
           style={{
             flex: 1,
             overflow: 'hidden',
-            overflowY: 'visible', // Разрешаем видимость тени сверху/снизу
-            paddingLeft: '20px',
-            paddingRight: '20px',
-            paddingTop: '20px',
-            paddingBottom: '180px',
+            overflowY: 'visible',
+            paddingLeft: '16px',
+            paddingRight: '16px',
+            paddingTop: '8px',
+            paddingBottom: '160px',
             animationDelay: '0.1s',
           }}
         >
@@ -405,129 +439,48 @@ export function QuizInfoScreen({
     );
   }
 
-  // Экран "Какую цель вы ставите перед собой?" (goals_intro)
-  if (isGoalsIntroScreen) {
-    return (
-      <GoalsIntroScreen
-        screen={screen}
-        currentInfoScreenIndex={currentInfoScreenIndex}
-        onBack={handleBack}
-        onContinue={() => {
-          if (!handleNextInProgressRef.current && !isHandlingNext) {
-            handleNext();
-          }
-        }}
-      />
-    );
-  }
+  // Экран mid-quiz preview персонализации (skin_preview) — показывается после блока вопросов
+  // про кожу (skin_type, skin_concerns, skin_sensitivity, seasonal_changes, fitzpatrick_type). Цель: дать
+  // пользователю промежуточный «вывод» по его ответам — он видит, что машина уже что-то поняла,
+  // и охотнее доходит до конца анкеты.
+  if (isSkinPreviewScreen) {
+    // Резолвим ответы пользователя в человекочитаемые label'ы.
+    const allQuestions = extractQuestionsFromQuestionnaire(questionnaire);
+    const findAnswerLabel = (questionCode: string): string | string[] | null => {
+      const q = allQuestions.find((qq: any) => qq?.code === questionCode);
+      if (!q || !answers) return null;
+      const raw = answers[q.id];
+      if (raw === undefined || raw === null) return null;
+      const options = (q as any).options || (q as any).answerOptions || [];
+      const resolveOne = (v: string): string => {
+        const opt = options.find((o: any) =>
+          String(o.id) === String(v) ||
+          o.value === v ||
+          o.label === v
+        );
+        return opt?.label || v;
+      };
+      if (Array.isArray(raw)) return raw.map(resolveOne);
+      return resolveOne(raw);
+    };
 
-  // Экран "Общая информация" (general_info_intro) - абсолютное позиционирование
-  if (isGeneralInfoIntroScreen) {
-    // Кнопка "Назад" через портал для гарантированной фиксации
+    const skinTypeLabel = findAnswerLabel('skin_type');
+    const concernsRaw = findAnswerLabel('skin_concerns');
+    const sensitivityLabel = findAnswerLabel('skin_sensitivity');
 
-    return (
-      <>
-        {backButton}
-        <div style={{
-          padding: 0,
-          margin: 0,
-          minHeight: '100vh',
-          background: '#FFFFFF',
-          position: 'relative',
-          width: '100%',
-        }}>
+    // Для skin_type оставляем только короткий заголовок (до \n), без длинного описания.
+    const skinTypeShort = typeof skinTypeLabel === 'string'
+      ? skinTypeLabel.split('\n')[0].replace(/^Тип \d+\s*[—-]\s*/, '').trim()
+      : null;
 
-        {/* Контент с абсолютным позиционированием */}
-        <div
-          className="animate-fade-in"
-          style={{
-            position: 'relative',
-            width: '100%',
-            height: '100vh',
-            boxSizing: 'border-box',
-          }}
-        >
-          {/* Картинка с абсолютным позиционированием - без контейнера для skin_features_intro */}
-          {screen.image && (
-            <div style={{
-              position: 'absolute',
-              width: '200px',
-              height: '241px',
-              top: '120px',
-              left: '60px',
-              zIndex: 10,
-            }}>
-              <img
-                src={screen.image}
-                alt={screen.title}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'contain',
-                  display: 'block',
-                }}
-              />
-            </div>
-          )}
+    // Для skin_concerns берём первые 2 жалобы — больше визуально перегружает карточку.
+    const concernsList = Array.isArray(concernsRaw)
+      ? concernsRaw.slice(0, 2).map(c => c.toLowerCase()).join(' · ')
+      : null;
 
-          {/* Заголовок с абсолютным позиционированием */}
-          <h1 style={{
-            position: 'absolute',
-            width: '342px',
-            height: '93px',
-            top: '320px',
-            left: '20px',
-            fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 700,
-            fontSize: '32px',
-            lineHeight: '120%',
-            letterSpacing: '0px',
-            textAlign: 'left',
-            color: '#000000',
-            margin: '0',
-            whiteSpace: 'pre-line',
-            zIndex: 10,
-          }}>
-            {screen.title}
-          </h1>
-
-          {/* Подзаголовок с абсолютным позиционированием */}
-          {screen.subtitle && (
-            <div style={{
-              position: 'absolute',
-              width: '342px',
-              height: '93px',
-              top: '430px',
-              left: '20px',
-              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 400,
-              fontSize: '18px',
-              lineHeight: '140%',
-              letterSpacing: '0px',
-              textAlign: 'left',
-              color: '#000000',
-              whiteSpace: 'pre-line',
-              zIndex: 10,
-            }}>
-              {screen.subtitle}
-            </div>
-          )}
-        </div>
-        
-        <FixedContinueButton
-          ctaText={screen.ctaText}
-          onClick={handleNext}
-          disabled={isHandlingNext}
-          loadingText="Продолжить"
-        />
-      </div>
-      </>
-    );
-  }
-
-  // Экран "Узнаем особенности вашей кожи" (skin_features_intro) - абсолютное позиционирование как у general_info_intro
-  if (isSkinFeaturesIntroScreen) {
-    // Кнопка "Назад" через портал для гарантированной фиксации
+    const sensitivityShort = typeof sensitivityLabel === 'string'
+      ? (sensitivityLabel.match(/^(Практически|Лёгкое|Заметное|Сильное)/i)?.[0] || null)
+      : null;
 
     return (
       <>
@@ -540,96 +493,101 @@ export function QuizInfoScreen({
           position: 'relative',
           width: '100%',
         }}>
-
-        {/* Контент с абсолютным позиционированием */}
-        <div
-          className="animate-fade-in"
-          style={{
-            position: 'relative',
-            width: '100%',
-            height: '100vh',
-            boxSizing: 'border-box',
-          }}
-        >
-          {/* Картинка с абсолютным позиционированием */}
-          {screen.image && (
-            <div style={{
-              position: 'absolute',
-              width: '200px',
-              height: '241px',
-              top: '120px',
-              left: '60px',
-              zIndex: 10,
-            }}>
-              <img
-                src={screen.image}
-                alt={screen.title}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'contain',
-                  display: 'block',
-                }}
-              />
-            </div>
-          )}
-
-          {/* Заголовок с абсолютным позиционированием */}
-          <h1 style={{
-            position: 'absolute',
-            width: '342px',
-            height: '93px',
-            top: '320px',
-            left: '20px',
-            fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 700,
-            fontSize: '32px',
-            lineHeight: '120%',
-            letterSpacing: '0px',
-            textAlign: 'left',
-            color: '#000000',
-            margin: '0',
-            whiteSpace: 'pre-line',
-            zIndex: 10,
-          }}>
-            {screen.title}
-          </h1>
-
-          {/* Подзаголовок с абсолютным позиционированием */}
-          {screen.subtitle && (
-            <div style={{
-              position: 'absolute',
-              width: '342px',
-              height: '93px',
-              top: '430px',
-              left: '20px',
-              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 400,
-              fontSize: '18px',
-              lineHeight: '140%',
-              letterSpacing: '0px',
-              textAlign: 'left',
+          <div
+            className="animate-fade-in"
+            style={{
+              position: 'relative',
+              width: '100%',
+              minHeight: '100vh',
+              boxSizing: 'border-box',
+              padding: '120px 20px 140px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '24px',
+            }}
+          >
+            <h1 style={{
+              fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 700,
+              fontSize: '28px',
+              lineHeight: '120%',
               color: '#000000',
-              whiteSpace: 'pre-line',
-              zIndex: 10,
+              margin: 0,
             }}>
-              {screen.subtitle}
-            </div>
-          )}
-        </div>
+              Ваш предварительный профиль
+            </h1>
 
-        <FixedContinueButton
-          ctaText={screen.ctaText}
-          onClick={handleNext}
-          disabled={isHandlingNext}
-          loadingText="Продолжить"
-        />
-      </div>
+            <p style={{
+              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontSize: '15px',
+              lineHeight: '140%',
+              color: '#666666',
+              margin: 0,
+            }}>
+              На основе ваших ответов мы уже понимаем, как должен выглядеть ваш уход.
+            </p>
+
+            {/* Карточка с резюме ответов */}
+            <div style={{
+              background: '#F5F5F0',
+              borderRadius: '20px',
+              padding: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px',
+              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+            }}>
+              {skinTypeShort && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '13px', color: '#888' }}>Тип кожи</span>
+                  <span style={{ fontSize: '17px', fontWeight: 600, color: '#000' }}>{skinTypeShort}</span>
+                </div>
+              )}
+              {concernsList && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '13px', color: '#888' }}>Главный фокус</span>
+                  <span style={{ fontSize: '17px', fontWeight: 600, color: '#000' }}>{concernsList}</span>
+                </div>
+              )}
+              {sensitivityShort && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '13px', color: '#888' }}>Чувствительность</span>
+                  <span style={{ fontSize: '17px', fontWeight: 600, color: '#000' }}>{sensitivityShort}</span>
+                </div>
+              )}
+            </div>
+
+            <p style={{
+              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontSize: '15px',
+              lineHeight: '140%',
+              color: '#000000',
+              margin: 0,
+            }}>
+              Ещё несколько вопросов — и мы соберём план под ваши предпочтения и бюджет.
+            </p>
+          </div>
+
+          <FixedContinueButton
+            ctaText={screen.ctaText || 'Продолжить'}
+            onClick={handleNext}
+            disabled={isHandlingNext}
+            loadingText="Продолжить"
+          />
+        </div>
       </>
     );
+  }
+
+  // Mini-progress-step экран — теперь прозрачно пропускается.
+  // Лейбл «Шаг N: название» показывается над прогресс-баром вопросов (QuizQuestion → QUESTION_STEP_MAP).
+  if (screen.stepNumber !== undefined && screen.totalSteps !== undefined) {
+    return <StepScreenAutoAdvance handleNext={handleNext} isHandlingNext={isHandlingNext} />;
   }
 
   // Экран "Нам важно учесть ваши данные о здоровье" (health_data) - такая же верстка как у general_info_intro
+  // (теперь не используется — health_data конвертирован в progress-step выше; блок оставлен как fallback
+  // на случай, если в БД остался скрин без stepNumber, либо если кто-то поднимет старую анкету).
   if (isHealthDataScreen) {
     // Кнопка "Назад" через портал для гарантированной фиксации
 
@@ -733,110 +691,164 @@ export function QuizInfoScreen({
     );
   }
 
-  // Экран "Каждая привычка отражается на коже" (habits_matter) - такая же верстка как у health_data
-  if (isHabitsMatterScreen) {
-    // Кнопка "Назад" через портал для гарантированной фиксации
+  // Экран сравнения simple_care — полноэкранный редизайн с карточками
+  if (isComparisonScreen && screen.id === 'simple_care') {
+    const content = screen.content as {
+      left: { title: string; items: string[] };
+      right: { title: string; items: string[] };
+    };
+
+    const glassCard: React.CSSProperties = {
+      flex: 1,
+      minWidth: 0,
+      backgroundColor: 'rgba(255, 255, 255, 0.45)',
+      backdropFilter: 'blur(24px)',
+      WebkitBackdropFilter: 'blur(24px)',
+      border: '1px solid rgba(255, 255, 255, 0.55)',
+      borderRadius: '22px',
+      paddingTop: '44px',
+      paddingBottom: '28px',
+      paddingLeft: '14px',
+      paddingRight: '14px',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      boxShadow: '0 8px 32px rgba(0,0,0,0.07)',
+      wordBreak: 'break-word',
+    };
+
+    const renderCard = (
+      side: { title: string; items: string[] },
+      iconBg: string,
+      icon: React.ReactNode,
+    ) => (
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div style={{
+          width: '52px', height: '52px', borderRadius: '50%',
+          backgroundColor: iconBg, display: 'flex', alignItems: 'center',
+          justifyContent: 'center', zIndex: 1, flexShrink: 0,
+          marginBottom: '-26px', boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+        }}>
+          {icon}
+        </div>
+        <div style={glassCard}>
+          <p style={{
+            fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, sans-serif",
+            fontWeight: 700, fontSize: 'clamp(12px, 3.5vw, 15px)', lineHeight: '1.3',
+            textAlign: 'center', color: '#000', margin: '0 0 clamp(14px, 4vw, 20px) 0',
+          }}>{side.title}</p>
+          {side.items.map((item, i) => (
+            <p key={i} style={{
+              fontFamily: "var(--font-inter), 'Inter', -apple-system, sans-serif",
+              fontSize: 'clamp(12px, 3.3vw, 14px)', lineHeight: '1.45',
+              textAlign: 'center', color: '#333',
+              margin: i < side.items.length - 1 ? '0 0 clamp(10px, 3.5vw, 16px) 0' : '0',
+            }}>{item}</p>
+          ))}
+        </div>
+      </div>
+    );
 
     return (
       <>
         {backButton}
-        <div style={{
-          padding: 0,
-          margin: 0,
-          minHeight: '100vh',
-          background: '#FFFFFF',
-          position: 'relative',
-          width: '100%',
-        }}>
-
-        {/* Контент с абсолютным позиционированием */}
-        <div
-          className="animate-fade-in"
-          style={{
-            position: 'relative',
-            width: '100%',
-            height: '100vh',
-            boxSizing: 'border-box',
-          }}
-        >
-          {/* Картинка с абсолютным позиционированием - без контейнера для skin_features_intro */}
+        <div style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden', background: '#f5f0eb' }}>
           {screen.image && (
-            <div style={{
-              position: 'absolute',
-              width: '200px',
-              height: '241px',
-              top: '120px',
-              left: '60px',
-              zIndex: 10,
-            }}>
-              <img
-                src={screen.image}
-                alt={screen.title}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'contain',
-                  display: 'block',
-                }}
-              />
-            </div>
+            <Image src={screen.image} alt="" fill style={{ objectFit: 'cover', objectPosition: 'center' }} priority />
           )}
-
-          {/* Заголовок с абсолютным позиционированием */}
-          <h1 style={{
-            position: 'absolute',
-            width: '342px',
-            height: '140px', // Увеличена высота для длинного заголовка
-            top: '320px',
-            left: '20px',
-            fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 700,
-            fontSize: '32px',
-            lineHeight: '120%',
-            letterSpacing: '0px',
-            textAlign: 'left',
-            color: '#000000',
-            margin: '0',
-            whiteSpace: 'pre-line',
-            zIndex: 10,
-          }}>
-            {screen.title}
-          </h1>
-
-          {/* Подзаголовок с абсолютным позиционированием */}
-          {screen.subtitle && (
-            <div style={{
-              position: 'absolute',
-              width: '342px',
-              height: '93px',
-              top: '470px', // Сдвинут ниже из-за увеличенной высоты заголовка
-              left: '20px',
-              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 400,
-              fontSize: '18px',
-              lineHeight: '140%',
-              letterSpacing: '0px',
-              textAlign: 'left',
-              color: '#000000',
-              whiteSpace: 'pre-line',
-              zIndex: 10,
+          <div style={{ position: 'relative', zIndex: 1, maxWidth: '480px', margin: '0 auto', padding: 'clamp(80px, 25vw, 120px) clamp(16px, 5vw, 24px) clamp(100px, 25vw, 130px)' }}>
+            <h1 style={{
+              fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 700, fontSize: 'clamp(20px, 6vw, 28px)', lineHeight: '1.25',
+              color: '#000000', margin: '0 0 clamp(32px, 10vw, 52px) 0',
             }}>
-              {screen.subtitle}
+              SkinIQ делает уход за&nbsp;кожей простым и&nbsp;понятным
+            </h1>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'stretch' }}>
+              {renderCard(content?.left, '#f0f0f0',
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#555" strokeWidth="1.8" strokeLinecap="round"><line x1="4" y1="4" x2="14" y2="14"/><line x1="14" y1="4" x2="4" y2="14"/></svg>
+              )}
+              {renderCard(content?.right, '#D5FE61',
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="3,9 7,13 15,5"/></svg>
+              )}
             </div>
-          )}
+          </div>
+          <FixedContinueButton ctaText={screen.ctaText} onClick={handleNext} disabled={isHandlingNext} loadingText="Продолжить" />
         </div>
-        
-        <FixedContinueButton
-          ctaText={screen.ctaText}
-          onClick={handleNext}
-          disabled={isHandlingNext}
-          loadingText="Продолжить"
-        />
-      </div>
       </>
     );
   }
 
+  // Экран "SkinIQ заботится о вашем здоровье" (health_trust)
+  if (screen.id === 'health_trust') {
+    const cards = [
+      {
+        icon: (
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke="#555" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 3 L30 8 L30 18 C30 25 24 30 18 33 C12 30 6 25 6 18 L6 8 Z"/>
+            <polyline points="13,18 16,21 23,14"/>
+          </svg>
+        ),
+        title: 'Безопасность',
+        desc: 'Все рекомендации по уходу одобрены врачами дерматологами и абсолютно безопасны',
+      },
+      {
+        icon: (
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke="#555" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="8" y="16" width="20" height="16" rx="3"/>
+            <path d="M12 16 L12 11 C12 7.7 14.7 5 18 5 C21.3 5 24 7.7 24 11 L24 16"/>
+            <circle cx="18" cy="24" r="2" fill="#555" stroke="none"/>
+          </svg>
+        ),
+        title: 'Конфиденциальность',
+        desc: 'Вся информация остается конфиденциальной и используется только для персональных рекомендаций',
+      },
+    ];
+
+    return (
+      <>
+        {backButton}
+        <div style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden', background: '#f5f0eb' }}>
+          {screen.image && (
+            <Image src={screen.image} alt="" fill style={{ objectFit: 'cover', objectPosition: 'center top' }} priority />
+          )}
+          <div style={{
+            position: 'relative', zIndex: 1, maxWidth: '480px', margin: '0 auto', width: '100%',
+            padding: 'clamp(80px, 25vw, 120px) clamp(16px, 5vw, 24px) 0',
+            display: 'flex', flexDirection: 'column', minHeight: '100vh', boxSizing: 'border-box',
+          }}>
+            <h1 style={{
+              fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 700, fontSize: 'clamp(20px, 6vw, 28px)', lineHeight: '1.25',
+              color: '#000000', margin: '0', maxWidth: 'min(200px, 55%)', whiteSpace: 'pre-line',
+            }}>
+              {screen.title}
+            </h1>
+            <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: '96px' }}>
+              {cards.map((card, i) => (
+                <div key={i} style={{
+                  background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(24px)',
+                  WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.6)',
+                  borderRadius: '20px', padding: '20px 20px 20px 16px',
+                  display: 'flex', alignItems: 'flex-start', gap: '16px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.06)',
+                }}>
+                  <div style={{ width: '44px', height: '44px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {card.icon}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontFamily: "var(--font-inter), 'Inter', -apple-system, sans-serif", fontWeight: 600, fontSize: 'clamp(13px, 3.8vw, 16px)', color: '#000', margin: '0 0 6px 0', lineHeight: '1.3' }}>{card.title}</p>
+                    <p style={{ fontFamily: "var(--font-inter), 'Inter', -apple-system, sans-serif", fontSize: 'clamp(11px, 3.2vw, 14px)', lineHeight: '1.5', color: '#444', margin: '0' }}>{card.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <FixedContinueButton ctaText={screen.ctaText} onClick={handleNext} disabled={isHandlingNext} loadingText="Продолжить" />
+        </div>
+      </>
+    );
+  }
 
   // Дефолтный рендеринг для остальных инфо-экранов
   return (

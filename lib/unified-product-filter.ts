@@ -56,9 +56,52 @@ export async function filterProducts(
 
   // ИСПРАВЛЕНО: Импортируем функцию нормализации чувствительности заранее (синхронно)
   const { normalizeSensitivityForRules } = await import('./skin-type-normalizer');
-  
+
+  // P0.1: Hard-блок ингредиентов на системном изотретиноине. Это безопаснее, чем полагаться
+  // только на protocol-фильтр: блокирует и для случая, когда protocol не передан.
+  const onIsotretinoin = profileClassification.onIsotretinoin === true;
+  // Список включает и сами активы, и подстроки category/step (serum_vitc, treatment_acne_bpo, etc.),
+  // чтобы блок работал, даже если activeIngredients пуст в каталоге.
+  const isotretinoinForbidden = new Set([
+    'retinol', 'retinoid', 'adapalene', 'tretinoin',
+    'aha', 'bha', 'pha',
+    'vitamin c', 'vitamin_c', 'vitc', 'ascorbic acid', 'ascorbic_acid',
+    'benzoyl peroxide', 'benzoyl_peroxide', 'bpo',
+    'azelaic acid', 'azelaic_acid', 'azelaic',
+    'glycolic acid', 'lactic acid', 'mandelic acid', 'salicylic acid',
+    'exfoliant', 'mask_acid',
+    'кислот', 'ретинол', 'ретиноид', 'адапален', 'третиноин',
+    'азелаин', 'бензоил', 'аскорбин',
+  ]);
+  const productHasIsotretinoinForbiddenIngredient = (product: ProductWithBrand): boolean => {
+    const actives = (product.activeIngredients || []).map(i => (i || '').toLowerCase());
+    const stepStr = `${product.step || ''} ${product.category || ''}`.toLowerCase();
+    return actives.some(a => Array.from(isotretinoinForbidden).some(f => a.includes(f)))
+      || Array.from(isotretinoinForbidden).some(f => stepStr.includes(f));
+  };
+
+  // P1.3: Для тёмного фототипа (V_VI) — hard-блок сильных эксфолиантов (glycolic 30%+, AHA-peel).
+  // Риск пост-воспалительной гиперпигментации перевешивает выгоду. Лёгкие эксфолианты (BHA, PHA)
+  // остаются — они менее агрессивны на тёмной коже при правильной частоте.
+  const fitzpatrickVI = profileClassification.fitzpatrickType === 'V_VI';
+  const productIsStrongPeel = (product: ProductWithBrand): boolean => {
+    const actives = (product.activeIngredients || []).map(i => (i || '').toLowerCase()).join(' ');
+    const stepStr = `${product.step || ''} ${product.category || ''}`.toLowerCase();
+    return /(30%|peel|пилинг)/.test(actives + ' ' + stepStr)
+      || stepStr.includes('treatment_exfoliant_strong')
+      || stepStr.includes('mask_acid');
+  };
+
   // ИСПРАВЛЕНО: Базовые проверки (skinType, budget, exclude ingredients, противопоказания)
   let filtered = products.filter(product => {
+    // 0. P0.1: Изотретиноин — самый ранний и строгий фильтр (hard всегда, даже при soft strictness)
+    if (onIsotretinoin && productHasIsotretinoinForbiddenIngredient(product)) {
+      return false;
+    }
+    // 0a. P1.3: Тёмный фототип — отсекаем сильные эксфолианты (даже при soft).
+    if (fitzpatrickVI && productIsStrongPeel(product)) {
+      return false;
+    }
     // 1. Проверка типа кожи
     const productSkinTypes = (product.skinTypes || []) as string[];
     if (productSkinTypes.length > 0) {
@@ -265,10 +308,54 @@ export async function filterProductsWithReasons(
   // ИСПРАВЛЕНО: Импортируем функцию нормализации чувствительности заранее (синхронно)
   const { normalizeSensitivityForRules } = await import('./skin-type-normalizer');
 
+  // P0.1: Те же правила hard-блока, что и в filterProducts — на изотретиноине отбрасываем
+  // ретиноиды/кислоты/витамин C/BPO/azelaic. Всегда hard, независимо от strictness.
+  const onIsotretinoin = profileClassification.onIsotretinoin === true;
+  // Список включает и сами активы, и подстроки category/step (serum_vitc, treatment_acne_bpo, etc.),
+  // чтобы блок работал, даже если activeIngredients пуст в каталоге.
+  const isotretinoinForbidden = new Set([
+    'retinol', 'retinoid', 'adapalene', 'tretinoin',
+    'aha', 'bha', 'pha',
+    'vitamin c', 'vitamin_c', 'vitc', 'ascorbic acid', 'ascorbic_acid',
+    'benzoyl peroxide', 'benzoyl_peroxide', 'bpo',
+    'azelaic acid', 'azelaic_acid', 'azelaic',
+    'glycolic acid', 'lactic acid', 'mandelic acid', 'salicylic acid',
+    'exfoliant', 'mask_acid',
+    'кислот', 'ретинол', 'ретиноид', 'адапален', 'третиноин',
+    'азелаин', 'бензоил', 'аскорбин',
+  ]);
+  const productHasIsotretinoinForbiddenIngredient = (product: ProductWithBrand): boolean => {
+    const actives = (product.activeIngredients || []).map(i => (i || '').toLowerCase());
+    const stepStr = `${product.step || ''} ${product.category || ''}`.toLowerCase();
+    return actives.some(a => Array.from(isotretinoinForbidden).some(f => a.includes(f)))
+      || Array.from(isotretinoinForbidden).some(f => stepStr.includes(f));
+  };
+
+  // P1.3: те же правила для тёмного фототипа.
+  const fitzpatrickVI = profileClassification.fitzpatrickType === 'V_VI';
+  const productIsStrongPeel = (product: ProductWithBrand): boolean => {
+    const actives = (product.activeIngredients || []).map(i => (i || '').toLowerCase()).join(' ');
+    const stepStr = `${product.step || ''} ${product.category || ''}`.toLowerCase();
+    return /(30%|peel|пилинг)/.test(actives + ' ' + stepStr)
+      || stepStr.includes('treatment_exfoliant_strong')
+      || stepStr.includes('mask_acid');
+  };
+
   // ИСПРАВЛЕНО: Базовые проверки с сохранением причин
   let results: ProductSelectionResult[] = products.map(product => {
     const reasons: string[] = [];
     let allowed = true;
+
+    // 0. P0.1: Изотретиноин — hard-блок наружных активов, всегда строго.
+    if (onIsotretinoin && productHasIsotretinoinForbiddenIngredient(product)) {
+      allowed = false;
+      reasons.push('Противопоказан на системной терапии изотретиноином');
+    }
+    // 0a. P1.3: Тёмный фототип — отсекаем сильные эксфолианты.
+    if (fitzpatrickVI && productIsStrongPeel(product)) {
+      allowed = false;
+      reasons.push('Сильный эксфолиант — высокий риск ПИВ на тёмном фототипе (V_VI)');
+    }
 
     // 1. Проверка типа кожи
     const productSkinTypes = (product.skinTypes || []) as string[];
@@ -539,15 +626,19 @@ export async function filterProductsBasic(
   const hasDiagnoses = Array.isArray(profileClassification.diagnoses) && profileClassification.diagnoses.length > 0;
   const hasRosaceaRisk = profileClassification.rosaceaRisk &&
     ['medium', 'high', 'critical'].includes((profileClassification.rosaceaRisk || '').toLowerCase());
+  // P0.1: При изотретиноине протокол on_isotretinoin должен применяться даже без диагноза.
+  const onIsotretinoin = profileClassification.onIsotretinoin === true;
 
   const protocol: DermatologyProtocol | undefined =
-    hasDiagnoses || hasRosaceaRisk
+    hasDiagnoses || hasRosaceaRisk || onIsotretinoin
       ? determineProtocol({
           diagnoses: profileClassification.diagnoses || [],
           concerns: profileClassification.concerns || [],
           skinType: profileClassification.skinType || undefined,
           sensitivityLevel: profileClassification.sensitivityLevel || undefined,
           rosaceaRisk: profileClassification.rosaceaRisk || undefined,
+          onIsotretinoin,
+          currentOralMeds: profileClassification.currentOralMeds || [],
         })
       : undefined;
 

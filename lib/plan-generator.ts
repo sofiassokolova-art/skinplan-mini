@@ -3,7 +3,7 @@
 
 import { prisma } from '@/lib/db';
 import { calculateSkinAxes, getDermatologistRecommendations, type QuestionnaireAnswers } from '@/lib/skin-analysis-engine';
-import { calculateSkinIssues } from '@/app/api/analysis/route';
+import { calculateSkinIssues } from '@/lib/skin-issues';
 import { canApplyStep, isStepAllowedForProfile, type StepCategory } from '@/lib/step-category-rules';
 import { selectCarePlanTemplate, type CarePlanProfileInput } from '@/lib/care-plan-templates';
 import type { Plan28, DayPlan, DayStep } from '@/lib/plan-types';
@@ -334,6 +334,58 @@ export async function generate28DayPlan(
   const rawBudget = answers.budget || 'средний';
   const normalizedBudget = budgetMapping[rawBudget] || rawBudget;
 
+  // P0.1: Извлекаем флаги системной фармы из medicalMarkers (заполняется в /api/questionnaire/answers).
+  // onIsotretinoin → hard-блок наружных активов; currentOralMeds → передаётся в determineProtocol.
+  const markersCurrentOralMeds = Array.isArray((medicalMarkers as any)?.currentOralMeds)
+    ? ((medicalMarkers as any).currentOralMeds as string[])
+    : [];
+  const markersOnIsotretinoin =
+    (medicalMarkers as any)?.onIsotretinoin === true ||
+    markersCurrentOralMeds.some(m => (m || '').toLowerCase().includes('isotretinoin'));
+
+  // P0.2: Опыт пользователя с ретинолом.
+  // Приоритет:
+  //  1. answers.retinoid_reaction (точный сигнал — возвращён в анкету в seed-questionnaire-v2.ts):
+  //     - «без реакции» → experienced
+  //     - «лёгкое шелушение» → experienced (нормально для ретиноида, но не сильное раздражение)
+  //     - «сильное раздражение» → naive (cap частоты)
+  //     - «никогда не использовал» → naive
+  //  2. Иначе fallback на answers.retinoid_usage ("Да" → experienced, иначе → naive).
+  //  3. Если оба пусты → naive (безопаснее).
+  const retinoidReactionRaw = String(answers.retinoid_reaction ?? '').toLowerCase().trim();
+  const retinoidUsageRaw = String(answers.retinoid_usage ?? '').toLowerCase().trim();
+  let retinoidExperience: 'naive' | 'experienced';
+  if (retinoidReactionRaw) {
+    if (retinoidReactionRaw.includes('без реакции') || retinoidReactionRaw.includes('лёгкое шелушение') || retinoidReactionRaw.includes('легкое шелушение')) {
+      retinoidExperience = 'experienced';
+    } else {
+      // «сильное раздражение / жжение / краснота» или «никогда не использовал» → строгий старт
+      retinoidExperience = 'naive';
+    }
+  } else if (retinoidUsageRaw === 'да' || retinoidUsageRaw === 'yes' || retinoidUsageRaw === 'true') {
+    retinoidExperience = 'experienced';
+  } else {
+    retinoidExperience = 'naive';
+  }
+
+  // P1.3: Эвристика фототипа Фитцпатрика по существующим сигналам.
+  // 1. Если в medicalMarkers.fitzpatrickType есть явное значение — берём его (для будущего вопроса).
+  // 2. Иначе: pigmentation/postacne/melasma в concerns или diagnoses → как минимум III_IV
+  //    (склонность к ПИВ → ограничиваем агрессивные кислоты, усиливаем SPF).
+  // 3. Иначе undefined — план без модификаций.
+  const explicitFitzpatrick = (medicalMarkers as any)?.fitzpatrickType;
+  const looksDarkerPhototype =
+    [...concerns, ...normalizedDiagnoses].some(s => {
+      const v = String(s || '').toLowerCase();
+      return v.includes('pigment') || v.includes('пигмент') || v.includes('пятна')
+        || v.includes('post-acne') || v.includes('постакне') || v.includes('pih')
+        || v.includes('melasma') || v.includes('мелазма');
+    });
+  const fitzpatrickType: 'I_II' | 'III_IV' | 'V_VI' | undefined =
+    (explicitFitzpatrick === 'I_II' || explicitFitzpatrick === 'III_IV' || explicitFitzpatrick === 'V_VI')
+      ? explicitFitzpatrick
+      : looksDarkerPhototype ? 'III_IV' : undefined;
+
   const profileClassification: ProfileClassification = {
     focus: goals.filter((g: string) =>
       ['Акне и высыпания', 'Сократить видимость пор', 'Выровнять пигментацию', 'Морщины и мелкие линии'].includes(g)
@@ -349,6 +401,10 @@ export async function generate28DayPlan(
     stepsPreference: answers.care_steps || 'средний',
     allergies: Array.isArray(answers.allergies) ? answers.allergies : [],
     sensitivityLevel: profile.sensitivityLevel || 'medium',
+    onIsotretinoin: markersOnIsotretinoin,
+    currentOralMeds: markersCurrentOralMeds,
+    retinoidExperience,
+    fitzpatrickType,
   };
 
   // ИСПРАВЛЕНО: Определяем основной фокус используя единую таксономию concerns
@@ -537,9 +593,30 @@ export async function generate28DayPlan(
     });
   };
   
-  const adjustedMorning = adjustTemplateSteps(carePlanTemplate.morning);
-  const adjustedEvening = adjustTemplateSteps(carePlanTemplate.evening);
+  let adjustedMorning = adjustTemplateSteps(carePlanTemplate.morning);
+  let adjustedEvening = adjustTemplateSteps(carePlanTemplate.evening);
   const adjustedWeekly = carePlanTemplate.weekly ? adjustTemplateSteps(carePlanTemplate.weekly) : undefined;
+
+  // P1.2: Сезонная адаптация. Меняет только текстуры увлажняющего; остальные шаги нетронуты.
+  // Решение принимается по комбинации (текущий месяц, ответ из анкеты).
+  const { applySeasonalAdjustment, normalizeSeasonalProfile, currentSeason } = await import('@/lib/seasonality');
+  const seasonalProfile = normalizeSeasonalProfile(questionnaireAnswers.seasonChange);
+  const seasonalReasons: string[] = [];
+  {
+    const m = applySeasonalAdjustment(adjustedMorning, seasonalProfile);
+    const e = applySeasonalAdjustment(adjustedEvening, seasonalProfile);
+    adjustedMorning = m.steps;
+    adjustedEvening = e.steps;
+    seasonalReasons.push(...m.appliedReasons, ...e.appliedReasons);
+    if (seasonalReasons.length > 0) {
+      logger.info('Seasonal adjustment applied', {
+        season: currentSeason(),
+        seasonalProfile,
+        reasons: Array.from(new Set(seasonalReasons)),
+        userId,
+      });
+    }
+  }
   
   const requiredStepCategories = new Set<StepCategory>();
   adjustedMorning.forEach((step) => requiredStepCategories.add(step));
@@ -2099,6 +2176,9 @@ export async function generate28DayPlan(
     concerns: profileClassification.concerns || [],
     skinType: profileClassification.skinType || undefined,
     sensitivityLevel: (profileClassification.sensitivityLevel || 'medium') as 'low' | 'medium' | 'high' | 'very_high',
+    rosaceaRisk: profileClassification.rosaceaRisk || undefined,
+    onIsotretinoin: profileClassification.onIsotretinoin,
+    currentOralMeds: profileClassification.currentOralMeds,
   });
   
   logger.info('Dermatology protocol determined', {
@@ -2270,6 +2350,20 @@ export async function generate28DayPlan(
     },
   };
 
+  // P1.1: Brand diversity — не более N продуктов одного бренда в финальной выборке.
+  // SPF/cleanser защищены внутри enforceBrandDiversity. Limit = 3 для дефолтной массовой рутины.
+  {
+    const { enforceBrandDiversity } = await import('@/lib/plan-helpers');
+    const candidatesByStep = new Map<string, ProductWithBrand[]>();
+    productsByStepMap.forEach((products, stepCategory) => {
+      candidatesByStep.set(String(stepCategory), products);
+    });
+    const diversified = enforceBrandDiversity(selectedProducts, candidatesByStep, 3);
+    // Сохраняем мутацию, чтобы UI и день-планер видели сбалансированный список.
+    selectedProducts.length = 0;
+    selectedProducts.push(...diversified);
+  }
+
   // Форматируем продукты для карусели
   const formattedProducts = selectedProducts.map((p) => ({
     id: p.id,
@@ -2285,8 +2379,29 @@ export async function generate28DayPlan(
 
   // Генерируем предупреждения об аллергиях и исключениях
   const warnings: string[] = [];
+  // P0.1: Самое важное предупреждение — выше беременности по приоритету, потому что
+  // системный изотретиноин это прямая фарма-терапия и любые активы наружу противопоказаны.
+  if (profileClassification.onIsotretinoin) {
+    warnings.push('⚠️ Вы отметили приём изотретиноина (Аккутан/Роаккутан). На время терапии наружные ретиноиды, AHA/BHA, бензоилпероксид, азелаиновая кислота и витамин C исключены из плана. Любые изменения ухода согласуйте с дерматологом.');
+  }
   if (profileClassification.pregnant) {
     warnings.push('⚠️ Во время беременности исключены продукты с ретинолом');
+  }
+  // P0.2: Подсказка для тех, кто впервые столкнётся с ретинолом или AHA.
+  if (profileClassification.retinoidExperience === 'naive') {
+    warnings.push('💡 Ретинол и кислоты вводим постепенно: 1 раз в неделю → 2 → 3 → ежедневно за 4 недели. Это снижает шелушение и раздражение.');
+  }
+  // P1.3: Для тёмного фототипа — предупреждение о ПИВ.
+  if (profileClassification.fitzpatrickType === 'V_VI') {
+    warnings.push('🌑 Для тёмного фототипа (V–VI по Фитцпатрику) сильные кислотные пилинги исключены — выше риск пост-воспалительной гиперпигментации. SPF 50+ ежедневно обязателен.');
+  } else if (profileClassification.fitzpatrickType === 'III_IV') {
+    warnings.push('💛 Из-за склонности к пигментации активы вводим осторожно, SPF 50+ обязателен — это основная защита от ПИВ.');
+  }
+  // P0.4: Patch-test reminder для всех новых активов (универсально, без UI-перестройки).
+  warnings.push('🧪 Перед первым применением новых активных средств (ретинол, AHA/BHA, витамин C, азелаиновая кислота) сделайте тест: нанесите на сгиб локтя и оцените реакцию через 24 часа.');
+  // P1.2: Если применили сезонную адаптацию — поясняем пользователю.
+  for (const reason of Array.from(new Set(seasonalReasons))) {
+    warnings.push(`🍂 ${reason}`);
   }
   if (profileClassification.exclude && profileClassification.exclude.length > 0) {
     warnings.push(`⚠️ Исключены ингредиенты: ${profileClassification.exclude.join(', ')}`);
@@ -2966,6 +3081,45 @@ export async function generate28DayPlan(
     });
   }
   
+  // P0.4 follow-up: проставляем requiresPatchTest на первый день введения каждого
+  // сильного актива. UI-баннер «сделай patch-test» рендерится только на эти шаги,
+  // а не на каждый день — иначе пользователь привыкнет и перестанет читать.
+  // Категории, требующие patch-теста (через startsWith для гибкости):
+  const PATCH_TEST_ACTIVE_PREFIXES: Array<{ prefix: string; key: string }> = [
+    { prefix: 'treatment_antiage', key: 'retinol' },
+    { prefix: 'treatment_acne_azelaic', key: 'azelaic' },
+    { prefix: 'treatment_acne_bpo', key: 'bpo' },
+    { prefix: 'treatment_exfoliant', key: 'exfoliant' },
+    { prefix: 'serum_vitc', key: 'vitamin_c' },
+    { prefix: 'toner_aha', key: 'aha' },
+    { prefix: 'toner_bha', key: 'bha' },
+    { prefix: 'toner_acid', key: 'acid_toner' },
+    { prefix: 'toner_exfoliant', key: 'exfoliant_toner' },
+    { prefix: 'mask_acid', key: 'acid_mask' },
+  ];
+  {
+    const seenActives = new Set<string>();
+    const sortedDays = [...plan28Days].sort((a, b) => a.dayIndex - b.dayIndex);
+    for (const day of sortedDays) {
+      const allSteps = [...(day.morning || []), ...(day.evening || []), ...(day.weekly || [])];
+      for (const step of allSteps) {
+        for (const { prefix, key } of PATCH_TEST_ACTIVE_PREFIXES) {
+          if (step.stepCategory.startsWith(prefix) && !seenActives.has(key)) {
+            step.requiresPatchTest = true;
+            seenActives.add(key);
+            break;
+          }
+        }
+      }
+    }
+    if (seenActives.size > 0) {
+      logger.info('Patch-test flags applied to first-use days', {
+        userId,
+        activesFlagged: Array.from(seenActives),
+      });
+    }
+  }
+
   // ИСПРАВЛЕНО: Проверяем, что план28Days не пустой перед возвратом
   if (plan28Days.length === 0) {
     logger.error('CRITICAL: plan28Days is empty after generation', {

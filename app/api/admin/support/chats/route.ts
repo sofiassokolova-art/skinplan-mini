@@ -1,4 +1,3 @@
-// app/api/admin/support/chats/route.ts
 // Получение списка чатов поддержки
 
 import { NextRequest, NextResponse } from 'next/server';

@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkinIQ — Plan v4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #0A0A0A;
+    --ink-2: #1A1A1A;
+    --ink-3: #242424;
+    --white: #FFFFFF;
+    --bg: #F4F2EE;
+    --bg-2: #EFECE6;
+    --lime: #D5FE61;
+    --lime-soft: #E9F8B5;
+    --g-50: #FAFAFA;
+    --g-100: #F2F2F2;
+    --g-200: #E5E5E5;
+    --g-300: #D0D0D0;
+    --g-400: #9CA3AF;
+    --g-500: #6B7280;
+    --g-600: #475467;
+    --g-700: #2E2E2E;
+
+    --glass-bg: rgba(255, 255, 255, 0.6);
+    --glass-border: rgba(255, 255, 255, 0.7);
+    --glass-shadow: 0 8px 32px rgba(0,0,0,0.06);
+  }
+
+  body {
+    background: #DAD6CE;
+    font-family: 'Inter', -apple-system, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px 64px;
+    color: var(--ink);
+  }
+
+  .phone {
+    width: 414px;
+    background: var(--bg);
+    border-radius: 48px;
+    overflow: hidden;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.20), 0 4px 16px rgba(0,0,0,0.10);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+  .phone-notch {
+    background: var(--ink);
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: 48px 48px 0 0;
+  }
+  .notch-pill {
+    width: 120px;
+    height: 34px;
+    background: #000;
+    border-radius: 20px;
+    border: 2px solid #1a1a1a;
+  }
+  .phone-scroll {
+    max-height: 900px;
+    overflow-y: auto;
+    padding: 0 20px 110px;
+    scrollbar-width: none;
+    position: relative;
+    background:
+      radial-gradient(60% 30% at 100% 0%, rgba(213,254,97,0.55) 0%, transparent 65%),
+      radial-gradient(70% 30% at 0% 35%, rgba(255,231,200,0.6) 0%, transparent 65%),
+      radial-gradient(80% 25% at 100% 70%, rgba(213,254,97,0.35) 0%, transparent 65%),
+      radial-gradient(80% 30% at 0% 100%, rgba(220,210,196,0.6) 0%, transparent 60%),
+      var(--bg);
+  }
+  .phone-scroll::-webkit-scrollbar { display: none; }
+
+  /* ── 1. TOPBAR ── */
+  .topbar {
+    padding: 22px 4px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .logo {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.4px;
+  }
+
+  /* ── 2. PERSONAL HEADING ── */
+  .personal-heading {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 700;
+    font-size: 26px;
+    line-height: 1.2;
+    letter-spacing: -0.6px;
+    color: var(--ink);
+    margin: 8px 4px 22px;
+  }
+
+  /* ── 3. TWO-CARD ROW: phase + streak ── */
+  .double-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .mini-card {
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 24px;
+    padding: 18px 18px 22px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+  }
+  .mini-card-label {
+    font-size: 12px;
+    color: var(--g-500);
+    margin-bottom: 6px;
+  }
+  .mini-card-value {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.3px;
+    line-height: 1.2;
+    margin-bottom: 10px;
+  }
+  .mini-card-sub {
+    font-size: 12px;
+    color: var(--g-500);
+  }
+  .mini-card.dark {
+    background: rgba(10, 10, 10, 0.88);
+    backdrop-filter: blur(24px) saturate(140%);
+    -webkit-backdrop-filter: blur(24px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .mini-card.dark .mini-card-label { color: rgba(255,255,255,0.5); }
+  .mini-card.dark .mini-card-value { color: var(--lime); }
+  .mini-card.dark .mini-card-sub { color: rgba(255,255,255,0.5); }
+
+  /* ── 4. SCORE CARD ── */
+  .score-card {
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(28px) saturate(160%);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 28px;
+    padding: 22px;
+    margin-bottom: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.06);
+  }
+  .score-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 22px;
+  }
+  .score-left {
+    flex: 1;
+  }
+  .score-label {
+    font-size: 12px;
+    color: var(--g-500);
+    margin-bottom: 8px;
+  }
+  .score-value {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 700;
+    font-size: 48px;
+    line-height: 1;
+    letter-spacing: -1.5px;
+    color: var(--ink);
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+  }
+  .score-value .score-max {
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--g-400);
+    letter-spacing: 0;
+  }
+  .score-badge {
+    width: 92px;
+    height: 92px;
+    border-radius: 50%;
+    border: 6px solid var(--lime);
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--ink);
+    flex-shrink: 0;
+  }
+  .score-quote {
+    border-left: 3px solid var(--lime);
+    padding: 4px 0 4px 14px;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--g-500);
+    margin-bottom: 18px;
+  }
+  .score-hint {
+    background: rgba(255, 255, 255, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 18px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .score-hint-text {
+    font-size: 13px;
+    color: var(--g-500);
+    line-height: 1.5;
+  }
+  .icon-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+  .icon-circle svg {
+    width: 16px;
+    height: 16px;
+    stroke: var(--ink);
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* ── 5. PROFILE CAROUSEL ── */
+  .section {
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(28px) saturate(160%);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 28px;
+    padding: 22px;
+    margin-bottom: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.06);
+  }
+  .section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+  .section-title {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: -0.3px;
+    color: var(--ink);
+  }
+  .section-subtitle {
+    font-size: 13px;
+    color: var(--g-500);
+    margin-top: 2px;
+    line-height: 1.45;
+  }
+  .dots {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--g-300);
+  }
+  .dot.dash {
+    width: 22px;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--ink);
+  }
+  .profile-carousel {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    overflow-y: visible;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    /* выходит за пределы padding секции, чтобы 3-я карточка peek-нула */
+    margin: 0 -22px;
+    padding: 4px 22px 6px;
+  }
+  .profile-carousel::-webkit-scrollbar { display: none; }
+  .profile-card {
+    flex: 0 0 calc(50% - 16px);
+    scroll-snap-align: start;
+    background: rgba(255, 255, 255, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 22px;
+    padding: 18px;
+    min-height: 210px;
+  }
+  .profile-card-label {
+    font-size: 12px;
+    color: var(--g-500);
+    margin-bottom: 6px;
+  }
+  .profile-card-value {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--ink);
+    letter-spacing: -0.2px;
+    margin-bottom: 14px;
+    line-height: 1.25;
+  }
+  .profile-card-desc {
+    font-size: 13px;
+    color: var(--g-500);
+    line-height: 1.55;
+  }
+
+  /* ── 6. PHASES TIMELINE ── */
+  .phases-head-badge {
+    background: rgba(10, 10, 10, 0.88);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: var(--white);
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 12px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1.15;
+  }
+  .timeline {
+    position: relative;
+    padding-left: 32px;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 7px;
+    top: 14px;
+    bottom: 14px;
+    width: 1.5px;
+    background: var(--g-200);
+  }
+  .timeline-item {
+    position: relative;
+    padding-bottom: 10px;
+  }
+  .timeline-item:last-child { padding-bottom: 0; }
+  .timeline-marker {
+    position: absolute;
+    left: -32px;
+    top: 22px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--white);
+    border: 1.5px solid var(--g-300);
+  }
+  .timeline-item.current .timeline-marker {
+    background: var(--lime);
+    border-color: var(--lime);
+    box-shadow: 0 0 0 4px rgba(213,254,97,0.25);
+  }
+  .phase-card {
+    background: rgba(255, 255, 255, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 22px;
+    padding: 18px 20px;
+    position: relative;
+  }
+  .phase-card.current {
+    background: linear-gradient(135deg, rgba(213,254,97,0.7) 0%, rgba(213,254,97,0.45) 100%);
+    border-color: rgba(213,254,97,0.55);
+  }
+  .phase-card-arrow {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .phase-card-arrow svg {
+    width: 14px;
+    height: 14px;
+    stroke: var(--ink);
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .phase-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--g-500);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .phase-name {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 700;
+    font-size: 17px;
+    color: var(--ink);
+    letter-spacing: -0.3px;
+    margin-bottom: 4px;
+  }
+  .phase-days {
+    font-size: 13px;
+    color: var(--g-500);
+    margin-bottom: 14px;
+  }
+  .phase-text {
+    font-size: 13px;
+    color: var(--g-600);
+    line-height: 1.5;
+    margin-bottom: 14px;
+  }
+  .phase-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .phase-tag {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 12px;
+    color: var(--g-600);
+  }
+
+  /* ── 7. PRODUCTS ── */
+  .product-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .product-card {
+    background: rgba(255, 255, 255, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 22px;
+    padding: 16px;
+    display: flex;
+    gap: 14px;
+  }
+  .product-img {
+    width: 92px;
+    height: 92px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    flex-shrink: 0;
+  }
+  .product-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .product-name {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--ink);
+    letter-spacing: -0.2px;
+    line-height: 1.3;
+    margin-bottom: 4px;
+  }
+  .product-desc {
+    font-size: 13px;
+    color: var(--g-500);
+    margin-bottom: 8px;
+  }
+  .product-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .product-tag {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 11px;
+    color: var(--g-600);
+  }
+  .product-price {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--ink);
+    letter-spacing: -0.2px;
+    margin-top: auto;
+  }
+  .product-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 4px 0;
+    margin-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.5);
+  }
+  .pa-icon-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .pa-icon-btn svg {
+    width: 16px;
+    height: 16px;
+    stroke: var(--ink);
+    fill: none;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .pa-icon-btn.active svg {
+    fill: var(--ink);
+    stroke: var(--ink);
+  }
+  .pa-spacer { flex: 1; }
+  .pa-cta {
+    background: var(--lime);
+    color: var(--ink);
+    border: none;
+    border-radius: 999px;
+    padding: 10px 22px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    min-width: 124px;
+  }
+  .pa-cta.in-cart {
+    background: var(--ink);
+    color: var(--lime);
+  }
+
+  /* ── 8. EXPERT NOTES (black) ── */
+  .expert-card {
+    background: rgba(10, 10, 10, 0.86);
+    backdrop-filter: blur(28px) saturate(160%);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 32px;
+    padding: 24px;
+    margin-bottom: 14px;
+    color: var(--white);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  }
+  .expert-card::before {
+    content: '';
+    position: absolute;
+    right: -40px;
+    top: -40px;
+    width: 160px;
+    height: 160px;
+    background: radial-gradient(circle, rgba(213,254,97,0.18) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .expert-eyebrow {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 10px;
+  }
+  .expert-title {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 700;
+    font-size: 19px;
+    letter-spacing: -0.3px;
+    color: var(--white);
+    margin-bottom: 20px;
+  }
+  .expert-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .expert-item {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 22px;
+    padding: 18px 20px;
+    position: relative;
+  }
+  .expert-item-num {
+    position: absolute;
+    top: 18px;
+    right: 22px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--lime);
+  }
+  .expert-item-title {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--white);
+    letter-spacing: -0.2px;
+    line-height: 1.35;
+    margin-bottom: 8px;
+    padding-right: 32px;
+  }
+  .expert-item-text {
+    font-size: 13px;
+    color: rgba(255,255,255,0.65);
+    line-height: 1.55;
+  }
+  .expert-item.action {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 18px 18px 20px;
+  }
+  .expert-item.action .expert-item-body {
+    flex: 1;
+    min-width: 0;
+  }
+  .expert-item.action .expert-item-title { margin-bottom: 4px; padding-right: 0; }
+  .expert-item-arrow {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+  .expert-item-arrow svg {
+    width: 16px;
+    height: 16px;
+    stroke: var(--ink);
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* ── 9. FEEDBACK ── */
+  .feedback-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 14px;
+  }
+  .feedback-card {
+    background: rgba(255, 255, 255, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 22px;
+    padding: 20px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    cursor: pointer;
+    min-height: 120px;
+  }
+  .feedback-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .feedback-card.positive .feedback-icon { background: var(--lime-soft); }
+  .feedback-icon svg {
+    width: 22px;
+    height: 22px;
+    stroke: var(--ink);
+    fill: none;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .feedback-label {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: -0.2px;
+    color: var(--ink);
+  }
+
+  /* ── BOTTOM NAV ── */
+  .bnav {
+    position: absolute;
+    bottom: 18px;
+    left: 4%;
+    width: 92%;
+    height: 64px;
+    background: rgba(255,255,255,0.78);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid rgba(255,255,255,0.92);
+    border-radius: 34px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    z-index: 100;
+  }
+  .bnav-tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 20px;
+    border-radius: 22px;
+    cursor: pointer;
+  }
+  .bnav-tab.active { background: var(--lime); }
+  .bnav-tab svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: #BFC2C6;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .bnav-tab.active svg { stroke: var(--ink); }
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="phone-notch"><div class="notch-pill"></div></div>
+
+  <div class="phone-scroll">
+
+    <!-- 1. Topbar -->
+    <div class="topbar">
+      <div class="logo">SkinIQ</div>
+    </div>
+
+    <!-- 2. Personal heading -->
+    <h1 class="personal-heading">Соня, ваш персональный протокол ухода</h1>
+
+    <!-- 3. Phase + Streak -->
+    <div class="double-row">
+      <div class="mini-card">
+        <div class="mini-card-label">Текущая фаза</div>
+        <div class="mini-card-value">Адаптация</div>
+        <div class="mini-card-sub">День 4 из 7</div>
+      </div>
+      <div class="mini-card dark">
+        <div class="mini-card-label">SkinIQ streak</div>
+        <div class="mini-card-value">6 дней подряд</div>
+        <div class="mini-card-sub">Отмечен ежедневный уход</div>
+      </div>
+    </div>
+
+    <!-- 4. Score card -->
+    <div class="score-card">
+      <div class="score-top">
+        <div class="score-left">
+          <div class="score-label">Оценка кожи</div>
+          <div class="score-value">68<span class="score-max">/100</span></div>
+        </div>
+        <div class="score-badge">средняя</div>
+      </div>
+      <div class="score-quote">
+        По ответам анкеты кожа выглядит реактивной: есть признаки ослабленного защитного барьера, склонность к покраснению и поствоспалительным следам. Поэтому план начинается не с агрессивных активов, а с восстановления переносимости.
+      </div>
+      <div class="score-hint">
+        <div class="score-hint-text">Оценка обновляется после отметок ежедневного ухода.</div>
+        <div class="icon-circle">
+          <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. Profile carousel -->
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">Профиль кожи</div>
+        <div class="dots">
+          <div class="dot dash"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+        </div>
+      </div>
+      <div class="profile-carousel">
+        <div class="profile-card">
+          <div class="profile-card-label">Тип кожи</div>
+          <div class="profile-card-value">комбинированная</div>
+          <div class="profile-card-desc">Т-зона склонна к жирности, при этом щёки и зона вокруг рта могут реагировать сухостью и стянутостью.</div>
+        </div>
+        <div class="profile-card">
+          <div class="profile-card-label">Барьер</div>
+          <div class="profile-card-value">ослаблен</div>
+          <div class="profile-card-desc">Кожа быстрее реагирует на активы и внешние раздражители, поэтому восстановление барьера — первый приоритет.</div>
+        </div>
+        <div class="profile-card">
+          <div class="profile-card-label">Акне</div>
+          <div class="profile-card-value">лёгкая степень</div>
+          <div class="profile-card-desc">Эпизодические воспаления и закрытые комедоны. План включает мягкое отшелушивание и точечный актив.</div>
+        </div>
+        <div class="profile-card">
+          <div class="profile-card-label">Возраст</div>
+          <div class="profile-card-value">25–34 года</div>
+          <div class="profile-card-desc">Возрастная группа, где важно укрепить барьер и заложить базу профилактики, не уходя в агрессивный антиэйдж.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. Phases -->
+    <div class="section">
+      <div class="section-head" style="align-items:flex-start;">
+        <div>
+          <div class="section-title">3 фазы плана</div>
+          <div class="section-subtitle">Постепенное подключение ухода без перегрузки кожи</div>
+        </div>
+        <div class="phases-head-badge">28<br>дней</div>
+      </div>
+
+      <div class="timeline">
+        <div class="timeline-item current">
+          <div class="timeline-marker"></div>
+          <div class="phase-card current">
+            <div class="phase-card-arrow"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+            <div class="phase-label">Фаза 1</div>
+            <div class="phase-name">Адаптация</div>
+            <div class="phase-days">Дни 1–7</div>
+            <div class="phase-text">Снижаем раздражение, укрепляем защитный барьер и оставляем только средства с высокой переносимостью.</div>
+            <div class="phase-tags">
+              <span class="phase-tag">очищение</span>
+              <span class="phase-tag">крем</span>
+              <span class="phase-tag">SPF</span>
+            </div>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-marker"></div>
+          <div class="phase-card">
+            <div class="phase-card-arrow"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+            <div class="phase-label">Фаза 2</div>
+            <div class="phase-name">Активная фаза</div>
+            <div class="phase-days">Дни 8–21</div>
+            <div class="phase-text">Постепенно подключаем активы: работаем с воспалениями, постакне, неровным тоном и текстурой кожи.</div>
+            <div class="phase-tags">
+              <span class="phase-tag">ниацинамид</span>
+              <span class="phase-tag">мягкие кислоты</span>
+              <span class="phase-tag">точечный актив</span>
+            </div>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-marker"></div>
+          <div class="phase-card">
+            <div class="phase-card-arrow"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+            <div class="phase-label">Фаза 3</div>
+            <div class="phase-name">Поддержка</div>
+            <div class="phase-days">Дни 22–28+</div>
+            <div class="phase-text">Фиксируем переносимую схему, сохраняем SPF и мягкое обновление, убираем всё, что провоцирует реактивность.</div>
+            <div class="phase-tags">
+              <span class="phase-tag">барьер</span>
+              <span class="phase-tag">SPF</span>
+              <span class="phase-tag">мягкое обновление</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. Products -->
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">Средства плана</div>
+      </div>
+
+      <div class="product-list">
+
+        <div class="product-card">
+          <div class="product-img"></div>
+          <div class="product-info">
+            <div class="product-name">La Roche-Posay Cicaplast B5+</div>
+            <div class="product-desc">Крем для восстановления барьера</div>
+            <div class="product-tags">
+              <span class="product-tag">Адаптация</span>
+              <span class="product-tag">Поддержка</span>
+            </div>
+            <div class="product-price">1 890 ₽</div>
+            <div class="product-actions">
+              <div class="pa-icon-btn" title="Заменить">
+                <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2"/><path d="M21 4v6h-6M3 20v-6h6"/></svg>
+              </div>
+              <div class="pa-icon-btn" title="В избранное">
+                <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              </div>
+              <div class="pa-spacer"></div>
+              <button class="pa-cta">В корзину</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="product-card">
+          <div class="product-img"></div>
+          <div class="product-info">
+            <div class="product-name">Beauty of Joseon Relief Sun SPF50+</div>
+            <div class="product-desc">Солнцезащитный крем</div>
+            <div class="product-tags">
+              <span class="product-tag">Все фазы</span>
+            </div>
+            <div class="product-price">2 150 ₽</div>
+            <div class="product-actions">
+              <div class="pa-icon-btn">
+                <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2"/><path d="M21 4v6h-6M3 20v-6h6"/></svg>
+              </div>
+              <div class="pa-icon-btn active">
+                <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              </div>
+              <div class="pa-spacer"></div>
+              <button class="pa-cta">В корзину</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="product-card">
+          <div class="product-img"></div>
+          <div class="product-info">
+            <div class="product-name">Geek &amp; Gorgeous aPAD</div>
+            <div class="product-desc">Актив против покраснений и постакне</div>
+            <div class="product-tags">
+              <span class="product-tag">Активная фаза</span>
+            </div>
+            <div class="product-price">1 690 ₽</div>
+            <div class="product-actions">
+              <div class="pa-icon-btn">
+                <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2"/><path d="M21 4v6h-6M3 20v-6h6"/></svg>
+              </div>
+              <div class="pa-icon-btn">
+                <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              </div>
+              <div class="pa-spacer"></div>
+              <button class="pa-cta in-cart">В корзине</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="product-card">
+          <div class="product-img"></div>
+          <div class="product-info">
+            <div class="product-name">Anua Heartleaf Cleansing Foam</div>
+            <div class="product-desc">Мягкое очищение</div>
+            <div class="product-tags">
+              <span class="product-tag">Все фазы</span>
+            </div>
+            <div class="product-price">1 390 ₽</div>
+            <div class="product-actions">
+              <div class="pa-icon-btn">
+                <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2"/><path d="M21 4v6h-6M3 20v-6h6"/></svg>
+              </div>
+              <div class="pa-icon-btn">
+                <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              </div>
+              <div class="pa-spacer"></div>
+              <button class="pa-cta">В корзину</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 8. Expert notes -->
+    <div class="expert-card">
+      <div class="expert-eyebrow">SkinIQ expert notes</div>
+      <div class="expert-title">Советы дерматолога</div>
+
+      <div class="expert-list">
+        <div class="expert-item">
+          <div class="expert-item-num">01</div>
+          <div class="expert-item-title">Не перегружайте кожу активами</div>
+          <div class="expert-item-text">На текущем этапе коже важнее восстановить переносимость ухода, чем быстро вводить кислоты или ретиноиды.</div>
+        </div>
+        <div class="expert-item">
+          <div class="expert-item-num">02</div>
+          <div class="expert-item-title">SPF — часть лечения, а&nbsp;не дополнительный шаг</div>
+          <div class="expert-item-text">Без ежедневной защиты от солнца покраснение и постакне будут уходить медленнее.</div>
+        </div>
+
+        <div class="expert-item action">
+          <div class="expert-item-body">
+            <div class="expert-item-title">Что-то изменилось?</div>
+            <div class="expert-item-text">Перепройдите анкету, чтобы обновить рекомендации под текущее состояние кожи, новые средства или изменения в образе жизни.</div>
+          </div>
+          <div class="expert-item-arrow">
+            <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 9. Feedback -->
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">Помогите нам стать лучше</div>
+      </div>
+      <div class="feedback-grid">
+        <div class="feedback-card positive">
+          <div class="feedback-icon">
+            <svg viewBox="0 0 24 24"><path d="M7 22V10M2 22h5V10H2zM20 9h-6l1-5a2 2 0 0 0-2-2l-3 7v11h9.7a2 2 0 0 0 2-1.7l1.3-7A2 2 0 0 0 20 9z"/></svg>
+          </div>
+          <div class="feedback-label">Всё подошло</div>
+        </div>
+        <div class="feedback-card">
+          <div class="feedback-icon">
+            <svg viewBox="0 0 24 24"><path d="M17 2v12M22 2h-5v12h5zM4 15h6l-1 5a2 2 0 0 0 2 2l3-7V4H4.3a2 2 0 0 0-2 1.7L1 12.7A2 2 0 0 0 3 15z"/></svg>
+          </div>
+          <div class="feedback-label">Не подошло</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:8px;"></div>
+
+  </div><!-- /phone-scroll -->
+
+  <!-- Bottom nav -->
+  <div class="bnav">
+    <div class="bnav-tab">
+      <svg viewBox="0 0 24 24">
+        <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
+        <path d="M9 21V12h6v9"/>
+      </svg>
+    </div>
+    <div class="bnav-tab active">
+      <svg viewBox="0 0 24 24">
+        <rect x="5" y="2" width="14" height="20" rx="2"/>
+        <path d="M9 7h6M9 11h6M9 15h3"/>
+        <path d="M15 16.5l1 1 2-2"/>
+      </svg>
+    </div>
+    <div class="bnav-tab">
+      <svg viewBox="0 0 24 24">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+      </svg>
+    </div>
+    <div class="bnav-tab">
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="8" r="4"/>
+        <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+      </svg>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

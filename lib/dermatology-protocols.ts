@@ -5,7 +5,7 @@ import type { StepCategory } from './step-category-rules';
 import type { ActiveIngredient } from './ingredient-compatibility';
 import { extractActiveIngredients } from './ingredient-compatibility';
 
-export type SkinCondition = 'acne' | 'rosacea' | 'atopic_dermatitis' | 'pigmentation' | 'normal';
+export type SkinCondition = 'acne' | 'rosacea' | 'atopic_dermatitis' | 'pigmentation' | 'on_isotretinoin' | 'normal';
 
 export interface DermatologyProtocol {
   condition: SkinCondition;
@@ -235,6 +235,55 @@ export const DERMATOLOGY_PROTOCOLS: Record<SkinCondition, DermatologyProtocol> =
       'Возможна сухость в первые 7-14 дней',
     ],
   },
+  // P0: Пациент на системном изотретиноине (Аккутан/Роаккутан и аналоги).
+  // Кожа уже резко сухая, барьер истончён; кислоты, ретиноиды наружные, бензоил пероксид
+  // и витамин C усиливают раздражение, хейлит, могут вызвать шелушение и пигментацию.
+  // Безопасны только мягкое очищение, церамиды, гиалуроновая кислота, ниацинамид, минеральный SPF.
+  on_isotretinoin: {
+    condition: 'on_isotretinoin',
+    name: 'Поддерживающий уход на изотретиноине',
+    description: 'Минимальный, барьерный уход во время системной терапии изотретиноином',
+    // panthenol намеренно не включён в allowlist enum (нет в ActiveIngredient),
+    // но он не входит и в forbiddenIngredients — продукты с панthenol проходят через soft-check.
+    allowedIngredients: ['ceramides', 'hyaluronic_acid', 'niacinamide', 'peptides'],
+    forbiddenIngredients: [
+      'retinol', 'retinoid', 'adapalene', 'tretinoin',
+      'aha', 'bha',
+      'vitamin_c', 'ascorbic_acid',
+      'benzoyl_peroxide',
+      'azelaic_acid',
+    ],
+    allowedSteps: [
+      'cleanser_gentle',
+      'toner_hydrating',
+      'serum_hydrating',
+      'moisturizer_barrier',
+      'moisturizer_soothing',
+      'spf_50_sensitive',
+      'spf_50_face',
+    ],
+    forbiddenSteps: [
+      'cleanser_deep',
+      'cleanser_balancing',
+      'serum_vitc',
+      'treatment_exfoliant_mild',
+      'treatment_exfoliant_strong',
+      'treatment_acne_azelaic',
+      'treatment_acne_bpo',
+      'treatment_antiage',
+      'mask_acid',
+    ],
+    routineTemplate: {
+      morning: ['cleanser_gentle', 'serum_hydrating', 'moisturizer_barrier', 'spf_50_sensitive'],
+      evening: ['cleanser_gentle', 'moisturizer_soothing', 'moisturizer_barrier'],
+    },
+    cyclingRules: [],
+    warnings: [
+      'Вы на системном изотретиноине — наружные ретиноиды, кислоты, бензоилпероксид и витамин C исключены',
+      'Обязательно ежедневный SPF 50+ (минеральный) и бальзам для губ',
+      'Любые изменения ухода — только после согласования с дерматологом',
+    ],
+  },
   normal: {
     condition: 'normal',
     name: 'Базовый протокол',
@@ -258,6 +307,25 @@ export const DERMATOLOGY_PROTOCOLS: Record<SkinCondition, DermatologyProtocol> =
       morning: ['cleanser_gentle', 'serum_vitc', 'moisturizer_light', 'spf_50_face'],
       evening: ['cleanser_balancing', 'serum_niacinamide', 'treatment_antiage', 'moisturizer_balancing'],
     },
+    // P0.3: Default titration для retinol и AHA вне медпротокола.
+    // Пользователи без диагноза, которым впервые назначен ретинол, должны нарастать постепенно,
+    // иначе гарантированный «retinoid uglies» через 7-10 дней.
+    titrationSchedule: [
+      {
+        ingredient: 'retinol',
+        week1: 1,
+        week2: 2,
+        week3: 3,
+        week4: 4,
+      },
+      {
+        ingredient: 'aha',
+        week1: 1,
+        week2: 2,
+        week3: 2,
+        week4: 3,
+      },
+    ],
     cyclingRules: [
       {
         ingredient: 'retinol',
@@ -284,15 +352,27 @@ export function determineProtocol(profile: {
   skinType?: string;
   sensitivityLevel?: string;
   rosaceaRisk?: string | null;
+  onIsotretinoin?: boolean;
+  currentOralMeds?: string[];
 }): DermatologyProtocol {
   const diagnoses = profile.diagnoses || [];
   const concerns = profile.concerns || [];
   const sensitivity = profile.sensitivityLevel || 'medium';
   const rosaceaRisk = (profile.rosaceaRisk || '').toLowerCase();
 
+  // P0: Высший приоритет — системный изотретиноин. Перебивает любой диагноз/протокол,
+  // потому что фармакологически уход на изотретиноине должен быть строго барьерным:
+  // кожа уже резко сухая, барьер истончён, активы только усугубят раздражение.
+  const onIsotretinoin =
+    profile.onIsotretinoin === true ||
+    (profile.currentOralMeds || []).some(m => (m || '').toLowerCase().includes('isotretinoin'));
+  if (onIsotretinoin) {
+    return DERMATOLOGY_PROTOCOLS.on_isotretinoin;
+  }
+
   // ИСПРАВЛЕНО (P1): Расширен список вариантов диагнозов для лучшего определения
   // Приоритет: диагнозы > rosaceaRisk > проблемы > тип кожи
-  
+
   // Розацеа (высший приоритет по безопасности) — диагноз или риск
   const hasRosaceaDiagnosis = diagnoses.some(d => {
     const dLower = d.toLowerCase();

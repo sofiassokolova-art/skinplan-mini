@@ -9,21 +9,14 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { PlanPageClientNew } from './plan-client-new';
 import { PlanPageClient } from './plan-client';
+import { PlanPageV2 } from './plan-page-v2';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
 import type { GeneratedPlan, ProfileResponse } from '@/lib/api-types';
 import { clientLogger } from '@/lib/client-logger';
-// ОПТИМИЗАЦИЯ: Динамический импорт DotLottieReact для code splitting
-import dynamic from 'next/dynamic';
-const DotLottieReact = dynamic(
-  () => import('@lottiefiles/dotlottie-react').then(mod => mod.DotLottieReact),
-  {
-    ssr: false,
-    loading: () => null,
-  }
-);
 import { PLAN_TIMEOUTS } from '@/lib/config/timeouts';
 import { safeSessionStorageRemove } from '@/lib/storage-utils';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { AppLoader } from '@/components/AppLoader';
 
 // РЕФАКТОРИНГ P2: Локальный тип данных для страницы плана
 // TODO: В будущем полностью унифицировать с PlanPageData из lib/plan-types.ts
@@ -90,29 +83,7 @@ interface PlanData {
 }
 
 const PlanLoadingView = ({ message }: { message: string }) => (
-  <div style={{
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: '100vh',
-    background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-  }}>
-    <DotLottieReact
-      src="https://lottie.host/3c0e0e0e-0e0e-0e0e-0e0e-0e0e0e0e0e0e.json"
-      loop
-      autoplay
-      style={{ width: '200px', height: '200px' }}
-    />
-    <p style={{
-      marginTop: '20px',
-      fontSize: '18px',
-      color: '#0A5F59',
-      fontWeight: 600,
-    }}>
-      {message}
-    </p>
-  </div>
+  <AppLoader fullScreen variant="light" message={message} />
 );
 
 export default function PlanPage() {
@@ -1598,8 +1569,23 @@ export default function PlanPage() {
   );
 
   // Рендерим план
-  // Используем новый компонент, если есть plan28
+  // V2: новый компонент сам подгружает /api/plan/page-context и
+  // рендерит персонализированный контент (hero / скор / карусель профиля /
+  // фазы / средства / советы / фидбек). Старый PlanPageClientNew оставлен
+  // как fallback на случай feature-flag отката.
   if (planData.plan28) {
+    const usePlanV2 = process.env.NEXT_PUBLIC_PLAN_V2 !== 'false';
+
+    if (usePlanV2) {
+      return (
+        <ErrorBoundary fallback={planErrorFallback}>
+          <Suspense fallback={<PlanLoadingView message="Загружаем план..." />}>
+            <PlanPageV2 />
+          </Suspense>
+        </ErrorBoundary>
+      );
+    }
+
     return (
       <ErrorBoundary fallback={planErrorFallback}>
         <Suspense fallback={<PlanLoadingView message="Загружаем план..." />}>

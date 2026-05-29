@@ -1,4 +1,3 @@
-// app/api/admin/feedback/route.ts
 // API для получения обратной связи
 
 import { NextRequest, NextResponse } from 'next/server';

@@ -1,5 +1,3 @@
-// app/api/logs/route.ts
-// API для сохранения логов клиентов
 // ИСПРАВЛЕНО: Логи сохраняются ТОЛЬКО в PostgreSQL, без Redis/KV
 
 import { NextRequest, NextResponse } from 'next/server';

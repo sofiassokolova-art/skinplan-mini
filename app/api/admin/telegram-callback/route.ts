@@ -1,12 +1,10 @@
-// app/api/admin/telegram-callback/route.ts
 // Обработка callback от Telegram Login Widget
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { validateTelegramLoginWidget } from '@/lib/validate-telegram-login';
-import jwt from 'jsonwebtoken';
+import { signAdminToken } from '@/lib/jwt';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,7 +19,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const validation = validateTelegramLoginWidget(userData, botToken);
+    const validation = await validateTelegramLoginWidget(userData, botToken);
     
     if (!validation.valid) {
       console.error('Invalid Telegram login widget data:', validation.error);
@@ -59,15 +57,11 @@ export async function POST(request: NextRequest) {
     });
 
     // Генерируем JWT токен
-    const token = jwt.sign(
-      {
-        adminId: admin.id,
-        telegramId: userData.id.toString(),
-        role: admin.role || 'admin',
-      },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const token = await signAdminToken({
+      adminId: admin.id,
+      telegramId: userData.id.toString(),
+      role: admin.role || 'admin',
+    });
 
     console.log('✅ Admin logged in via Telegram Login Widget:', { 
       adminId: admin.id, 

@@ -6,6 +6,7 @@
 import { validateTelegramInitData } from './telegram';
 import { prisma } from '@/lib/db';
 import { logger } from './logger';
+import { allowTestTelegramInitData } from './deployment-env';
 
 export interface TelegramValidationResult {
   valid: boolean;
@@ -39,9 +40,8 @@ export async function validateTelegramInitDataUnified(
     return { valid: false, error: 'No initData provided' };
   }
 
-  // ИСПРАВЛЕНО: В development режиме обходим валидацию hash для тестового initData
-  // Проверяем ДО проверки botToken, чтобы не требовать токен для тестового initData
-  if (process.env.NODE_ENV === 'development' && initData.includes('test_hash_for_development_only')) {
+  // Тестовый initData: локально, staging, preview (не production main)
+  if (allowTestTelegramInitData() && initData.includes('test_hash_for_development_only')) {
     // Извлекаем telegramId из тестового initData
     // Пробуем несколько вариантов парсинга
     const userIdMatch = initData.match(/user=%7B%22id%22%3A(\d+)/) || 
@@ -80,7 +80,7 @@ export async function validateTelegramInitDataUnified(
   }
 
   // ИСПРАВЛЕНО: Hash validation выполняется строго один раз в validateTelegramInitData
-  const validation = validateTelegramInitData(initData, botToken);
+  const validation = await validateTelegramInitData(initData, botToken);
 
   if (!validation.valid || !validation.data?.user) {
     // SECURITY: Логируем только безопасные данные

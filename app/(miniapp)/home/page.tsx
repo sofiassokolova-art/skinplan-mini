@@ -11,6 +11,7 @@ import { api } from '@/lib/api';
 import { clientLogger } from '@/lib/client-logger';
 import { PaymentGate } from '@/components/PaymentGate';
 import { getBaseStepFromStepCategory } from '@/lib/plan-helpers';
+import { AppLoader } from '@/components/AppLoader';
 interface RoutineItem {
   id: string;
   title: string;
@@ -40,12 +41,16 @@ interface Recommendation {
 }
 
 const ICONS: Record<string, string> = {
-  cleanser: '/icons/cleanser1.PNG',
-  toner: '/icons/toner1.PNG',
-  serum: '/icons/serum.PNG',
-  cream: '/icons/cream.PNG',
-  spf: '/icons/spf1.PNG',
-  acid: '/icons/acid1.PNG',
+  cleanser: '/icons/clean/cleanser_true.png',
+  toner: '/icons/clean/toner_true.png',
+  serum: '/icons/clean/serum_true.png',
+  cream: '/icons/clean/cream_true.png',
+  spf: '/icons/clean/spf_true.png',
+  acid: '/icons/clean/treatment_true.png',
+  treatment: '/icons/clean/treatment_true.png',
+  oil: '/icons/clean/oil_true.png',
+  mask: '/icons/clean/claymask_true.png',
+  lip: '/icons/clean/lipbalm_true.png',
 };
 
 export default function HomePage() {
@@ -59,7 +64,6 @@ export default function HomePage() {
   const [morningItems, setMorningItems] = useState<RoutineItem[]>([]);
   const [eveningItems, setEveningItems] = useState<RoutineItem[]>([]);
   const [tab, setTab] = useState<'AM' | 'PM'>('AM');
-  const [selectedItem, setSelectedItem] = useState<RoutineItem | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null); // Имя пользователя для приветствия
 
@@ -271,7 +275,7 @@ export default function HomePage() {
               };
             } else if (baseStep === 'serum' || baseStep === 'treatment') {
               title = time === 'AM' ? 'Актив' : 'Сыворотка';
-              icon = ICONS.serum;
+              icon = baseStep === 'treatment' ? ICONS.treatment : ICONS.serum;
               howto = {
                 steps: ['3–6 капель на сухую кожу', 'Равномерно нанесите и дайте впитаться 1–2 минуты'],
                 volume: '3–6 капель',
@@ -295,7 +299,7 @@ export default function HomePage() {
               };
             } else if (baseStep === 'lip_care') {
               title = 'Бальзам для губ';
-              icon = ICONS.cream;
+              icon = ICONS.lip;
               howto = {
                 steps: ['Нанести на губы тонким слоем', 'Обновлять по необходимости в течение дня'],
                 volume: 'Тонкий слой',
@@ -386,7 +390,7 @@ export default function HomePage() {
               };
             } else if (baseStep === 'serum' || baseStep === 'treatment') {
               title = time === 'AM' ? 'Актив' : 'Сыворотка';
-              icon = ICONS.serum;
+              icon = baseStep === 'treatment' ? ICONS.treatment : ICONS.serum;
               howto = {
                 steps: ['3–6 капель на сухую кожу', 'Равномерно нанесите и дайте впитаться 1–2 минуты'],
                 volume: '3–6 капель',
@@ -410,7 +414,7 @@ export default function HomePage() {
               };
             } else if (baseStep === 'lip_care') {
               title = 'Бальзам для губ';
-              icon = ICONS.cream;
+              icon = ICONS.lip;
               howto = {
                 steps: ['Нанести на губы тонким слоем', 'Обновлять по необходимости в течение дня'],
                 volume: 'Тонкий слой',
@@ -525,7 +529,7 @@ export default function HomePage() {
           id: 'morning-active',
           title: 'Актив',
           subtitle: data?.steps?.treatment?.[0]?.name || 'Активное средство',
-          icon: ICONS.serum,
+          icon: ICONS.treatment,
           howto: {
             steps: ['1–2 пипетки на сухую кожу', 'Наносите на T‑зону и щеки', 'Подождите 1–2 минуты до крема'],
             volume: '4–6 капель',
@@ -571,7 +575,7 @@ export default function HomePage() {
           id: 'morning-lip-balm',
           title: 'Бальзам для губ',
           subtitle: data?.steps?.lip_care?.[0]?.name || 'Бальзам для губ',
-          icon: ICONS.cream, // Используем иконку крема как временную
+          icon: ICONS.lip,
           howto: {
             steps: ['Нанести на губы тонким слоем', 'Обновлять по необходимости в течение дня'],
             volume: 'Тонкий слой',
@@ -668,10 +672,9 @@ export default function HomePage() {
         return;
       }
       
-      // ИСПРАВЛЕНО: При 404 / профиле, которого нет
-      // - если у пользователя УЖЕ есть план, не редиректим на /quiz, а остаёмся на главной
-      //   и пробуем собрать рутину напрямую из план28 (fallback),
-      // - если плана нет, считаем, что пользователь ещё не прошёл анкету и отправляем на /quiz.
+      // ИСПРАВЛЕНО: При 404 / "No skin profile" — бэкенд говорит, что профиля нет.
+      // Не показываем ошибку и не вызываем buildRoutineFromPlan (он тоже вернёт 404).
+      // Сбрасываем hasPlan и показываем контент без рутины (PaymentGate покажет пейвол, ниже — CTA на анкету).
       if (
         error?.status === 404 ||
         error?.isNotFound ||
@@ -681,20 +684,12 @@ export default function HomePage() {
         error?.message?.includes('profile not found')
       ) {
         setLoading(false);
-        // Если уже есть валидный план — остаёмся на главной и пробуем фолбэк-рутину из плана
-        if (hasPlan) {
-          clientLogger.log('Рекомендации не найдены, но план уже существует — остаёмся на главной и пробуем fallback из plan28');
-          try {
-            await buildRoutineFromPlan();
-          } catch (fallbackErr) {
-            clientLogger.warn('Не удалось построить фолбэк-рутину из plan28 при ошибке рекомендаций', fallbackErr);
-          }
-          return;
-        }
-
-        // Плана нет — это действительно новый пользователь → показываем CTA на анкету
-        clientLogger.log('Рекомендации не найдены (профиль ещё не создан, плана нет) — показываем CTA на анкету');
+        setHasPlan(false);
         setError(null);
+        setMorningItems([]);
+        setEveningItems([]);
+        setRecommendations(null as any);
+        clientLogger.log('Рекомендации не найдены (нет профиля) — не показываем ошибку, показываем CTA на анкету');
         return;
       }
       
@@ -705,7 +700,7 @@ export default function HomePage() {
     } finally {
       setLoading(false);
     }
-  }, [hasPlan, router, setLoading, setError, setMorningItems, setEveningItems, buildRoutineFromPlan]);
+  }, [hasPlan, router, setLoading, setError, setMorningItems, setEveningItems, setHasPlan, setRecommendations, buildRoutineFromPlan]);
 
   const toggleItem = (itemId: string) => {
     if (tab === 'AM') {
@@ -724,38 +719,7 @@ export default function HomePage() {
   };
 
   if (!mounted || loading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '24px',
-        paddingBottom: '120px',
-        boxSizing: 'border-box',
-      }}>
-        <div style={{
-          width: '44px',
-          height: '44px',
-          border: '4px solid rgba(10, 95, 89, 0.2)',
-          borderTop: '4px solid #0A5F59',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
-          marginBottom: '16px',
-        }} />
-        <div style={{ color: '#0A5F59', fontSize: '16px', fontWeight: 500 }}>
-          Загрузка плана...
-        </div>
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
-      </div>
-    );
+    return <AppLoader fullScreen variant="light" />;
   }
 
   // Получаем текущие элементы в зависимости от вкладки
@@ -765,24 +729,24 @@ export default function HomePage() {
 
   if (error && routineItems.length === 0) {
     return (
-      <div style={{ 
-        padding: '20px', 
+      <div style={{
+        padding: '20px',
         textAlign: 'center',
         minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+        background: '#FFFFFF'
       }}>
-        <h1 style={{ color: '#0A5F59', marginBottom: '16px' }}>Ошибка загрузки</h1>
+        <h1 style={{ color: '#0A0A0A', marginBottom: '16px' }}>Ошибка загрузки</h1>
         <p style={{ color: '#475467', marginBottom: '24px' }}>{error}</p>
         <button
           onClick={() => router.push('/quiz')}
           style={{
             padding: '12px 24px',
             borderRadius: '12px',
-            backgroundColor: '#0A5F59',
+            backgroundColor: '#0A0A0A',
             color: 'white',
             border: 'none',
             cursor: 'pointer',
@@ -817,9 +781,9 @@ export default function HomePage() {
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        background: '#FFFFFF',
       }}>
-        <h1 style={{ color: '#0A5F59', marginBottom: '16px' }}>Начните с анкеты</h1>
+        <h1 style={{ color: '#0A0A0A', marginBottom: '16px' }}>Начните с анкеты</h1>
         <p style={{ color: '#475467', marginBottom: '24px' }}>
           Мы подберём персональный уход после короткой анкеты.
         </p>
@@ -828,7 +792,7 @@ export default function HomePage() {
           style={{
             padding: '12px 24px',
             borderRadius: '12px',
-            backgroundColor: '#0A5F59',
+            backgroundColor: '#0A0A0A',
             color: 'white',
             border: 'none',
             cursor: 'pointer',
@@ -844,6 +808,7 @@ export default function HomePage() {
 
   const completedCount = routineItems.filter((item) => item.done).length;
   const totalCount = routineItems.length;
+  const currentStepIndex = routineItems.findIndex(item => !item.done);
 
   // ИСПРАВЛЕНО: План - это платный продукт, поэтому PaymentGate показывается ВСЕГДА
   // PaymentGate сам проверит статус оплаты через localStorage и БД
@@ -861,24 +826,86 @@ export default function HomePage() {
       }}
       retakeCta={{ text: 'Изменились цели? Перепройти анкету', href: '/quiz' }}
     >
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-      paddingBottom: '120px',
-    }}>
-      {/* Header */}
-      <div style={{
-        padding: '20px',
-        textAlign: 'center',
-      }}>
-        {/* Приветствие с именем */}
+    <div
+      className="animate-fade-in home-rd"
+      style={{
+        minHeight: '100vh',
+        background:
+          'radial-gradient(72% 32% at 0% 0%, rgba(255,224,188,0.7) 0%, transparent 62%),' +
+          'radial-gradient(50% 22% at 100% 18%, rgba(213,254,97,0.42) 0%, transparent 70%),' +
+          'radial-gradient(64% 26% at 100% 55%, rgba(220,210,196,0.55) 0%, transparent 65%),' +
+          'radial-gradient(78% 32% at 10% 92%, rgba(213,254,97,0.46) 0%, transparent 62%),' +
+          '#F4F2EE',
+        backgroundAttachment: 'fixed',
+        paddingBottom: '120px',
+      }}
+    >
+      <style>{`
+        .home-rd .hr-topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 20px 14px;}
+        .home-rd .hr-logo{font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:18px;font-weight:700;letter-spacing:-0.4px;color:#0A0A0A;}
+        .home-rd .hr-avatar{position:relative;width:40px;height:40px;border:0;padding:0;border-radius:50%;background:linear-gradient(135deg,#2A2A2A,#0A0A0A);color:#D5FE61;display:grid;place-items:center;cursor:pointer;box-shadow:0 0 0 2px rgba(255,255,255,0.9),0 6px 18px rgba(10,10,10,0.18);font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:14px;font-weight:700;}
+        .home-rd .hr-avatar::after{content:"";position:absolute;bottom:1px;right:1px;width:10px;height:10px;border-radius:50%;background:#D5FE61;border:2px solid #F4F2EE;}
+        .home-rd .hr-heading{padding:0 20px 14px;}
+        .home-rd .hr-intro{font-size:13px;font-weight:600;color:#6B7280;margin-bottom:6px;}
+        .home-rd .hr-title{font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:26px;font-weight:700;color:#0A0A0A;line-height:1.15;letter-spacing:-0.6px;}
+        .home-rd .hr-bento{display:grid;grid-template-columns:minmax(0,0.85fr) minmax(0,1.15fr);gap:10px;padding:0 20px 14px;}
+        .home-rd .hr-streak{position:relative;overflow:hidden;padding:14px 14px 12px;border-radius:22px;border:1px solid rgba(255,255,255,0.06);background:radial-gradient(120% 80% at 100% 0%,rgba(213,254,97,0.22) 0%,transparent 60%),#0A0A0A;color:#fff;min-height:102px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 14px 32px rgba(10,10,10,0.18);}
+        .home-rd .hr-streak::before{content:"";position:absolute;top:-34px;right:-28px;width:110px;height:110px;background:radial-gradient(circle,rgba(213,254,97,0.32) 0%,transparent 70%);}
+        .home-rd .hr-streak-head{position:relative;display:flex;align-items:center;gap:6px;color:rgba(255,255,255,0.6);font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;}
+        .home-rd .hr-streak-num{position:relative;font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:38px;line-height:1;font-weight:700;letter-spacing:-1.5px;color:#D5FE61;}
+        .home-rd .hr-streak-unit{font-size:12.5px;font-weight:600;color:rgba(255,255,255,0.78);}
+        .home-rd .hr-streak-foot{position:relative;color:rgba(255,255,255,0.42);font-size:11px;}
+        .home-rd .hr-progress{position:relative;overflow:hidden;padding:14px;border-radius:22px;border:1px solid rgba(255,255,255,0.7);background:rgba(255,255,255,0.62);backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%);min-height:102px;display:flex;flex-direction:column;justify-content:space-between;}
+        .home-rd .hr-progress-head{display:flex;align-items:center;justify-content:space-between;}
+        .home-rd .hr-progress-label{color:#6B7280;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;}
+        .home-rd .hr-progress-count{font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:13px;font-weight:700;color:#0A0A0A;letter-spacing:-0.2px;}
+        .home-rd .hr-progress-count em{font-style:normal;color:#9CA3AF;}
+        .home-rd .hr-progress-text{font-size:12.5px;font-weight:600;color:#0A0A0A;line-height:1.32;letter-spacing:-0.1px;}
+        .home-rd .hr-bar{position:relative;width:100%;height:8px;border-radius:999px;background:rgba(10,10,10,0.08);overflow:hidden;}
+        .home-rd .hr-bar-fill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:#0A0A0A;transition:width .4s ease;}
+        .home-rd .hr-tabs{display:flex;gap:0;margin:0 20px 16px;padding:5px;border:1px solid rgba(255,255,255,0.7);border-radius:22px;background:rgba(255,255,255,0.5);backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);box-shadow:0 8px 24px rgba(0,0,0,0.04);}
+        .home-rd .hr-tab{flex:1;min-height:46px;border:0;border-radius:18px;background:transparent;color:#6B7280;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:700;transition:all .18s ease;}
+        .home-rd .hr-tab.active{background:rgba(255,255,255,0.95);color:#0A0A0A;box-shadow:0 4px 14px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.9);}
+        .home-rd .hr-tab svg{width:16px;height:16px;}
+        .home-rd .hr-section-head{display:flex;flex-direction:column;margin:0 22px 12px;}
+        .home-rd .hr-section-title{font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:16px;font-weight:700;letter-spacing:-0.3px;color:#0A0A0A;}
+        .home-rd .hr-section-sub{margin-top:3px;color:#6B7280;font-size:12px;}
+        .home-rd .hr-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:0 18px 8px;}
+        .home-rd .hr-card{position:relative;min-height:248px;display:flex;flex-direction:column;padding:14px 14px 16px;border:1px solid rgba(255,255,255,0.7);border-radius:22px;background:rgba(255,255,255,0.6);backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%);cursor:pointer;box-shadow:0 10px 28px rgba(0,0,0,0.05);transition:transform .16s ease,box-shadow .16s ease,opacity .16s ease;}
+        .home-rd .hr-card.current{border-color:rgba(10,10,10,0.08);background:radial-gradient(120% 70% at 0% 0%,rgba(255,255,255,0.45) 0%,transparent 60%),#D5FE61;box-shadow:0 14px 34px rgba(213,254,97,0.38),0 10px 28px rgba(0,0,0,0.06);backdrop-filter:none;-webkit-backdrop-filter:none;}
+        .home-rd .hr-card.done{opacity:0.78;}
+        .home-rd .hr-card:active{transform:scale(0.985);}
+        .home-rd .hr-card-top{display:flex;align-items:flex-start;justify-content:space-between;min-height:32px;}
+        .home-rd .hr-stepdot{width:32px;height:32px;border:0;border-radius:12px;display:grid;place-items:center;background:rgba(10,10,10,0.08);color:#0A0A0A;cursor:pointer;font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:12px;font-weight:700;line-height:1;letter-spacing:-0.3px;transition:background .16s ease,transform .12s ease;}
+        .home-rd .hr-stepdot:active{transform:scale(0.92);}
+        .home-rd .hr-card.current .hr-stepdot{background:#0A0A0A;color:#D5FE61;box-shadow:0 6px 14px rgba(10,10,10,0.18);}
+        .home-rd .hr-card.done .hr-stepdot{background:#D5FE61;color:#0A0A0A;}
+        .home-rd .hr-iconwrap{position:relative;flex:1;display:flex;align-items:center;justify-content:center;padding:16px 8px 12px;min-height:124px;}
+        .home-rd .hr-iconwrap::before{content:"";position:absolute;top:50%;left:50%;width:96px;height:116px;transform:translate(-50%,-50%);border-radius:22px;background:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,0.9),0 8px 18px rgba(10,10,10,0.08);opacity:0;transition:opacity .16s ease;}
+        .home-rd .hr-card.current .hr-iconwrap::before{opacity:1;}
+        .home-rd .hr-icon{position:relative;z-index:1;display:block;width:72px;height:100px;object-fit:contain;filter:drop-shadow(0 12px 14px rgba(0,0,0,0.12));}
+        .home-rd .hr-icon.blend{mix-blend-mode:multiply;filter:none;}
+        .home-rd .hr-card-bottom{margin-top:auto;}
+        .home-rd .hr-kicker{margin-bottom:5px;font-size:9.5px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(10,10,10,0.42);}
+        .home-rd .hr-card.current .hr-kicker{color:#0A0A0A;}
+        .home-rd .hr-card.done .hr-kicker{color:rgba(10,10,10,0.32);}
+        .home-rd .hr-itemtitle{margin-bottom:4px;font-size:15px;font-weight:700;color:#0A0A0A;line-height:1.18;letter-spacing:-0.1px;}
+        .home-rd .hr-card.done .hr-itemtitle{text-decoration:line-through;text-decoration-color:rgba(10,10,10,0.32);}
+        .home-rd .hr-itemsub{color:#6B7280;font-size:11.5px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+        .home-rd .hr-retake{width:100%;background:transparent;border:none;color:#6B7280;text-decoration:underline;cursor:pointer;font-size:13px;font-weight:600;padding:14px 0 4px;}
+      `}</style>
+      {/* Topbar */}
+      <div className="hr-topbar">
+        <div className="hr-logo">SkinIQ</div>
+        <button className="hr-avatar" aria-label="Профиль" onClick={() => router.push('/profile')}>
+          {(userName?.[0] || 'С').toUpperCase()}
+        </button>
+      </div>
+
+      {/* Heading */}
+      <div className="hr-heading">
         {userName && (
-          <div style={{
-            fontSize: '20px',
-            fontWeight: 500,
-            color: '#0A5F59',
-            marginBottom: '12px',
-          }}>
+          <div className="hr-intro">
             {(() => {
               const hour = new Date().getHours();
               const greeting = hour >= 6 && hour < 18 ? 'Добрый день' : 'Добрый вечер';
@@ -886,45 +913,117 @@ export default function HomePage() {
             })()}
           </div>
         )}
-        <div style={{
-          fontSize: '26px',
-          fontWeight: 600,
-          color: '#374151',
-          marginBottom: '8px',
-        }}>
-          Время заботиться о своей коже
-        </div>
-        <button
-          onClick={() => router.push('/plan')}
-          style={{
-            marginTop: '16px',
-            padding: '12px 24px',
-            borderRadius: '12px',
-            backgroundColor: '#0A5F59',
-            color: 'white',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: '16px',
-            fontWeight: 'bold',
-          }}
-        >
-          📅 28-дневный план →
-        </button>
-        {recommendations?.profile_summary && (
-          <div style={{
-            fontSize: '16px',
-            color: '#475467',
-            marginBottom: '16px',
-          }}>
-            {completedCount}/{totalCount} шагов
-          </div>
-        )}
+        <div className="hr-title">Уход на&nbsp;сегодня</div>
       </div>
 
-      {/* Ретейк ссылка на главной (всегда видна, даже если доступ уже оплачен) */}
-      <div style={{ padding: '0 20px', marginTop: '8px' }}>
+      {/* Progress bento */}
+      {totalCount > 0 && (() => {
+        const remaining = totalCount - completedCount;
+        const ratio = totalCount > 0 ? completedCount / totalCount : 0;
+        const remText =
+          remaining === 0
+            ? 'Все шаги выполнены сегодня'
+            : `Осталось ${remaining} ${remaining === 1 ? 'шаг' : remaining < 5 ? 'шага' : 'шагов'}`;
+        return (
+          <div className="hr-bento">
+            <div className="hr-streak">
+              <div className="hr-streak-head">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#D5FE61" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8.5 14.5A3.5 3.5 0 0 0 12 18a3.5 3.5 0 0 0 3.5-3.5c0-2.5-3.5-4.2-3.5-7.5-1.9 1.3-4.5 3.8-4.5 7.5Z"/>
+                  <path d="M12 2C8.2 5.2 5 8.8 5 13a7 7 0 0 0 14 0c0-3.8-2.3-6.6-4.8-9.1"/>
+                </svg>
+                Сегодня
+              </div>
+              <div>
+                <span className="hr-streak-num">{completedCount}</span>
+                <span className="hr-streak-unit">&nbsp;из {totalCount}</span>
+              </div>
+              <div className="hr-streak-foot">{tab === 'AM' ? 'Утренний уход' : 'Вечерний уход'}</div>
+            </div>
+            <div className="hr-progress">
+              <div className="hr-progress-head">
+                <span className="hr-progress-label">Прогресс</span>
+                <span className="hr-progress-count">{completedCount}<em>/{totalCount}</em></span>
+              </div>
+              <div className="hr-progress-text">{remText}</div>
+              <div className="hr-bar">
+                <div className="hr-bar-fill" style={{ width: `${Math.max(6, ratio * 100)}%` }} />
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Toggle AM/PM */}
+      <div className="hr-tabs">
+        <button className={`hr-tab${tab === 'AM' ? ' active' : ''}`} onClick={() => setTab('AM')}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+          </svg>
+          Утро
+        </button>
+        <button className={`hr-tab${tab === 'PM' ? ' active' : ''}`} onClick={() => setTab('PM')}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/>
+          </svg>
+          Вечер
+        </button>
+      </div>
+
+      {/* Section head */}
+      <div className="hr-section-head">
+        <div className="hr-section-title">{tab === 'AM' ? 'Утренний уход' : 'Вечерний уход'}</div>
+        <div className="hr-section-sub">Нажмите, чтобы отметить шаг</div>
+      </div>
+
+      {/* Routine grid */}
+      <div className="hr-grid">
+        {routineItems.map((item, index) => {
+          const isCurrentStep = !item.done && index === currentStepIndex;
+          const cls = `hr-card${isCurrentStep ? ' current' : ''}${item.done ? ' done' : ''}`;
+          const isBlend = (item.icon || '').includes('cream');
+          return (
+            <div key={item.id} className={cls} onClick={() => toggleItem(item.id)}>
+              <div className="hr-card-top">
+                <button
+                  className="hr-stepdot"
+                  aria-label={item.done ? 'Снять отметку' : 'Отметить шаг'}
+                  onClick={(e) => { e.stopPropagation(); toggleItem(item.id); }}
+                >
+                  {item.done ? (
+                    <svg width="13" height="10" viewBox="0 0 14 10" fill="none">
+                      <path d="M1 5l4 4 8-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  ) : (
+                    index + 1
+                  )}
+                </button>
+              </div>
+
+              <div className="hr-iconwrap">
+                <img
+                  className={`hr-icon${isBlend ? ' blend' : ''}`}
+                  src={item.icon}
+                  alt=""
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+              </div>
+
+              <div className="hr-card-bottom">
+                <div className="hr-kicker">{isCurrentStep ? 'Сейчас' : `Шаг ${index + 1}`}</div>
+                <div className="hr-itemtitle">{item.title}</div>
+                <div className="hr-itemsub">{item.subtitle}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Ретейк ссылка */}
+      <div style={{ padding: '0 22px' }}>
         <button
           type="button"
+          className="hr-retake"
           onClick={async () => {
             try {
               const { setFullRetakeFromHome, setIsRetakingQuiz } = await import('@/lib/user-preferences');
@@ -934,263 +1033,13 @@ export default function HomePage() {
               clientLogger.warn('Failed to set retake flags:', error);
             }
             queryClient.invalidateQueries({ queryKey: ['quiz', 'active'] });
-            // window.location гарантирует URL с query — на localhost router.push может терять параметры
             window.location.href = '/quiz?retakeFromHome=1';
-          }}
-          style={{
-            width: '100%',
-            background: 'transparent',
-            border: 'none',
-            color: '#0A5F59',
-            textDecoration: 'underline',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: 600,
-            padding: '10px 0',
           }}
         >
           Изменились цели? Перепройти анкету
         </button>
       </div>
 
-      {/* Toggle AM/PM */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        marginBottom: '24px',
-      }}>
-        <div style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.42)',
-          backdropFilter: 'blur(20px)',
-          borderRadius: '28px',
-          padding: '6px',
-          display: 'flex',
-          gap: '6px',
-          border: '1px solid rgba(255, 255, 255, 0.3)',
-        }}>
-          <button
-            onClick={() => setTab('AM')}
-            style={{
-              padding: '8px 20px',
-              borderRadius: '22px',
-              border: 'none',
-              backgroundColor: tab === 'AM' ? 'rgba(10, 95, 89, 0.9)' : 'rgba(255, 255, 255, 0.2)',
-              color: tab === 'AM' ? 'white' : '#0A5F59',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '14px',
-            }}
-          >
-            Утро
-          </button>
-          <button
-            onClick={() => setTab('PM')}
-            style={{
-              padding: '8px 20px',
-              borderRadius: '22px',
-              border: 'none',
-              backgroundColor: tab === 'PM' ? 'rgba(10, 95, 89, 0.9)' : 'rgba(255, 255, 255, 0.2)',
-              color: tab === 'PM' ? 'white' : '#0A5F59',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '14px',
-            }}
-          >
-            Вечер
-          </button>
-        </div>
-      </div>
-
-      {/* Routine Items */}
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px',
-        padding: '0 20px',
-        maxWidth: '600px',
-        margin: '0 auto',
-      }}>
-        {routineItems.map((item, index) => (
-          <div
-            key={item.id}
-            onClick={() => setSelectedItem(item)}
-            style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.56)',
-              backdropFilter: 'blur(28px)',
-              borderRadius: '20px',
-              padding: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '16px',
-              cursor: 'pointer',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              opacity: item.done ? 0.7 : 1,
-            }}
-          >
-            {/* Step Number */}
-            <div
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleItem(item.id);
-              }}
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                backgroundColor: item.done ? '#0A5F59' : 'rgba(10, 95, 89, 0.1)',
-                color: 'white',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '14px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                flexShrink: 0,
-              }}
-            >
-              {item.done ? '✓' : index + 1}
-            </div>
-
-            {/* Icon */}
-            <img
-              src={item.icon}
-              alt={item.title}
-              style={{
-                width: '60px',
-                height: '60px',
-                objectFit: 'contain',
-                flexShrink: 0,
-              }}
-              onError={(e) => {
-                clientLogger.warn('Icon not found:', item.icon);
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
-
-            {/* Content */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{
-                fontSize: '17px',
-                fontWeight: 'bold',
-                color: '#0A5F59',
-                marginBottom: '4px',
-              }}>
-                {item.title}
-              </div>
-              <div style={{
-                fontSize: '14px',
-                color: '#475467',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}>
-                {item.subtitle}
-              </div>
-            </div>
-
-            {/* Info Button */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedItem(item);
-              }}
-              style={{
-                width: '28px',
-                height: '28px',
-                borderRadius: '50%',
-                backgroundColor: '#0A5F59',
-                color: 'white',
-                border: 'none',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: 'bold',
-                flexShrink: 0,
-              }}
-            >
-              i
-            </button>
-          </div>
-        ))}
-      </div>
-
-      {/* BottomSheet для деталей */}
-      {selectedItem && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 2000,
-            display: 'flex',
-            alignItems: 'flex-end',
-          }}
-        >
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.2)',
-              backdropFilter: 'blur(4px)',
-            }}
-            onClick={() => setSelectedItem(null)}
-          />
-          <div
-            style={{
-              position: 'relative',
-              width: '100%',
-              maxHeight: '85vh',
-              backgroundColor: 'rgba(250, 251, 253, 0.75)',
-              backdropFilter: 'blur(32px)',
-              borderTopLeftRadius: '28px',
-              borderTopRightRadius: '28px',
-              padding: '24px',
-              overflowY: 'auto',
-            }}
-          >
-            <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#0A5F59', marginBottom: '16px' }}>
-              {selectedItem.title}
-            </h3>
-            <div style={{ marginBottom: '16px', color: '#475467' }}>
-              {selectedItem.subtitle}
-            </div>
-            <div style={{ marginBottom: '24px' }}>
-              <h4 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>Как использовать:</h4>
-              <ol style={{ paddingLeft: '20px' }}>
-                {selectedItem.howto.steps.map((step, i) => (
-                  <li key={i} style={{ marginBottom: '8px', color: '#475467' }}>
-                    {step}
-                  </li>
-                ))}
-              </ol>
-            </div>
-            <div style={{ marginBottom: '16px', color: '#475467', fontSize: '14px' }}>
-              <strong>Объём:</strong> {selectedItem.howto.volume}
-            </div>
-            <div style={{ color: '#0A5F59', fontSize: '14px', fontStyle: 'italic' }}>
-              💡 {selectedItem.howto.tip}
-            </div>
-            <button
-              onClick={() => setSelectedItem(null)}
-              style={{
-                marginTop: '24px',
-                width: '100%',
-                padding: '16px',
-                borderRadius: '16px',
-                backgroundColor: '#0A5F59',
-                color: 'white',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '16px',
-                fontWeight: 'bold',
-              }}
-            >
-              Понятно
-            </button>
-          </div>
-        </div>
-      )}
     </div>
     </PaymentGate>
   );

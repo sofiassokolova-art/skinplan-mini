@@ -1,13 +1,13 @@
 // app/(miniapp)/cart/page.tsx
-// Страница избранного (wishlist)
+// Страница избранного (wishlist) — редизайн «Избранное»
 
 'use client';
 
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useWishlist, useRemoveFromWishlist } from '@/hooks/useWishlist';
+import { useCart, useAddToCart } from '@/hooks/useCart';
 import type { WishlistResponse } from '@/lib/api-types';
-import WishlistItem from '@/components/WishlistItem';
 import toast from 'react-hot-toast';
 
 interface WishlistItemData {
@@ -15,10 +15,7 @@ interface WishlistItemData {
   product: {
     id: number;
     name: string;
-    brand: {
-      id: number;
-      name: string;
-    };
+    brand: { id: number; name: string };
     price: number | null;
     imageUrl: string | null;
     link: string | null;
@@ -28,25 +25,21 @@ interface WishlistItemData {
   createdAt: string;
 }
 
-export default function CartPage() {
+export default function FavoritesPage() {
   const router = useRouter();
-  
-  // ИСПРАВЛЕНО: Используем React Query хуки для автоматического обновления
-  // Хуки автоматически инвалидируют кэш после добавления/удаления товара
   const { data: wishlistData, isLoading: loading } = useWishlist();
   const removeMutation = useRemoveFromWishlist();
+  const { data: cartData } = useCart();
+  const addToCart = useAddToCart();
 
-  // Маппим данные из API в формат WishlistItemData
-  // ИСПРАВЛЕНО: Добавлена явная типизация для параметра item
+  const cartIds = new Set<number>((cartData?.items || []).map((i: any) => i.product?.id));
+
   const wishlist: WishlistItemData[] = (wishlistData?.items || []).map((item: WishlistResponse['items'][0]) => ({
     id: item.id,
     product: item.product ? {
       id: item.product.id,
       name: item.product.name,
-      brand: {
-        id: item.product.brand?.id || 0,
-        name: item.product.brand?.name || 'Unknown',
-      },
+      brand: { id: item.product.brand?.id || 0, name: item.product.brand?.name || 'Unknown' },
       price: item.product.price,
       imageUrl: item.product.imageUrl,
       link: item.product.link || null,
@@ -67,110 +60,111 @@ export default function CartPage() {
   const handleRemove = async (productId: number) => {
     try {
       await removeMutation.mutateAsync(productId);
-      toast.success('Продукт удалён из избранного');
-    } catch (err: any) {
-      console.error('Error removing from wishlist:', err);
-      toast.error('Ошибка удаления продукта');
+      toast.success('Удалено из избранного');
+    } catch {
+      toast.error('Ошибка удаления');
     }
   };
 
+  const handleAddToCart = async (productId: number) => {
+    if (cartIds.has(productId)) return;
+    try {
+      await addToCart.mutateAsync({ productId, quantity: 1 });
+      toast.success('Добавлено в корзину');
+    } catch {
+      toast.error('Не удалось добавить');
+    }
+  };
+
+  const bg =
+    'radial-gradient(58% 26% at 100% 0%, rgba(213,254,97,0.5) 0%, transparent 65%),' +
+    'radial-gradient(72% 32% at 0% 22%, rgba(255,224,188,0.55) 0%, transparent 65%),' +
+    'radial-gradient(60% 22% at 100% 60%, rgba(220,210,196,0.5) 0%, transparent 65%),' +
+    'radial-gradient(78% 30% at 100% 92%, rgba(213,254,97,0.36) 0%, transparent 62%),' +
+    '#F4F2EE';
 
   if (loading) {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-          padding: '20px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <div style={{ fontSize: '18px', color: '#475467' }}>Загрузка...</div>
+      <div style={{ minHeight: '100vh', background: bg, backgroundAttachment: 'fixed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ fontSize: '15px', color: '#6B7280' }}>Загрузка…</div>
       </div>
     );
   }
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-        backgroundAttachment: 'fixed',
-        padding: '20px',
-        paddingBottom: '120px',
-      }}
-    >
-      {/* Header */}
-      <div style={{ marginBottom: '24px' }}>
-        <h1
-          style={{
-            fontSize: '32px',
-            fontWeight: 'bold',
-            color: '#0A5F59',
-            marginBottom: '8px',
-          }}
-        >
-          Ваши выбранные средства
-        </h1>
-        <p style={{ fontSize: '16px', color: '#475467' }}>
-          Мы подобрали их специально под вашу кожу
-        </p>
+    <div className="fav-rd" style={{ minHeight: '100vh', background: bg, backgroundAttachment: 'fixed', padding: '8px 20px 120px' }}>
+      <style>{`
+        .fav-rd .fv-topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 0 14px;}
+        .fav-rd .fv-logo{font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:18px;font-weight:700;letter-spacing:-0.4px;color:#0A0A0A;}
+        .fav-rd .fv-avatar{position:relative;width:40px;height:40px;border:0;padding:0;border-radius:50%;background:linear-gradient(135deg,#2A2A2A,#0A0A0A);color:#D5FE61;display:grid;place-items:center;cursor:pointer;box-shadow:0 0 0 2px rgba(255,255,255,0.9),0 6px 18px rgba(10,10,10,0.18);font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:14px;font-weight:700;}
+        .fav-rd .fv-avatar::after{content:"";position:absolute;bottom:1px;right:1px;width:10px;height:10px;border-radius:50%;background:#D5FE61;border:2px solid #F4F2EE;}
+        .fav-rd .fv-title{margin:6px 2px 18px;font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.6px;color:#0A0A0A;}
+        .fav-rd .fv-list{display:flex;flex-direction:column;gap:10px;}
+        .fav-rd .fv-item{position:relative;display:grid;grid-template-columns:76px minmax(0,1fr);gap:14px;padding:12px;border:1px solid rgba(255,255,255,0.7);border-radius:22px;background:rgba(255,255,255,0.62);backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);box-shadow:0 8px 22px rgba(0,0,0,0.04);overflow:hidden;}
+        .fav-rd .fv-thumb{width:76px;height:100%;min-height:96px;display:grid;place-items:center;}
+        .fav-rd .fv-thumb img{max-width:64px;max-height:88px;object-fit:contain;filter:drop-shadow(0 6px 8px rgba(0,0,0,0.1));}
+        .fav-rd .fv-del{position:absolute;top:10px;right:10px;z-index:3;width:28px;height:28px;border:0;border-radius:50%;background:rgba(10,10,10,0.06);color:#0A0A0A;display:grid;place-items:center;cursor:pointer;}
+        .fav-rd .fv-del:active{transform:scale(0.9);}
+        .fav-rd .fv-del svg{fill:none;stroke:#0A0A0A;stroke-width:1.6;}
+        .fav-rd .fv-body{min-width:0;display:flex;flex-direction:column;gap:8px;padding-right:24px;}
+        .fav-rd .fv-brand{font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#6B7280;}
+        .fav-rd .fv-name{font-size:14px;font-weight:700;line-height:1.22;letter-spacing:-0.15px;color:#0A0A0A;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+        .fav-rd .fv-price{font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:14px;font-weight:700;color:#0A0A0A;letter-spacing:-0.3px;}
+        .fav-rd .fv-cta{width:100%;height:44px;border:0;border-radius:0;background:#D5FE61;color:#000;font-family:var(--font-inter),sans-serif;font-weight:400;font-size:13px;text-transform:uppercase;letter-spacing:0.02em;cursor:pointer;transition:transform .15s;}
+        .fav-rd .fv-cta:active{transform:scale(0.98);}
+        .fav-rd .fv-cta.in{background:#0A0A0A;color:#fff;}
+        .fav-rd .fv-empty{text-align:center;padding:60px 20px;background:rgba(255,255,255,0.62);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.7);border-radius:24px;margin-top:24px;}
+        .fav-rd .fv-empty-cta{display:inline-block;background:#0A0A0A;color:#D5FE61;padding:14px 28px;border-radius:0;text-decoration:none;font-family:var(--font-inter),sans-serif;font-size:13px;font-weight:400;text-transform:uppercase;letter-spacing:0.02em;}
+      `}</style>
+
+      <div className="fv-topbar">
+        <div className="fv-logo">SkinIQ</div>
+        <button className="fv-avatar" aria-label="Профиль" onClick={() => router.push('/profile')}>С</button>
       </div>
 
-      {/* Ошибки не показываем, так как они обрабатываются в loadWishlist */}
+      <h1 className="fv-title">Избранное</h1>
 
       {wishlist.length === 0 ? (
-        // Пустое состояние
-        <div
-          style={{
-            textAlign: 'center',
-            padding: '60px 20px',
-            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-            backdropFilter: 'blur(28px)',
-            borderRadius: '24px',
-            marginTop: '40px',
-          }}
-        >
-          <div style={{ fontSize: '64px', marginBottom: '24px' }}>🛍️</div>
-          <h3 style={{ fontSize: '24px', fontWeight: 'bold', color: '#0A5F59', marginBottom: '12px' }}>
-            Вы ещё ничего не добавили
-          </h3>
-          <p style={{ fontSize: '16px', color: '#475467', marginBottom: '32px' }}>
-            Нажмите 🛍️ в плане — средства появятся здесь
-          </p>
-          <Link
-            href="/plan"
-            style={{
-              display: 'inline-block',
-              backgroundColor: '#0A5F59',
-              color: 'white',
-              padding: '16px 32px',
-              borderRadius: '16px',
-              textDecoration: 'none',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
-            }}
-          >
-            Открыть план ухода
-          </Link>
+        <div className="fv-empty">
+          <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0A0A0A', marginBottom: '8px' }}>Здесь пока пусто</h3>
+          <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '24px' }}>Сохраняйте средства из плана — они появятся тут</p>
+          <Link href="/plan" className="fv-empty-cta">Открыть план</Link>
         </div>
       ) : (
-        <>
-          {/* Список средств */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {wishlist.map((item) => (
-              <WishlistItem
-                key={item.id}
-                item={item}
-                onRemove={handleRemove}
-              />
-            ))}
-          </div>
-
-        </>
+        <div className="fv-list">
+          {wishlist.map((item) => {
+            const inCart = cartIds.has(item.product.id);
+            return (
+              <div className="fv-item" key={item.id}>
+                <button className="fv-del" aria-label="Убрать из избранного" onClick={() => handleRemove(item.product.id)}>
+                  <svg viewBox="0 0 24 24" width="15" height="15" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l7.78-7.84a5.5 5.5 0 0 0 1.06-8.78Z"/>
+                    <path d="M3 3l18 18"/>
+                  </svg>
+                </button>
+                <div className="fv-thumb">
+                  {item.product.imageUrl ? (
+                    <img src={item.product.imageUrl} alt="" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  ) : (
+                    <div style={{ fontSize: '28px' }}>🧴</div>
+                  )}
+                </div>
+                <div className="fv-body">
+                  <div className="fv-brand">{item.product.brand.name}</div>
+                  <div className="fv-name">{item.product.name}</div>
+                  {item.product.price && <div className="fv-price">{item.product.price} ₽</div>}
+                  <button
+                    className={`fv-cta${inCart ? ' in' : ''}`}
+                    onClick={() => handleAddToCart(item.product.id)}
+                    disabled={addToCart.isPending}
+                  >
+                    {inCart ? 'В корзине' : 'В корзину'}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );

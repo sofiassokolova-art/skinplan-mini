@@ -1,13 +1,15 @@
 // components/quiz/content/TestimonialsCarousel.tsx
 // Компонент для отображения отзывов с горизонтальным скроллом
-// ОБНОВЛЕНО: Новый дизайн с лаймовыми звездами и картинками до/после
+// fullWidth: режим для экрана отзывов — фото на всю ширину, одна карточка на экран, точки
 
-import React from 'react';
+import React, { useRef, useState, useCallback, useEffect, memo } from 'react';
 import Image from 'next/image';
 import type { Testimonial } from '@/app/(miniapp)/quiz/info-screens';
 
 export interface TestimonialsCarouselProps {
   testimonials: Testimonial[];
+  /** Режим экрана отзывов: фото сверху на всю ширину, scroll-snap, точки */
+  fullWidth?: boolean;
 }
 
 // Компонент лаймовой звезды
@@ -26,9 +28,211 @@ function LimeStar() {
   );
 }
 
-export function TestimonialsCarousel({ testimonials }: TestimonialsCarouselProps) {
+function TestimonialsCarouselInner({ testimonials, fullWidth }: TestimonialsCarouselProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [contentRevealed, setContentRevealed] = useState(false);
+  const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    const t = setTimeout(() => setContentRevealed(true), 80);
+    return () => clearTimeout(t);
+  }, []);
+
+  const markImageLoaded = useCallback((key: string) => {
+    setLoadedImages((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el || testimonials.length === 0) return;
+    const cardWidth = el.clientWidth || el.scrollWidth / testimonials.length;
+    const index = Math.round(el.scrollLeft / cardWidth);
+    const clamped = Math.max(0, Math.min(index, testimonials.length - 1));
+    setActiveIndex((prev) => (prev !== clamped ? clamped : prev));
+  }, [testimonials.length]);
+
+  const goTo = useCallback((index: number) => {
+    const el = scrollRef.current;
+    if (!el || testimonials.length === 0) return;
+    const cardWidth = el.scrollWidth / testimonials.length;
+    el.scrollTo({ left: index * cardWidth, behavior: 'smooth' });
+    setActiveIndex(index);
+  }, [testimonials.length]);
+
   if (!testimonials || !Array.isArray(testimonials) || testimonials.length === 0) {
     return null;
+  }
+
+  // Режим экрана отзывов: одна карточка на экран, фото на всю ширину, точки
+  if (fullWidth) {
+    return (
+      <div
+        style={{
+          width: '100%',
+          marginBottom: '28px',
+          boxSizing: 'border-box',
+          opacity: contentRevealed ? 1 : 0,
+          transform: contentRevealed ? 'translateY(0)' : 'translateY(12px)',
+          transition: 'opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1), transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)',
+        }}
+      >
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          style={{
+            display: 'flex',
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            padding: '0 0 12px 0',
+            scrollbarWidth: 'none',
+            WebkitOverflowScrolling: 'touch',
+            msOverflowStyle: 'none',
+            scrollSnapType: 'x mandatory',
+            margin: 0,
+            paddingLeft: 0,
+            paddingRight: 0,
+          }}
+        >
+          {testimonials.map((testimonial, idx: number) => {
+            const beforeKey = `t-${idx}-before`;
+            const afterKey = `t-${idx}-after`;
+            const beforeLoaded = loadedImages[beforeKey];
+            const afterLoaded = loadedImages[afterKey];
+            return (
+              <div
+                key={`t-${idx}-${testimonial.beforeImage ?? ''}-${testimonial.afterImage ?? ''}`}
+                style={{
+                  minWidth: '100%',
+                  width: '100%',
+                  flexShrink: 0,
+                  scrollSnapAlign: 'start',
+                  scrollSnapStop: 'always',
+                  paddingRight: 0,
+                  boxSizing: 'border-box',
+                }}
+              >
+                <div style={{ padding: 0, overflow: 'visible', display: 'flex', flexDirection: 'column' }}>
+                  {(testimonial.beforeImage || testimonial.afterImage) && (
+                    <div style={{
+                      display: 'flex',
+                      width: '100%',
+                      minHeight: '48vh',
+                      maxHeight: '56vh',
+                      height: '52vh',
+                      overflow: 'hidden',
+                      borderRadius: '22px',
+                      backfaceVisibility: 'hidden',
+                      WebkitBackfaceVisibility: 'hidden',
+                      transform: 'translateZ(0)',
+                      willChange: 'transform',
+                    }}>
+                      {testimonial.beforeImage && (
+                        <div style={{ flex: 1, position: 'relative', overflow: 'hidden', backgroundColor: '#e8e8e8' }}>
+                          <img
+                            src={testimonial.beforeImage}
+                            alt="До"
+                            loading={idx === 0 ? 'eager' : 'lazy'}
+                            onLoad={() => markImageLoaded(beforeKey)}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              objectPosition: 'top',
+                              display: 'block',
+                              opacity: beforeLoaded ? 1 : 0,
+                              transition: 'opacity 0.4s ease-out',
+                            }}
+                          />
+                          <div style={{ position: 'absolute', bottom: '8px', left: '8px', backgroundColor: 'rgba(0, 0, 0, 0.6)', color: '#FFFFFF', fontSize: '10px', fontWeight: 600, padding: '2px 8px', borderRadius: '4px', zIndex: 1 }}>До</div>
+                        </div>
+                      )}
+                      {testimonial.afterImage && (
+                        <div style={{ flex: 1, position: 'relative', overflow: 'hidden', backgroundColor: '#e8e8e8' }}>
+                          <img
+                            src={testimonial.afterImage}
+                            alt="После"
+                            loading={idx === 0 ? 'eager' : 'lazy'}
+                            onLoad={() => markImageLoaded(afterKey)}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              objectPosition: 'top',
+                              display: 'block',
+                              opacity: afterLoaded ? 1 : 0,
+                              transition: 'opacity 0.4s ease-out',
+                            }}
+                          />
+                          <div style={{ position: 'absolute', bottom: '8px', right: '8px', backgroundColor: '#D5FE61', color: '#000000', fontSize: '10px', fontWeight: 600, padding: '2px 8px', borderRadius: '4px', zIndex: 1 }}>После</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div style={{
+                    margin: '12px 0 0',
+                    padding: '16px 18px 18px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    background: 'rgba(255,255,255,0.55)',
+                    backdropFilter: 'blur(24px) saturate(160%)',
+                    WebkitBackdropFilter: 'blur(24px) saturate(160%)',
+                    border: '1px solid rgba(255,255,255,0.75)',
+                    borderRadius: '22px',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.05)',
+                  }}>
+                    {/* Звёзды */}
+                    <div style={{ display: 'flex', gap: '3px', marginBottom: '10px' }}>
+                      {Array.from({ length: 5 }).map((_, i) => <LimeStar key={i} />)}
+                    </div>
+                    <p style={{ fontSize: '13px', color: '#1A1A1A', lineHeight: '1.55', margin: '0 0 12px 0' }}>
+                      {String(testimonial.text || '')}
+                    </p>
+                    <p style={{ fontSize: '13px', color: '#6B7280', fontWeight: 600, margin: 0 }}>
+                      — {String(testimonial.author || 'Пользователь')}{testimonial.city ? `, ${testimonial.city}` : ''}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: '8px',
+          margin: '12px auto 0',
+          padding: '8px 18px',
+          width: 'fit-content',
+          background: 'rgba(255,255,255,0.55)',
+          backdropFilter: 'blur(12px) saturate(140%)',
+          WebkitBackdropFilter: 'blur(12px) saturate(140%)',
+          border: '1px solid rgba(255,255,255,0.75)',
+          borderRadius: '20px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.04)',
+        }}>
+          {testimonials.map((_, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => goTo(idx)}
+              aria-label={`Отзыв ${idx + 1}`}
+              style={{
+                width: activeIndex === idx ? 20 : 8,
+                height: 8,
+                borderRadius: 4,
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
+                backgroundColor: activeIndex === idx ? '#0A0A0A' : 'rgba(0,0,0,0.2)',
+                transition: 'background-color 0.25s, width 0.25s cubic-bezier(0.22,1,0.36,1)',
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -185,3 +389,5 @@ export function TestimonialsCarousel({ testimonials }: TestimonialsCarouselProps
     </div>
   );
 }
+
+export const TestimonialsCarousel = memo(TestimonialsCarouselInner);

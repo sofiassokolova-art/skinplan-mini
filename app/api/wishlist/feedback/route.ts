@@ -1,4 +1,3 @@
-// app/api/wishlist/feedback/route.ts
 // API для обратной связи по продуктам в избранном
 
 import { NextRequest, NextResponse } from 'next/server';

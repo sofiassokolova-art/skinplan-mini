@@ -8,9 +8,8 @@ import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 
-export const runtime = 'nodejs';
-
 import { entitlementCodeForProduct, calculateValidUntil } from '@/lib/payment-helpers';
+import { isExplicitNonProd } from '@/lib/deployment-env';
 
 /**
  * Тестовый endpoint для симуляции успешного платежа через вебхук ЮKassa
@@ -21,16 +20,9 @@ import { entitlementCodeForProduct, calculateValidUntil } from '@/lib/payment-he
  * Body: { paymentId: "payment_id_from_db" }
  */
 export async function POST(request: NextRequest) {
-  // В продакшене блокируем этот endpoint.
-  // ВАЖНО: На Vercel `NODE_ENV=production` может быть и в preview окружениях,
-  // поэтому ориентируемся на `VERCEL_ENV`.
-  const vercelEnv = process.env.VERCEL_ENV; // 'production' | 'preview' | 'development' | undefined
-  const isProductionDeployment =
-    vercelEnv === 'production' || (!vercelEnv && process.env.NODE_ENV === 'production');
-
-  if (isProductionDeployment) {
-    // ИСПРАВЛЕНО: не спамим error-логами в проде (часто сканеры/боты дергают /test-* пути)
-    // и не раскрываем наличие endpoint'а.
+  // FAIL-CLOSED: тестовый вебхук доступен ТОЛЬКО в явно не-прод окружении.
+  // Неизвестный/потерянный DEPLOYMENT_ENV => 404 (не раскрываем endpoint).
+  if (!isExplicitNonProd()) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 

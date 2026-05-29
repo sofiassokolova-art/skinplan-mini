@@ -1,14 +1,15 @@
 // lib/questionnaire-topics.ts
 // Структура тем для частичного перепрохождения анкеты
 
-export type QuestionTopicId = 
+export type QuestionTopicId =
   | 'skin_type'
   | 'concerns_goals'
   | 'diagnoses_sensitivity'
   | 'pregnancy'
   | 'avoid_ingredients'
-  | 'habits_lifestyle'
-  | 'spf_sun'
+  // habits_lifestyle удалён: единственный вопрос makeup_frequency перемещён в budget_preferences.
+  // spf_sun удалён: вопросы spf_frequency / sun_exposure убраны из анкеты,
+  // SPF в плане включён по умолчанию для всех.
   | 'current_care'
   | 'budget_preferences'
   | 'motivation';
@@ -27,10 +28,10 @@ export const QUESTION_TOPICS: Record<QuestionTopicId, QuestionTopic> = {
   skin_type: {
     id: 'skin_type',
     title: 'Тип кожи',
-    description: 'Определение типа кожи и сезонности',
-    questionCodes: ['skin_type', 'seasonal_changes'],
+    description: 'Определение типа кожи, сезонности и фототипа',
+    questionCodes: ['skin_type', 'seasonal_changes', 'fitzpatrick_type'],
     requiresPlanRebuild: true,
-    affectsFields: ['skinType', 'seasonality'],
+    affectsFields: ['skinType', 'seasonality', 'fitzpatrickType'],
   },
   concerns_goals: {
     id: 'concerns_goals',
@@ -44,7 +45,7 @@ export const QUESTION_TOPICS: Record<QuestionTopicId, QuestionTopic> = {
     id: 'diagnoses_sensitivity',
     title: 'Диагнозы и чувствительность',
     description: 'Медицинские диагнозы и уровень чувствительности',
-    questionCodes: ['medical_diagnoses', 'skin_sensitivity', 'allergies'],
+    questionCodes: ['skin_sensitivity', 'medical_diagnoses'],
     requiresPlanRebuild: true,
     affectsFields: ['diagnoses', 'sensitivity', 'contraindications'],
   },
@@ -59,42 +60,29 @@ export const QUESTION_TOPICS: Record<QuestionTopicId, QuestionTopic> = {
   avoid_ingredients: {
     id: 'avoid_ingredients',
     title: 'Нежелательные ингредиенты',
-    description: 'Ингредиенты, которые нужно исключить',
-    questionCodes: ['avoid_ingredients'],
+    description: 'Аллергии и ингредиенты, которые нужно исключить',
+    questionCodes: ['allergies', 'has_avoid_ingredients', 'avoid_ingredients'],
     requiresPlanRebuild: true,
     affectsFields: ['contraindications'],
   },
-  habits_lifestyle: {
-    id: 'habits_lifestyle',
-    title: 'Привычки и образ жизни',
-    description: 'Образ жизни и ежедневные привычки',
-    questionCodes: ['makeup_frequency', 'lifestyle_factors'],
-    requiresPlanRebuild: false,
-    affectsFields: ['makeupFrequency', 'lifestyleFactors'],
-  },
-  spf_sun: {
-    id: 'spf_sun',
-    title: 'SPF и солнце',
-    description: 'Привычки использования SPF и пребывания на солнце',
-    questionCodes: ['spf_frequency', 'sun_exposure'],
-    requiresPlanRebuild: false,
-    affectsFields: ['spfHabit'],
-  },
+  // habits_lifestyle удалён: makeup_frequency перемещён в budget_preferences.
   current_care: {
     id: 'current_care',
     title: 'Текущий уход и реакция кожи',
     description: 'Текущие средства и реакция кожи на них',
-    questionCodes: ['current_topicals', 'current_oral_meds', 'retinol_reaction', 'aha_bha_reaction'],
+    // Реальные id назначаются при seed; для retake и scoped recalculation матчимся по кодам.
+    questionCodes: ['retinoid_usage', 'retinoid_reaction', 'prescription_topical', 'oral_medications'],
     requiresPlanRebuild: true,
-    affectsFields: ['currentTopicals', 'currentOralMeds', 'contraindications'],
+    affectsFields: ['retinoidExperience', 'currentTopicals', 'currentOralMeds', 'contraindications'],
   },
   budget_preferences: {
     id: 'budget_preferences',
     title: 'Бюджет и предпочтения ухода',
     description: 'Бюджетный сегмент и предпочтения по уходу',
-    questionCodes: ['budget', 'care_preference', 'routine_complexity'],
+    // makeup_frequency перенесён сюда из удалённого топика habits_lifestyle.
+    questionCodes: ['makeup_frequency', 'care_type', 'care_steps', 'budget'],
     requiresPlanRebuild: true,
-    affectsFields: ['budgetSegment', 'carePreference', 'routineComplexity'],
+    affectsFields: ['makeupFrequency', 'budgetSegment', 'carePreference', 'routineComplexity'],
   },
   motivation: {
     id: 'motivation',
@@ -125,4 +113,3 @@ export function topicRequiresPlanRebuild(topicId: QuestionTopicId): boolean {
 export function getQuestionCodesForTopic(topicId: QuestionTopicId): string[] {
   return QUESTION_TOPICS[topicId]?.questionCodes ?? [];
 }
-

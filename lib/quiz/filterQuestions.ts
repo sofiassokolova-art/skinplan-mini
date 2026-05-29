@@ -264,49 +264,9 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
         }
       }
 
-      // 2. Фильтрация retinoid_reaction на основе retinoid_usage
-      // ИСПРАВЛЕНО: Используем только question.code для стабильности
-      // ФИКС: Вопрос retinoid_reaction должен показываться до ответа на retinoid_usage
-      const isRetinoidReactionQuestion = normalizedCode === 'retinoid_reaction';
-      
-      if (isRetinoidReactionQuestion) {
-        // ФИКС: Если нет ответов вообще, показываем вопрос (он будет отфильтрован после ответа на retinoid_usage)
-        if (!hasAnyAnswers) {
-          filteredCount++;
-          return true;
-        }
-        
-        const retinoidUsage = getAnswerByCode('retinoid_usage', questions, effectiveAnswers);
-        if (!retinoidUsage.question) {
-          // Вопрос о ретиноле еще не найден - показываем вопрос (он будет скрыт позже)
-          filteredCount++;
-          return true;
-        }
-
-        // ФИКС: Проверяем, есть ли ответ на retinoid_usage
-        const hasRetinoidUsageAnswer = retinoidUsage.question.id in effectiveAnswers;
-        if (!hasRetinoidUsageAnswer) {
-          // Ответа еще нет - показываем вопрос
-          filteredCount++;
-          return true;
-        }
-
-        const normalizedValue = getNormalizedAnswerValue(
-          retinoidUsage.question,
-          effectiveAnswers[retinoidUsage.question.id] || '',
-          questions
-        );
-
-        // Показываем только если ответили "yes" (да)
-        const shouldShow = normalizedValue === 'yes';
-        if (!shouldShow) {
-          excludedCount++;
-          excludedReasons['retinoid_reaction_no'] = (excludedReasons['retinoid_reaction_no'] || 0) + 1;
-        } else {
-          filteredCount++;
-        }
-        return shouldShow;
-      }
+      // 2. retinoid_reaction оставляем видимым без gate-фильтра.
+      // В вопросе есть вариант "Никогда не использовал(а)", поэтому при полном
+      // перепрохождении он не должен пропадать, даже если retinoid_usage ещё пустой.
 
       // 3. Фильтрация вопросов про макияж (только для женщин)
       // ИСПРАВЛЕНО: Используем только question.code для стабильности
@@ -328,6 +288,43 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
           filteredCount++;
         }
         return shouldShow;
+      }
+
+      // 3.5. Условная фильтрация avoid_ingredients — показываем только если
+      // на gate-вопрос has_avoid_ingredients ответили положительно.
+      // Если gate не отвечен или ответ «Да, есть» — показываем; «Нет» — скрываем.
+      const isAvoidIngredientsQuestion = normalizedCode === 'avoid_ingredients';
+
+      if (isAvoidIngredientsQuestion) {
+        const gate = getAnswerByCode('has_avoid_ingredients', questions, effectiveAnswers);
+        if (!gate.question) {
+          // gate-вопрос не найден в анкете — показываем avoid_ingredients как раньше
+          // (безопасный fallback при возможном legacy-состоянии БД).
+          filteredCount++;
+          return true;
+        }
+
+        const hasGateAnswer = gate.question.id in effectiveAnswers;
+        if (!hasGateAnswer) {
+          // На gate ещё не ответили — показываем avoid_ingredients (он отфильтруется позже).
+          filteredCount++;
+          return true;
+        }
+
+        // Скрываем, если ответ начинается с «Нет».
+        const gateValue = (gate.value || '').toString().toLowerCase().trim();
+        const isNoAnswer =
+          gateValue.startsWith('нет') ||
+          gateValue.includes('исключать ничего не нужно') ||
+          gateValue === 'no';
+
+        if (isNoAnswer) {
+          excludedCount++;
+          excludedReasons['avoid_ingredients_gate_no'] = (excludedReasons['avoid_ingredients_gate_no'] || 0) + 1;
+          return false;
+        }
+        filteredCount++;
+        return true;
       }
 
       // 4. Фильтрация вопросов про беременность (только для женщин)
@@ -442,4 +439,3 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
 
   return filteredQuestions;
 }
-

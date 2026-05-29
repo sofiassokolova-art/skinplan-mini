@@ -39,6 +39,35 @@ interface PlanPageClientNewProps {
   planExpired?: boolean; // Флаг истечения плана (28+ дней)
 }
 
+function getAnswerText(answer: any): string | null {
+  const rawValue = answer?.answerValue;
+  if (typeof rawValue === 'string' && rawValue.trim().length > 0) {
+    return rawValue.trim();
+  }
+
+  if (Array.isArray(answer?.answerValues)) {
+    const firstValue = answer.answerValues.find((value: unknown) => typeof value === 'string' && value.trim().length > 0);
+    return typeof firstValue === 'string' ? firstValue.trim() : null;
+  }
+
+  return null;
+}
+
+function getNameFromQuestionnaireAnswers(userAnswers: any[]): string | null {
+  const nameCodeCandidates = new Set(['user_name', 'username', 'name', 'first_name']);
+  const byCode = userAnswers.find((answer: any) => {
+    const code = String(answer?.question?.code || '').trim().toLowerCase();
+    return nameCodeCandidates.has(code);
+  });
+
+  const byQuestionText = userAnswers.find((answer: any) => {
+    const text = String(answer?.question?.text || '').trim().toLowerCase();
+    return text.includes('имя') || text.includes('зовут');
+  });
+
+  return getAnswerText(byCode) || getAnswerText(byQuestionText);
+}
+
 export function PlanPageClientNew({
   plan28,
   products: productsProp,
@@ -116,20 +145,16 @@ export function PlanPageClientNew({
     
     const loadUserName = async () => {
       try {
-        // ИСПРАВЛЕНО: Имя всегда берется с сервера, не из localStorage
-        // Приоритет: ответ USER_NAME > профиль
-        // Запрашиваем ответы из API (кэш больше не используется, данные в БД)
+        // Приоритет: ответ анкеты (USER_NAME / альтернативные коды) > профиль.
         const userAnswers = await api.getUserAnswers() as any;
         if (!cancelled && isMountedRef.current && userAnswers && Array.isArray(userAnswers)) {
-          const nameAnswer = userAnswers.find((a: any) => a.question?.code === 'USER_NAME');
-          if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
-            const userNameFromAnswer = String(nameAnswer.answerValue).trim();
+          const userNameFromAnswer = getNameFromQuestionnaireAnswers(userAnswers);
+          if (userNameFromAnswer) {
             setUserName(userNameFromAnswer);
-            clientLogger.log('✅ User name loaded from USER_NAME answer:', userNameFromAnswer);
+            clientLogger.log('✅ User name loaded from questionnaire answer');
             return;
           }
         }
-        // Если имени нет в ответах, пробуем из профиля
         if (!cancelled && isMountedRef.current) {
           const userProfile = await api.getUserProfile();
           if (userProfile?.firstName) {
@@ -460,36 +485,98 @@ export function PlanPageClientNew({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        background: '#FFFFFF',
       }}>
-        <div style={{ color: '#0A5F59', fontSize: '16px' }}>День не найден</div>
+        <div style={{ color: '#0A0A0A', fontSize: '16px' }}>День не найден</div>
       </div>
     );
   }
 
   return (
     <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-      padding: '20px',
-      paddingBottom: '100px',
+      minHeight: '100svh',
+      background: 'linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 68%, #F5FFFC 100%)',
+      paddingBottom: '76px',
+      overflowX: 'hidden',
+      overscrollBehaviorY: 'contain',
     }}>
-      {/* Header с целями */}
-      <PlanHeader 
+      {/* Hero — black */}
+      <div style={{
+        background: '#0A0A0A',
+        padding: '24px 20px 28px',
+      }}>
+        <div style={{
+          display: 'inline-block',
+          background: '#D5FE61',
+          color: '#0A0A0A',
+          fontFamily: "var(--font-unbounded), 'Unbounded', sans-serif",
+          fontWeight: 700,
+          fontSize: '11px',
+          padding: '5px 12px',
+          borderRadius: '20px',
+          marginBottom: '16px',
+          letterSpacing: '0.2px',
+        }}>
+          {userName ? `${userName}, день ${initialCurrentDay}` : `День ${initialCurrentDay} / 28`}
+        </div>
+        <div style={{
+          fontFamily: "var(--font-unbounded), 'Unbounded', sans-serif",
+          fontSize: '24px',
+          fontWeight: 700,
+          color: '#FFFFFF',
+          lineHeight: 1.15,
+          letterSpacing: '-0.5px',
+          marginBottom: '20px',
+        }}>
+          Твой план ухода
+        </div>
+        <div style={{ marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>Прогресс</span>
+            <span style={{ fontSize: '12px', color: '#D5FE61', fontWeight: 700 }}>
+              {Math.round((initialCurrentDay / 28) * 100)}% · неделя {Math.ceil(initialCurrentDay / 7)} из 4
+            </span>
+          </div>
+          <div style={{ height: '5px', background: 'rgba(255,255,255,0.10)', borderRadius: '3px', overflow: 'hidden' }}>
+            <div style={{
+              width: `${Math.round((initialCurrentDay / 28) * 100)}%`,
+              height: '100%',
+              background: '#D5FE61',
+              borderRadius: '3px',
+            }} />
+          </div>
+        </div>
+        {userInfo?.skinType && (
+          <div style={{
+            display: 'inline-block',
+            background: 'rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.14)',
+            borderRadius: '12px',
+            padding: '7px 14px',
+            fontSize: '12px',
+            color: 'rgba(255,255,255,0.7)',
+            fontWeight: 600,
+          }}>
+            {userInfo.skinType}
+          </div>
+        )}
+      </div>
+
+      {/* Анализ кожи */}
+      {skinIssues.length > 0 && (
+        <div style={{ padding: '22px 20px 0' }}>
+          <SkinIssuesCarousel issues={skinIssues} />
+        </div>
+      )}
+
+      {/* Основные цели */}
+      <PlanHeader
         mainGoals={plan28.mainGoals || []}
         userInfo={userInfo || undefined}
         userName={userName}
       />
 
-      {/* Основные проблемы кожи */}
-      {skinIssues.length > 0 && (
-        <div style={{ marginBottom: '24px' }}>
-          <SkinIssuesCarousel issues={skinIssues} />
-        </div>
-      )}
-
-      {/* ИСПРАВЛЕНО: PaymentGate показывается ВСЕГДА - план это платный продукт */}
-      {/* PaymentGate сам проверяет статус оплаты и показывает блюр только если не оплачено */}
+      {/* PaymentGate оборачивает платный контент */}
       <PaymentGate
         price={199}
         productCode="plan_access"
@@ -566,7 +653,7 @@ export function PlanPageClientNew({
         )}
 
         {/* Блок обратной связи в конце страницы */}
-        <div style={{ marginTop: '48px', marginBottom: '24px' }}>
+        <div style={{ marginTop: '48px', marginBottom: '8px' }}>
           <FeedbackBlock onSubmit={handleFeedbackSubmit} feedbackType="plan_recommendations" />
         </div>
 

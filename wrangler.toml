@@ -1,0 +1,53 @@
+# Cloudflare Workers configuration for skinplan-mini
+# Build: npm run build:cf
+# Deploy prod:    npx wrangler deploy --env production
+# Deploy staging: npx wrangler deploy --env staging
+
+name = "skinplan-mini-staging"
+main = ".open-next/worker.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat_v2"]
+workers_dev = true
+
+# Top-level vars: дефолт для любого деплоя без --env (fail-safe — никогда не считать прод по ошибке).
+# Прод выставляет DEPLOYMENT_ENV=production через [env.production.vars].
+[vars]
+DEPLOYMENT_ENV = "staging"
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+# WASM modules — Prisma query engine (handled as native WebAssembly, not bundled into JS)
+[[rules]]
+type = "CompiledWasm"
+globs = ["**/*.wasm"]
+
+# Cron только для prod — настраивается вручную в CF Dashboard для staging
+# [triggers]
+# crons = ["0 0 * * 0"]
+
+# ── Production ────────────────────────────────────────────────
+[env.production]
+name = "skinplan-mini-prod"
+routes = [
+  { pattern = "proskiniq.ru/*", zone_name = "proskiniq.ru" },
+  { pattern = "www.proskiniq.ru/*", zone_name = "proskiniq.ru" },
+]
+
+[env.production.vars]
+DEPLOYMENT_ENV = "production"
+
+# Cron для prod — настрой вручную в CF Dashboard → skinplan-mini-prod → Triggers
+# [env.production.triggers]
+# crons = ["0 0 * * 0"]
+
+# ── Staging ───────────────────────────────────────────────────
+[env.staging]
+name = "skinplan-mini-staging"
+routes = [
+  { pattern = "staging.proskiniq.ru/*", zone_name = "proskiniq.ru" },
+]
+
+[env.staging.vars]
+DEPLOYMENT_ENV = "staging"

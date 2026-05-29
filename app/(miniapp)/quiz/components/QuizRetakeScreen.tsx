@@ -13,6 +13,7 @@ import type { QuizTopic } from '@/lib/quiz-topics';
 import * as userPreferences from '@/lib/user-preferences';
 import { getInitialInfoScreens } from '../info-screens';
 import type { Questionnaire } from '@/lib/quiz/types';
+import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 
 interface QuizRetakeScreenProps {
   questionnaire: Questionnaire | null;
@@ -290,6 +291,51 @@ export function QuizRetakeScreen({
                 clientLogger.warn('Failed to save full retake payment flag:', err);
               }
             }
+
+            // ВАЖНО: при перепрохождении после оплаты НЕ показываем резюм-экран —
+            // полностью сбрасываем сохранённый прогресс и помечаем сессию как "starting over".
+            // Без этого useResumeScreenLogic увидит savedProgress в storage и покажет резюм-экран.
+            setIsStartingOver(true);
+            isStartingOverRef.current = true;
+            setAnswers({});
+            setSavedProgress(null);
+            setHasResumed(false);
+            hasResumedRef.current = false;
+            autoSubmitTriggeredRef.current = false;
+            setAutoSubmitTriggered(false);
+            setError(null);
+
+            // Чистим sessionStorage, чтобы useQuizRestorePipeline не восстановил savedProgress
+            // и не показал резюм-экран при следующем рендере.
+            if (typeof window !== 'undefined') {
+              try {
+                const scope = questionnaire?.id?.toString() || 'default';
+                sessionStorage.removeItem(QUIZ_CONFIG.getScopedKey('quiz_answers_backup', scope));
+                sessionStorage.removeItem(QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN, scope));
+                sessionStorage.removeItem(QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION, scope));
+                sessionStorage.removeItem(QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE, scope));
+                sessionStorage.removeItem(QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.QUIZ_COMPLETED, scope));
+                sessionStorage.removeItem(QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED, scope));
+                sessionStorage.removeItem(QUIZ_CONFIG.getScopedKey(QUIZ_CONFIG.STORAGE_KEYS.INIT_CALLED, scope));
+                sessionStorage.removeItem('quiz_answers_backup');
+                sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
+                sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
+                sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION_CODE);
+                // Флаг блокирует восстановление из sessionStorage до первого ответа в новой сессии
+                sessionStorage.setItem(QUIZ_CONFIG.getScopedKey('quiz_progress_cleared', scope), 'true');
+              } catch (err) {
+                clientLogger.warn('Failed to clear sessionStorage after full retake payment:', err);
+              }
+            }
+
+            // Очищаем флаги перепрохождения в БД, чтобы при следующем входе не было артефактов
+            try {
+              await userPreferences.setIsRetakingQuiz(false);
+              await userPreferences.setFullRetakeFromHome(false);
+            } catch (err) {
+              clientLogger.warn('Failed to clear retake flags after payment:', err);
+            }
+
             setShowFullRetakePaymentGate(false);
             setShowRetakeScreen(false);
             setIsRetakingQuiz(true);

@@ -8,8 +8,7 @@ import { prisma } from '@/lib/db';
 import { ApiResponse } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
-
-export const runtime = 'nodejs';
+import { isExplicitNonProd } from '@/lib/deployment-env';
 
 /**
  * @deprecated НЕ ИСПОЛЬЗУЙТЕ В ПРОДАКШЕНЕ!
@@ -24,16 +23,9 @@ export const runtime = 'nodejs';
  */
 export async function POST(request: NextRequest) {
   try {
-    // В продакшене блокируем этот endpoint.
-    // ВАЖНО: На Vercel `NODE_ENV=production` может быть и в preview окружениях,
-    // поэтому ориентируемся на `VERCEL_ENV`.
-    const vercelEnv = process.env.VERCEL_ENV; // 'production' | 'preview' | 'development' | undefined
-    const isProductionDeployment =
-      vercelEnv === 'production' || (!vercelEnv && process.env.NODE_ENV === 'production');
-
-    if (isProductionDeployment) {
-      // ИСПРАВЛЕНО: не спамим error-логами в проде (часто сканеры/боты дергают /test-* и deprecated пути)
-      // и не раскрываем наличие endpoint'а.
+    // FAIL-CLOSED: deprecated endpoint доступен ТОЛЬКО в явно не-прод окружении.
+    // Неизвестный/потерянный DEPLOYMENT_ENV => 404 (не раскрываем endpoint).
+    if (!isExplicitNonProd()) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 

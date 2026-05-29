@@ -1,4 +1,3 @@
-// app/api/admin/users/route.ts
 // API для получения списка пользователей
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -20,10 +19,23 @@ export async function GET(request: NextRequest) {
     const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1);
     const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '50') || 50), 100);
     const skip = (page - 1) * limit;
+    const search = (searchParams.get('search') || '').trim().toLowerCase();
+
+    const where = search
+      ? {
+          OR: [
+            { telegramId: search },
+            { username: { contains: search, mode: 'insensitive' as const } },
+            { firstName: { contains: search, mode: 'insensitive' as const } },
+            { lastName: { contains: search, mode: 'insensitive' as const } },
+          ],
+        }
+      : undefined;
 
     // Получаем пользователей с их профилями, планами и оплатой
     const [users, total] = await Promise.all([
       prisma.user.findMany({
+        where,
         skip,
         take: limit,
         include: {
@@ -44,6 +56,7 @@ export async function GET(request: NextRequest) {
               code: 'paid_access',
             },
             orderBy: { updatedAt: 'desc' },
+            take: 1,
           },
           payments: {
             where: {
@@ -64,15 +77,16 @@ export async function GET(request: NextRequest) {
         },
         orderBy: { createdAt: 'desc' },
       }),
-      prisma.user.count(),
+      prisma.user.count({ where }),
     ]);
 
+    const now = new Date();
     const usersPayload = users.map((user) => {
       const paidEntitlement = user.entitlements.find(
         (e) =>
           e.code === 'paid_access' &&
           e.active === true &&
-          (!e.validUntil || e.validUntil > new Date())
+          (!e.validUntil || e.validUntil > now)
       );
 
       const lastPayment = user.payments[0] || null;
