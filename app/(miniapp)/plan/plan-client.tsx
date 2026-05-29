@@ -310,7 +310,7 @@ export function PlanPageClient({
                       <div style={{ flex: 1 }}>
                         <p style={{ fontWeight: 'bold', fontSize: '18px', color: '#0A5F59', marginBottom: '4px' }}>{product.name}</p>
                         <p style={{ fontSize: '14px', color: '#6B7280' }}>
-                          {product.brand.name} • {product.price} ₽
+                          {product.brand.name}
                         </p>
                       </div>
 
@@ -368,7 +368,7 @@ export function PlanPageClient({
                       <div style={{ flex: 1 }}>
                         <p style={{ fontWeight: 'bold', fontSize: '18px', color: '#0A5F59', marginBottom: '4px' }}>{product.name}</p>
                         <p style={{ fontSize: '14px', color: '#6B7280' }}>
-                          {product.brand.name} • {product.price} ₽
+                          {product.brand.name}
                         </p>
                       </div>
 

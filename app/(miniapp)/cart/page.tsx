@@ -109,7 +109,6 @@ export default function FavoritesPage() {
         .fav-rd .fv-body{min-width:0;display:flex;flex-direction:column;gap:8px;padding-right:24px;}
         .fav-rd .fv-brand{font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#6B7280;}
         .fav-rd .fv-name{font-size:14px;font-weight:700;line-height:1.22;letter-spacing:-0.15px;color:#0A0A0A;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
-        .fav-rd .fv-price{font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:14px;font-weight:700;color:#0A0A0A;letter-spacing:-0.3px;}
         .fav-rd .fv-cta{width:100%;height:44px;border:0;border-radius:0;background:#D5FE61;color:#000;font-family:var(--font-inter),sans-serif;font-weight:400;font-size:13px;text-transform:uppercase;letter-spacing:0.02em;cursor:pointer;transition:transform .15s;}
         .fav-rd .fv-cta:active{transform:scale(0.98);}
         .fav-rd .fv-cta.in{background:#0A0A0A;color:#fff;}
@@ -152,7 +151,6 @@ export default function FavoritesPage() {
                 <div className="fv-body">
                   <div className="fv-brand">{item.product.brand.name}</div>
                   <div className="fv-name">{item.product.name}</div>
-                  {item.product.price && <div className="fv-price">{item.product.price} ₽</div>}
                   <button
                     className={`fv-cta${inCart ? ' in' : ''}`}
                     onClick={() => handleAddToCart(item.product.id)}

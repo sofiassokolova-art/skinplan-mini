@@ -158,18 +158,6 @@ export default function WishlistItem({ item, onRemove }: WishlistItemProps) {
             >
               {item.product.name}
             </div>
-            {item.product.price && (
-              <div
-                style={{
-                  fontSize: '14px',
-                  color: '#475467',
-                  marginBottom: '16px',
-                }}
-              >
-                от {item.product.price} ₽
-              </div>
-            )}
-
             {/* Кнопка добавления в корзину */}
             <div style={{ marginBottom: '16px', position: 'relative' }}>
               <button
