@@ -261,18 +261,17 @@ export default async function RootLayout({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: '#FFFFFF',
+              backgroundColor: '#000000',
               zIndex: 99998,
             }}
           >
             <div
               style={{
-                width: 40,
-                height: 40,
+                width: 88,
+                height: 88,
                 borderRadius: '50%',
-                border: '3px solid rgba(15, 23, 42, 0.12)',
-                borderTopColor: '#111827',
-                animation: 'spin 0.8s linear infinite',
+                background: '#D5FE61',
+                animation: 'skinplan-loader-pulse 1.6s ease-in-out infinite',
               }}
             />
           </div>

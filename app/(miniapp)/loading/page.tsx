@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
+import { AppLoader } from '@/components/AppLoader';
 
 type LoadingStep =
   | 'saving_answers'
@@ -147,148 +148,47 @@ export default function LoadingPage() {
     };
   }, [router, searchParams]);
 
-  const progress = STEP_PROGRESS[step];
-  const label = STEP_LABELS[step];
-
-  // Палитра анкеты: чёрный фон, лаймовые акценты (#D5FE61), белый текст.
-  // Та же палитра используется в QuizQuestion / FixedContinueButton.
-  const LIME = '#D5FE61';
-  const BLACK = '#000000';
-  const WHITE = '#FFFFFF';
-
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        background: BLACK,
-        padding: '24px',
-        fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-      }}
+    <AppLoader
+      variant="light"
+      progress={step === 'error' ? undefined : STEP_PROGRESS[step]}
+      showProgressPercent={false}
+      showAnimation={step !== 'error'}
+      message={STEP_LABELS[step]}
+      subMessage={step !== 'error' && step !== 'done' ? 'Это может занять до 1 минуты' : undefined}
     >
-      <div style={{ width: '100%', maxWidth: '420px' }}>
-        {/* Лаймовый «пульс» — лёгкая визуальная активность пока пайплайн работает */}
-        {step !== 'error' && (
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'center',
-              marginBottom: '40px',
-            }}
-          >
-            <div
-              style={{
-                width: '88px',
-                height: '88px',
-                borderRadius: '50%',
-                background: LIME,
-                animation: 'skinplan-pulse 1.6s ease-in-out infinite',
-              }}
-            />
-          </div>
-        )}
-
-        {/* Прогресс-бар: дорожка тёмно-серая, заполнение лаймовое */}
+      {step === 'error' && error && (
         <div
           style={{
-            height: '8px',
-            background: '#222222',
-            borderRadius: '999px',
-            overflow: 'hidden',
+            background: '#1A1A1A',
+            border: '1px solid #D5FE61',
+            borderRadius: '16px',
+            padding: '20px',
           }}
         >
-          <div
-            style={{
-              height: '100%',
-              width: `${progress}%`,
-              background: LIME,
-              borderRadius: '999px',
-              transition: 'width 500ms ease-out',
-            }}
-          />
-        </div>
-
-        {/* Лейбл текущего шага */}
-        <p
-          style={{
-            textAlign: 'center',
-            marginTop: '20px',
-            color: WHITE,
-            fontSize: '18px',
-            fontWeight: 600,
-            fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-            letterSpacing: '-0.01em',
-          }}
-        >
-          {label}
-        </p>
-
-        {step !== 'error' && step !== 'done' && (
-          <p
-            style={{
-              textAlign: 'center',
-              marginTop: '10px',
-              color: '#888888',
-              fontSize: '14px',
-            }}
-          >
-            Это может занять до 1 минуты
+          <p style={{ color: '#FFFFFF', fontSize: '14px', lineHeight: '140%', margin: 0 }}>
+            {error}
           </p>
-        )}
-
-        {/* Ошибка */}
-        {step === 'error' && error && (
-          <div
+          <button
+            onClick={() => router.push('/quiz')}
             style={{
-              marginTop: '24px',
-              background: '#1A1A1A',
-              border: `1px solid ${LIME}`,
-              borderRadius: '16px',
-              padding: '20px',
+              marginTop: '16px',
+              width: '100%',
+              background: '#D5FE61',
+              color: '#000000',
+              padding: '14px 16px',
+              borderRadius: '999px',
+              border: 'none',
+              fontSize: '16px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
             }}
           >
-            <p style={{ color: WHITE, fontSize: '14px', lineHeight: '140%', margin: 0 }}>
-              {error}
-            </p>
-            <button
-              onClick={() => router.push('/quiz')}
-              style={{
-                marginTop: '16px',
-                width: '100%',
-                background: LIME,
-                color: BLACK,
-                padding: '14px 16px',
-                borderRadius: '999px',
-                border: 'none',
-                fontSize: '16px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}
-            >
-              Вернуться к анкете
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Keyframes для пульсации лаймового круга. Локально, чтобы не зависеть от глобальных стилей. */}
-      <style jsx>{`
-        @keyframes skinplan-pulse {
-          0%, 100% {
-            transform: scale(1);
-            opacity: 1;
-          }
-          50% {
-            transform: scale(0.85);
-            opacity: 0.55;
-          }
-        }
-      `}</style>
-    </div>
+            Вернуться к анкете
+          </button>
+        </div>
+      )}
+    </AppLoader>
   );
 }
-

@@ -5,6 +5,17 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes skinplan-loader-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.84);
+    opacity: 0.55;
+  }
+}
+
 /* --font-unbounded и --font-inter ставятся через next/font на html.className
  * (см. app/layout.tsx). Не переопределяем здесь — иначе перебиваем хешированное
  * имя локального шрифта на литералы 'Unbounded'/'Inter' (которых нет в @font-face)

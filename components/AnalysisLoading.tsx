@@ -4,7 +4,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { AppLoader } from '@/components/AppLoader';
 
 interface AnalysisLoadingProps {
   onComplete: () => void;
@@ -12,7 +12,6 @@ interface AnalysisLoadingProps {
 }
 
 export function AnalysisLoading({ onComplete, duration = 6000 }: AnalysisLoadingProps) {
-  const router = useRouter();
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
@@ -35,91 +34,12 @@ export function AnalysisLoading({ onComplete, duration = 6000 }: AnalysisLoading
   }, [duration, onComplete]);
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-      padding: '20px',
-    }}>
-      {/* Анимированный лоадер */}
-      <div style={{
-        width: '80px',
-        height: '80px',
-        border: '4px solid rgba(10, 95, 89, 0.1)',
-        borderTop: '4px solid #0A5F59',
-        borderRadius: '50%',
-        animation: 'spin 1s linear infinite',
-        marginBottom: '32px',
-      }}></div>
-
-      {/* Заголовок */}
-      <h1 style={{
-        fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-        fontWeight: 700,
-        fontSize: '28px',
-        lineHeight: '36px',
-        color: '#0A5F59',
-        marginBottom: '12px',
-        textAlign: 'center',
-      }}>
-        Подбираем персональный уход
-      </h1>
-
-      {/* Подзаголовок */}
-      <p style={{
-        fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-        fontWeight: 400,
-        fontSize: '16px',
-        lineHeight: '24px',
-        color: '#475467',
-        marginBottom: '32px',
-        textAlign: 'center',
-        maxWidth: '320px',
-      }}>
-        Анализируем ваши ответы и состояние кожи…
-      </p>
-
-      {/* Прогресс-бар */}
-      <div style={{
-        width: '100%',
-        maxWidth: '320px',
-        height: '8px',
-        backgroundColor: 'rgba(10, 95, 89, 0.1)',
-        borderRadius: '4px',
-        overflow: 'hidden',
-        marginBottom: '8px',
-      }}>
-        <div style={{
-          width: `${progress}%`,
-          height: '100%',
-          backgroundColor: '#0A5F59',
-          borderRadius: '4px',
-          transition: 'width 0.1s ease-out',
-          boxShadow: '0 2px 8px rgba(10, 95, 89, 0.3)',
-        }} />
-      </div>
-
-      {/* Процент прогресса */}
-      <p style={{
-        fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-        fontWeight: 500,
-        fontSize: '14px',
-        color: '#0A5F59',
-        textAlign: 'center',
-      }}>
-        {Math.round(progress)}%
-      </p>
-
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
-    </div>
+    <AppLoader
+      variant="light"
+      progress={progress}
+      showProgressPercent={false}
+      message="Подбираем персональный уход"
+      subMessage="Анализируем ваши ответы и состояние кожи…"
+    />
   );
 }
-

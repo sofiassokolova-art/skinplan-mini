@@ -7,6 +7,7 @@ import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { usePaywallVisibility } from '@/providers/PaywallVisibilityContext';
 import { DEV_TELEGRAM } from '@/lib/config/timeouts';
+import { AppLoader } from '@/components/AppLoader';
 
 interface PaymentGateProps {
   price?: number;
@@ -505,48 +506,13 @@ export function PaymentGate({
   // Ждём первой проверки entitlements — показываем полноэкранный лоадер
   if (!checkedOnce) {
     return (
-      <div style={{
-        position: 'fixed',
-        inset: 0,
-        background: '#f5f0eb',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000,
-      }}>
-        <div style={{
-          width: '40px',
-          height: '40px',
-          border: '3px solid rgba(0,0,0,0.1)',
-          borderTop: '3px solid #000',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
-          marginBottom: '16px',
-        }} />
-        <div style={{
-          fontFamily: "var(--font-inter), 'Inter', sans-serif",
-          fontSize: '15px',
-          fontWeight: 600,
-          color: '#111',
-        }}>
-          Проверяем доступ…
-        </div>
-        <div style={{
-          fontFamily: "var(--font-inter), 'Inter', sans-serif",
-          fontSize: '13px',
-          color: '#888',
-          marginTop: '6px',
-        }}>
-          {initDataReady ? 'Почти готово' : 'Открываем Telegram Mini App'}
-        </div>
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
-      </div>
+      <AppLoader
+        fullScreen
+        variant="dark"
+        zIndex={1000}
+        message="Проверяем доступ..."
+        subMessage={initDataReady ? 'Почти готово' : 'Открываем Telegram Mini App'}
+      />
     );
   }
 
@@ -922,12 +888,6 @@ export function PaymentGate({
           )}
         </div>
       </div>
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }
