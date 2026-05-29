@@ -145,7 +145,6 @@ export function StepCard({
         </div>
         <div style={{ fontSize: '14px', color: '#6B7280' }}>
           {product.brand.name}
-          {product.price && ` • ${product.price} ₽`}
         </div>
       </div>
 

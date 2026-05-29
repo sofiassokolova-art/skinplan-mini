@@ -371,9 +371,6 @@ function ProductsSection(props: {
                     {p.phaseTags.map((t) => <span className="pv2-product-tag" key={t}>{t}</span>)}
                   </div>
                 )}
-                {p.price !== null && (
-                  <div className="pv2-product-price">{formatPrice(p.price)} ₽</div>
-                )}
                 <div className="pv2-product-actions">
                   <button
                     className="pv2-icon-btn"
@@ -459,11 +456,6 @@ function FeedbackSection({ onSubmit }: { onSubmit: (positive: boolean) => void }
       </div>
     </div>
   );
-}
-
-// ─── Helpers ───
-function formatPrice(price: number): string {
-  return new Intl.NumberFormat('ru-RU').format(price);
 }
 
 // ─── Skeleton ────────────────────────────────────────────────────
@@ -1059,13 +1051,6 @@ function PlanV2Styles() {
         padding: 4px 10px;
         font-size: 11px;
         color: #475467;
-      }
-      .pv2-product-price {
-        font-family: 'Unbounded', sans-serif;
-        font-weight: 700;
-        font-size: 15px;
-        letter-spacing: -0.2px;
-        margin-top: auto;
       }
       .pv2-product-actions {
         display: flex;

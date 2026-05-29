@@ -333,15 +333,6 @@ export function AllProductsList({
                         </div>
                       ) : null;
                     })()}
-                    {product.price && (
-                      <p style={{
-                        fontSize: '16px',
-                        fontWeight: '600',
-                        color: '#0A5F59',
-                      }}>
-                        {product.price} ₽
-                      </p>
-                    )}
                   </div>
 
                   {/* Кнопки действий */}

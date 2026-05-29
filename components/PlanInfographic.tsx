@@ -239,16 +239,6 @@ export function PlanInfographic({
                             }}>
                               {product.brand}
                             </div>
-                            {fullProduct?.price && (
-                              <div style={{
-                                fontSize: '14px',
-                                fontWeight: '600',
-                                color: '#0A5F59',
-                                marginTop: '4px',
-                              }}>
-                                {fullProduct.price} ₽
-                              </div>
-                            )}
                             {/* Теги продукта */}
                             {(() => {
                               const stepDesc = getStepDescription(product.stepCategory as any);
