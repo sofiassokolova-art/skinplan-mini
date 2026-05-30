@@ -16,3 +16,15 @@ export type { LoadingScreenProps } from './LoadingScreen';
 export { ErrorScreen } from './ErrorScreen';
 export type { ErrorScreenProps } from './ErrorScreen';
 
+export { NoMistakesScreen } from './NoMistakesScreen';
+export type { NoMistakesScreenProps } from './NoMistakesScreen';
+
+export { RecognizeYourselfScreen } from './RecognizeYourselfScreen';
+export type { RecognizeYourselfScreenProps } from './RecognizeYourselfScreen';
+
+export { ImproveSkinScreen } from './ImproveSkinScreen';
+export type { ImproveSkinScreenProps } from './ImproveSkinScreen';
+
+export { AiComparisonScreen } from './AiComparisonScreen';
+export type { AiComparisonScreenProps } from './AiComparisonScreen';
+

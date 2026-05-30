@@ -159,11 +159,48 @@ export async function submitAnswers(params: SubmitAnswersParams): Promise<void> 
       answersCount: answerArray.length,
     });
 
-    // 5) отправка
-    const result = await api.submitAnswers({
-      questionnaireId: params.questionnaire.id,
-      answers: answerArray,
-    });
+    // 5) отправка — с ретраем на сетевые сбои (#6: "Load failed" / "Failed to fetch"
+    // на cold-start Cloudflare Worker). Сетевой сбой означает, что запрос не дошёл/не
+    // завершился, поэтому повтор безопасен. Постоянный clientSubmissionId даёт
+    // идемпотентность на сервере, если запрос всё же был обработан.
+    const clientSubmissionId =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `${params.questionnaire.id}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    const isNetworkError = (e: any): boolean => {
+      const m = String(e?.message || '').toLowerCase();
+      return (
+        e?.name === 'TypeError' ||
+        m.includes('load failed') ||
+        m.includes('failed to fetch') ||
+        m.includes('networkerror') ||
+        m.includes('network request failed')
+      );
+    };
+
+    const MAX_ATTEMPTS = 3;
+    let result: any;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        result = await api.submitAnswers({
+          questionnaireId: params.questionnaire.id,
+          answers: answerArray,
+          clientSubmissionId,
+        });
+        break;
+      } catch (e: any) {
+        const retriable = isNetworkError(e) && attempt < MAX_ATTEMPTS;
+        clientLogger.warn(`⚠️ submitAnswers попытка ${attempt}/${MAX_ATTEMPTS} не удалась`, {
+          message: e?.message,
+          name: e?.name,
+          retriable,
+        });
+        if (!retriable) throw e;
+        // лёгкий бэкофф: 700мс, 1400мс
+        await new Promise((r) => setTimeout(r, attempt * 700));
+      }
+    }
 
     clientLogger.log('📥 submitAnswers result', {
       keys: result ? Object.keys(result) : [],
