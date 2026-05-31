@@ -508,22 +508,12 @@ export const QuizRenderer = memo(function QuizRenderer({
       if (onSubmit && !isSubmitting) {
         onSubmit();
       }
-      // Один лоадер: белый фон, черный лоадер и текст (как перед анкетой)
+      // Единый чёрно-серый лоадер (как перед анкетой)
       return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-white p-4">
-          <div className="w-full max-w-md">
-            <div className="mb-8">
-              <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-black transition-all duration-500 ease-out"
-                  style={{ width: '10%' }}
-                />
-              </div>
-              <p className="text-center mt-4 text-black text-lg font-medium">Сохраняем ответы...</p>
-              <p className="text-center mt-2 text-black text-sm">Это может занять до 1 минуты</p>
-            </div>
-          </div>
-        </div>
+        <QuizInitialLoader
+          message="Сохраняем ответы..."
+          subMessage="Это может занять до 1 минуты"
+        />
       );
     }
     
