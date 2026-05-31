@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { clientLogger } from '@/lib/client-logger';
+import { api } from '@/lib/api';
 import { REDIRECT_TIMEOUTS, ROOT_LOAD_TIMEOUTS } from '@/lib/config/timeouts';
 
 export default function RootPage() {
@@ -69,6 +70,12 @@ export default function RootPage() {
 
     // 2) Параллельно прогреваем Neon (wake-up пинг) пока ждём Telegram
     fetch('/api/ping').catch(() => undefined);
+
+    // 2b) Параллельный префетч анкеты: большинство новых пользователей попадает
+    // на /quiz, и пока мы ждём Telegram + checkUser, ответ уже окажется в кэше
+    // api-клиента → useQuestionnaire на /quiz станет мгновенным cache-hit.
+    // Безопасно для тех, кто уйдёт на /home: ответ просто полежит в кэше.
+    void api.getActiveQuestionnaire().catch(() => undefined);
 
     const isDev = typeof window !== 'undefined' && process.env.NODE_ENV === 'development';
 

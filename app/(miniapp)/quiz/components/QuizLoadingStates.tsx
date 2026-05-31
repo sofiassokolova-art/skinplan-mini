@@ -85,15 +85,8 @@ export function QuestionNotFound({
 }
 
 /**
- * Лоадер отправки ответов
+ * Лоадер отправки ответов — единый чёрно-серый стиль
  */
 export function SubmittingLoader({ text = 'Анализируем ваши ответы...' }: { text?: string }): React.ReactElement {
-  return (
-    <div className="page-container center-content">
-      <div className="text-primary text-lg text-center flex flex-col items-center gap-4">
-        <div className="w-10 h-10 border-4 border-[var(--color-primary-light)] border-t-[var(--color-primary)] rounded-full animate-spin" />
-        <div>{text}</div>
-      </div>
-    </div>
-  );
+  return <QuizInitialLoader message={text} subMessage="Это может занять до 1 минуты" />;
 }

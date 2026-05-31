@@ -261,17 +261,24 @@ export default async function RootLayout({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: '#000000',
+              backgroundColor: '#FFFFFF',
               zIndex: 99998,
             }}
           >
+            {/* Чёрная дуга вращается по серому кольцу — единый «первый» лоадер */}
             <div
               style={{
-                width: 88,
-                height: 88,
+                width: 56,
+                height: 56,
                 borderRadius: '50%',
-                background: '#D5FE61',
-                animation: 'skinplan-loader-pulse 1.6s ease-in-out infinite',
+                border: '5px solid #E5E7EB',
+                borderTopColor: '#0A0A0A',
+                animation: 'skinplan-root-loader-spin 0.9s linear infinite',
+              }}
+            />
+            <style
+              dangerouslySetInnerHTML={{
+                __html: `@keyframes skinplan-root-loader-spin { to { transform: rotate(360deg); } }`,
               }}
             />
           </div>

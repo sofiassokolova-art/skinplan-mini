@@ -1,8 +1,10 @@
 // app/(miniapp)/quiz/components/QuizFinalizingLoader.tsx
-// Компонент для отображения лоадера финализации анкеты
-// Вынесен из page.tsx для упрощения основного компонента
+// Лоадер финализации анкеты — единый чёрно-серый стиль (как первый лоадер).
+// Вынесен из page.tsx для упрощения основного компонента.
 
 'use client';
+
+import { AppLoader } from '@/components/AppLoader';
 
 interface QuizFinalizingLoaderProps {
   finalizing: boolean;
@@ -12,31 +14,32 @@ interface QuizFinalizingLoaderProps {
 
 export function QuizFinalizingLoader({
   finalizing,
-  finalizingStep,
+  finalizingStep: _finalizingStep,
   finalizeError,
 }: QuizFinalizingLoaderProps) {
   if (!finalizing) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center">
-      <div className="rounded-2xl bg-white/10 border border-white/20 p-6 text-white w-[320px] backdrop-blur-md">
-        <div className="text-lg font-semibold mb-2">Анализируем кожу...</div>
-        <div className="mt-2 text-sm opacity-80 mb-4">
-          Это может занять до 1 минуты
-        </div>
-        <div className="mt-4 h-2 w-full bg-white/20 rounded-full overflow-hidden">
-          <div
-            className="h-2 bg-white rounded-full animate-pulse"
-            style={{ width: '100%' }}
-          />
-        </div>
-        {finalizeError && (
-          <div className="mt-4 text-sm text-red-300">
-            {finalizeError}
-          </div>
-        )}
-      </div>
-    </div>
+    <AppLoader
+      fullScreen
+      variant="light"
+      zIndex={50}
+      message="Анализируем кожу..."
+      subMessage="Это может занять до 1 минуты"
+    >
+      {finalizeError && (
+        <p
+          style={{
+            margin: 0,
+            color: '#B91C1C',
+            fontSize: 14,
+            lineHeight: 1.5,
+            textAlign: 'center',
+          }}
+        >
+          {finalizeError}
+        </p>
+      )}
+    </AppLoader>
   );
 }
-
