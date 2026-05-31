@@ -82,6 +82,20 @@ interface PlanData {
   scores?: unknown[]; // РЕФАКТОРИНГ: any[] -> unknown[]
 }
 
+// ФИКС #12: модульный «тёплый» кэш плана (stale-while-revalidate).
+// Если пользователь уже открывал /plan в течение TTL, при возврате с главной
+// данные берутся из кэша мгновенно, без общего AppLoader и сетевого loadPlan.
+const PLAN_WARM_TTL_MS = 60_000;
+let planWarmCache: { data: PlanData; ts: number } | null = null;
+function readWarmPlanCache(): PlanData | null {
+  if (!planWarmCache) return null;
+  if (Date.now() - planWarmCache.ts > PLAN_WARM_TTL_MS) return null;
+  return planWarmCache.data;
+}
+function writeWarmPlanCache(data: PlanData): void {
+  planWarmCache = { data, ts: Date.now() };
+}
+
 const PlanLoadingView = ({ message }: { message: string }) => (
   <AppLoader fullScreen variant="light" message={message} />
 );
@@ -90,9 +104,12 @@ export default function PlanPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isDev = process.env.NODE_ENV === 'development';
-  const [loading, setLoading] = useState(true);
+  // ФИКС #12: снимок тёплого кэша на момент маунта (см. модульный planWarmCache).
+  // Если есть свежий кэш — пропускаем общий лоадер и рендерим данные сразу.
+  const initialWarmPlan = typeof window !== 'undefined' ? readWarmPlanCache() : null;
+  const [loading, setLoading] = useState(initialWarmPlan === null);
   const [error, setError] = useState<string | null>(null);
-  const [planData, setPlanData] = useState<PlanData | null>(null);
+  const [planData, setPlanData] = useState<PlanData | null>(initialWarmPlan);
   const [generatingState, setGeneratingState] = useState<'generating' | 'ready' | null>(null);
   const generatingStateRef = useRef<'generating' | 'ready' | null>(null); // ИСПРАВЛЕНО: Ref для проверки в таймаутах
   const loadingRef = useRef(true); // ИСПРАВЛЕНО: Ref для проверки в таймаутах (избегаем stale closure)
@@ -917,11 +934,21 @@ export default function PlanPage() {
           sessionStorage.removeItem('profile_check_cache_timestamp');
           clientLogger.log('✅ Кэш профиля очищен при загрузке страницы плана');
         } catch (cacheError) {
-          clientLogger.warn('⚠️ Не удалось очистить кэш профиля при загрузке:', cacheError);
+          clientLogger.warn('⚠️ Не удалось загрузить кэш профиля при загрузке:', cacheError);
         }
       }
-      
-      loadPlan();
+
+      // ФИКС #12: если на маунте есть свежий тёплый кэш плана — пропускаем
+      // полный loadPlan, общий лоадер не показывается, контент уже отрендерен
+      // из initialWarmPlan через useState. Следующий заход за пределами TTL
+      // нормально перезагрузит план.
+      if (initialWarmPlan !== null) {
+        clientLogger.log('✅ Тёплый кэш плана на маунте — loadPlan пропущен', {
+          ageMs: Date.now() - (planWarmCache?.ts ?? Date.now()),
+        });
+      } else {
+        loadPlan();
+      }
     }
     
     return () => {
@@ -1367,7 +1394,7 @@ export default function PlanPage() {
       // Иначе при заходе на /home будет редирект обратно на /plan
       safeSessionStorageRemove('quiz_just_submitted');
       
-      safeSetPlanData({
+      const nextPlanData: PlanData = {
         plan28: plan28 || undefined,
         weeks: plan.weeks || [],
         productsMap: productsMap, // Map передается напрямую
@@ -1409,7 +1436,11 @@ export default function PlanPage() {
         todayMorning,
         todayEvening,
         planExpired, // Сохраняем флаг истечения плана
-      });
+      };
+      // ФИКС #12: пишем тёплый кэш плана — следующие заходы на /plan в пределах
+      // TTL отрендерятся мгновенно без общего лоадера (см. readWarmPlanCache).
+      writeWarmPlanCache(nextPlanData);
+      safeSetPlanData(nextPlanData);
 
       safeSetLoading(false);
     } catch (err: any) {
