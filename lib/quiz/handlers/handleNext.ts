@@ -602,7 +602,14 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       if (nextStep?.type === 'info') {
         if (pendingInfoScreenRef) pendingInfoScreenRef.current = nextStep.infoScreen;
         setPendingInfoScreen(nextStep.infoScreen);
-        await saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
+        // ФИКС #4: не держим guard на время сохранения прогресса.
+        // Навигация уже совершена (setPendingInfoScreen выше). Если await-ить здесь,
+        // handleNextInProgressRef.current остаётся true до завершения сетевого
+        // saveProgress, а tinder/инфо-экран уже перерисован на следующий — быстрый
+        // тап по нему «проглатывается» ранним return по гарду (строка ~239).
+        // Делаем сохранение fire-and-forget (как уже сделано в handleBack), чтобы
+        // finally сбросил guard сразу. saveProgressSafely сам ловит ошибки внутри.
+        void saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
         return;
       }
       if (nextStep?.type === 'question') {
@@ -771,7 +778,14 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       if (nextStep?.type === 'info') {
         if (pendingInfoScreenRef) pendingInfoScreenRef.current = nextStep.infoScreen;
         setPendingInfoScreen(nextStep.infoScreen);
-        await saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
+        // ФИКС #4: не держим guard на время сохранения прогресса.
+        // Навигация уже совершена (setPendingInfoScreen выше). Если await-ить здесь,
+        // handleNextInProgressRef.current остаётся true до завершения сетевого
+        // saveProgress, а tinder/инфо-экран уже перерисован на следующий — быстрый
+        // тап по нему «проглатывается» ранним return по гарду (строка ~239).
+        // Делаем сохранение fire-and-forget (как уже сделано в handleBack), чтобы
+        // finally сбросил guard сразу. saveProgressSafely сам ловит ошибки внутри.
+        void saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
         return;
       }
       if (nextStep?.type === 'question') {

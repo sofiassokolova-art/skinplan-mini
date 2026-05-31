@@ -11,7 +11,7 @@ import type { Questionnaire } from '@/lib/quiz/types';
 import type { InfoScreen } from '../info-screens';
 import { getNextInfoScreenAfterScreen } from '../info-screens';
 import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
-import { WelcomeScreen, PersonalAnalysisScreen, HowItWorksScreen } from '@/components/quiz/screens';
+import { WelcomeScreen, PersonalAnalysisScreen, HowItWorksScreen, NoMistakesScreen, RecognizeYourselfScreen, ImproveSkinScreen, AiComparisonScreen } from '@/components/quiz/screens';
 import { FixedContinueButton, TinderButtons } from '@/components/quiz/buttons';
 import { TestimonialsCarousel, ProductsGrid } from '@/components/quiz/content';
 import { clientLogger } from '@/lib/client-logger';
@@ -305,6 +305,73 @@ export function QuizInfoScreen({
         currentInfoScreenIndex={currentInfoScreenIndex}
         onContinue={handleNext}
         onBack={handleBack}
+      />
+    );
+  }
+
+  // ФИКС #1: редизайненный экран no_mistakes "Вы уже сделали главное".
+  // Кремовый фон + лаймовые угловые акценты + стеклянная карточка с чек-листом
+  // (в стиле PersonalAnalysisScreen / HowItWorks), вместо старого монолитного рендера.
+  if (screen.id === 'no_mistakes') {
+    return (
+      <NoMistakesScreen
+        screen={screen}
+        currentInfoScreenIndex={currentInfoScreenIndex}
+        onContinue={handleNext}
+        onBack={handleBack}
+        isHandlingNext={isHandlingNext}
+      />
+    );
+  }
+
+  // ФИКС #3: редизайн tinder-экранов recognize_yourself_1/2.
+  // Полноэкранная картинка + затемнённый стеклянный нижний контейнер с вопросом
+  // и кнопками Нет/Да (оба варианта ведут handleNext, commitment-device).
+  if (screen.id === 'recognize_yourself_1' || screen.id === 'recognize_yourself_2') {
+    return (
+      <RecognizeYourselfScreen
+        screen={screen}
+        currentInfoScreenIndex={currentInfoScreenIndex}
+        onChoose={handleNext}
+        onBack={handleBack}
+        isHandlingNext={isHandlingNext}
+      />
+    );
+  }
+
+  // ФИКС #2: редизайн экрана ai_comparison ("Больше никакой путаницы").
+  // Показывается после oral_medications, перед makeup_frequency (вопрос про
+  // декоративную косметику) — это и есть нужная позиция по логике приложения.
+  if (screen.id === 'ai_comparison') {
+    return (
+      <AiComparisonScreen
+        screen={screen}
+        currentInfoScreenIndex={currentInfoScreenIndex}
+        onContinue={handleNext}
+        onBack={handleBack}
+        isHandlingNext={isHandlingNext}
+      />
+    );
+  }
+
+  // ФИКС #5: финальный объединённый экран want_improve (раньше шёл после
+  // отдельного skin_transformation, теперь сразу после recognize_yourself_2).
+  // Совмещает transformation-визуал и CTA "Получить план ухода" — запускает
+  // submitAnswers (генерация плана) через handleGetPlan.
+  if (screen.id === 'want_improve') {
+    return (
+      <ImproveSkinScreen
+        screen={screen}
+        currentInfoScreenIndex={currentInfoScreenIndex}
+        onBack={handleBack}
+        isSubmitting={isSubmitting}
+        questionnaire={questionnaire}
+        isDev={isDev}
+        isSubmittingRef={isSubmittingRef}
+        setIsSubmitting={setIsSubmitting}
+        setError={setError}
+        setLoading={setLoading}
+        submitAnswers={submitAnswers}
       />
     );
   }

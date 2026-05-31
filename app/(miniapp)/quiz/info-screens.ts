@@ -252,33 +252,24 @@ export const INFO_SCREENS: InfoScreen[] = [
   
   // created_for_you УДАЛЁН: третий повтор соц-прува (есть уже в personal_analysis и testimonials).
 
-  // Посмотрите, как меняется ваша кожа!
-  // ПЕРЕАНКОРИРОВАН: было после created_for_you (удалён) — теперь напрямую после recognize_yourself_2.
-  // ИЗМЕНЕН subtitle: замыкаем обещание «28 дней» из стартового экрана how_it_works.
-  // Без этого замыкания цифра, заявленная в начале анкеты, не подтверждалась нигде дальше.
+  // ФИКС #5: skin_transformation объединён с want_improve в один финальный экран.
+  // Старая запись skin_transformation удалена (раньше показывалась отдельно после
+  // recognize_yourself_2 → потом want_improve). Сейчас want_improve рендерится
+  // компонентом ImproveSkinScreen, который совмещает transformation-визуал ("Посмотрите,
+  // как меняется ваша кожа") и CTA "Получить план ухода". После него начинается генерация.
   {
-    id: 'skin_transformation',
-    title: 'Посмотрите, как меняется ваша кожа!',
+    id: 'want_improve',
+    title: 'Хотите улучшить состояние кожи?',
     subtitle: 'Первые видимые изменения — уже через 28 дней регулярного ухода. Отслеживайте прогресс и подкручивайте план под себя.',
-    image: '/illustrations/skin_transformation.jpg',
-    type: 'transformation',
-    showAfterInfoScreenId: 'recognize_yourself_2',
-    ctaText: 'Продолжить',
+    image: '/illustrations/improve_skin.jpg',
+    type: 'tinder',
+    showAfterInfoScreenId: 'recognize_yourself_2', // ФИКС #5: напрямую после recognize_yourself_2
+    ctaText: '', // Кнопки рендерятся внутри ImproveSkinScreen
     content: {
       from: 'Сейчас',
       to: 'Ваша цель',
       indicator: 'Здоровье кожи',
     },
-  },
-  
-  // 41) Хотите улучшить состояние кожи? (Tinder-экран)
-  {
-    id: 'want_improve',
-    title: 'Хотите улучшить состояние кожи?',
-    image: '/illustrations/improve_skin.jpg',
-    type: 'tinder',
-    showAfterInfoScreenId: 'skin_transformation', // ИСПРАВЛЕНО: После экрана skin_transformation, а не вопроса
-    ctaText: '', // Кнопки будут отдельными (❌ Нет / ✅ Да)
   },
 ];
 
