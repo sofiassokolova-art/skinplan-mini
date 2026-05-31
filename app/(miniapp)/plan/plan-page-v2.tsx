@@ -220,6 +220,7 @@ export function PlanPageV2() {
           score={context.skinScore.score}
           label={context.skinScore.label}
           description={context.skinScore.description}
+          onHintClick={() => router.push('/home')}
         />
 
         {/* 5. Profile carousel */}
@@ -251,7 +252,7 @@ export function PlanPageV2() {
 
 // ─── Sub-components ───────────────────────────────────────────────
 
-function ScoreCard({ score, label, description }: { score: number; label: string; description: string }) {
+function ScoreCard({ score, label, description, onHintClick }: { score: number; label: string; description: string; onHintClick?: () => void }) {
   return (
     <div className="pv2-score-card">
       <div className="pv2-score-top">
@@ -266,9 +267,15 @@ function ScoreCard({ score, label, description }: { score: number; label: string
       <div className="pv2-score-quote">{description}</div>
       <div className="pv2-score-hint">
         <div className="pv2-score-hint-text">Оценка обновляется после отметок ежедневного ухода.</div>
-        <div className="pv2-icon-circle" aria-hidden>
+        {/* ФИКС #13: круглая стрелка рядом с "Оценка" теперь ведёт на /home. */}
+        <button
+          type="button"
+          className="pv2-icon-circle"
+          onClick={onHintClick}
+          aria-label="На главную"
+        >
           <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-        </div>
+        </button>
       </div>
     </div>
   );
@@ -342,6 +349,23 @@ function orderOfPhase(p: PhaseUI): number {
   }
 }
 
+// ФИКС #15: когда у продукта нет imageUrl (БД), показываем иконку-заглушку
+// по выведенному шагу ухода (тот же набор иконок, что и на главной /icons/clean/*_true.png).
+// Эвристика по названию продукта — порядок важен (специфичные категории раньше).
+function inferStepIcon(name: string | undefined | null): string {
+  const n = (name || '').toLowerCase();
+  if (/spf|sunscreen|санскрин|солнцезащит/.test(n)) return '/icons/clean/spf_true.png';
+  if (/balm|бальзам|для\s+губ|lip\b/.test(n)) return '/icons/clean/lipbalm_true.png';
+  if (/oil|масл/.test(n)) return '/icons/clean/oil_true.png';
+  if (/mask|маск/.test(n)) return '/icons/clean/claymask_true.png';
+  if (/retinol|ретинол|aha|bha|acid|кислот|пилинг|peel/.test(n)) return '/icons/clean/treatment_true.png';
+  if (/serum|сыворотк|essence|эссенц/.test(n)) return '/icons/clean/serum_true.png';
+  if (/toner|тоник|тонер|mist/.test(n)) return '/icons/clean/toner_true.png';
+  if (/cream|крем|moistur|емолл|moisturi/.test(n)) return '/icons/clean/cream_true.png';
+  if (/cleanser|пенк|гел[ьяе]\s*для|умыван|foam|wash|очищ|очист/.test(n)) return '/icons/clean/cleanser_true.png';
+  return '/icons/clean/cleanser_true.png';
+}
+
 function ProductsSection(props: {
   products: ProductCard[];
   busyId: number | null;
@@ -362,7 +386,20 @@ function ProductsSection(props: {
           const isBusy = busyId === p.id;
           return (
             <div className="pv2-product-card" key={p.id}>
-              <div className="pv2-product-img" style={p.imageUrl ? { backgroundImage: `url(${p.imageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined} />
+              <div
+                className="pv2-product-img"
+                style={
+                  p.imageUrl
+                    ? { backgroundImage: `url(${p.imageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                    : {
+                        // #15: иконка-заглушка по шагу (как на главной)
+                        backgroundImage: `url(${inferStepIcon(p.name)})`,
+                        backgroundSize: 'contain',
+                        backgroundPosition: 'center',
+                        backgroundRepeat: 'no-repeat',
+                      }
+                }
+              />
               <div className="pv2-product-info">
                 <div className="pv2-product-name">{p.name}</div>
                 {p.shortDescription && <div className="pv2-product-desc">{p.shortDescription}</div>}
@@ -679,19 +716,18 @@ function PlanV2SkeletonStyles() {
 function PlanV2Styles() {
   return (
     <style jsx global>{`
+      /* ФИКС #14: чистый бежевый фон плана как в превью (раньше поверх лежали
+         цветные радиальные градиенты, из-за чего фон визуально был не беж). */
       .pv2-root {
         min-height: 100vh;
         padding: 0 20px 110px;
         font-family: 'Inter', -apple-system, sans-serif;
         color: #0A0A0A;
         position: relative;
-        background:
-          radial-gradient(60% 30% at 100% 0%, rgba(213,254,97,0.55) 0%, transparent 65%),
-          radial-gradient(70% 30% at 0% 35%, rgba(255,231,200,0.6) 0%, transparent 65%),
-          radial-gradient(80% 25% at 100% 70%, rgba(213,254,97,0.35) 0%, transparent 65%),
-          radial-gradient(80% 30% at 0% 100%, rgba(220,210,196,0.6) 0%, transparent 60%),
-          #F4F2EE;
+        background: #F4F2EE;
       }
+      /* Зеркало #19: подложка html/body тоже беж, чтобы overscroll не светил белым. */
+      html, body { background-color: #F4F2EE; }
 
       .pv2-topbar {
         padding: 22px 4px 14px;
@@ -827,7 +863,14 @@ function PlanV2Styles() {
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
+        cursor: pointer;
+        padding: 0;
+        appearance: none;
+        -webkit-appearance: none;
+        color: inherit;
+        transition: transform .14s ease, background .14s ease;
       }
+      .pv2-icon-circle:active { transform: scale(0.95); background: rgba(255,255,255,0.92); }
       .pv2-icon-circle svg {
         width: 16px;
         height: 16px;
@@ -895,8 +938,11 @@ function PlanV2Styles() {
         padding: 4px 22px 6px;
       }
       .pv2-profile-carousel::-webkit-scrollbar { display: none; }
+      /* ФИКС #16: карточки профиля кожи шире (было 50% → 78% ширины контейнера).
+         Доминирует одна карточка, следующая "подглядывает" — лучше читаемость
+         label/value/desc и более «полные» карточки на экране. */
       .pv2-profile-card {
-        flex: 0 0 calc(50% - 16px);
+        flex: 0 0 calc(78% - 16px);
         scroll-snap-align: start;
         background: rgba(255,255,255,0.45);
         border: 1px solid rgba(255,255,255,0.6);

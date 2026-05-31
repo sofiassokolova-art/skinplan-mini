@@ -53,6 +53,45 @@ const ICONS: Record<string, string> = {
   lip: '/icons/clean/lipbalm_true.png',
 };
 
+// ФИКС #17: персистентность отмеченных шагов рутины между переключениями страниц.
+// Раньше toggleItem обновлял только локальный стейт; при уходе на /plan и обратно
+// home/page.tsx ремонтировался, рутина пересобиралась из рекомендаций без .done,
+// и блок «{N} из {M}» (визуальный стрик на главной) показывал 0 — отсюда #17.
+// Ключ скоупится календарной датой и вкладкой (AM/PM), так что в новый день начинаем чисто.
+const ROUTINE_DONE_KEY_PREFIX = 'skinplan:home:routine_done';
+function routineDoneStorageKey(tab: 'AM' | 'PM'): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${ROUTINE_DONE_KEY_PREFIX}:${y}-${m}-${day}:${tab}`;
+}
+function loadDoneIds(tab: 'AM' | 'PM'): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = window.localStorage.getItem(routineDoneStorageKey(tab));
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    return new Set(Array.isArray(parsed) ? parsed.filter((x: unknown) => typeof x === 'string') : []);
+  } catch {
+    return new Set();
+  }
+}
+function saveDoneIds(tab: 'AM' | 'PM', items: RoutineItem[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const ids = items.filter((i) => i.done).map((i) => i.id);
+    window.localStorage.setItem(routineDoneStorageKey(tab), JSON.stringify(ids));
+  } catch {
+    // localStorage недоступен / переполнен — пропускаем
+  }
+}
+function applyDoneFromStorage(items: RoutineItem[], tab: 'AM' | 'PM'): RoutineItem[] {
+  const done = loadDoneIds(tab);
+  if (done.size === 0) return items;
+  return items.map((i) => (done.has(i.id) ? { ...i, done: true } : i));
+}
+
 export default function HomePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -336,8 +375,8 @@ export default function HomePage() {
           eveningCount: fallbackEvening.length,
         });
 
-        setMorningItems(fallbackMorning);
-        setEveningItems(fallbackEvening);
+        setMorningItems(applyDoneFromStorage(fallbackMorning, 'AM'));
+        setEveningItems(applyDoneFromStorage(fallbackEvening, 'PM'));
         return;
       }
 
@@ -450,8 +489,8 @@ export default function HomePage() {
           eveningCount: fallbackEvening.length,
         });
 
-        setMorningItems(fallbackMorning);
-        setEveningItems(fallbackEvening);
+        setMorningItems(applyDoneFromStorage(fallbackMorning, 'AM'));
+        setEveningItems(applyDoneFromStorage(fallbackEvening, 'PM'));
         return;
       }
 
@@ -646,8 +685,8 @@ export default function HomePage() {
         });
       }
       
-      setMorningItems(morning);
-      setEveningItems(evening);
+      setMorningItems(applyDoneFromStorage(morning, 'AM'));
+      setEveningItems(applyDoneFromStorage(evening, 'PM'));
 
       // ИСПРАВЛЕНО: Логируем результат загрузки рекомендаций для диагностики
       clientLogger.log('✅ Recommendations loaded', {
@@ -703,18 +742,31 @@ export default function HomePage() {
   }, [hasPlan, router, setLoading, setError, setMorningItems, setEveningItems, setHasPlan, setRecommendations, buildRoutineFromPlan]);
 
   const toggleItem = (itemId: string) => {
+    // ФИКС #17: персистим в localStorage, чтобы отметки переживали навигацию (ключ — дата+вкладка).
+    // ФИКС #9: запрещаем ставить галочку, если предыдущее средство ещё не отмечено
+    // (последовательный порядок ухода). Снятие галочки — без ограничений.
+    const update = (items: RoutineItem[]): RoutineItem[] => {
+      const idx = items.findIndex((i) => i.id === itemId);
+      if (idx < 0) return items;
+      const target = items[idx];
+      if (!target.done) {
+        const allPriorDone = items.slice(0, idx).every((i) => i.done);
+        if (!allPriorDone) return items; // блокируем
+      }
+      return items.map((item, i) => (i === idx ? { ...item, done: !item.done } : item));
+    };
     if (tab === 'AM') {
-      setMorningItems((items) =>
-        items.map((item) =>
-          item.id === itemId ? { ...item, done: !item.done } : item
-        )
-      );
+      setMorningItems((items) => {
+        const next = update(items);
+        if (next !== items) saveDoneIds('AM', next);
+        return next;
+      });
     } else {
-      setEveningItems((items) =>
-        items.map((item) =>
-          item.id === itemId ? { ...item, done: !item.done } : item
-        )
-      );
+      setEveningItems((items) => {
+        const next = update(items);
+        if (next !== items) saveDoneIds('PM', next);
+        return next;
+      });
     }
   };
 
@@ -824,7 +876,6 @@ export default function HomePage() {
         // После оплаты перезагружаем рекомендации
         loadRecommendations();
       }}
-      retakeCta={{ text: 'Изменились цели? Перепройти анкету', href: '/quiz' }}
     >
     <div
       className="animate-fade-in home-rd"
@@ -841,6 +892,10 @@ export default function HomePage() {
       }}
     >
       <style>{`
+        /* ФИКС #19: подкрашиваем html/body в цвет финального слоя фона главной,
+           чтобы при overscroll/листании (iOS Telegram WebApp) не светилась белая подложка
+           там, где контент длиннее экрана. Стиль действует только пока главная смонтирована. */
+        html, body { background-color: #F4F2EE; }
         .home-rd .hr-topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 20px 14px;}
         .home-rd .hr-logo{font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:18px;font-weight:700;letter-spacing:-0.4px;color:#0A0A0A;}
         .home-rd .hr-avatar{position:relative;width:40px;height:40px;border:0;padding:0;border-radius:50%;background:linear-gradient(135deg,#2A2A2A,#0A0A0A);color:#D5FE61;display:grid;place-items:center;cursor:pointer;box-shadow:0 0 0 2px rgba(255,255,255,0.9),0 6px 18px rgba(10,10,10,0.18);font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:14px;font-weight:700;}
@@ -863,8 +918,9 @@ export default function HomePage() {
         .home-rd .hr-progress-text{font-size:12.5px;font-weight:600;color:#0A0A0A;line-height:1.32;letter-spacing:-0.1px;}
         .home-rd .hr-bar{position:relative;width:100%;height:8px;border-radius:999px;background:rgba(10,10,10,0.08);overflow:hidden;}
         .home-rd .hr-bar-fill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:#0A0A0A;transition:width .4s ease;}
-        .home-rd .hr-tabs{display:flex;gap:0;margin:0 20px 16px;padding:5px;border:1px solid rgba(255,255,255,0.7);border-radius:22px;background:rgba(255,255,255,0.5);backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);box-shadow:0 8px 24px rgba(0,0,0,0.04);}
-        .home-rd .hr-tab{flex:1;min-height:46px;border:0;border-radius:18px;background:transparent;color:#6B7280;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:700;transition:all .18s ease;}
+        /* ФИКС #18: переключатель утро/вечер без скруглённых углов. */
+        .home-rd .hr-tabs{display:flex;gap:0;margin:0 20px 16px;padding:5px;border:1px solid rgba(255,255,255,0.7);border-radius:0;background:rgba(255,255,255,0.5);backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);box-shadow:0 8px 24px rgba(0,0,0,0.04);}
+        .home-rd .hr-tab{flex:1;min-height:46px;border:0;border-radius:0;background:transparent;color:#6B7280;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:700;transition:all .18s ease;}
         .home-rd .hr-tab.active{background:rgba(255,255,255,0.95);color:#0A0A0A;box-shadow:0 4px 14px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.9);}
         .home-rd .hr-tab svg{width:16px;height:16px;}
         .home-rd .hr-section-head{display:flex;flex-direction:column;margin:0 22px 12px;}
@@ -880,10 +936,12 @@ export default function HomePage() {
         .home-rd .hr-stepdot:active{transform:scale(0.92);}
         .home-rd .hr-card.current .hr-stepdot{background:#0A0A0A;color:#D5FE61;box-shadow:0 6px 14px rgba(10,10,10,0.18);}
         .home-rd .hr-card.done .hr-stepdot{background:#D5FE61;color:#0A0A0A;}
-        .home-rd .hr-iconwrap{position:relative;flex:1;display:flex;align-items:center;justify-content:center;padding:16px 8px 12px;min-height:124px;}
-        .home-rd .hr-iconwrap::before{content:"";position:absolute;top:50%;left:50%;width:96px;height:116px;transform:translate(-50%,-50%);border-radius:22px;background:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,0.9),0 8px 18px rgba(10,10,10,0.08);opacity:0;transition:opacity .16s ease;}
-        .home-rd .hr-card.current .hr-iconwrap::before{opacity:1;}
-        .home-rd .hr-icon{position:relative;z-index:1;display:block;width:72px;height:100px;object-fit:contain;filter:drop-shadow(0 12px 14px rgba(0,0,0,0.12));}
+        /* ФИКС #10: убрана белая подложка-прямоугольник под иконкой на лайм-карточке (current).
+           Раньше ::before рисовал 96x116 #fff с opacity:1 на .current — это и был «белый прямоугольник».
+           Также увеличен размер иконки средств (72x100 → 96x132). */
+        .home-rd .hr-iconwrap{position:relative;flex:1;display:flex;align-items:center;justify-content:center;padding:16px 8px 12px;min-height:148px;}
+        .home-rd .hr-iconwrap::before{display:none;}
+        .home-rd .hr-icon{position:relative;z-index:1;display:block;width:96px;height:132px;object-fit:contain;filter:drop-shadow(0 12px 14px rgba(0,0,0,0.12));}
         .home-rd .hr-icon.blend{mix-blend-mode:multiply;filter:none;}
         .home-rd .hr-card-bottom{margin-top:auto;}
         .home-rd .hr-kicker{margin-bottom:5px;font-size:9.5px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(10,10,10,0.42);}
