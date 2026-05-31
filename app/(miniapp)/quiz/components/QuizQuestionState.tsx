@@ -4,7 +4,7 @@
 'use client';
 
 import type { Questionnaire } from '@/lib/quiz/types';
-import { QuestionSkeleton } from '@/components/ui/SkeletonLoader';
+import { QuizInitialLoader } from './QuizInitialLoader';
 
 interface QuizQuestionStateProps {
   currentQuestion: any;
@@ -77,20 +77,8 @@ export function QuizQuestionState({
   // Это внутренняя ошибка состояния, которая должна решаться автоматически
 
   if (shouldShowLoading) {
-    // Используем только скелетную загрузку, без спиннера и текста
-    return (
-      <div style={{ 
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#FFFFFF',
-        padding: '40px 20px',
-      }}>
-        <QuestionSkeleton />
-      </div>
-    );
+    // Единый чёрно-серый лоадер
+    return <QuizInitialLoader />;
   }
 
   return null;

@@ -3,16 +3,7 @@
 
 'use client';
 
-import dynamic from 'next/dynamic';
 import type { CSSProperties, ReactNode } from 'react';
-
-const DotLottieReact = dynamic(
-  () => import('@lottiefiles/dotlottie-react').then((mod) => mod.DotLottieReact),
-  {
-    ssr: false,
-    loading: () => <div className="skinplan-loader-dot" />,
-  }
-);
 
 type AppLoaderVariant = 'dark' | 'mint' | 'light';
 
@@ -29,6 +20,19 @@ interface AppLoaderProps {
   children?: ReactNode;
 }
 
+// Единая «чёрно-серая» палитра — соответствует самому первому лоадеру,
+// который виден до подгрузки анкеты: белый фон, чёрная дуга, серое кольцо.
+// Все варианты теперь возвращают один и тот же стиль, чтобы лоадер визуально
+// не менялся между экранами. Варианты оставлены ради обратной совместимости.
+const SHARED_PALETTE = {
+  background: '#FFFFFF',
+  text: '#0A0A0A',
+  subText: '#6B7280',
+  accent: '#0A0A0A',           // чёрная вращающаяся дуга
+  track: '#E5E7EB',            // серое кольцо-трек
+  glow: 'transparent',
+};
+
 const PALETTES: Record<AppLoaderVariant, {
   background: string;
   text: string;
@@ -37,30 +41,9 @@ const PALETTES: Record<AppLoaderVariant, {
   track: string;
   glow: string;
 }> = {
-  dark: {
-    background: '#000000',
-    text: '#FFFFFF',
-    subText: '#A3A3A3',
-    accent: '#D5FE61',
-    track: '#242424',
-    glow: 'rgba(213, 254, 97, 0.32)',
-  },
-  mint: {
-    background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-    text: '#0A0A0A',
-    subText: '#475467',
-    accent: '#0A5F59',
-    track: 'rgba(10, 95, 89, 0.14)',
-    glow: 'rgba(10, 95, 89, 0.18)',
-  },
-  light: {
-    background: '#FFFFFF',
-    text: '#0A0A0A',
-    subText: '#6B7280',
-    accent: '#0A0A0A',
-    track: 'rgba(0, 0, 0, 0.1)',
-    glow: 'rgba(213, 254, 97, 0.28)',
-  },
+  dark: SHARED_PALETTE,
+  mint: SHARED_PALETTE,
+  light: SHARED_PALETTE,
 };
 
 export function AppLoader({
@@ -111,30 +94,16 @@ export function AppLoader({
           <div
             style={{
               position: 'relative',
-              width: '128px',
-              height: '128px',
-              marginBottom: safeProgress === null ? '18px' : '30px',
+              width: '72px',
+              height: '72px',
+              marginBottom: safeProgress === null ? '20px' : '30px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
-            <div
-              className="skinplan-loader-glow"
-              style={{
-                position: 'absolute',
-                inset: '24px',
-                borderRadius: '50%',
-                background: palette.glow,
-              }}
-            />
-            <DotLottieReact
-              src="/loader%203.lottie"
-              loop
-              autoplay
-              style={{
-                position: 'relative',
-                width: '128px',
-                height: '128px',
-              }}
-            />
+            {/* Чёрная дуга на сером кольце — единый «первый» лоадер */}
+            <div className="skinplan-loader-ring" />
           </div>
         )}
 
@@ -211,27 +180,18 @@ export function AppLoader({
       </div>
 
       <style jsx>{`
-        .skinplan-loader-glow {
-          animation: skinplan-loader-pulse 1.6s ease-in-out infinite;
-        }
-
-        :global(.skinplan-loader-dot) {
-          width: 88px;
-          height: 88px;
+        :global(.skinplan-loader-ring) {
+          width: 56px;
+          height: 56px;
           border-radius: 50%;
-          background: ${palette.accent};
-          animation: skinplan-loader-pulse 1.6s ease-in-out infinite;
+          border: 5px solid ${palette.track};
+          border-top-color: ${palette.accent};
+          animation: skinplan-loader-spin 0.9s linear infinite;
+          will-change: transform;
         }
 
-        @keyframes skinplan-loader-pulse {
-          0%, 100% {
-            transform: scale(1);
-            opacity: 1;
-          }
-          50% {
-            transform: scale(0.84);
-            opacity: 0.55;
-          }
+        @keyframes skinplan-loader-spin {
+          to { transform: rotate(360deg); }
         }
       `}</style>
     </div>

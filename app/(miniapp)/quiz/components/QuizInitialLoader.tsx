@@ -1,5 +1,7 @@
 // app/(miniapp)/quiz/components/QuizInitialLoader.tsx
-// Компонент для отображения лоадера перед первым экраном
+// Компонент для отображения лоадера перед первым экраном.
+// Дополнительно префетчит ленивые чанки анкеты, чтобы переход
+// LOADER → INFO/QUESTION был мгновенным после прилёта данных.
 
 'use client';
 
@@ -14,6 +16,17 @@ interface QuizInitialLoaderProps {
   timeoutMs?: number;
 }
 
+// Префетч ленивых чанков следующих экранов анкеты — запускается уже на лоадере,
+// пока React Query тянет /api/questionnaire. Когда данные прилетят, чанки
+// будут в кэше браузера → переход без мигания и без второго лоадера.
+function prefetchQuizChunks(): void {
+  if (typeof window === 'undefined') return;
+  // dynamic import без await — браузер скачивает и парсит модули в фоне
+  void import('./QuizInfoScreen');
+  void import('./QuizQuestion');
+  void import('./QuizResumeScreen');
+}
+
 export function QuizInitialLoader({
   message,
   subMessage,
@@ -23,6 +36,9 @@ export function QuizInitialLoader({
   const [showReload, setShowReload] = useState(false);
 
   useEffect(() => {
+    // Префетч следующих экранов параллельно с загрузкой данных
+    prefetchQuizChunks();
+
     const t = setTimeout(() => {
       setShowReload(true);
       onTimeout?.();
@@ -39,15 +55,15 @@ export function QuizInitialLoader({
     >
       {showReload && (
         <div style={{ textAlign: 'center' }}>
-          <p style={{ color: '#A3A3A3', fontSize: 14, marginBottom: 12 }}>
+          <p style={{ color: '#6B7280', fontSize: 14, marginBottom: 12 }}>
             Загрузка занимает больше времени, чем обычно
           </p>
           <button
             onClick={() => window.location.reload()}
             style={{
               padding: '10px 24px',
-              background: '#D5FE61',
-              color: '#0A0A0A',
+              background: '#0A0A0A',
+              color: '#FFFFFF',
               border: 'none',
               borderRadius: 999,
               fontSize: 14,
