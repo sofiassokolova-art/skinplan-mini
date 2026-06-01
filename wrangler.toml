@@ -9,6 +9,10 @@ compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat_v2"]
 workers_dev = true
 
+[observability.logs]
+enabled = false
+invocation_logs = true
+
 # Top-level vars: дефолт для любого деплоя без --env (fail-safe — никогда не считать прод по ошибке).
 # Прод выставляет DEPLOYMENT_ENV=production через [env.production.vars].
 [vars]
