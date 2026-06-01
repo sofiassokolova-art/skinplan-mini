@@ -92,7 +92,7 @@ function ImproveSkinScreenComponent({
       >
         {/* Кремовый фон + лаймовые угловые акценты */}
         <img
-          src="/image%201576994977.png"
+          src="/image%201576994977.webp"
           alt=""
           aria-hidden
           style={{

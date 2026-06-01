@@ -104,7 +104,7 @@ export default async function RootLayout({
             — экономия ~258KB (с 277KB до 19KB суммарно). */}
         {!isAdminRoute && (
           <>
-            <link rel="preload" href="/onboarding/welcome.jpg" as="image" fetchPriority="high" />
+            <link rel="preload" href="/onboarding/welcome.webp" as="image" fetchPriority="high" />
             <link rel="preload" href="/icons/detailed_3_64.png" as="image" />
             <link rel="preload" href="/icons/hydration_3_64.png" as="image" />
             <link rel="preload" href="/icons/face_3_64.png" as="image" />
@@ -116,6 +116,65 @@ export default async function RootLayout({
           <script
             dangerouslySetInnerHTML={{ __html: `(function(){
   if (typeof window === 'undefined') return;
+  var startup = window.__skiniq_startup_timing = window.__skiniq_startup_timing || {
+    startedAtEpochMs: Date.now(),
+    marks: {},
+    reported: false
+  };
+  function markStartup(name, context) {
+    if (!startup.marks[name]) {
+      startup.marks[name] = {
+        atMs: Math.round(performance.now()),
+        context: context || null
+      };
+    }
+  }
+  function reportStartup(reason) {
+    if (startup.reported) return;
+    startup.reported = true;
+    try {
+      var connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      var initData = '';
+      try {
+        initData = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) ||
+          sessionStorage.getItem('tg_init_data') || '';
+      } catch (_) {}
+      fetch('/api/logs', {
+        method: 'POST',
+        headers: Object.assign(
+          { 'Content-Type': 'application/json' },
+          initData ? { 'X-Telegram-Init-Data': initData } : {}
+        ),
+        body: JSON.stringify({
+          level: 'info',
+          message: 'Mini App startup timing',
+          context: {
+            type: 'startup_timing',
+            reason: reason,
+            startedAtEpochMs: startup.startedAtEpochMs,
+            marks: startup.marks,
+            connection: connection ? {
+              effectiveType: connection.effectiveType,
+              downlink: connection.downlink,
+              rtt: connection.rtt,
+              saveData: connection.saveData
+            } : null
+          },
+          url: window.location.href,
+          userAgent: navigator.userAgent
+        }),
+        keepalive: true
+      }).catch(function(){});
+    } catch (_) {}
+  }
+  window.__skiniqMarkStartup = markStartup;
+  window.__skiniqReportStartup = reportStartup;
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function(){ markStartup('htmlParsed'); }, { once: true });
+  } else {
+    markStartup('htmlParsed');
+  }
+  markStartup('bootstrapScriptStarted');
   try {
     var h = window.location.hash.slice(1);
     if (h) {
@@ -134,6 +193,10 @@ export default async function RootLayout({
         }
       }
     } catch (_) {}
+    markStartup('telegramSdkReady', {
+      hasTelegramWebApp: !!(window.Telegram && window.Telegram.WebApp),
+      hasInitData: !!(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData)
+    });
     try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {}
   }
   try {
@@ -144,7 +207,10 @@ export default async function RootLayout({
   s.src = 'https://telegram.org/js/telegram-web-app.js';
   s.async = true;
   s.onload = done;
-  s.onerror = function(){ try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {} };
+  s.onerror = function(){
+    markStartup('telegramSdkError');
+    try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {}
+  };
   document.head.appendChild(s);
 })();` }}
           />
@@ -287,7 +353,12 @@ export default async function RootLayout({
   window.__skiniq_mounted = false;
   function showFallback(){
     var e = document.getElementById("loading-timeout-fallback");
-    if (e && e.style.display !== "block") { e.style.cssText = fallbackCss; e.innerHTML = fallbackHtml; }
+    if (e && e.style.display !== "block") {
+      e.style.cssText = fallbackCss;
+      e.innerHTML = fallbackHtml;
+      if (window.__skiniqMarkStartup) window.__skiniqMarkStartup("chunkTimeout");
+      if (window.__skiniqReportStartup) window.__skiniqReportStartup("chunk-timeout");
+    }
   }
   function tryReloadOnce(){
     try {

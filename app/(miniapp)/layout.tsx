@@ -6,15 +6,22 @@
 import { useEffect, useState, useRef, Suspense } from 'react';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import BottomNavigation from '@/components/BottomNavigation';
+import dynamic from 'next/dynamic';
 import PageTransition from '@/components/PageTransition';
 import { NetworkStatus } from '@/components/NetworkStatus';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { PaywallVisibilityProvider, usePaywallVisibility } from '@/providers/PaywallVisibilityContext';
-import { ServiceFeedbackPopup } from '@/components/ServiceFeedbackPopup';
 import { useTelegram } from '@/lib/telegram-client';
 import { DEV_TELEGRAM } from '@/lib/config/timeouts';
 import { QuizInitialLoader } from './quiz/components/QuizInitialLoader';
+
+const BottomNavigation = dynamic(() => import('@/components/BottomNavigation'), {
+  ssr: false,
+});
+const ServiceFeedbackPopup = dynamic(
+  () => import('@/components/ServiceFeedbackPopup').then(mod => mod.ServiceFeedbackPopup),
+  { ssr: false },
+);
 // INFO_INITIAL_SCREENS_COUNT: кол-во начальных инфо-экранов (без showAfterQuestionCode/showAfterInfoScreenId).
 // Хардкодим чтобы не тянуть весь модуль info-screens в layout-бандл.
 // Обновить если изменится кол-во начальных экранов в info-screens.ts.
@@ -26,6 +33,7 @@ const INFO_INITIAL_SCREENS_COUNT = 4;
 function useRemoveRootLoading() {
   useEffect(() => {
     (window as any).__skiniq_mounted = true;
+    (window as any).__skiniqMarkStartup?.('reactMounted');
     try {
       const el = document.getElementById('root-loading');
       if (el) el.style.display = 'none';
