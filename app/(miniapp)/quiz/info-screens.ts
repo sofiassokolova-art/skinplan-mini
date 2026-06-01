@@ -49,7 +49,7 @@ export const INFO_SCREENS: InfoScreen[] = [
   {
     id: 'welcome',
     title: 'Подбери уход для своей кожи со SkinIQ',
-    image: '/onboarding/welcome.jpg',
+    image: '/onboarding/welcome.webp',
     ctaText: 'Продолжить',
   },
   
@@ -66,7 +66,6 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'personal_analysis',
     title: 'SkinIQ — ваш персональный анализ кожи',
     subtitle: '92% пользователей SkinIQ отмечают улучшение состояния кожи за 1 месяц',
-    image: '/onboarding/personal-analysis.jpg',
     ctaText: 'Продолжить',
   },
   
@@ -93,16 +92,16 @@ export const INFO_SCREENS: InfoScreen[] = [
         text: '«С подобранным уходом ушли акне и следы постакне примерно за 3 месяца. Понравилось, что рекомендации не общие, а реально под мою кожу»',
         author: 'Ольга',
         city: 'Москва',
-        beforeImage: '/отзыв1до.jpeg',
-        afterImage: '/отзыв1после.jpg',
+        beforeImage: '/отзыв1до.webp',
+        afterImage: '/отзыв1после.webp',
       },
       {
         stars: 5,
         text: '«Всегда мучилась с расширенными порами и жирным блеском. Сейчас макияж держится нормально, а блеск появляется только к вечеру»',
         author: 'Екатерина',
         city: 'Казань',
-        beforeImage: '/отзыв4до.jpeg',
-        afterImage: '/отзыв4после.jpeg',
+        beforeImage: '/отзыв4до.webp',
+        afterImage: '/отзыв4после.webp',
       },
     ],
     ctaText: 'Продолжить',
@@ -137,7 +136,7 @@ export const INFO_SCREENS: InfoScreen[] = [
   {
     id: 'simple_care',
     title: 'SkinIQ делает уход за кожей простым и понятным',
-    image: '/image 1576994977.png',
+    image: '/image 1576994977.webp',
     type: 'comparison',
     content: {
       left: {
@@ -176,7 +175,7 @@ export const INFO_SCREENS: InfoScreen[] = [
   {
     id: 'health_trust',
     title: 'SkinIQ заботится\nо вашем здоровье',
-    image: '/image 1576994970.png',
+    image: '/image 1576994970.webp',
     showAfterQuestionCode: 'has_avoid_ingredients',
     ctaText: 'Продолжить',
   },
@@ -241,7 +240,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'recognize_yourself_1',
     title: 'Вы узнаёте себя в этом?',
     subtitle: '«Я часто чувствую недовольство своей кожей, когда смотрю в зеркало»',
-    image: '/lookimgclosely.png',
+    image: '/lookimgclosely.webp',
     type: 'tinder',
     showAfterInfoScreenId: 'no_mistakes',
     ctaText: '', // Кнопки будут отдельными (Нет/Да)
@@ -255,7 +254,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'recognize_yourself_2',
     title: 'Это похоже на вас?',
     subtitle: '«Я хочу понимать СВОЮ кожу и подбирать уход осознанно — а не следовать общим советам из интернета»',
-    image: '/quiz4.png',
+    image: '/quiz4.webp',
     type: 'tinder',
     showAfterInfoScreenId: 'recognize_yourself_1',
     ctaText: '', // Кнопки будут отдельными (Нет/Да)
@@ -272,7 +271,6 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'want_improve',
     title: 'Хотите улучшить состояние кожи?',
     subtitle: 'Первые видимые изменения — уже через 28 дней регулярного ухода. Отслеживайте прогресс и подкручивайте план под себя.',
-    image: '/illustrations/improve_skin.jpg',
     type: 'tinder',
     showAfterInfoScreenId: 'recognize_yourself_2', // ФИКС #5: напрямую после recognize_yourself_2
     ctaText: '', // Кнопки рендерятся внутри ImproveSkinScreen

@@ -96,7 +96,7 @@ function PersonalAnalysisScreenComponent({
       >
         {/* Кремовая картинка-фон (та же, что на simple_care/health_trust) */}
         <img
-          src="/image%201576994977.png"
+          src="/image%201576994977.webp"
           alt=""
           aria-hidden
           style={{

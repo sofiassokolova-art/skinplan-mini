@@ -67,7 +67,7 @@ function HowItWorksScreenComponent({
         }}
       >
         <img
-          src="/onboarding/how-it-works.jpg"
+          src="/onboarding/how-it-works.webp"
           alt={screen.title}
           fetchPriority="high"
           decoding="sync"
