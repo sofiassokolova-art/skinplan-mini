@@ -105,7 +105,10 @@ describe('Quiz info screens config & chains', () => {
     expect(stepScreens).toEqual([]);
   });
 
-  it('финальная цепочка после budget: no_mistakes → recognize_yourself_1 → recognize_yourself_2 → skin_transformation → want_improve', () => {
+  it('финальная цепочка после budget: no_mistakes → recognize_yourself_1 → recognize_yourself_2 → want_improve', () => {
+    // ФИКС #5 (PR #75): skin_transformation объединён с want_improve в один финальный экран.
+    // want_improve теперь анкорится на recognize_yourself_2 напрямую и рендерится
+    // через ImproveSkinScreen (совмещает transformation-визуал и CTA «Получить план»).
     const first = getInfoScreenAfterQuestion('budget');
     expect(first?.id).toBe('no_mistakes');
 
@@ -115,9 +118,11 @@ describe('Quiz info screens config & chains', () => {
       'no_mistakes',
       'recognize_yourself_1',
       'recognize_yourself_2',
-      'skin_transformation',
       'want_improve',
     ]);
+
+    // И гарантируем, что старый отдельный skin_transformation больше не существует.
+    expect(INFO_SCREENS.find((s) => s.id === 'skin_transformation')).toBeUndefined();
   });
 
   it('walkInfoScreenChain не зацикливается и всегда возвращает последовательность без повторов', () => {
@@ -141,7 +146,7 @@ describe('Quiz info screens config & chains', () => {
       { originQuestionCode: 'budget', midScreenId: 'no_mistakes' },
       { originQuestionCode: 'budget', midScreenId: 'recognize_yourself_1' },
       { originQuestionCode: 'budget', midScreenId: 'recognize_yourself_2' },
-      { originQuestionCode: 'budget', midScreenId: 'skin_transformation' },
+      // skin_transformation удалён в PR #75 (слит с want_improve в ImproveSkinScreen).
       { originQuestionCode: 'budget', midScreenId: 'want_improve' },
     ];
 

@@ -41,7 +41,7 @@ function CheckIcon() {
       height="15"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="#0A0A0A"
+      stroke="var(--ink)"
       strokeWidth="3"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -89,9 +89,9 @@ function NoMistakesScreenComponent({
           height: '100vh',
           maxHeight: '100vh',
           overflow: 'hidden',
-          backgroundColor: '#FFFFFF',
+          backgroundColor: 'var(--canvas-white)',
           fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-          color: '#0A0A0A',
+          color: 'var(--ink)',
         }}
       >
         {/* Кремовый фон (как в PersonalAnalysisScreen / simple_care / health_trust) */}
@@ -119,8 +119,8 @@ function NoMistakesScreenComponent({
             zIndex: 1,
             pointerEvents: 'none',
             background: `
-              radial-gradient(50% 28% at 100% 0%, rgba(213,254,97,0.55) 0%, transparent 60%),
-              radial-gradient(40% 22% at 0% 100%, rgba(213,254,97,0.28) 0%, transparent 60%)
+              radial-gradient(50% 28% at 100% 0%, rgba(var(--accent-rgb),0.55) 0%, transparent 60%),
+              radial-gradient(40% 22% at 0% 100%, rgba(var(--accent-rgb),0.28) 0%, transparent 60%)
             `,
           }}
         />
@@ -150,7 +150,7 @@ function NoMistakesScreenComponent({
               letterSpacing: '-0.5px',
               textAlign: 'left',
               margin: '0 0 18px 4px',
-              color: '#0A0A0A',
+              color: 'var(--ink)',
             }}
           >
             {screen.title}
@@ -160,10 +160,10 @@ function NoMistakesScreenComponent({
           <div
             style={{
               position: 'relative',
-              background: 'rgba(255,255,255,0.55)',
+              background: 'var(--glass-bg)',
               backdropFilter: 'blur(28px) saturate(160%)',
               WebkitBackdropFilter: 'blur(28px) saturate(160%)',
-              border: '1px solid rgba(255,255,255,0.75)',
+              border: '1px solid var(--glass-border)',
               borderRadius: '24px',
               padding: '22px 22px 20px',
               marginBottom: '14px',
@@ -179,15 +179,15 @@ function NoMistakesScreenComponent({
                 height: 56,
                 flexShrink: 0,
                 borderRadius: '50%',
-                background: '#D5FE61',
+                background: 'var(--accent)',
                 border: '1px solid rgba(0,0,0,0.08)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 6px 16px rgba(213,254,97,0.5)',
+                boxShadow: '0 6px 16px rgba(var(--accent-rgb),0.5)',
               }}
             >
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
@@ -198,19 +198,20 @@ function NoMistakesScreenComponent({
                 lineHeight: 1.45,
                 color: '#1A1A1A',
                 margin: 0,
+                whiteSpace: 'pre-line',
               }}
             >
-              Осталось буквально несколько секунд до вашего персонального плана ухода.
+              {screen.subtitle || 'Осталось буквально несколько секунд до вашего персонального плана ухода.'}
             </p>
           </div>
 
           {/* Чек-лист «что уже сделано» */}
           <div
             style={{
-              background: 'rgba(255,255,255,0.55)',
+              background: 'var(--glass-bg)',
               backdropFilter: 'blur(28px) saturate(160%)',
               WebkitBackdropFilter: 'blur(28px) saturate(160%)',
-              border: '1px solid rgba(255,255,255,0.75)',
+              border: '1px solid var(--glass-border)',
               borderRadius: '24px',
               padding: '20px 22px 22px',
               boxShadow: '0 10px 32px rgba(0,0,0,0.06)',
@@ -223,7 +224,7 @@ function NoMistakesScreenComponent({
                 fontSize: '16px',
                 lineHeight: 1.2,
                 letterSpacing: '-0.3px',
-                color: '#0A0A0A',
+                color: 'var(--ink)',
                 margin: '0 0 16px 0',
               }}
             >
@@ -237,14 +238,14 @@ function NoMistakesScreenComponent({
                       width: '28px',
                       height: '28px',
                       borderRadius: '50%',
-                      background: '#D5FE61',
+                      background: 'var(--accent)',
                       border: '1px solid rgba(0,0,0,0.08)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       flexShrink: 0,
                       marginTop: '1px',
-                      boxShadow: '0 2px 6px rgba(213,254,97,0.4)',
+                      boxShadow: '0 2px 6px rgba(var(--accent-rgb),0.4)',
                     }}
                   >
                     <CheckIcon />
@@ -256,7 +257,7 @@ function NoMistakesScreenComponent({
                         fontWeight: 700,
                         lineHeight: 1.25,
                         letterSpacing: '-0.2px',
-                        color: '#0A0A0A',
+                        color: 'var(--ink)',
                         marginBottom: '3px',
                       }}
                     >

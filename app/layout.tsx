@@ -79,7 +79,6 @@ export default async function RootLayout({
     <html 
       lang="ru" 
       className={`${unbounded.variable} ${inter.variable}`}
-      suppressHydrationWarning
     >
       <head>
         {/* Preload SDK параллельно с Next.js бандлом — скачивание стартует
@@ -102,21 +101,26 @@ export default async function RootLayout({
             — экономия ~258KB (с 277KB до 19KB суммарно). */}
         {!isAdminRoute && (
           <>
-            <link rel="preload" href="/792c9598_nano_4K.jpg" as="image" fetchPriority="high" />
-            <link rel="preload" href="/ea01dd6e_nano_4K.jpg" as="image" fetchPriority="high" />
+            <link rel="preload" href="/onboarding/welcome.jpg" as="image" fetchPriority="high" />
+            <link rel="preload" href="/onboarding/how-it-works.jpg" as="image" fetchPriority="high" />
             <link rel="preload" href="/icons/detailed_3_64.png" as="image" />
             <link rel="preload" href="/icons/hydration_3_64.png" as="image" />
             <link rel="preload" href="/icons/face_3_64.png" as="image" />
           </>
         )}
-        {/* ВАЖНО: используем сырой <script dangerouslySetInnerHTML>, а НЕ <Script strategy="beforeInteractive">.
-            В Next.js App Router <Script beforeInteractive> складывает код в self.__next_s.push(...) — строкой.
-            Эта очередь обрабатывается webpack-рантаймом, который грузится async ПОСЛЕ парсинга HTML.
-            Сырой <script> выполняется СРАЗУ при парсинге <head> — именно это нужно для вызова ready()
-            до того, как Telegram Desktop истечёт по таймауту системного лоадера. */}
+        {/* afterInteractive не даёт SDK изменить style-атрибуты <html> до
+            гидрации React. Preload выше всё равно начинает загрузку заранее. */}
         {!isAdminRoute && (
-          <script
-            dangerouslySetInnerHTML={{ __html: `(function(){
+          <Script
+            id="telegram-web-app"
+            src="https://telegram.org/js/telegram-web-app.js"
+            strategy="afterInteractive"
+          />
+        )}
+        {/* Сохраняем initData и вызываем ready(), когда SDK станет доступен. */}
+        {!isAdminRoute && (
+          <Script id="telegram-web-app-ready" strategy="afterInteractive">
+            {`(function(){
   if (typeof window === 'undefined') return;
   try {
     var h = window.location.hash.slice(1);
@@ -125,6 +129,7 @@ export default async function RootLayout({
       if (raw) sessionStorage.setItem('tg_init_data', decodeURIComponent(raw));
     }
   } catch (_) {}
+  var attempts = 0;
   function done(){
     try {
       var wa = window.Telegram && window.Telegram.WebApp;
@@ -138,21 +143,21 @@ export default async function RootLayout({
     } catch (_) {}
     try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {}
   }
-  try {
-    var waEarly = window.Telegram && window.Telegram.WebApp;
-    if (waEarly && typeof waEarly.ready === 'function') { done(); return; }
-  } catch (_) {}
-  var s = document.createElement('script');
-  s.src = 'https://telegram.org/js/telegram-web-app.js';
-  s.onload = done;
-  s.onerror = function(){ try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {} };
-  document.head.appendChild(s);
-})();` }}
-          />
+  function waitForSdk(){
+    var wa = window.Telegram && window.Telegram.WebApp;
+    if (wa || attempts++ >= 60) { done(); return; }
+    setTimeout(waitForSdk, 50);
+  }
+  waitForSdk();
+})();`}
+          </Script>
         )}
         {/* DEV-режим: мок Telegram WebApp для локального браузера (не на /admin) */}
         {isDev && !isAdminRoute && (
-          <Script id="telegram-dev-mock" strategy="beforeInteractive">
+          <Script
+            id="telegram-dev-mock"
+            strategy="afterInteractive"
+          >
             {`
               (function () {
                 if (typeof window === 'undefined') return;
@@ -206,6 +211,7 @@ export default async function RootLayout({
                 try { sessionStorage.setItem('tg_init_data', testInitData); } catch (_) {}
 
                 console.log('[DEV TG] Telegram WebApp mocked for local development (test initData)');
+                try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {}
               })();
             `}
           </Script>
@@ -222,17 +228,6 @@ export default async function RootLayout({
           backgroundColor: '#FFFFFF',
         }}
       >
-        {/* Извлекаем initData из hash до загрузки SDK — чтобы не потерять,
-            если Telegram передал данные только в hash и сбросит его потом.
-            НЕ зовём web_app_ready напрямую — SDK делает важную init-последовательность
-            (request_viewport, request_theme), которую мы пропустить не можем. */}
-        {!isAdminRoute && (
-          <script
-            dangerouslySetInnerHTML={{
-              __html: `try{var _h=window.location.hash.slice(1);if(_h){var _r=new URLSearchParams(_h).get('tgWebAppData');if(_r)sessionStorage.setItem('tg_init_data',decodeURIComponent(_r))}}catch(_){}`,
-            }}
-          />
-        )}
         {/* Контейнер для кнопки «Назад» — первый ребёнок body, блок 80×80 в углу */}
         <div
           id="back-button-fixed-container"
@@ -261,18 +256,18 @@ export default async function RootLayout({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: '#FFFFFF',
+              backgroundColor: '#F4F2EE',
               zIndex: 99998,
             }}
           >
-            {/* Чёрная дуга вращается по серому кольцу — единый «первый» лоадер */}
+            {/* Лаймовая дуга вращается по тёмному кольцу — брендированный fallback до React. */}
             <div
               style={{
                 width: 56,
                 height: 56,
                 borderRadius: '50%',
-                border: '5px solid #E5E7EB',
-                borderTopColor: '#0A0A0A',
+                border: '5px solid rgba(10, 10, 10, 0.16)',
+                borderTopColor: '#D5FE61',
                 animation: 'skinplan-root-loader-spin 0.9s linear infinite',
               }}
             />

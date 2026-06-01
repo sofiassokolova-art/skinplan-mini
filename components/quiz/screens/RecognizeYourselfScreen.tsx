@@ -17,8 +17,8 @@ export interface RecognizeYourselfScreenProps {
   isHandlingNext?: boolean;
 }
 
-const LIME = '#D5FE61';
-const BLACK = '#000000';
+const LIME = 'var(--accent)';
+const BLACK = 'var(--ink)';
 
 function RecognizeYourselfScreenComponent({
   screen,
@@ -60,7 +60,7 @@ function RecognizeYourselfScreenComponent({
             width: '100%',
             height: '100%',
             background:
-              'radial-gradient(circle at top, #2a2a2a 0%, #0a0a0a 60%, #000 100%)',
+              'radial-gradient(circle at top, #2a2a2a 0%, var(--ink) 60%, #000 100%)',
           }}
         >
           <img
@@ -94,7 +94,7 @@ function RecognizeYourselfScreenComponent({
       <BackButtonFixed
         show={shouldShowBackButton}
         onClick={onBack ?? (() => {})}
-        color="#FFFFFF"
+        color="var(--canvas-white)"
       />
 
       {/* SkinIQ logo сверху */}
@@ -116,7 +116,7 @@ function RecognizeYourselfScreenComponent({
               "var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 700,
             fontSize: 'clamp(18px, 5vw, 24px)',
-            color: '#FFFFFF',
+            color: 'var(--canvas-white)',
             letterSpacing: '0px',
           }}
         >
@@ -143,7 +143,7 @@ function RecognizeYourselfScreenComponent({
             backgroundColor: 'rgba(0, 0, 0, 0.32)',
             backdropFilter: 'blur(12px) saturate(140%)',
             WebkitBackdropFilter: 'blur(12px) saturate(140%)',
-            borderTop: '1px solid rgba(255,255,255,0.18)',
+            borderTop: '1px solid rgba(var(--canvas-white-rgb),0.18)',
             padding:
               '28px 20px max(28px, env(safe-area-inset-bottom))',
             boxSizing: 'border-box',
@@ -162,7 +162,7 @@ function RecognizeYourselfScreenComponent({
               lineHeight: '120%',
               letterSpacing: '-0.3px',
               textAlign: 'center',
-              color: '#FFFFFF',
+              color: 'var(--canvas-white)',
               margin: 0,
             }}
           >
@@ -176,7 +176,7 @@ function RecognizeYourselfScreenComponent({
                 position: 'relative',
                 padding: '14px 16px 14px 18px',
                 borderLeft: `3px solid ${LIME}`,
-                background: 'rgba(255,255,255,0.06)',
+                background: 'rgba(var(--canvas-white-rgb),0.06)',
                 borderRadius: '0 12px 12px 0',
                 fontFamily:
                   "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
@@ -184,7 +184,7 @@ function RecognizeYourselfScreenComponent({
                 fontWeight: 400,
                 fontSize: '15px',
                 lineHeight: '145%',
-                color: 'rgba(255,255,255,0.92)',
+                color: 'rgba(var(--canvas-white-rgb),0.92)',
                 whiteSpace: 'pre-line',
               }}
             >
@@ -206,8 +206,8 @@ function RecognizeYourselfScreenComponent({
                 flex: 1,
                 height: 60,
                 background: 'transparent',
-                color: '#FFFFFF',
-                border: '1.5px solid rgba(255,255,255,0.55)',
+                color: 'var(--canvas-white)',
+                border: '1.5px solid var(--glass-bg)',
                 borderRadius: 999,
                 fontFamily:
                   "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
@@ -241,7 +241,7 @@ function RecognizeYourselfScreenComponent({
                 fontSize: 17,
                 cursor: isHandlingNext ? 'not-allowed' : 'pointer',
                 opacity: isHandlingNext ? 0.6 : 1,
-                boxShadow: '0 10px 24px rgba(213,254,97,0.32)',
+                boxShadow: '0 10px 24px rgba(var(--accent-rgb),0.32)',
                 transition: 'transform .12s ease, box-shadow .12s ease',
               }}
             >

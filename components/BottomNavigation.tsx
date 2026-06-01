@@ -69,7 +69,7 @@ export default function BottomNavigation() {
     >
       {navItems.map((item) => {
         const active = isActive(item.path);
-        const color = active ? '#D5FE61' : 'rgba(255,255,255,0.42)';
+        const color = active ? 'var(--accent)' : 'rgba(255,255,255,0.42)';
         const fill = active ? 'rgba(213,254,97,0.14)' : 'none';
         const isCartTab = item.path === '/cart-new';
         return (
@@ -103,7 +103,7 @@ export default function BottomNavigation() {
                   width: '18px',
                   height: '3px',
                   borderRadius: '999px',
-                  background: '#D5FE61',
+                  background: 'var(--accent)',
                   boxShadow: '0 0 10px rgba(213,254,97,0.7)',
                 }}
               />
@@ -143,10 +143,10 @@ export default function BottomNavigation() {
                   display: 'grid',
                   placeItems: 'center',
                   background: '#F6B27A',
-                  color: '#0A0A0A',
+                  color: 'var(--ink)',
                   fontSize: '9.5px',
                   fontWeight: 700,
-                  border: '1.5px solid #0A0A0A',
+                  border: '1.5px solid var(--ink)',
                 }}
               >
                 {cartCount > 9 ? '9+' : cartCount}

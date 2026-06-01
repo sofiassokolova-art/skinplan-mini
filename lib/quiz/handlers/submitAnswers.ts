@@ -4,6 +4,8 @@ import { clientLogger } from '@/lib/client-logger';
 import { safeSessionStorageSet, safeSessionStorageRemove } from '@/lib/storage-utils';
 import { api } from '@/lib/api';
 import * as userPreferences from '@/lib/user-preferences';
+import { invalidatePlanWarmCache } from '@/lib/plan-warm-cache';
+import type { SubmitAnswersResponse } from '@/lib/api-types';
 import type { Questionnaire } from '@/lib/quiz/types';
 import React from 'react';
 
@@ -64,20 +66,6 @@ function buildAnswerArray(answers: Record<number, string | string[]>) {
         answerValues: isArray ? (value as string[]) : undefined,
       };
     });
-}
-
-async function ensureProfileId(result: any): Promise<string | null> {
-  if (result?.profile?.id) return String(result.profile.id);
-
-  // если это дубликат/сеть/непонятный ответ — пробуем найти текущий профиль
-  try {
-    const profile = (await api.getCurrentProfile()) as any;
-    if (profile?.id) return String(profile.id);
-  } catch {
-    // ignore
-  }
-
-  return null;
 }
 
 export async function submitAnswers(params: SubmitAnswersParams): Promise<void> {
@@ -159,10 +147,9 @@ export async function submitAnswers(params: SubmitAnswersParams): Promise<void> 
       answersCount: answerArray.length,
     });
 
-    // 5) отправка — с ретраем на сетевые сбои (#6: "Load failed" / "Failed to fetch"
-    // на cold-start Cloudflare Worker). Сетевой сбой означает, что запрос не дошёл/не
-    // завершился, поэтому повтор безопасен. Постоянный clientSubmissionId даёт
-    // идемпотентность на сервере, если запрос всё же был обработан.
+    // 5) отправка с постоянным clientSubmissionId. Сервер атомарно захватывает
+    // submission до создания профиля: если первый запрос ещё выполняется, ретрай
+    // получает status=processing и ждёт вместо параллельного запуска.
     const clientSubmissionId =
       typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
         ? crypto.randomUUID()
@@ -179,26 +166,46 @@ export async function submitAnswers(params: SubmitAnswersParams): Promise<void> 
       );
     };
 
-    const MAX_ATTEMPTS = 3;
-    let result: any;
-    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const MAX_NETWORK_ATTEMPTS = 3;
+    const MAX_PROCESSING_POLLS = 20;
+    let networkAttempts = 0;
+    let processingPolls = 0;
+    let result: SubmitAnswersResponse | undefined;
+    while (!result) {
       try {
-        result = await api.submitAnswers({
+        const response = await api.submitAnswers({
           questionnaireId: params.questionnaire.id,
           answers: answerArray,
           clientSubmissionId,
         });
+
+        if (response.status === 'processing') {
+          processingPolls += 1;
+          if (processingPolls >= MAX_PROCESSING_POLLS) {
+            throw new Error('Профиль ещё создаётся. Подождите несколько секунд и попробуйте снова.');
+          }
+
+          const retryAfterMs = response.retryAfterMs ?? 1000;
+          clientLogger.log('⏳ submitAnswers уже обрабатывается сервером, ждём результат', {
+            processingPolls,
+            retryAfterMs,
+          });
+          await new Promise((resolve) => setTimeout(resolve, retryAfterMs));
+          continue;
+        }
+
+        result = response;
         break;
       } catch (e: any) {
-        const retriable = isNetworkError(e) && attempt < MAX_ATTEMPTS;
-        clientLogger.warn(`⚠️ submitAnswers попытка ${attempt}/${MAX_ATTEMPTS} не удалась`, {
+        networkAttempts += 1;
+        const retriable = isNetworkError(e) && networkAttempts < MAX_NETWORK_ATTEMPTS;
+        if (!retriable) throw e;
+
+        clientLogger.warn(`⚠️ submitAnswers сетевая попытка ${networkAttempts}/${MAX_NETWORK_ATTEMPTS} не удалась`, {
           message: e?.message,
           name: e?.name,
-          retriable,
         });
-        if (!retriable) throw e;
-        // лёгкий бэкофф: 700мс, 1400мс
-        await new Promise((r) => setTimeout(r, attempt * 700));
+        await new Promise((r) => setTimeout(r, networkAttempts * 700));
       }
     }
 
@@ -208,13 +215,12 @@ export async function submitAnswers(params: SubmitAnswersParams): Promise<void> 
       success: result?.success,
     });
 
-    const profileId = await ensureProfileId(result);
-    if (!profileId) {
-      // очень важно: не оставляем "just_submitted" если профиля нет
+    if (!result?.success || !result.profile?.id) {
       safeSessionStorageRemove('quiz_just_submitted');
       safeSessionStorageRemove(params.scopedStorageKeys.JUST_SUBMITTED);
-      throw new Error('Не удалось создать профиль. Попробуйте ещё раз.');
+      throw new Error('Сервер не вернул созданный профиль. Попробуйте ещё раз.');
     }
+    const profileId = String(result.profile.id);
 
     // 7) ставим флаги ДО редиректа
     safeSessionStorageSet('quiz_just_submitted', 'true');
@@ -223,6 +229,7 @@ export async function submitAnswers(params: SubmitAnswersParams): Promise<void> 
     // чистим кэш профиля (чтобы /plan не взял старое)
     safeSessionStorageRemove('profile_check_cache');
     safeSessionStorageRemove('profile_check_cache_timestamp');
+    invalidatePlanWarmCache();
 
     // помечаем что есть прогресс плана
     try {
@@ -275,4 +282,3 @@ export async function submitAnswers(params: SubmitAnswersParams): Promise<void> 
     }
   }
 }
-

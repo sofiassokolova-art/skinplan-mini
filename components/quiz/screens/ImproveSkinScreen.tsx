@@ -24,10 +24,11 @@ export interface ImproveSkinScreenProps {
   setError: React.Dispatch<React.SetStateAction<string | null>>;
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
   submitAnswers: () => Promise<void>;
+  error?: string | null;
 }
 
-const LIME = '#D5FE61';
-const BLACK = '#000000';
+const LIME = 'var(--accent)';
+const BLACK = 'var(--ink)';
 
 function ImproveSkinScreenComponent({
   screen,
@@ -41,6 +42,7 @@ function ImproveSkinScreenComponent({
   setError,
   setLoading,
   submitAnswers,
+  error,
 }: ImproveSkinScreenProps) {
   const shouldShowBackButton = currentInfoScreenIndex > 0 && !!onBack;
   const isCurrentlySubmitting = isSubmitting || isSubmittingRef.current;
@@ -82,10 +84,10 @@ function ImproveSkinScreenComponent({
           height: '100vh',
           maxHeight: '100vh',
           overflow: 'hidden',
-          backgroundColor: '#FFFFFF',
+          backgroundColor: 'var(--canvas-white)',
           fontFamily:
             "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-          color: '#0A0A0A',
+          color: 'var(--ink)',
         }}
       >
         {/* Кремовый фон + лаймовые угловые акценты */}
@@ -112,8 +114,8 @@ function ImproveSkinScreenComponent({
             zIndex: 1,
             pointerEvents: 'none',
             background: `
-              radial-gradient(50% 28% at 100% 0%, rgba(213,254,97,0.5) 0%, transparent 60%),
-              radial-gradient(45% 22% at 0% 100%, rgba(213,254,97,0.3) 0%, transparent 60%)
+              radial-gradient(50% 28% at 100% 0%, rgba(var(--accent-rgb),0.5) 0%, transparent 60%),
+              radial-gradient(45% 22% at 0% 100%, rgba(var(--accent-rgb),0.3) 0%, transparent 60%)
             `,
           }}
         />
@@ -144,7 +146,7 @@ function ImproveSkinScreenComponent({
               lineHeight: '115%',
               letterSpacing: '-0.5px',
               margin: '0 0 8px 4px',
-              color: '#0A0A0A',
+              color: 'var(--ink)',
             }}
           >
             Посмотрите, как меняется ваша кожа
@@ -153,10 +155,10 @@ function ImproveSkinScreenComponent({
           {/* Transformation-карточка: from → to */}
           <div
             style={{
-              background: 'rgba(255,255,255,0.55)',
+              background: 'var(--glass-bg)',
               backdropFilter: 'blur(28px) saturate(160%)',
               WebkitBackdropFilter: 'blur(28px) saturate(160%)',
-              border: '1px solid rgba(255,255,255,0.75)',
+              border: '1px solid var(--glass-border)',
               borderRadius: '24px',
               padding: '20px 22px',
               boxShadow: '0 10px 32px rgba(0,0,0,0.06)',
@@ -189,7 +191,7 @@ function ImproveSkinScreenComponent({
                       "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
                     fontSize: '17px',
                     fontWeight: 700,
-                    color: '#0A0A0A',
+                    color: 'var(--ink)',
                     letterSpacing: '-0.3px',
                   }}
                 >
@@ -211,7 +213,7 @@ function ImproveSkinScreenComponent({
                   style={{
                     fontSize: '12px',
                     fontWeight: 600,
-                    color: '#0A0A0A',
+                    color: 'var(--ink)',
                     textTransform: 'uppercase',
                     letterSpacing: '0.12em',
                     marginBottom: 6,
@@ -225,7 +227,7 @@ function ImproveSkinScreenComponent({
                       "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
                     fontSize: '17px',
                     fontWeight: 700,
-                    color: '#0A0A0A',
+                    color: 'var(--ink)',
                     letterSpacing: '-0.3px',
                   }}
                 >
@@ -253,11 +255,11 @@ function ImproveSkinScreenComponent({
           <div
             style={{
               marginTop: 4,
-              background: 'rgba(10,10,10,0.92)',
+              background: 'rgba(var(--ink-rgb),0.92)',
               borderRadius: '24px',
               padding: '22px 22px 22px',
               boxShadow: '0 14px 36px rgba(0,0,0,0.18)',
-              color: '#FFFFFF',
+              color: 'var(--canvas-white)',
               position: 'relative',
               overflow: 'hidden',
             }}
@@ -272,7 +274,7 @@ function ImproveSkinScreenComponent({
                 height: 140,
                 borderRadius: '50%',
                 background:
-                  'radial-gradient(circle, rgba(213,254,97,0.45) 0%, transparent 70%)',
+                  'radial-gradient(circle, rgba(var(--accent-rgb),0.45) 0%, transparent 70%)',
                 pointerEvents: 'none',
               }}
             />
@@ -298,12 +300,30 @@ function ImproveSkinScreenComponent({
                 fontSize: '22px',
                 lineHeight: '120%',
                 letterSpacing: '-0.3px',
-                color: '#FFFFFF',
+                color: 'var(--canvas-white)',
                 margin: '0 0 18px 0',
               }}
             >
               {screen.title || 'Хотите улучшить состояние кожи?'}
             </h2>
+            {error && (
+              <div
+                role="alert"
+                style={{
+                  position: 'relative',
+                  marginBottom: 14,
+                  padding: '10px 12px',
+                  borderRadius: 12,
+                  background: 'rgba(var(--canvas-white-rgb),0.1)',
+                  border: '1px solid rgba(var(--canvas-white-rgb),0.18)',
+                  color: 'var(--canvas-white)',
+                  fontSize: 13,
+                  lineHeight: 1.4,
+                }}
+              >
+                {error}
+              </div>
+            )}
             <button
               type="button"
               onClick={(e) => {
@@ -326,7 +346,7 @@ function ImproveSkinScreenComponent({
                 fontSize: 17,
                 cursor: isCurrentlySubmitting ? 'not-allowed' : 'pointer',
                 opacity: isCurrentlySubmitting ? 0.65 : 1,
-                boxShadow: '0 12px 30px rgba(213,254,97,0.35)',
+                boxShadow: '0 12px 30px rgba(var(--accent-rgb),0.35)',
                 transition: 'transform .14s ease, box-shadow .14s ease',
               }}
             >
@@ -340,7 +360,7 @@ function ImproveSkinScreenComponent({
                   marginBottom: 0,
                   fontSize: 12,
                   textAlign: 'center',
-                  color: 'rgba(255,255,255,0.6)',
+                  color: 'rgba(var(--canvas-white-rgb),0.6)',
                 }}
               >
                 Убедитесь, что приложение открыто через Telegram Mini App
