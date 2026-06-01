@@ -320,6 +320,13 @@ export async function request<T>(
         ...options,
         headers,
       }, timeout);
+      if (typeof window !== 'undefined') {
+        (window as any).__skiniqMarkStartup?.('firstApiResponse', {
+          endpoint,
+          status: response.status,
+        });
+        (window as any).__skiniqReportStartup?.('first-api-response');
+      }
 
       if (!response.ok) {
         if (response.status === 401 && (endpoint.includes('/cart') || endpoint.includes('/wishlist'))) {

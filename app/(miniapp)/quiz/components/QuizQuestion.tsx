@@ -743,18 +743,18 @@ export const QuizQuestion = memo(function QuizQuestion({
     const isMultiChoice = question?.type === 'multi_choice';
 
     const getImageUrl = (index: number) => {
-      let imageUrl = '/tone6.jpeg';
+      let imageUrl = '/tone6.webp';
 
       if (isGoalsQuestion) {
         const goalImages: Record<number, string> = {
-          0: '/wrinkles6.jpeg',
-          1: '/acne6.jpeg',
-          2: '/pores6.jpeg',
-          3: '/puff6.jpeg',
-          4: '/pigmentation6.jpeg',
-          5: '/tone6.jpeg',
+          0: '/wrinkles6.webp',
+          1: '/acne6.webp',
+          2: '/pores6.webp',
+          3: '/puff6.webp',
+          4: '/pigmentation6.webp',
+          5: '/tone6.webp',
         };
-        imageUrl = goalImages[index] || '/tone6.jpeg';
+        imageUrl = goalImages[index] || '/tone6.webp';
       } else if (isSkinTypeQuestion) {
         // Порядок строго соответствует options в seed-questionnaire-v2:
         // 0: Тип 1 — Сухая
@@ -763,13 +763,13 @@ export const QuizQuestion = memo(function QuizQuestion({
         // 3: Тип 3 — Комбинированная (жирная)
         // 4: Тип 4 — Жирная
         const skinTypeImages: Record<number, string> = {
-          0: '/dry.jpeg',
-          1: '/dry (combi).jpeg',
-          2: '/normal.jpeg',
-          3: '/oily (combi).jpeg',
-          4: '/oily.jpeg',
+          0: '/dry.webp',
+          1: '/dry (combi).webp',
+          2: '/normal.webp',
+          3: '/oily (combi).webp',
+          4: '/oily.webp',
         };
-        imageUrl = skinTypeImages[index] || '/normal.jpeg';
+        imageUrl = skinTypeImages[index] || '/normal.webp';
       }
 
       return imageUrl;
@@ -1138,15 +1138,15 @@ export const QuizQuestion = memo(function QuizQuestion({
               const isSelected = currentAnswers.includes(option.value);
 
               const goalImages: Record<number, string> = {
-                0: '/wrinkles6.jpeg',
-                1: '/acne6.jpeg',
-                2: '/pores6.jpeg',
-                3: '/puff6.jpeg',
-                4: '/pigmentation6.jpeg',
-                5: '/tone6.jpeg',
+                0: '/wrinkles6.webp',
+                1: '/acne6.webp',
+                2: '/pores6.webp',
+                3: '/puff6.webp',
+                4: '/pigmentation6.webp',
+                5: '/tone6.webp',
               };
 
-              const imageUrl = goalImages[index] || '/tone6.jpeg';
+              const imageUrl = goalImages[index] || '/tone6.webp';
 
               return (
                 <LimeOptionCard
