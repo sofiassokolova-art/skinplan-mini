@@ -79,6 +79,7 @@ export default async function RootLayout({
     <html 
       lang="ru" 
       className={`${unbounded.variable} ${inter.variable}`}
+      suppressHydrationWarning
     >
       <head>
         {/* Preload SDK параллельно с Next.js бандлом — скачивание стартует
@@ -108,19 +109,11 @@ export default async function RootLayout({
             <link rel="preload" href="/icons/face_3_64.png" as="image" />
           </>
         )}
-        {/* afterInteractive не даёт SDK изменить style-атрибуты <html> до
-            гидрации React. Preload выше всё равно начинает загрузку заранее. */}
+        {/* Загружаем SDK до React: Telegram system loader должен закрыться,
+            даже если загрузка чанков приложения задержалась. */}
         {!isAdminRoute && (
-          <Script
-            id="telegram-web-app"
-            src="https://telegram.org/js/telegram-web-app.js"
-            strategy="afterInteractive"
-          />
-        )}
-        {/* Сохраняем initData и вызываем ready(), когда SDK станет доступен. */}
-        {!isAdminRoute && (
-          <Script id="telegram-web-app-ready" strategy="afterInteractive">
-            {`(function(){
+          <script
+            dangerouslySetInnerHTML={{ __html: `(function(){
   if (typeof window === 'undefined') return;
   try {
     var h = window.location.hash.slice(1);
@@ -129,7 +122,6 @@ export default async function RootLayout({
       if (raw) sessionStorage.setItem('tg_init_data', decodeURIComponent(raw));
     }
   } catch (_) {}
-  var attempts = 0;
   function done(){
     try {
       var wa = window.Telegram && window.Telegram.WebApp;
@@ -143,14 +135,18 @@ export default async function RootLayout({
     } catch (_) {}
     try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {}
   }
-  function waitForSdk(){
-    var wa = window.Telegram && window.Telegram.WebApp;
-    if (wa || attempts++ >= 60) { done(); return; }
-    setTimeout(waitForSdk, 50);
-  }
-  waitForSdk();
-})();`}
-          </Script>
+  try {
+    var waEarly = window.Telegram && window.Telegram.WebApp;
+    if (waEarly && typeof waEarly.ready === 'function') { done(); return; }
+  } catch (_) {}
+  var s = document.createElement('script');
+  s.src = 'https://telegram.org/js/telegram-web-app.js';
+  s.async = true;
+  s.onload = done;
+  s.onerror = function(){ try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {} };
+  document.head.appendChild(s);
+})();` }}
+          />
         )}
         {/* DEV-режим: мок Telegram WebApp для локального браузера (не на /admin) */}
         {isDev && !isAdminRoute && (
@@ -291,7 +287,6 @@ export default async function RootLayout({
   function showFallback(){
     var e = document.getElementById("loading-timeout-fallback");
     if (e && e.style.display !== "block") { e.style.cssText = fallbackCss; e.innerHTML = fallbackHtml; }
-    try { var rl = document.getElementById("root-loading"); if (rl) rl.style.display = 'none'; } catch(_) {}
   }
   function tryReloadOnce(){
     try {
@@ -312,29 +307,11 @@ export default async function RootLayout({
       if (u.indexOf("/_next/") !== -1 || u.indexOf("chunks") !== -1) tryReloadOnce();
     }
   }, true);
-  // Скрываем root-loading как только React отрендерил контент в #__next.
-  // MutationObserver надёжнее чем __skiniq_mounted (который может не попасть в бандл).
-  (function(){
-    var rl = document.getElementById("root-loading");
-    if (!rl) return;
-    var next = document.getElementById("__next");
-    if (!next) { rl.style.display = 'none'; return; }
-    // Если контент уже есть — скрываем сразу
-    if (next.children.length > 0) { rl.style.display = 'none'; return; }
-    var obs = new MutationObserver(function(){
-      if (next.children.length > 0) {
-        rl.style.display = 'none';
-        window.__skiniq_mounted = true;
-        obs.disconnect();
-      }
-    });
-    obs.observe(next, { childList: true, subtree: false });
-    // Fallback: скрываем через 8с в любом случае
-    setTimeout(function(){
-      rl.style.display = 'none';
-      obs.disconnect();
-    }, 8000);
-  })();
+  // Этот script исполняется до разметки #__next ниже по документу.
+  // Скрывать loader можно только после реального React mount из miniapp layout.
+  setTimeout(function(){
+    if (!window.__skiniq_mounted) showFallback();
+  }, 8000);
 })();
             `.trim(),
           }}

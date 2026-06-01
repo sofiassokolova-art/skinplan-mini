@@ -29,6 +29,8 @@ function useRemoveRootLoading() {
     try {
       const el = document.getElementById('root-loading');
       if (el) el.style.display = 'none';
+      const fallback = document.getElementById('loading-timeout-fallback');
+      if (fallback) fallback.style.display = 'none';
     } catch (_) {}
   }, []);
 }
