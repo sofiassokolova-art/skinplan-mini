@@ -372,6 +372,7 @@ export function QuizInfoScreen({
         setError={setError}
         setLoading={setLoading}
         submitAnswers={submitAnswers}
+        error={error}
       />
     );
   }

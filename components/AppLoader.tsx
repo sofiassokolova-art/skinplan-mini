@@ -20,19 +20,6 @@ interface AppLoaderProps {
   children?: ReactNode;
 }
 
-// Единая «чёрно-серая» палитра — соответствует самому первому лоадеру,
-// который виден до подгрузки анкеты: белый фон, чёрная дуга, серое кольцо.
-// Все варианты теперь возвращают один и тот же стиль, чтобы лоадер визуально
-// не менялся между экранами. Варианты оставлены ради обратной совместимости.
-const SHARED_PALETTE = {
-  background: '#FFFFFF',
-  text: '#0A0A0A',
-  subText: '#6B7280',
-  accent: '#0A0A0A',           // чёрная вращающаяся дуга
-  track: '#E5E7EB',            // серое кольцо-трек
-  glow: 'transparent',
-};
-
 const PALETTES: Record<AppLoaderVariant, {
   background: string;
   text: string;
@@ -41,9 +28,30 @@ const PALETTES: Record<AppLoaderVariant, {
   track: string;
   glow: string;
 }> = {
-  dark: SHARED_PALETTE,
-  mint: SHARED_PALETTE,
-  light: SHARED_PALETTE,
+  dark: {
+    background: 'var(--ink)',
+    text: 'var(--canvas-white)',
+    subText: 'rgba(255, 255, 255, 0.62)',
+    accent: 'var(--accent)',
+    track: 'rgba(255, 255, 255, 0.16)',
+    glow: 'rgba(213, 254, 97, 0.24)',
+  },
+  mint: {
+    background: '#F5FFFC',
+    text: 'var(--ink)',
+    subText: 'var(--ink-soft)',
+    accent: 'var(--accent)',
+    track: 'rgba(10, 10, 10, 0.14)',
+    glow: 'rgba(213, 254, 97, 0.24)',
+  },
+  light: {
+    background: 'var(--canvas)',
+    text: 'var(--ink)',
+    subText: 'var(--ink-soft)',
+    accent: 'var(--accent)',
+    track: 'rgba(10, 10, 10, 0.14)',
+    glow: 'rgba(213, 254, 97, 0.24)',
+  },
 };
 
 export function AppLoader({
@@ -65,6 +73,7 @@ export function AppLoader({
 
   return (
     <div
+      className="app-bottom-nav-clearance"
       style={{
         position: fullScreen ? 'fixed' : undefined,
         inset: fullScreen ? 0 : undefined,
@@ -74,10 +83,10 @@ export function AppLoader({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '24px',
+        padding: '24px 24px var(--bottom-nav-clearance)',
         boxSizing: 'border-box',
         zIndex: fullScreen ? zIndex : undefined,
-        fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+        fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
       }}
     >
       <div
@@ -100,9 +109,10 @@ export function AppLoader({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              filter: `drop-shadow(0 0 18px ${palette.glow})`,
             }}
           >
-            {/* Чёрная дуга на сером кольце — единый «первый» лоадер */}
+            {/* Статичный CSS-fallback: виден сразу, без ожидания JS-анимации или Lottie. */}
             <div className="skinplan-loader-ring" />
           </div>
         )}
@@ -139,7 +149,7 @@ export function AppLoader({
               fontSize: '18px',
               fontWeight: 700,
               lineHeight: 1.35,
-              fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontFamily: "var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif",
             }}
           >
             {message}

@@ -39,7 +39,7 @@ function CheckIcon() {
       height="15"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="#0A0A0A"
+      stroke="var(--ink)"
       strokeWidth="3"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -88,10 +88,10 @@ function PersonalAnalysisScreenComponent({
           height: '100vh',
           maxHeight: '100vh',
           overflow: 'hidden',
-          backgroundColor: '#FFFFFF',
+          backgroundColor: 'var(--canvas-white)',
           fontFamily:
             "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-          color: '#0A0A0A',
+          color: 'var(--ink)',
         }}
       >
         {/* Кремовая картинка-фон (та же, что на simple_care/health_trust) */}
@@ -119,8 +119,8 @@ function PersonalAnalysisScreenComponent({
             zIndex: 1,
             pointerEvents: 'none',
             background: `
-              radial-gradient(45% 25% at 100% 0%, rgba(213,254,97,0.45) 0%, transparent 60%),
-              radial-gradient(40% 20% at 0% 100%, rgba(213,254,97,0.25) 0%, transparent 60%)
+              radial-gradient(45% 25% at 100% 0%, rgba(var(--accent-rgb),0.45) 0%, transparent 60%),
+              radial-gradient(40% 20% at 0% 100%, rgba(var(--accent-rgb),0.25) 0%, transparent 60%)
             `,
           }}
         />
@@ -152,7 +152,7 @@ function PersonalAnalysisScreenComponent({
               letterSpacing: '-0.5px',
               textAlign: 'left',
               margin: '0 0 22px 4px',
-              color: '#0A0A0A',
+              color: 'var(--ink)',
             }}
           >
             Экспертный анализ
@@ -164,10 +164,10 @@ function PersonalAnalysisScreenComponent({
           <div
             style={{
               position: 'relative',
-              background: 'rgba(255,255,255,0.55)',
+              background: 'var(--glass-bg)',
               backdropFilter: 'blur(28px) saturate(160%)',
               WebkitBackdropFilter: 'blur(28px) saturate(160%)',
-              border: '1px solid rgba(255,255,255,0.75)',
+              border: '1px solid var(--glass-border)',
               borderRadius: '24px',
               padding: '24px 22px 22px',
               marginBottom: '14px',
@@ -185,8 +185,8 @@ function PersonalAnalysisScreenComponent({
                 letterSpacing: '0.3px',
                 textTransform: 'uppercase',
                 color: '#4B5563',
-                background: 'rgba(213,254,97,0.5)',
-                border: '1px solid rgba(213,254,97,0.8)',
+                background: 'rgba(var(--accent-rgb),0.5)',
+                border: '1px solid rgba(var(--accent-rgb),0.8)',
                 padding: '4px 10px',
                 borderRadius: '999px',
               }}
@@ -201,7 +201,7 @@ function PersonalAnalysisScreenComponent({
                 fontSize: '64px',
                 lineHeight: 0.95,
                 letterSpacing: '-2px',
-                color: '#0A0A0A',
+                color: 'var(--ink)',
                 display: 'flex',
                 alignItems: 'baseline',
                 gap: '4px',
@@ -222,7 +222,7 @@ function PersonalAnalysisScreenComponent({
               style={{
                 width: '56px',
                 height: '4px',
-                background: '#D5FE61',
+                background: 'var(--accent)',
                 borderRadius: '2px',
                 margin: '14px 0 12px',
               }}
@@ -244,10 +244,10 @@ function PersonalAnalysisScreenComponent({
           {/* SECTION: что входит в программу — стеклянная карточка */}
           <div
             style={{
-              background: 'rgba(255,255,255,0.55)',
+              background: 'var(--glass-bg)',
               backdropFilter: 'blur(28px) saturate(160%)',
               WebkitBackdropFilter: 'blur(28px) saturate(160%)',
-              border: '1px solid rgba(255,255,255,0.75)',
+              border: '1px solid var(--glass-border)',
               borderRadius: '24px',
               padding: '20px 22px 22px',
               boxShadow: '0 10px 32px rgba(0,0,0,0.06)',
@@ -261,7 +261,7 @@ function PersonalAnalysisScreenComponent({
                 fontSize: '16px',
                 lineHeight: 1.2,
                 letterSpacing: '-0.3px',
-                color: '#0A0A0A',
+                color: 'var(--ink)',
                 margin: '0 0 16px 0',
               }}
             >
@@ -289,14 +289,14 @@ function PersonalAnalysisScreenComponent({
                       width: '28px',
                       height: '28px',
                       borderRadius: '50%',
-                      background: '#D5FE61',
+                      background: 'var(--accent)',
                       border: '1px solid rgba(0,0,0,0.08)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       flexShrink: 0,
                       marginTop: '1px',
-                      boxShadow: '0 2px 6px rgba(213,254,97,0.4)',
+                      boxShadow: '0 2px 6px rgba(var(--accent-rgb),0.4)',
                     }}
                   >
                     <CheckIcon />
@@ -308,7 +308,7 @@ function PersonalAnalysisScreenComponent({
                         fontWeight: 700,
                         lineHeight: 1.25,
                         letterSpacing: '-0.2px',
-                        color: '#0A0A0A',
+                        color: 'var(--ink)',
                         marginBottom: '3px',
                       }}
                     >

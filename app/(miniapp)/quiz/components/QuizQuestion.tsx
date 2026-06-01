@@ -25,6 +25,13 @@ interface QuizQuestionProps {
   showBackButton: boolean;
 }
 
+const isDevEnv = process.env.NODE_ENV === 'development';
+const devLog = (...args: any[]) => {
+  if (isDevEnv) {
+    console.log(...args);
+  }
+};
+
 // Маппинг вопросов на шаги анкеты (соответствует stepNumber/stepLabel в info-screens.ts).
 // Лейбл «Шаг N: название» рендерится над прогресс-баром вместо отдельного экрана.
 const QUESTION_STEP_MAP: Record<string, { number: number; total: number; label: string }> = {
@@ -104,8 +111,8 @@ const LimeOptionCard = memo(function LimeOptionCard({
       style={{
         padding: '0',
         borderRadius: '16px',
-        border: isSelected ? '2px solid #FFFFFF' : 'none',
-        backgroundColor: isSelected ? '#D5FE61' : '#FFFFFF',
+        border: isSelected ? '2px solid var(--canvas-white)' : 'none',
+        backgroundColor: isSelected ? 'var(--accent)' : 'var(--canvas-white)',
         cursor: 'pointer',
         textAlign: 'left',
         overflow: 'hidden',
@@ -146,7 +153,7 @@ const LimeOptionCard = memo(function LimeOptionCard({
           flexDirection: 'column',
           flex: 1,
           padding: `${whitePaddingTop}px ${whitePadding}px ${whitePadding}px`,
-          backgroundColor: isSelected ? '#D5FE61' : '#FFFFFF',
+          backgroundColor: isSelected ? 'var(--accent)' : 'var(--canvas-white)',
         }}
       >
         <div
@@ -161,7 +168,7 @@ const LimeOptionCard = memo(function LimeOptionCard({
             style={{
               fontSize: isGoalsQuestion ? '14px' : '16px',
               fontWeight: isGoalsQuestion ? 400 : 600,
-              color: '#000000',
+              color: 'var(--ink)',
               fontFamily:
                 "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
             }}
@@ -174,7 +181,7 @@ const LimeOptionCard = memo(function LimeOptionCard({
                 width: '28px',
                 height: '28px',
                 borderRadius: '50%',
-                backgroundColor: isSelected ? '#000000' : '#D5FE61',
+                backgroundColor: isSelected ? 'var(--ink)' : 'var(--accent)',
                 border: 'none',
                 display: 'flex',
                 alignItems: 'center',
@@ -187,7 +194,7 @@ const LimeOptionCard = memo(function LimeOptionCard({
                 <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
                   <path
                     d="M1 5L5 9L13 1"
-                    stroke="#FFFFFF"
+                    stroke="var(--canvas-white)"
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -282,10 +289,10 @@ const FreeTextInput = memo(function FreeTextInput({ question, answers, onAnswer,
   const inputStyle = useMemo(() => ({
     padding: '16px',
     borderRadius: '16px',
-    border: '1px solid #000000',
-    backgroundColor: '#FFFFFF',
+    border: '1px solid var(--ink)',
+    backgroundColor: 'var(--canvas-white)',
     fontSize: '16px',
-    color: '#000000',
+    color: 'var(--ink)',
     fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
     outline: 'none',
     transition: 'all 0.2s',
@@ -307,7 +314,7 @@ const FreeTextInput = memo(function FreeTextInput({ question, answers, onAnswer,
           variant="black"
           ctaText="Продолжить"
           onClick={async () => {
-            console.log('➡️ [QuizQuestion] FreeText: "Продолжить" clicked', {
+            devLog('➡️ [QuizQuestion] FreeText: "Продолжить" clicked', {
               questionId: question.id,
               valueLength: localValue.length,
               valuePreview: localValue.substring(0, 50)
@@ -354,14 +361,6 @@ export const QuizQuestion = memo(function QuizQuestion({
     });
     // НЕ блокируем рендеринг - продолжаем, но не будем сохранять ответ с невалидным ID
   }
-
-  const isDevEnv = process.env.NODE_ENV === 'development';
-  const devLog = (...args: any[]) => {
-    if (isDevEnv) {
-      // eslint-disable-next-line no-console
-      console.log(...args);
-    }
-  };
 
   devLog('❓ [QuizQuestion] rendering question', {
     questionId: question?.id,
@@ -584,7 +583,7 @@ export const QuizQuestion = memo(function QuizQuestion({
           style={{
             width: '100%',
             height: '6px',
-            backgroundColor: '#000000',
+            backgroundColor: 'var(--ink)',
             borderRadius: '3px',
             overflow: 'hidden',
             position: 'relative',
@@ -596,7 +595,7 @@ export const QuizQuestion = memo(function QuizQuestion({
             style={{
               width: `${displayProgressPercent}%`,
               height: '100%',
-              backgroundColor: '#D5FE61',
+              backgroundColor: 'var(--accent)',
               borderRadius: '2px',
               transition: 'width 1s cubic-bezier(0.22, 1, 0.36, 1)',
             }}
@@ -632,7 +631,7 @@ export const QuizQuestion = memo(function QuizQuestion({
         }}
       >
         Нажимая «Получить план», вы соглашаетесь с{' '}
-        <Link href="/terms" style={{ color: '#000000', textDecoration: 'underline' }}>
+        <Link href="/terms" style={{ color: 'var(--ink)', textDecoration: 'underline' }}>
           пользовательским соглашением
         </Link>
       </p>
@@ -642,7 +641,7 @@ export const QuizQuestion = memo(function QuizQuestion({
   const SingleChoiceDefault = () => {
     if (question?.type !== 'single_choice' || !question?.options || isSkinTypeQuestion) return null;
 
-    const sensitivityCircleColors = ['#F7FFD1', '#E9FF9C', '#D5FE61', '#C1F24A'];
+    const sensitivityCircleColors = ['#F7FFD1', '#E9FF9C', 'var(--accent)', '#C1F24A'];
 
     return (
       <div style={{
@@ -660,7 +659,7 @@ export const QuizQuestion = memo(function QuizQuestion({
             <button
               key={option.id}
               onClick={async () => {
-                console.log('📝 [QuizQuestion] SingleChoice: answering', {
+                devLog('📝 [QuizQuestion] SingleChoice: answering', {
                   questionId: question.id,
                   optionValue: option.value,
                   optionLabel: option.label
@@ -675,18 +674,18 @@ export const QuizQuestion = memo(function QuizQuestion({
                   return;
                 }
                 await onAnswer(question.id, option.value);
-                console.log('➡️ [QuizQuestion] SingleChoice: calling onNext after delay');
+                devLog('➡️ [QuizQuestion] SingleChoice: calling onNext after delay');
                 setTimeout(() => onNext(), 300);
               }}
               style={{
                 padding: '16px',
                 borderRadius: '16px',
-                border: '1px solid #000000',
-                backgroundColor: isSelected ? '#F2F2F2' : '#FFFFFF',
+                border: '1px solid var(--ink)',
+                backgroundColor: isSelected ? '#F2F2F2' : 'var(--canvas-white)',
                 cursor: 'pointer',
                 textAlign: 'left',
                 fontSize: '16px',
-                color: '#000000',
+                color: 'var(--ink)',
                 transition: 'all 0.2s',
                 fontFamily:
                   "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
@@ -702,7 +701,7 @@ export const QuizQuestion = memo(function QuizQuestion({
                       width: '14px',
                       height: '14px',
                       borderRadius: '999px',
-                      backgroundColor: sensitivityCircleColors[index] ?? '#D5FE61',
+                      backgroundColor: sensitivityCircleColors[index] ?? 'var(--accent)',
                       flexShrink: 0,
                     }}
                   />
@@ -794,7 +793,7 @@ export const QuizQuestion = memo(function QuizQuestion({
                 "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
               fontSize: '20px',
               fontWeight: isSkinTypeQuestion ? 500 : 700,
-              color: '#000000',
+              color: 'var(--ink)',
               marginBottom: subtitle ? '4px' : '20px',
               marginTop: '0',
             }}
@@ -899,7 +898,7 @@ export const QuizQuestion = memo(function QuizQuestion({
   const MultiChoiceDefault = () => {
     if (question?.type !== 'multi_choice' || !question?.options || useLimeStyle) return null;
 
-    const sensitivityCircleColors = ['#F7FFD1', '#E9FF9C', '#D5FE61', '#C1F24A'];
+    const sensitivityCircleColors = ['#F7FFD1', '#E9FF9C', 'var(--accent)', '#C1F24A'];
     const isSkinSensitivityForMulti = question?.code === 'skin_sensitivity';
     const isGoalsQuestionForMulti = question?.code === 'skin_goals';
 
@@ -994,12 +993,12 @@ export const QuizQuestion = memo(function QuizQuestion({
                 style={{
                   padding: isSkinConcernsQuestion ? '14px' : '16px',
                   borderRadius: '16px',
-                  border: '1px solid #000000',
-                  backgroundColor: isSelected ? '#F2F2F2' : '#FFFFFF',
+                  border: '1px solid var(--ink)',
+                  backgroundColor: isSelected ? '#F2F2F2' : 'var(--canvas-white)',
                   cursor: 'pointer',
                   textAlign: 'left',
                   fontSize: isSkinConcernsQuestion ? '15px' : '16px',
-                  color: '#000000',
+                  color: 'var(--ink)',
                   transition: 'all 0.2s',
                   fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                   display: 'flex',
@@ -1014,7 +1013,7 @@ export const QuizQuestion = memo(function QuizQuestion({
                         width: '14px',
                         height: '14px',
                         borderRadius: '999px',
-                        backgroundColor: sensitivityCircleColors[index] ?? '#D5FE61',
+                        backgroundColor: sensitivityCircleColors[index] ?? 'var(--accent)',
                         flexShrink: 0,
                       }}
                     />
@@ -1090,7 +1089,7 @@ export const QuizQuestion = memo(function QuizQuestion({
                   "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
                 fontSize: '20px',
                 fontWeight: 700,
-                color: '#000000',
+                color: 'var(--ink)',
                 marginBottom: subtitle ? '4px' : '24px',
                 marginTop: '0',
               }}

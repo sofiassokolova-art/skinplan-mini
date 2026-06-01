@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { clientLogger } from '@/lib/client-logger';
+import { invalidatePlanWarmCache } from '@/lib/plan-warm-cache';
 import toast from 'react-hot-toast';
 import { PaymentGate } from '@/components/PaymentGate';
 import type {
@@ -68,7 +69,7 @@ export function PlanPageV2() {
       setContext(res.context);
     } catch (err: any) {
       clientLogger.error('Failed to load plan page context', err);
-      setError(err?.message || 'Не удалось загрузить план');
+      setError('Не удалось загрузить план. Попробуйте ещё раз.');
     } finally {
       setLoading(false);
     }
@@ -137,9 +138,9 @@ export function PlanPageV2() {
 
   if (error || !context) {
     return (
-      <div className="pv2-error">
+      <div className="pv2-error app-bottom-nav-clearance">
         <p>{error ?? 'План не найден'}</p>
-        <button onClick={loadContext}>Обновить</button>
+        <button className="btn-primary" onClick={loadContext}>Обновить</button>
         <style jsx>{`
           .pv2-error {
             min-height: 100vh;
@@ -147,19 +148,13 @@ export function PlanPageV2() {
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            background: #F4F2EE;
-            font-family: 'Inter', sans-serif;
+            background: var(--canvas);
+            font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
             gap: 16px;
-            padding: 20px;
+            padding: 20px 20px var(--bottom-nav-clearance);
           }
-          .pv2-error p { color: #0A0A0A; font-size: 14px; }
+          .pv2-error p { color: var(--ink); font-size: 14px; }
           .pv2-error button {
-            background: #0A0A0A;
-            color: #D5FE61;
-            border: none;
-            border-radius: 999px;
-            padding: 12px 20px;
-            font-weight: 600;
             cursor: pointer;
           }
         `}</style>
@@ -190,6 +185,7 @@ export function PlanPageV2() {
         price={199}
         productCode="plan_access"
         isRetaking={isRetaking}
+        retakeCta={{ text: 'Изменились цели? Перепройти анкету', href: '/quiz?retake=1' }}
         onPaymentComplete={() => {
           clientLogger.log('✅ Payment completed on plan page (V2)');
           const q = new URLSearchParams(searchParams?.toString() || '');
@@ -201,14 +197,14 @@ export function PlanPageV2() {
       >
         {/* 3. Phase + Streak */}
         <div className="pv2-double-row">
-          <div className="pv2-mini-card">
+          <div className="glass-card-md pv2-mini-card">
             <div className="pv2-mini-label">Текущая фаза</div>
             <div className="pv2-mini-value">{context.hero.phaseLabel}</div>
             <div className="pv2-mini-sub">
               День {context.hero.dayInPhase} из {context.hero.daysInPhase}
             </div>
           </div>
-          <div className="pv2-mini-card pv2-mini-dark">
+          <div className="glass-card-md pv2-mini-card pv2-mini-dark">
             <div className="pv2-mini-label">SkinIQ streak</div>
             <div className="pv2-mini-value">{context.streak.label}</div>
             <div className="pv2-mini-sub">Отмечен ежедневный уход</div>
@@ -239,7 +235,13 @@ export function PlanPageV2() {
         />
 
         {/* 8. Expert notes */}
-        <ExpertNotesCard notes={context.expertNotes} onRetakeQuiz={() => router.push('/quiz?retake=1')} />
+        <ExpertNotesCard
+          notes={context.expertNotes}
+          onRetakeQuiz={() => {
+            invalidatePlanWarmCache();
+            router.push('/quiz?retake=1');
+          }}
+        />
 
         {/* 9. Feedback */}
         <FeedbackSection onSubmit={handleFeedback} />
@@ -254,7 +256,7 @@ export function PlanPageV2() {
 
 function ScoreCard({ score, label, description, onHintClick }: { score: number; label: string; description: string; onHintClick?: () => void }) {
   return (
-    <div className="pv2-score-card">
+    <div className="glass-card-lg pv2-score-card">
       <div className="pv2-score-top">
         <div>
           <div className="pv2-mini-label">Оценка кожи</div>
@@ -284,7 +286,7 @@ function ScoreCard({ score, label, description, onHintClick }: { score: number; 
 function ProfileCarousel({ cards }: { cards: ProfileCard[] }) {
   if (cards.length === 0) return null;
   return (
-    <div className="pv2-section">
+    <div className="glass-card-lg pv2-section">
       <div className="pv2-section-head">
         <div className="pv2-section-title">Профиль кожи</div>
         <div className="pv2-dots" aria-hidden>
@@ -295,7 +297,7 @@ function ProfileCarousel({ cards }: { cards: ProfileCard[] }) {
       </div>
       <div className="pv2-profile-carousel">
         {cards.map((card) => (
-          <div className="pv2-profile-card" key={card.key}>
+          <div className="glass-card-md pv2-profile-card" key={card.key}>
             <div className="pv2-profile-label">{card.label}</div>
             <div className="pv2-profile-value">{card.value}</div>
             <div className="pv2-profile-desc">{card.description}</div>
@@ -308,7 +310,7 @@ function ProfileCarousel({ cards }: { cards: ProfileCard[] }) {
 
 function PhasesSection({ phases }: { phases: PhaseUI[] }) {
   return (
-    <div className="pv2-section">
+    <div className="glass-card-lg pv2-section">
       <div className="pv2-section-head pv2-section-head-align-start">
         <div>
           <div className="pv2-section-title">3 фазы плана</div>
@@ -320,7 +322,7 @@ function PhasesSection({ phases }: { phases: PhaseUI[] }) {
         {phases.map((p) => (
           <div className={`pv2-timeline-item ${p.state === 'current' ? 'pv2-current' : ''}`} key={p.phase}>
             <div className="pv2-timeline-marker" />
-            <div className={`pv2-phase-card ${p.state === 'current' ? 'pv2-phase-current' : ''}`}>
+            <div className={`glass-card-md pv2-phase-card ${p.state === 'current' ? 'pv2-phase-current' : ''}`}>
               <div className="pv2-phase-arrow" aria-hidden>
                 <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
               </div>
@@ -355,6 +357,7 @@ function orderOfPhase(p: PhaseUI): number {
 function inferStepIcon(name: string | undefined | null): string {
   const n = (name || '').toLowerCase();
   if (/spf|sunscreen|санскрин|солнцезащит/.test(n)) return '/icons/clean/spf_true.png';
+  if (/cleanser|cleansing|пенк|гел[ьяе]\s*для|умыван|foam|wash|очищ|очист/.test(n)) return '/icons/clean/cleanser_true.png';
   if (/balm|бальзам|для\s+губ|lip\b/.test(n)) return '/icons/clean/lipbalm_true.png';
   if (/oil|масл/.test(n)) return '/icons/clean/oil_true.png';
   if (/mask|маск/.test(n)) return '/icons/clean/claymask_true.png';
@@ -362,7 +365,6 @@ function inferStepIcon(name: string | undefined | null): string {
   if (/serum|сыворотк|essence|эссенц/.test(n)) return '/icons/clean/serum_true.png';
   if (/toner|тоник|тонер|mist/.test(n)) return '/icons/clean/toner_true.png';
   if (/cream|крем|moistur|емолл|moisturi/.test(n)) return '/icons/clean/cream_true.png';
-  if (/cleanser|пенк|гел[ьяе]\s*для|умыван|foam|wash|очищ|очист/.test(n)) return '/icons/clean/cleanser_true.png';
   return '/icons/clean/cleanser_true.png';
 }
 
@@ -377,7 +379,7 @@ function ProductsSection(props: {
   if (products.length === 0) return null;
 
   return (
-    <div className="pv2-section">
+    <div className="glass-card-lg pv2-section">
       <div className="pv2-section-head">
         <div className="pv2-section-title">Средства плана</div>
       </div>
@@ -385,7 +387,7 @@ function ProductsSection(props: {
         {products.map((p) => {
           const isBusy = busyId === p.id;
           return (
-            <div className="pv2-product-card" key={p.id}>
+            <div className="glass-card-sm pv2-product-card" key={p.id}>
               <div
                 className="pv2-product-img"
                 style={
@@ -473,18 +475,18 @@ function ExpertNotesCard({ notes, onRetakeQuiz }: { notes: ExpertNote[]; onRetak
 
 function FeedbackSection({ onSubmit }: { onSubmit: (positive: boolean) => void }) {
   return (
-    <div className="pv2-section">
+    <div className="glass-card-lg pv2-section">
       <div className="pv2-section-head">
         <div className="pv2-section-title">Помогите нам стать лучше</div>
       </div>
       <div className="pv2-feedback-grid">
-        <button className="pv2-feedback-card pv2-feedback-positive" onClick={() => onSubmit(true)}>
+        <button className="glass-card-sm pv2-feedback-card pv2-feedback-positive" onClick={() => onSubmit(true)}>
           <span className="pv2-feedback-icon">
             <svg viewBox="0 0 24 24"><path d="M7 22V10M2 22h5V10H2zM20 9h-6l1-5a2 2 0 0 0-2-2l-3 7v11h9.7a2 2 0 0 0 2-1.7l1.3-7A2 2 0 0 0 20 9z"/></svg>
           </span>
           <span className="pv2-feedback-label">Всё подошло</span>
         </button>
-        <button className="pv2-feedback-card" onClick={() => onSubmit(false)}>
+        <button className="glass-card-sm pv2-feedback-card" onClick={() => onSubmit(false)}>
           <span className="pv2-feedback-icon">
             <svg viewBox="0 0 24 24"><path d="M17 2v12M22 2h-5v12h5zM4 15h6l-1 5a2 2 0 0 0 2 2l3-7V4H4.3a2 2 0 0 0-2 1.7L1 12.7A2 2 0 0 0 3 15z"/></svg>
           </span>
@@ -518,12 +520,12 @@ function PlanV2Skeleton() {
 
       {/* Two mini cards */}
       <div className="pv2-double-row">
-        <div className="pv2-mini-card pv2-skel-block" style={{ height: 110 }}>
+        <div className="glass-card-md pv2-mini-card pv2-skel-block" style={{ height: 110 }}>
           <div className="pv2-skel-bar" style={{ width: 80, height: 10, marginBottom: 8 }} />
           <div className="pv2-skel-bar" style={{ width: '60%', height: 18, marginBottom: 12 }} />
           <div className="pv2-skel-bar" style={{ width: '40%', height: 10 }} />
         </div>
-        <div className="pv2-mini-card pv2-mini-dark pv2-skel-block" style={{ height: 110 }}>
+        <div className="glass-card-md pv2-mini-card pv2-mini-dark pv2-skel-block" style={{ height: 110 }}>
           <div className="pv2-skel-bar pv2-skel-bar-on-dark" style={{ width: 80, height: 10, marginBottom: 8 }} />
           <div className="pv2-skel-bar pv2-skel-bar-on-dark" style={{ width: '70%', height: 18, marginBottom: 12 }} />
           <div className="pv2-skel-bar pv2-skel-bar-on-dark" style={{ width: '50%', height: 10 }} />
@@ -531,7 +533,7 @@ function PlanV2Skeleton() {
       </div>
 
       {/* Score */}
-      <div className="pv2-score-card pv2-skel-block">
+      <div className="glass-card-lg pv2-score-card pv2-skel-block">
         <div className="pv2-score-top">
           <div style={{ flex: 1 }}>
             <div className="pv2-skel-bar" style={{ width: 80, height: 10, marginBottom: 10 }} />
@@ -548,7 +550,7 @@ function PlanV2Skeleton() {
       </div>
 
       {/* Profile carousel */}
-      <div className="pv2-section pv2-skel-block">
+      <div className="glass-card-lg pv2-section pv2-skel-block">
         <div className="pv2-section-head">
           <div className="pv2-skel-bar" style={{ width: 120, height: 18 }} />
           <div style={{ display: 'flex', gap: 6 }}>
@@ -560,7 +562,7 @@ function PlanV2Skeleton() {
         </div>
         <div className="pv2-profile-carousel">
           {[0, 1, 2].map((idx) => (
-            <div className="pv2-profile-card" key={idx}>
+            <div className="glass-card-md pv2-profile-card" key={idx}>
               <div className="pv2-skel-bar" style={{ width: 60, height: 10, marginBottom: 6 }} />
               <div className="pv2-skel-bar" style={{ width: '70%', height: 16, marginBottom: 14 }} />
               <div className="pv2-skel-bar" style={{ width: '100%', height: 10, marginBottom: 5 }} />
@@ -572,7 +574,7 @@ function PlanV2Skeleton() {
       </div>
 
       {/* Phases */}
-      <div className="pv2-section pv2-skel-block">
+      <div className="glass-card-lg pv2-section pv2-skel-block">
         <div className="pv2-section-head pv2-section-head-align-start">
           <div style={{ flex: 1 }}>
             <div className="pv2-skel-bar" style={{ width: 100, height: 18, marginBottom: 6 }} />
@@ -584,7 +586,7 @@ function PlanV2Skeleton() {
           {[0, 1, 2].map((idx) => (
             <div className="pv2-timeline-item" key={idx}>
               <div className="pv2-timeline-marker" />
-              <div className="pv2-phase-card">
+              <div className="glass-card-md pv2-phase-card">
                 <div className="pv2-skel-bar" style={{ width: 50, height: 10, marginBottom: 8 }} />
                 <div className="pv2-skel-bar" style={{ width: 120, height: 16, marginBottom: 6 }} />
                 <div className="pv2-skel-bar" style={{ width: 70, height: 11, marginBottom: 14 }} />
@@ -597,13 +599,13 @@ function PlanV2Skeleton() {
       </div>
 
       {/* Products */}
-      <div className="pv2-section pv2-skel-block">
+      <div className="glass-card-lg pv2-section pv2-skel-block">
         <div className="pv2-section-head">
           <div className="pv2-skel-bar" style={{ width: 140, height: 18 }} />
         </div>
         <div className="pv2-product-list">
           {[0, 1].map((idx) => (
-            <div className="pv2-product-card" key={idx}>
+            <div className="glass-card-sm pv2-product-card" key={idx}>
               <div className="pv2-skel-bar" style={{ width: 92, height: 92, borderRadius: 16, flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="pv2-skel-bar" style={{ width: '70%', height: 14, marginBottom: 4 }} />
@@ -642,16 +644,16 @@ function PlanV2Skeleton() {
       </div>
 
       {/* Feedback */}
-      <div className="pv2-section pv2-skel-block">
+      <div className="glass-card-lg pv2-section pv2-skel-block">
         <div className="pv2-section-head">
           <div className="pv2-skel-bar" style={{ width: 200, height: 18 }} />
         </div>
         <div className="pv2-feedback-grid">
-          <div className="pv2-feedback-card pv2-skel-block">
+          <div className="glass-card-sm pv2-feedback-card pv2-skel-block">
             <div className="pv2-skel-circle" style={{ width: 44, height: 44 }} />
             <div className="pv2-skel-bar" style={{ width: 100, height: 14 }} />
           </div>
-          <div className="pv2-feedback-card pv2-skel-block">
+          <div className="glass-card-sm pv2-feedback-card pv2-skel-block">
             <div className="pv2-skel-circle" style={{ width: 44, height: 44 }} />
             <div className="pv2-skel-bar" style={{ width: 90, height: 14 }} />
           </div>
@@ -720,14 +722,14 @@ function PlanV2Styles() {
          цветные радиальные градиенты, из-за чего фон визуально был не беж). */
       .pv2-root {
         min-height: 100vh;
-        padding: 0 20px 110px;
-        font-family: 'Inter', -apple-system, sans-serif;
-        color: #0A0A0A;
+        padding: 0 20px var(--bottom-nav-clearance);
+        font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
+        color: var(--ink);
         position: relative;
-        background: #F4F2EE;
+        background: var(--canvas);
       }
       /* Зеркало #19: подложка html/body тоже беж, чтобы overscroll не светил белым. */
-      html, body { background-color: #F4F2EE; }
+      html, body { background-color: var(--canvas); }
 
       .pv2-topbar {
         padding: 22px 4px 14px;
@@ -736,14 +738,14 @@ function PlanV2Styles() {
         justify-content: space-between;
       }
       .pv2-logo {
-        font-family: 'Unbounded', sans-serif;
+        font-family: var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif;
         font-size: 18px;
         font-weight: 700;
         letter-spacing: -0.4px;
       }
 
       .pv2-personal-heading {
-        font-family: 'Unbounded', sans-serif;
+        font-family: var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif;
         font-weight: 700;
         font-size: 26px;
         line-height: 1.2;
@@ -758,13 +760,7 @@ function PlanV2Styles() {
         margin-bottom: 14px;
       }
       .pv2-mini-card {
-        background: rgba(255,255,255,0.55);
-        backdrop-filter: blur(24px) saturate(160%);
-        -webkit-backdrop-filter: blur(24px) saturate(160%);
-        border: 1px solid rgba(255,255,255,0.7);
-        border-radius: 24px;
-        padding: 18px 18px 22px;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+        padding-bottom: 22px;
       }
       .pv2-mini-dark {
         background: rgba(10,10,10,0.88);
@@ -772,29 +768,22 @@ function PlanV2Styles() {
         -webkit-backdrop-filter: blur(24px) saturate(140%);
         border: 1px solid rgba(255,255,255,0.08);
       }
-      .pv2-mini-label { font-size: 12px; color: #6B7280; margin-bottom: 6px; }
+      .pv2-mini-label { font-size: 12px; color: var(--ink-soft); margin-bottom: 6px; }
       .pv2-mini-value {
-        font-family: 'Unbounded', sans-serif;
+        font-family: var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif;
         font-size: 18px;
         font-weight: 700;
         line-height: 1.2;
         letter-spacing: -0.3px;
         margin-bottom: 10px;
       }
-      .pv2-mini-sub { font-size: 12px; color: #6B7280; }
+      .pv2-mini-sub { font-size: 12px; color: var(--ink-soft); }
       .pv2-mini-dark .pv2-mini-label { color: rgba(255,255,255,0.5); }
-      .pv2-mini-dark .pv2-mini-value { color: #D5FE61; }
+      .pv2-mini-dark .pv2-mini-value { color: var(--accent); }
       .pv2-mini-dark .pv2-mini-sub { color: rgba(255,255,255,0.5); }
 
       .pv2-score-card {
-        background: rgba(255,255,255,0.55);
-        backdrop-filter: blur(28px) saturate(160%);
-        -webkit-backdrop-filter: blur(28px) saturate(160%);
-        border: 1px solid rgba(255,255,255,0.7);
-        border-radius: 28px;
-        padding: 22px;
         margin-bottom: 14px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.06);
       }
       .pv2-score-top {
         display: flex;
@@ -803,7 +792,7 @@ function PlanV2Styles() {
         margin-bottom: 22px;
       }
       .pv2-score-value {
-        font-family: 'Unbounded', sans-serif;
+        font-family: var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif;
         font-weight: 700;
         font-size: 48px;
         line-height: 1;
@@ -813,16 +802,16 @@ function PlanV2Styles() {
         gap: 4px;
       }
       .pv2-score-max {
-        font-family: 'Inter', sans-serif;
+        font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
         font-size: 16px;
         font-weight: 500;
-        color: #9CA3AF;
+        color: var(--ink-mute);
       }
       .pv2-score-badge {
         width: 92px;
         height: 92px;
         border-radius: 50%;
-        border: 6px solid #D5FE61;
+        border: 6px solid var(--accent);
         background: rgba(255,255,255,0.7);
         backdrop-filter: blur(12px);
         display: flex;
@@ -833,15 +822,15 @@ function PlanV2Styles() {
         flex-shrink: 0;
       }
       .pv2-score-quote {
-        border-left: 3px solid #D5FE61;
+        border-left: 3px solid var(--accent);
         padding: 4px 0 4px 14px;
         font-size: 14px;
         line-height: 1.55;
-        color: #6B7280;
+        color: var(--ink-soft);
         margin-bottom: 18px;
       }
       .pv2-score-hint {
-        background: rgba(255,255,255,0.55);
+        background: var(--glass-bg);
         border: 1px solid rgba(255,255,255,0.6);
         border-radius: 18px;
         padding: 14px 16px;
@@ -850,7 +839,7 @@ function PlanV2Styles() {
         justify-content: space-between;
         gap: 12px;
       }
-      .pv2-score-hint-text { font-size: 13px; color: #6B7280; line-height: 1.5; }
+      .pv2-score-hint-text { font-size: 13px; color: var(--ink-soft); line-height: 1.5; }
 
       .pv2-icon-circle {
         width: 36px;
@@ -874,7 +863,7 @@ function PlanV2Styles() {
       .pv2-icon-circle svg {
         width: 16px;
         height: 16px;
-        stroke: #0A0A0A;
+        stroke: var(--ink);
         fill: none;
         stroke-width: 2;
         stroke-linecap: round;
@@ -882,14 +871,7 @@ function PlanV2Styles() {
       }
 
       .pv2-section {
-        background: rgba(255,255,255,0.55);
-        backdrop-filter: blur(28px) saturate(160%);
-        -webkit-backdrop-filter: blur(28px) saturate(160%);
-        border: 1px solid rgba(255,255,255,0.7);
-        border-radius: 28px;
-        padding: 22px;
         margin-bottom: 14px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.06);
       }
       .pv2-section-head {
         display: flex;
@@ -899,14 +881,14 @@ function PlanV2Styles() {
       }
       .pv2-section-head-align-start { align-items: flex-start; }
       .pv2-section-title {
-        font-family: 'Unbounded', sans-serif;
+        font-family: var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif;
         font-weight: 700;
         font-size: 18px;
         letter-spacing: -0.3px;
       }
       .pv2-section-subtitle {
         font-size: 13px;
-        color: #6B7280;
+        color: var(--ink-soft);
         margin-top: 2px;
         line-height: 1.45;
       }
@@ -922,7 +904,7 @@ function PlanV2Styles() {
         width: 22px;
         height: 6px;
         border-radius: 3px;
-        background: #0A0A0A;
+        background: var(--ink);
       }
 
       .pv2-profile-carousel {
@@ -938,28 +920,24 @@ function PlanV2Styles() {
         padding: 4px 22px 6px;
       }
       .pv2-profile-carousel::-webkit-scrollbar { display: none; }
-      /* ФИКС #16: карточки профиля кожи шире (было 50% → 78% ширины контейнера).
+      /* Карточки профиля кожи показывают аккуратный peek следующего элемента.
          Доминирует одна карточка, следующая "подглядывает" — лучше читаемость
          label/value/desc и более «полные» карточки на экране. */
       .pv2-profile-card {
-        flex: 0 0 calc(78% - 16px);
+        flex: 0 0 calc(85% - 16px);
         scroll-snap-align: start;
-        background: rgba(255,255,255,0.45);
-        border: 1px solid rgba(255,255,255,0.6);
-        border-radius: 22px;
-        padding: 18px;
         min-height: 210px;
       }
-      .pv2-profile-label { font-size: 12px; color: #6B7280; margin-bottom: 6px; }
+      .pv2-profile-label { font-size: 12px; color: var(--ink-soft); margin-bottom: 6px; }
       .pv2-profile-value {
-        font-family: 'Unbounded', sans-serif;
+        font-family: var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif;
         font-weight: 700;
         font-size: 15px;
         letter-spacing: -0.2px;
         margin-bottom: 14px;
         line-height: 1.25;
       }
-      .pv2-profile-desc { font-size: 13px; color: #6B7280; line-height: 1.55; }
+      .pv2-profile-desc { font-size: 13px; color: var(--ink-soft); line-height: 1.55; }
 
       .pv2-phases-badge {
         background: rgba(10,10,10,0.88);
@@ -996,14 +974,11 @@ function PlanV2Styles() {
         border: 1.5px solid #D0D0D0;
       }
       .pv2-timeline-item.pv2-current .pv2-timeline-marker {
-        background: #D5FE61;
-        border-color: #D5FE61;
+        background: var(--accent);
+        border-color: var(--accent);
         box-shadow: 0 0 0 4px rgba(213,254,97,0.25);
       }
       .pv2-phase-card {
-        background: rgba(255,255,255,0.45);
-        border: 1px solid rgba(255,255,255,0.6);
-        border-radius: 22px;
         padding: 18px 20px;
         position: relative;
       }
@@ -1028,7 +1003,7 @@ function PlanV2Styles() {
       .pv2-phase-arrow svg {
         width: 14px;
         height: 14px;
-        stroke: #0A0A0A;
+        stroke: var(--ink);
         fill: none;
         stroke-width: 2;
         stroke-linecap: round;
@@ -1037,19 +1012,19 @@ function PlanV2Styles() {
       .pv2-phase-label {
         font-size: 11px;
         font-weight: 600;
-        color: #6B7280;
+        color: var(--ink-soft);
         letter-spacing: 0.04em;
         text-transform: uppercase;
         margin-bottom: 6px;
       }
       .pv2-phase-name {
-        font-family: 'Unbounded', sans-serif;
+        font-family: var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif;
         font-weight: 700;
         font-size: 17px;
         letter-spacing: -0.3px;
         margin-bottom: 4px;
       }
-      .pv2-phase-days { font-size: 13px; color: #6B7280; margin-bottom: 14px; }
+      .pv2-phase-days { font-size: 13px; color: var(--ink-soft); margin-bottom: 14px; }
       .pv2-phase-text { font-size: 13px; color: #475467; line-height: 1.5; margin-bottom: 14px; }
       .pv2-phase-tags { display: flex; flex-wrap: wrap; gap: 6px; }
       .pv2-phase-tag {
@@ -1063,9 +1038,6 @@ function PlanV2Styles() {
 
       .pv2-product-list { display: flex; flex-direction: column; gap: 12px; }
       .pv2-product-card {
-        background: rgba(255,255,255,0.45);
-        border: 1px solid rgba(255,255,255,0.6);
-        border-radius: 22px;
         padding: 16px;
         display: flex;
         gap: 14px;
@@ -1081,14 +1053,14 @@ function PlanV2Styles() {
       }
       .pv2-product-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
       .pv2-product-name {
-        font-family: 'Unbounded', sans-serif;
+        font-family: var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif;
         font-weight: 600;
         font-size: 14px;
         letter-spacing: -0.2px;
         line-height: 1.3;
         margin-bottom: 4px;
       }
-      .pv2-product-desc { font-size: 13px; color: #6B7280; margin-bottom: 8px; }
+      .pv2-product-desc { font-size: 13px; color: var(--ink-soft); margin-bottom: 8px; }
       .pv2-product-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
       .pv2-product-tag {
         background: rgba(255,255,255,0.7);
@@ -1124,33 +1096,33 @@ function PlanV2Styles() {
       .pv2-icon-btn svg {
         width: 16px;
         height: 16px;
-        stroke: #0A0A0A;
+        stroke: var(--ink);
         fill: none;
         stroke-width: 1.8;
         stroke-linecap: round;
         stroke-linejoin: round;
       }
-      .pv2-icon-btn.pv2-icon-active svg { fill: #0A0A0A; stroke: #0A0A0A; }
+      .pv2-icon-btn.pv2-icon-active svg { fill: var(--ink); stroke: var(--ink); }
       .pv2-spacer { flex: 1; }
       .pv2-cart-cta {
-        background: #D5FE61;
-        color: #0A0A0A;
+        background: var(--accent);
+        color: var(--ink);
         border: none;
         border-radius: 999px;
         padding: 10px 22px;
-        font-family: 'Inter', sans-serif;
+        font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
         font-weight: 600;
         font-size: 14px;
         cursor: pointer;
         min-width: 124px;
       }
       .pv2-cart-cta:disabled { opacity: 0.6; cursor: not-allowed; }
-      .pv2-cart-cta.pv2-in-cart { background: #0A0A0A; color: #D5FE61; }
+      .pv2-cart-cta.pv2-in-cart { background: var(--ink); color: var(--accent); }
 
       .pv2-expert-card {
         background: rgba(10,10,10,0.86);
-        backdrop-filter: blur(28px) saturate(160%);
-        -webkit-backdrop-filter: blur(28px) saturate(160%);
+        backdrop-filter: var(--blur-lg);
+        -webkit-backdrop-filter: var(--blur-lg);
         border: 1px solid rgba(255,255,255,0.08);
         border-radius: 32px;
         padding: 24px;
@@ -1179,7 +1151,7 @@ function PlanV2Styles() {
         margin-bottom: 10px;
       }
       .pv2-expert-title {
-        font-family: 'Unbounded', sans-serif;
+        font-family: var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif;
         font-weight: 700;
         font-size: 19px;
         letter-spacing: -0.3px;
@@ -1194,7 +1166,7 @@ function PlanV2Styles() {
         position: relative;
         text-align: left;
         color: #FFFFFF;
-        font-family: 'Inter', sans-serif;
+        font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
       }
       .pv2-expert-num {
         position: absolute;
@@ -1202,10 +1174,10 @@ function PlanV2Styles() {
         right: 22px;
         font-weight: 600;
         font-size: 13px;
-        color: #D5FE61;
+        color: var(--accent);
       }
       .pv2-expert-item-title {
-        font-family: 'Unbounded', sans-serif;
+        font-family: var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif;
         font-weight: 600;
         font-size: 14px;
         letter-spacing: -0.2px;
@@ -1240,7 +1212,7 @@ function PlanV2Styles() {
       .pv2-expert-action-arrow svg {
         width: 16px;
         height: 16px;
-        stroke: #0A0A0A;
+        stroke: var(--ink);
         fill: none;
         stroke-width: 2;
         stroke-linecap: round;
@@ -1253,9 +1225,6 @@ function PlanV2Styles() {
         gap: 12px;
       }
       .pv2-feedback-card {
-        background: rgba(255,255,255,0.45);
-        border: 1px solid rgba(255,255,255,0.6);
-        border-radius: 22px;
         padding: 20px 18px;
         display: flex;
         flex-direction: column;
@@ -1263,7 +1232,7 @@ function PlanV2Styles() {
         cursor: pointer;
         min-height: 120px;
         text-align: left;
-        font-family: 'Inter', sans-serif;
+        font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
       }
       .pv2-feedback-icon {
         width: 44px;
@@ -1279,14 +1248,14 @@ function PlanV2Styles() {
       .pv2-feedback-icon svg {
         width: 22px;
         height: 22px;
-        stroke: #0A0A0A;
+        stroke: var(--ink);
         fill: none;
         stroke-width: 1.8;
         stroke-linecap: round;
         stroke-linejoin: round;
       }
       .pv2-feedback-label {
-        font-family: 'Unbounded', sans-serif;
+        font-family: var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif;
         font-weight: 600;
         font-size: 14px;
         letter-spacing: -0.2px;

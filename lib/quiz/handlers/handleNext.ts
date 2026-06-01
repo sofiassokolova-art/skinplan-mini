@@ -602,14 +602,9 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       if (nextStep?.type === 'info') {
         if (pendingInfoScreenRef) pendingInfoScreenRef.current = nextStep.infoScreen;
         setPendingInfoScreen(nextStep.infoScreen);
-        // ФИКС #4: не держим guard на время сохранения прогресса.
-        // Навигация уже совершена (setPendingInfoScreen выше). Если await-ить здесь,
-        // handleNextInProgressRef.current остаётся true до завершения сетевого
-        // saveProgress, а tinder/инфо-экран уже перерисован на следующий — быстрый
-        // тап по нему «проглатывается» ранним return по гарду (строка ~239).
-        // Делаем сохранение fire-and-forget (как уже сделано в handleBack), чтобы
-        // finally сбросил guard сразу. saveProgressSafely сам ловит ошибки внутри.
-        void saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
+        // Закрывающая info-цепочка должна подтверждать прогресс на сервере до
+        // следующего тапа: иначе быстрый выход из WebApp обрывает все фоновые fetch.
+        await saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
         return;
       }
       if (nextStep?.type === 'question') {
@@ -778,14 +773,8 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       if (nextStep?.type === 'info') {
         if (pendingInfoScreenRef) pendingInfoScreenRef.current = nextStep.infoScreen;
         setPendingInfoScreen(nextStep.infoScreen);
-        // ФИКС #4: не держим guard на время сохранения прогресса.
-        // Навигация уже совершена (setPendingInfoScreen выше). Если await-ить здесь,
-        // handleNextInProgressRef.current остаётся true до завершения сетевого
-        // saveProgress, а tinder/инфо-экран уже перерисован на следующий — быстрый
-        // тап по нему «проглатывается» ранним return по гарду (строка ~239).
-        // Делаем сохранение fire-and-forget (как уже сделано в handleBack), чтобы
-        // finally сбросил guard сразу. saveProgressSafely сам ловит ошибки внутри.
-        void saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
+        // Не оставляем сохранение прогресса фоновым перед финальной цепочкой.
+        await saveProgressSafely(saveProgress, answers, currentQuestionIndex, currentInfoScreenIndex);
         return;
       }
       if (nextStep?.type === 'question') {

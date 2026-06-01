@@ -18,7 +18,7 @@ export interface WelcomeScreenProps {
 function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInfoScreenIndex = 0, onBack }: WelcomeScreenProps) {
   return (
     <div
-      className="animate-fade-in"
+      className="animate-fade-in qz-phone-frame-fixed"
       style={{
         padding: 0,
         margin: 0,
@@ -90,7 +90,7 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
             fontFamily: "var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 700,
             fontSize: 'clamp(18px, 5vw, 24px)',
-            color: '#FFFFFF',
+            color: 'var(--canvas-white)',
             letterSpacing: '0px',
           }}
         >
@@ -120,7 +120,7 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
           style={{
             width: '100%',
             minHeight: '100%',
-            backgroundColor: 'rgba(0, 0, 0, 0.12)',
+            backgroundColor: 'var(--glass-dark-bg)',
             backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
             borderRadius: 0,
@@ -143,7 +143,7 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
               lineHeight: '130%',
               letterSpacing: '0px',
               textAlign: 'center',
-              color: '#FFFFFF',
+              color: 'var(--canvas-white)',
               margin: 0,
             }}
           >

@@ -8,6 +8,13 @@ import toast from 'react-hot-toast';
 import { usePaywallVisibility } from '@/providers/PaywallVisibilityContext';
 import { DEV_TELEGRAM } from '@/lib/config/timeouts';
 import { AppLoader } from '@/components/AppLoader';
+import { invalidatePlanWarmCache } from '@/lib/plan-warm-cache';
+
+const devLog = (...args: unknown[]) => {
+  if (process.env.NODE_ENV === 'development') {
+    console.log(...args);
+  }
+};
 
 interface PaymentGateProps {
   price?: number;
@@ -100,7 +107,7 @@ async function fetchEntitlementCodes(initData: string): Promise<string[]> {
   }
   
   const data = await response.json();
-  console.log('[PaymentGate] Entitlements API response:', data);
+  devLog('[PaymentGate] Entitlements API response:', data);
   
   // ApiResponse.success() в проекте возвращает payload напрямую (без { data: ... }),
   // но поддерживаем оба формата на всякий случай.
@@ -111,17 +118,17 @@ async function fetchEntitlementCodes(initData: string): Promise<string[]> {
     const codes = entitlements
       .map((e: any) => (typeof e?.code === 'string' ? e.code : null))
       .filter((c: any): c is string => typeof c === 'string');
-    console.log('[PaymentGate] Extracted entitlement codes:', codes);
+    devLog('[PaymentGate] Extracted entitlement codes:', codes);
     return codes;
   }
 
   // Fallback: если API вернул только paid=true без списка
   if (payload?.paid === true) {
-    console.log('[PaymentGate] Using fallback: paid=true, returning paid_access');
+    devLog('[PaymentGate] Using fallback: paid=true, returning paid_access');
     return ['paid_access'];
   }
   
-  console.log('[PaymentGate] No entitlements found, returning empty array');
+  devLog('[PaymentGate] No entitlements found, returning empty array');
   return [];
 }
 
@@ -264,7 +271,7 @@ export function PaymentGate({
         const required = requiredEntitlementCode(productCode);
         if (isMounted) {
           const hasAccess = codes.includes(required);
-          console.log('[PaymentGate] Entitlements checked:', { codes, required, hasAccess });
+          devLog('[PaymentGate] Entitlements checked:', { codes, required, hasAccess });
           setHasPaid(hasAccess);
           setCheckedOnce(true);
         }
@@ -283,7 +290,7 @@ export function PaymentGate({
 
     // Если initDataReady, проверяем entitlements
     if (initDataReady) {
-      console.log('[PaymentGate] initDataReady is true, checking entitlements');
+      devLog('[PaymentGate] initDataReady is true, checking entitlements');
       checkEntitlements();
       // В dev: сразу показываем контент, проверка в фоне; при таймауте API ничего не меняем
       if (process.env.NODE_ENV === 'development') {
@@ -308,7 +315,7 @@ export function PaymentGate({
       }, ENTITLEMENTS_CHECK_TIMEOUT_MS);
     } else {
       // Если initData еще не готов, устанавливаем таймаут для показа paywall через 3 секунды
-      console.log('[PaymentGate] initDataReady is false, setting 3s timeout to show paywall');
+      devLog('[PaymentGate] initDataReady is false, setting 3s timeout to show paywall');
       timeoutId = setTimeout(() => {
         if (isMounted) {
           console.warn('[PaymentGate] initData not available after timeout, showing paywall');
@@ -581,10 +588,10 @@ export function PaymentGate({
   ];
 
   const glassStyle: React.CSSProperties = {
-    background: 'rgba(255,255,255,0.52)',
+    background: 'rgba(var(--canvas-white-rgb),0.52)',
     backdropFilter: 'blur(24px)',
     WebkitBackdropFilter: 'blur(24px)',
-    border: '1px solid rgba(255,255,255,0.65)',
+    border: '1px solid rgba(var(--canvas-white-rgb),0.65)',
     borderRadius: '24px',
     boxShadow: '0 8px 32px rgba(0,0,0,0.07)',
   };
@@ -595,7 +602,7 @@ export function PaymentGate({
       inset: 0,
       zIndex: 1000,
       overflowY: 'auto',
-      background: 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(213,254,97,0.22) 0%, transparent 70%), radial-gradient(ellipse 60% 50% at 80% 80%, rgba(10,95,89,0.10) 0%, transparent 60%), #f5f0eb',
+      background: 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(var(--accent-rgb),0.22) 0%, transparent 70%), radial-gradient(ellipse 60% 50% at 80% 80%, rgba(var(--ink-rgb),0.08) 0%, transparent 60%), var(--canvas)',
     }}>
       <div style={{
         maxWidth: '480px',
@@ -612,7 +619,7 @@ export function PaymentGate({
           display: 'inline-flex',
           alignItems: 'center',
           gap: '6px',
-          background: 'rgba(213,254,97,0.85)',
+          background: 'rgba(var(--accent-rgb),0.85)',
           borderRadius: '100px',
           padding: '6px 14px',
           fontSize: 'clamp(11px, 2.8vw, 13px)',
@@ -666,7 +673,7 @@ export function PaymentGate({
                 width: '36px',
                 height: '36px',
                 borderRadius: '50%',
-                background: '#D5FE61',
+                background: 'var(--accent)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -753,7 +760,7 @@ export function PaymentGate({
                 height: '18px',
                 marginTop: '1px',
                 cursor: 'pointer',
-                accentColor: '#D5FE61',
+                accentColor: 'var(--accent)',
                 flexShrink: 0,
               }}
             />
@@ -781,7 +788,7 @@ export function PaymentGate({
             style={{
               width: '100%',
               height: '40px',
-              background: agreedToTerms && !isProcessing && !paymentId ? '#D5FE61' : 'rgba(213,254,97,0.4)',
+              background: agreedToTerms && !isProcessing && !paymentId ? 'var(--accent)' : 'rgba(var(--accent-rgb),0.4)',
               color: '#000',
               fontFamily: "var(--font-inter), 'Inter', sans-serif",
               fontWeight: 400,
@@ -868,6 +875,7 @@ export function PaymentGate({
                   } catch {
                     // ignore
                   }
+                  invalidatePlanWarmCache();
                   window.location.href = retakeCta.href;
                 }
               }}
@@ -891,4 +899,3 @@ export function PaymentGate({
     </div>
   );
 }
-

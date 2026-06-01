@@ -49,7 +49,7 @@ export const INFO_SCREENS: InfoScreen[] = [
   {
     id: 'welcome',
     title: 'Подбери уход для своей кожи со SkinIQ',
-    image: '/792c9598_nano_4K.jpg',
+    image: '/onboarding/welcome.jpg',
     ctaText: 'Продолжить',
   },
   
@@ -57,7 +57,7 @@ export const INFO_SCREENS: InfoScreen[] = [
   {
     id: 'how_it_works',
     title: 'Как это работает?',
-    subtitle: '1. Пройдите анкету\n2. Получите индивидуальную программу ухода\n3. Узнайте, как изменится ваша кожа уже через 28 дней использования средств',
+    subtitle: '1. Ответьте на вопросы о коже\n2. Получите персональный план ухода\n3. Увидьте изменения кожи через 28 дней',
     ctaText: 'Продолжить',
   },
   
@@ -66,7 +66,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'personal_analysis',
     title: 'SkinIQ — ваш персональный анализ кожи',
     subtitle: '92% пользователей SkinIQ отмечают улучшение состояния кожи за 1 месяц',
-    image: '/skin-model.jpg',
+    image: '/onboarding/personal-analysis.jpg',
     ctaText: 'Продолжить',
   },
   
@@ -200,6 +200,17 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'ai_comparison',
     title: 'Больше никакой путаницы — AI SkinIQ подберёт уход быстро и точно ✨',
     subtitle: 'Традиционный подбор ухода:\n❌ Долгие поиски советов в интернете\n❌ Сложно понять, что подойдёт именно вам\n\nSkinIQ с AI:\n✅ Точный подбор средств на основе анкеты\n✅ Рекомендации за пару секунд\n\n💡 Большинство персональных планов укладывается в 3–5 средств — от 2 000 ₽/мес в бюджетном сегменте до 5 000+ ₽/мес в премиум.',
+    content: {
+      traditionalItems: [
+        'Долгие поиски советов в интернете',
+        'Сложно понять, что подойдёт именно вам',
+      ],
+      skiniqItems: [
+        'Точный подбор средств на основе анкеты',
+        'Рекомендации за пару секунд',
+      ],
+      hint: 'Большинство персональных планов укладывается в 3–5 средств — от 2 000 ₽/мес в бюджетном сегменте до 5 000+ ₽/мес в премиум.',
+    },
     type: 'comparison',
     showAfterQuestionCode: 'oral_medications',
     ctaText: 'Продолжить',
@@ -230,7 +241,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'recognize_yourself_1',
     title: 'Вы узнаёте себя в этом?',
     subtitle: '«Я часто чувствую недовольство своей кожей, когда смотрю в зеркало»',
-    image: '/illustrations/mirror_concern.jpg',
+    image: '/lookimgclosely.png',
     type: 'tinder',
     showAfterInfoScreenId: 'no_mistakes',
     ctaText: '', // Кнопки будут отдельными (Нет/Да)
@@ -244,7 +255,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'recognize_yourself_2',
     title: 'Это похоже на вас?',
     subtitle: '«Я хочу понимать СВОЮ кожу и подбирать уход осознанно — а не следовать общим советам из интернета»',
-    image: '/illustrations/products_confusion.jpg',
+    image: '/quiz4.png',
     type: 'tinder',
     showAfterInfoScreenId: 'recognize_yourself_1',
     ctaText: '', // Кнопки будут отдельными (Нет/Да)

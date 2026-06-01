@@ -52,6 +52,7 @@ export function BackButtonFixed({ onClick, show = true, color = '#1A1A1A' }: Bac
 
   return createPortal(
     <div
+      className="qz-back-fixed"
       role="presentation"
       style={{
         position: 'fixed',
