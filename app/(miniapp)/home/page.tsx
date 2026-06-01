@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTelegram } from '@/lib/telegram-client';
@@ -12,6 +12,10 @@ import { clientLogger } from '@/lib/client-logger';
 import { PaymentGate } from '@/components/PaymentGate';
 import { getBaseStepFromStepCategory } from '@/lib/plan-helpers';
 import { AppLoader } from '@/components/AppLoader';
+import { HomeEmptyState } from '@/components/HomeEmptyState';
+import { getStepMeta, STEP_ICONS } from '@/lib/routine-step-meta';
+import { getClientUserScope } from '@/lib/client-user-scope';
+import { invalidatePlanWarmCache } from '@/lib/plan-warm-cache';
 interface RoutineItem {
   id: string;
   title: string;
@@ -41,35 +45,42 @@ interface Recommendation {
 }
 
 const ICONS: Record<string, string> = {
-  cleanser: '/icons/clean/cleanser_true.png',
-  toner: '/icons/clean/toner_true.png',
-  serum: '/icons/clean/serum_true.png',
-  cream: '/icons/clean/cream_true.png',
-  spf: '/icons/clean/spf_true.png',
-  acid: '/icons/clean/treatment_true.png',
-  treatment: '/icons/clean/treatment_true.png',
+  ...STEP_ICONS,
+  acid: STEP_ICONS.treatment,
   oil: '/icons/clean/oil_true.png',
   mask: '/icons/clean/claymask_true.png',
-  lip: '/icons/clean/lipbalm_true.png',
 };
 
 // ФИКС #17: персистентность отмеченных шагов рутины между переключениями страниц.
 // Раньше toggleItem обновлял только локальный стейт; при уходе на /plan и обратно
 // home/page.tsx ремонтировался, рутина пересобиралась из рекомендаций без .done,
 // и блок «{N} из {M}» (визуальный стрик на главной) показывал 0 — отсюда #17.
-// Ключ скоупится календарной датой и вкладкой (AM/PM), так что в новый день начинаем чисто.
+// Ключ скоупится пользователем, календарной датой и вкладкой (AM/PM).
 const ROUTINE_DONE_KEY_PREFIX = 'skinplan:home:routine_done';
-function routineDoneStorageKey(tab: 'AM' | 'PM'): string {
+function routineStorageDate(): string {
   const d = new Date();
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
-  return `${ROUTINE_DONE_KEY_PREFIX}:${y}-${m}-${day}:${tab}`;
+  return `${y}-${m}-${day}`;
+}
+function routineDoneStorageKey(tab: 'AM' | 'PM'): string | null {
+  const userScope = getClientUserScope();
+  if (!userScope) return null;
+  return `${ROUTINE_DONE_KEY_PREFIX}:${userScope}:${routineStorageDate()}:${tab}`;
+}
+function routineProgressSyncedStorageKey(): string | null {
+  const userScope = getClientUserScope();
+  return userScope
+    ? `${ROUTINE_DONE_KEY_PREFIX}:${userScope}:${routineStorageDate()}:progress_synced`
+    : null;
 }
 function loadDoneIds(tab: 'AM' | 'PM'): Set<string> {
   if (typeof window === 'undefined') return new Set();
   try {
-    const raw = window.localStorage.getItem(routineDoneStorageKey(tab));
+    const key = routineDoneStorageKey(tab);
+    if (!key) return new Set();
+    const raw = window.localStorage.getItem(key);
     if (!raw) return new Set();
     const parsed = JSON.parse(raw);
     return new Set(Array.isArray(parsed) ? parsed.filter((x: unknown) => typeof x === 'string') : []);
@@ -80,8 +91,10 @@ function loadDoneIds(tab: 'AM' | 'PM'): Set<string> {
 function saveDoneIds(tab: 'AM' | 'PM', items: RoutineItem[]): void {
   if (typeof window === 'undefined') return;
   try {
+    const key = routineDoneStorageKey(tab);
+    if (!key) return;
     const ids = items.filter((i) => i.done).map((i) => i.id);
-    window.localStorage.setItem(routineDoneStorageKey(tab), JSON.stringify(ids));
+    window.localStorage.setItem(key, JSON.stringify(ids));
   } catch {
     // localStorage недоступен / переполнен — пропускаем
   }
@@ -103,8 +116,9 @@ export default function HomePage() {
   const [morningItems, setMorningItems] = useState<RoutineItem[]>([]);
   const [eveningItems, setEveningItems] = useState<RoutineItem[]>([]);
   const [tab, setTab] = useState<'AM' | 'PM'>('AM');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
   const [userName, setUserName] = useState<string | null>(null); // Имя пользователя для приветствия
+  const progressSyncInFlightRef = useRef(false);
 
   useEffect(() => {
     setMounted(true);
@@ -235,7 +249,7 @@ export default function HomePage() {
     const timeoutId = setTimeout(() => {
       if (!initDoneRef.current) {
         setLoading(false);
-        setError('Загрузка заняла слишком много времени. Проверьте интернет или обновите страницу.');
+        setError(new Error('timeout'));
       }
     }, 25000);
     return () => clearTimeout(timeoutId);
@@ -287,74 +301,13 @@ export default function HomePage() {
 
             const baseStep = getBaseStepFromStepCategory(step.stepCategory);
 
-            // Маппинг метаданных по базовому шагу
-            let title = '';
-            let icon = ICONS.cleanser;
-            let howto: RoutineItem['howto'] = {
-              steps: [],
-              volume: '',
-              tip: '',
-            };
-
-            if (baseStep === 'cleanser') {
-              title = 'Очищение';
-              icon = ICONS.cleanser;
-              howto = {
-                steps: ['Смочите лицо тёплой водой', '1–2 нажатия геля в ладони', 'Массируйте 30–40 сек', 'Смойте, промокните полотенцем'],
-                volume: '1–2 нажатия',
-                tip: 'Если кожа сухая утром — можно умыться только водой.',
-              };
-            } else if (baseStep === 'toner') {
-              title = 'Тонер';
-              icon = ICONS.toner;
-              howto = {
-                steps: ['Нанесите 3–5 капель на руки', 'Распределите похлопывающими движениями', 'Дайте впитаться 30–60 сек'],
-                volume: '3–5 капель',
-                tip: 'Избегайте ватных дисков — тратите меньше продукта.',
-              };
-            } else if (baseStep === 'serum' || baseStep === 'treatment') {
-              title = time === 'AM' ? 'Актив' : 'Сыворотка';
-              icon = baseStep === 'treatment' ? ICONS.treatment : ICONS.serum;
-              howto = {
-                steps: ['3–6 капель на сухую кожу', 'Равномерно нанесите и дайте впитаться 1–2 минуты'],
-                volume: '3–6 капель',
-                tip: 'При раздражении сделайте паузу в использовании актива.',
-              };
-            } else if (baseStep === 'moisturizer') {
-              title = 'Крем';
-              icon = ICONS.cream;
-              howto = {
-                steps: ['Горох крема распределить по лицу', 'Мягко втереть по массажным линиям'],
-                volume: 'Горошина',
-                tip: 'Не забывайте шею и линию подбородка.',
-              };
-            } else if (baseStep === 'spf') {
-              title = 'SPF-защита';
-              icon = ICONS.spf;
-              howto = {
-                steps: ['Нанести 2 пальца SPF (лицо/шея)', 'Обновлять каждые 2–3 часа на улице'],
-                volume: '~1.5–2 мл',
-                tip: 'При UV > 3 — обязательно SPF даже в облачную погоду.',
-              };
-            } else if (baseStep === 'lip_care') {
-              title = 'Бальзам для губ';
-              icon = ICONS.lip;
-              howto = {
-                steps: ['Нанести на губы тонким слоем', 'Обновлять по необходимости в течение дня'],
-                volume: 'Тонкий слой',
-                tip: 'Регулярное использование предотвращает сухость и трещины.',
-              };
-            } else {
-              // Неизвестные шаги пока пропускаем, чтобы не ломать верстку
-              return;
-            }
+            const meta = getStepMeta(baseStep, time);
+            if (!meta) return;
 
             items.push({
               id: `${time}-${baseStep}-${idx}-${productId}`,
-              title,
-              subtitle: product.name || title,
-              icon,
-              howto,
+              ...meta,
+              subtitle: product.name || meta.title,
               done: false,
             });
           });
@@ -407,68 +360,13 @@ export default function HomePage() {
             // В legacy формате нет stepCategory → берём category продукта как "категорию шага"
             const baseStep = getBaseStepFromStepCategory((product.category || product.step || 'serum') as any);
 
-            let title = '';
-            let icon = ICONS.cleanser;
-            let howto: RoutineItem['howto'] = { steps: [], volume: '', tip: '' };
-
-            if (baseStep === 'cleanser') {
-              title = 'Очищение';
-              icon = ICONS.cleanser;
-              howto = {
-                steps: ['Смочите лицо тёплой водой', '1–2 нажатия геля в ладони', 'Массируйте 30–40 сек', 'Смойте, промокните полотенцем'],
-                volume: '1–2 нажатия',
-                tip: 'Если кожа сухая утром — можно умыться только водой.',
-              };
-            } else if (baseStep === 'toner') {
-              title = 'Тонер';
-              icon = ICONS.toner;
-              howto = {
-                steps: ['Нанесите 3–5 капель на руки', 'Распределите похлопывающими движениями', 'Дайте впитаться 30–60 сек'],
-                volume: '3–5 капель',
-                tip: 'Избегайте ватных дисков — тратите меньше продукта.',
-              };
-            } else if (baseStep === 'serum' || baseStep === 'treatment') {
-              title = time === 'AM' ? 'Актив' : 'Сыворотка';
-              icon = baseStep === 'treatment' ? ICONS.treatment : ICONS.serum;
-              howto = {
-                steps: ['3–6 капель на сухую кожу', 'Равномерно нанесите и дайте впитаться 1–2 минуты'],
-                volume: '3–6 капель',
-                tip: 'При раздражении сделайте паузу в использовании актива.',
-              };
-            } else if (baseStep === 'moisturizer') {
-              title = 'Крем';
-              icon = ICONS.cream;
-              howto = {
-                steps: ['Горох крема распределить по лицу', 'Мягко втереть по массажным линиям'],
-                volume: 'Горошина',
-                tip: 'Не забывайте шею и линию подбородка.',
-              };
-            } else if (baseStep === 'spf') {
-              title = 'SPF-защита';
-              icon = ICONS.spf;
-              howto = {
-                steps: ['Нанести 2 пальца SPF (лицо/шея)', 'Обновлять каждые 2–3 часа на улице'],
-                volume: '~1.5–2 мл',
-                tip: 'При UV > 3 — обязательно SPF даже в облачную погоду.',
-              };
-            } else if (baseStep === 'lip_care') {
-              title = 'Бальзам для губ';
-              icon = ICONS.lip;
-              howto = {
-                steps: ['Нанести на губы тонким слоем', 'Обновлять по необходимости в течение дня'],
-                volume: 'Тонкий слой',
-                tip: 'Регулярное использование предотвращает сухость и трещины.',
-              };
-            } else {
-              return;
-            }
+            const meta = getStepMeta(baseStep, time);
+            if (!meta) return;
 
             items.push({
               id: `${time}-${baseStep}-${idx}-${productId}`,
-              title,
-              subtitle: product.name || title,
-              icon,
-              howto,
+              ...meta,
+              subtitle: product.name || meta.title,
               done: false,
             });
           });
@@ -531,158 +429,75 @@ export default function HomePage() {
       // Преобразуем рекомендации в RoutineItem[] раздельно для утра и вечера
       const morning: RoutineItem[] = [];
       const evening: RoutineItem[] = [];
+
+      const addRoutineItem = (
+        items: RoutineItem[],
+        id: string,
+        baseStep: string,
+        time: 'AM' | 'PM',
+        subtitle: string,
+        overrides: Partial<Pick<RoutineItem, 'title' | 'icon' | 'howto'>> = {},
+      ) => {
+        const meta = getStepMeta(baseStep, time);
+        if (!meta) return;
+        items.push({ id, ...meta, ...overrides, subtitle, done: false });
+      };
       
       // УТРЕННЯЯ РУТИНА
       if (data?.steps?.cleanser) {
-        morning.push({
-          id: 'morning-cleanser',
-          title: 'Очищение',
-          subtitle: data?.steps?.cleanser?.[0]?.name || 'Очищающее средство',
-          icon: ICONS.cleanser,
-          howto: {
-            steps: ['Смочите лицо тёплой водой', '1–2 нажатия геля в ладони', 'Массируйте 30–40 сек', 'Смойте, промокните полотенцем'],
-            volume: 'Гель: 1–2 пшика',
-            tip: 'Если кожа сухая утром — можно умыться только водой.',
-          },
-          done: false,
-        });
+        addRoutineItem(morning, 'morning-cleanser', 'cleanser', 'AM', data.steps.cleanser[0]?.name || 'Очищающее средство');
       }
       
       if (data?.steps?.toner) {
-        morning.push({
-          id: 'morning-toner',
-          title: 'Тонер',
-          subtitle: data?.steps?.toner?.[0]?.name || 'Тоник',
-          icon: ICONS.toner,
-          howto: {
-            steps: ['Нанесите 3–5 капель на руки', 'Распределите похлопывающими движениями', 'Дайте впитаться 30–60 сек'],
-            volume: '3–5 капель',
-            tip: 'Избегайте ватных дисков — тратите меньше продукта.',
-          },
-          done: false,
-        });
+        addRoutineItem(morning, 'morning-toner', 'toner', 'AM', data.steps.toner[0]?.name || 'Тоник');
       }
       
       if (data?.steps?.treatment) {
-        morning.push({
-          id: 'morning-active',
-          title: 'Актив',
-          subtitle: data?.steps?.treatment?.[0]?.name || 'Активное средство',
-          icon: ICONS.treatment,
-          howto: {
-            steps: ['1–2 пипетки на сухую кожу', 'Наносите на T‑зону и щеки', 'Подождите 1–2 минуты до крема'],
-            volume: '4–6 капель',
-            tip: 'Если есть раздражение — пропустите актив на день.',
-          },
-          done: false,
-        });
+        addRoutineItem(morning, 'morning-active', 'treatment', 'AM', data.steps.treatment[0]?.name || 'Активное средство');
       }
       
       if (data?.steps?.moisturizer) {
-        morning.push({
-          id: 'morning-cream',
-          title: 'Крем',
-          subtitle: data?.steps?.moisturizer?.[0]?.name || 'Увлажняющий крем',
-          icon: ICONS.cream,
-          howto: {
-            steps: ['Горох крема распределить по лицу', 'Мягко втереть по массажным линиям'],
-            volume: 'Горошина',
-            tip: 'Не забывайте шею и линию подбородка.',
-          },
-          done: false,
-        });
+        addRoutineItem(morning, 'morning-cream', 'moisturizer', 'AM', data.steps.moisturizer[0]?.name || 'Увлажняющий крем');
       }
       
       if (data?.steps?.spf) {
-        morning.push({
-          id: 'morning-spf',
-          title: 'SPF-защита',
-          subtitle: data?.steps?.spf?.[0]?.name || 'SPF 50',
-          icon: ICONS.spf,
-          howto: {
-            steps: ['Нанести 2 пальца SPF (лицо/шея)', 'Обновлять каждые 2–3 часа на улице'],
-            volume: '~1.5–2 мл',
-            tip: 'При UV > 3 — обязательно SPF даже в облачную погоду.',
-          },
-          done: false,
-        });
+        addRoutineItem(morning, 'morning-spf', 'spf', 'AM', data.steps.spf[0]?.name || 'SPF 50');
       }
       
       // ИСПРАВЛЕНО: Добавляем бальзам для губ утром для всех
       if (data?.steps?.lip_care) {
-        morning.push({
-          id: 'morning-lip-balm',
-          title: 'Бальзам для губ',
-          subtitle: data?.steps?.lip_care?.[0]?.name || 'Бальзам для губ',
-          icon: ICONS.lip,
-          howto: {
-            steps: ['Нанести на губы тонким слоем', 'Обновлять по необходимости в течение дня'],
-            volume: 'Тонкий слой',
-            tip: 'Регулярное использование предотвращает сухость и трещины.',
-          },
-          done: false,
-        });
+        addRoutineItem(morning, 'morning-lip-balm', 'lip_care', 'AM', data.steps.lip_care[0]?.name || 'Бальзам для губ');
       }
       
       // ВЕЧЕРНЯЯ РУТИНА
       if (data?.steps?.cleanser) {
-        evening.push({
-          id: 'evening-cleanser',
-          title: 'Очищение',
-          subtitle: data?.steps?.cleanser?.[0]?.name || 'Двойное очищение',
-          icon: ICONS.cleanser,
+        addRoutineItem(evening, 'evening-cleanser', 'cleanser', 'PM', data.steps.cleanser[0]?.name || 'Двойное очищение', {
           howto: {
             steps: ['1) Масло: сухими руками распределить, эмульгировать водой', '2) Гель: умыть 30–40 сек, смыть'],
             volume: '1–2 дозы масла + 1–2 пшика геля',
             tip: 'Двойное очищение — в дни макияжа/кислот.',
           },
-          done: false,
         });
       }
       
       if (data?.steps?.treatment || data?.steps?.acid) {
-        evening.push({
-          id: 'evening-acid',
+        addRoutineItem(evening, 'evening-acid', 'treatment', 'PM', data.steps?.treatment?.[0]?.name || data.steps?.acid?.[0]?.name || 'AHA/BHA/PHА пилинг', {
           title: 'Кислоты (по расписанию)',
-          subtitle: data.steps?.treatment?.[0]?.name || data.steps?.acid?.[0]?.name || 'AHA/BHA/PHА пилинг',
           icon: ICONS.acid,
           howto: {
             steps: ['Нанести тонким слоем на Т‑зону', 'Выдержать 5–10 минут (по переносимости)', 'Смыть/нейтрализовать, далее крем'],
             volume: 'Тонкий слой',
             tip: 'При покраснении — пауза 3–5 дней.',
           },
-          done: false,
         });
       }
       
       if (data?.steps?.treatment || data?.steps?.serum) {
-        evening.push({
-          id: 'evening-serum',
-          title: 'Сыворотка',
-          subtitle: data.steps?.treatment?.[0]?.name || data.steps?.serum?.[0]?.name || 'Пептидная / успокаивающая',
-          icon: ICONS.serum,
-          howto: {
-            steps: ['3–6 капель', 'Равномерно нанести, дать впитаться 1 мин'],
-            volume: '3–6 капель',
-            tip: 'В дни кислот сыворотка — без кислот/ретинола.',
-          },
-          done: false,
-        });
+        addRoutineItem(evening, 'evening-serum', 'serum', 'PM', data.steps?.treatment?.[0]?.name || data.steps?.serum?.[0]?.name || 'Пептидная / успокаивающая');
       }
       
       if (data?.steps?.moisturizer) {
-        evening.push({
-          id: 'evening-cream',
-          title: 'Крем',
-          subtitle: data?.steps?.moisturizer?.[0]?.name || 'Питательный крем',
-          icon: ICONS.cream,
-          howto: {
-            steps: ['Горох крема', 'Распределить, не втирая сильно'],
-            volume: 'Горошина',
-            tip: 'Если сухо — добавьте каплю масла локально.',
-          },
-          done: false,
-        });
+        addRoutineItem(evening, 'evening-cream', 'moisturizer', 'PM', data.steps.moisturizer[0]?.name || 'Питательный крем');
       }
       
       setMorningItems(applyDoneFromStorage(morning, 'AM'));
@@ -706,7 +521,7 @@ export default function HomePage() {
       // Проверяем тип ошибки
       if (error?.message?.includes('Unauthorized') || error?.message?.includes('401') || error?.message?.includes('initData')) {
         // Ошибка идентификации - перенаправляем на анкету
-        setError('Не удалось загрузить данные. Пройдите анкету, чтобы получить план.');
+        setError(error);
         setLoading(false);
         return;
       }
@@ -732,8 +547,8 @@ export default function HomePage() {
         return;
       }
       
-      // Другие ошибки - показываем сообщение
-      setError(error?.message || 'Ошибка загрузки рекомендаций');
+      // Другие ошибки сохраняем только для классификации. Сырой текст не рендерим.
+      setError(error);
       setMorningItems([]);
       setEveningItems([]);
     } finally {
@@ -741,14 +556,55 @@ export default function HomePage() {
     }
   }, [hasPlan, router, setLoading, setError, setMorningItems, setEveningItems, setHasPlan, setRecommendations, buildRoutineFromPlan]);
 
+  const persistCompletedDay = useCallback(async (
+    nextMorningItems: RoutineItem[],
+    nextEveningItems: RoutineItem[]
+  ) => {
+    const isComplete = (items: RoutineItem[]) =>
+      items.length > 0 && items.every((item) => item.done);
+
+    if (!isComplete(nextMorningItems) || !isComplete(nextEveningItems)) return;
+    if (progressSyncInFlightRef.current) return;
+
+    try {
+      const syncedKey = routineProgressSyncedStorageKey();
+      if (!syncedKey || window.localStorage.getItem(syncedKey) === 'true') return;
+      progressSyncInFlightRef.current = true;
+
+      const progress = await api.getPlanProgress() as {
+        currentDay?: number;
+        completedDays?: number[];
+      };
+      const currentDay =
+        typeof progress.currentDay === 'number' && progress.currentDay >= 1 && progress.currentDay <= 28
+          ? progress.currentDay
+          : 1;
+      const completedDays = Array.from(new Set([
+        ...(Array.isArray(progress.completedDays) ? progress.completedDays : []),
+        currentDay,
+      ])).sort((a, b) => a - b);
+
+      await api.savePlanProgress(Math.min(currentDay + 1, 28), completedDays);
+      window.localStorage.setItem(syncedKey, 'true');
+    } catch (error) {
+      clientLogger.warn('Не удалось сохранить выполненный день плана:', error);
+    } finally {
+      progressSyncInFlightRef.current = false;
+    }
+  }, []);
+
   const toggleItem = (itemId: string) => {
     // ФИКС #17: персистим в localStorage, чтобы отметки переживали навигацию (ключ — дата+вкладка).
     // ФИКС #9: запрещаем ставить галочку, если предыдущее средство ещё не отмечено
-    // (последовательный порядок ухода). Снятие галочки — без ограничений.
+    // (последовательный порядок ухода). При снятии каскадно снимаем последующие шаги.
     const update = (items: RoutineItem[]): RoutineItem[] => {
       const idx = items.findIndex((i) => i.id === itemId);
       if (idx < 0) return items;
       const target = items[idx];
+      if (target.done) {
+        return items.map((item, i) => (i >= idx && item.done ? { ...item, done: false } : item));
+      }
+
       if (!target.done) {
         const allPriorDone = items.slice(0, idx).every((i) => i.done);
         if (!allPriorDone) return items; // блокируем
@@ -758,20 +614,41 @@ export default function HomePage() {
     if (tab === 'AM') {
       setMorningItems((items) => {
         const next = update(items);
-        if (next !== items) saveDoneIds('AM', next);
+        if (next !== items) {
+          saveDoneIds('AM', next);
+          void persistCompletedDay(next, eveningItems);
+        }
         return next;
       });
     } else {
       setEveningItems((items) => {
         const next = update(items);
-        if (next !== items) saveDoneIds('PM', next);
+        if (next !== items) {
+          saveDoneIds('PM', next);
+          void persistCompletedDay(morningItems, next);
+        }
         return next;
       });
     }
   };
 
+  const renderWithPaymentGate = (children: ReactNode) => (
+    <PaymentGate
+      price={199}
+      productCode="plan_access"
+      isRetaking={false}
+      retakeCta={{ text: 'Изменились цели? Перепройти анкету', href: '/quiz?retakeFromHome=1' }}
+      onPaymentComplete={() => {
+        clientLogger.log('✅ Payment completed on homepage');
+        void loadRecommendations();
+      }}
+    >
+      {children}
+    </PaymentGate>
+  );
+
   if (!mounted || loading) {
-    return <AppLoader fullScreen variant="light" />;
+    return renderWithPaymentGate(<AppLoader fullScreen variant="light" />);
   }
 
   // Получаем текущие элементы в зависимости от вкладки
@@ -780,35 +657,8 @@ export default function HomePage() {
   // План истёк: не показываем отдельный экран — paywall + блюр от PaymentGate.
 
   if (error && routineItems.length === 0) {
-    return (
-      <div style={{
-        padding: '20px',
-        textAlign: 'center',
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        background: '#FFFFFF'
-      }}>
-        <h1 style={{ color: '#0A0A0A', marginBottom: '16px' }}>Ошибка загрузки</h1>
-        <p style={{ color: '#475467', marginBottom: '24px' }}>{error}</p>
-        <button
-          onClick={() => router.push('/quiz')}
-          style={{
-            padding: '12px 24px',
-            borderRadius: '12px',
-            backgroundColor: '#0A0A0A',
-            color: 'white',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: '16px',
-            fontWeight: 'bold',
-          }}
-        >
-          Пройти анкету заново
-        </button>
-      </div>
+    return renderWithPaymentGate(
+      <HomeEmptyState variant="error" rawError={error} onRetry={() => void loadRecommendations()} />,
     );
   }
 
@@ -824,38 +674,7 @@ export default function HomePage() {
       hasSteps: !!recommendations?.steps,
       stepsKeys: recommendations?.steps ? Object.keys(recommendations.steps) : [],
     });
-    return (
-      <div style={{
-        padding: '20px',
-        textAlign: 'center',
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        background: '#FFFFFF',
-      }}>
-        <h1 style={{ color: '#0A0A0A', marginBottom: '16px' }}>Начните с анкеты</h1>
-        <p style={{ color: '#475467', marginBottom: '24px' }}>
-          Мы подберём персональный уход после короткой анкеты.
-        </p>
-        <button
-          onClick={() => router.push('/quiz')}
-          style={{
-            padding: '12px 24px',
-            borderRadius: '12px',
-            backgroundColor: '#0A0A0A',
-            color: 'white',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: '16px',
-            fontWeight: 'bold',
-          }}
-        >
-          Пройти анкету
-        </button>
-      </div>
-    );
+    return renderWithPaymentGate(<HomeEmptyState variant="no-plan" />);
   }
 
   const completedCount = routineItems.filter((item) => item.done).length;
@@ -866,17 +685,7 @@ export default function HomePage() {
   // PaymentGate сам проверит статус оплаты через localStorage и БД
   // Если не оплачено - покажет блюр с экраном оплаты
   // Если оплачено - покажет контент без блюра
-  return (
-    <PaymentGate
-      price={199}
-      productCode="plan_access"
-      isRetaking={false}
-      onPaymentComplete={() => {
-        clientLogger.log('✅ Payment completed on homepage');
-        // После оплаты перезагружаем рекомендации
-        loadRecommendations();
-      }}
-    >
+  return renderWithPaymentGate(
     <div
       className="animate-fade-in home-rd"
       style={{
@@ -886,7 +695,7 @@ export default function HomePage() {
           'radial-gradient(50% 22% at 100% 18%, rgba(213,254,97,0.42) 0%, transparent 70%),' +
           'radial-gradient(64% 26% at 100% 55%, rgba(220,210,196,0.55) 0%, transparent 65%),' +
           'radial-gradient(78% 32% at 10% 92%, rgba(213,254,97,0.46) 0%, transparent 62%),' +
-          '#F4F2EE',
+          'var(--canvas)',
         backgroundAttachment: 'fixed',
         paddingBottom: '120px',
       }}
@@ -895,47 +704,46 @@ export default function HomePage() {
         /* ФИКС #19: подкрашиваем html/body в цвет финального слоя фона главной,
            чтобы при overscroll/листании (iOS Telegram WebApp) не светилась белая подложка
            там, где контент длиннее экрана. Стиль действует только пока главная смонтирована. */
-        html, body { background-color: #F4F2EE; }
+        html, body { background-color: var(--canvas); }
         .home-rd .hr-topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 20px 14px;}
-        .home-rd .hr-logo{font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:18px;font-weight:700;letter-spacing:-0.4px;color:#0A0A0A;}
-        .home-rd .hr-avatar{position:relative;width:40px;height:40px;border:0;padding:0;border-radius:50%;background:linear-gradient(135deg,#2A2A2A,#0A0A0A);color:#D5FE61;display:grid;place-items:center;cursor:pointer;box-shadow:0 0 0 2px rgba(255,255,255,0.9),0 6px 18px rgba(10,10,10,0.18);font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:14px;font-weight:700;}
-        .home-rd .hr-avatar::after{content:"";position:absolute;bottom:1px;right:1px;width:10px;height:10px;border-radius:50%;background:#D5FE61;border:2px solid #F4F2EE;}
+        .home-rd .hr-logo{font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:18px;font-weight:700;letter-spacing:-0.4px;color:var(--ink);}
+        .home-rd .hr-avatar{position:relative;width:40px;height:40px;border:0;padding:0;border-radius:50%;background:linear-gradient(135deg,#2A2A2A,var(--ink));color:var(--accent);display:grid;place-items:center;cursor:pointer;box-shadow:0 0 0 2px rgba(255,255,255,0.9),0 6px 18px rgba(10,10,10,0.18);font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;font-weight:700;}
+        .home-rd .hr-avatar::after{content:"";position:absolute;bottom:1px;right:1px;width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--canvas);}
         .home-rd .hr-heading{padding:0 20px 14px;}
-        .home-rd .hr-intro{font-size:13px;font-weight:600;color:#6B7280;margin-bottom:6px;}
-        .home-rd .hr-title{font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:26px;font-weight:700;color:#0A0A0A;line-height:1.15;letter-spacing:-0.6px;}
+        .home-rd .hr-intro{font-size:13px;font-weight:600;color:var(--ink-soft);margin-bottom:6px;}
+        .home-rd .hr-title{font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:26px;font-weight:700;color:var(--ink);line-height:1.15;letter-spacing:-0.6px;}
         .home-rd .hr-bento{display:grid;grid-template-columns:minmax(0,0.85fr) minmax(0,1.15fr);gap:10px;padding:0 20px 14px;}
-        .home-rd .hr-streak{position:relative;overflow:hidden;padding:14px 14px 12px;border-radius:22px;border:1px solid rgba(255,255,255,0.06);background:radial-gradient(120% 80% at 100% 0%,rgba(213,254,97,0.22) 0%,transparent 60%),#0A0A0A;color:#fff;min-height:102px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 14px 32px rgba(10,10,10,0.18);}
+        .home-rd .hr-streak{position:relative;overflow:hidden;padding:14px 14px 12px;border-radius:22px;border:1px solid rgba(255,255,255,0.06);background:radial-gradient(120% 80% at 100% 0%,rgba(213,254,97,0.22) 0%,transparent 60%),var(--ink);color:#fff;min-height:102px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 14px 32px rgba(10,10,10,0.18);}
         .home-rd .hr-streak::before{content:"";position:absolute;top:-34px;right:-28px;width:110px;height:110px;background:radial-gradient(circle,rgba(213,254,97,0.32) 0%,transparent 70%);}
         .home-rd .hr-streak-head{position:relative;display:flex;align-items:center;gap:6px;color:rgba(255,255,255,0.6);font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;}
-        .home-rd .hr-streak-num{position:relative;font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:38px;line-height:1;font-weight:700;letter-spacing:-1.5px;color:#D5FE61;}
+        .home-rd .hr-streak-num{position:relative;font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:38px;line-height:1;font-weight:700;letter-spacing:-1.5px;color:var(--accent);}
         .home-rd .hr-streak-unit{font-size:12.5px;font-weight:600;color:rgba(255,255,255,0.78);}
         .home-rd .hr-streak-foot{position:relative;color:rgba(255,255,255,0.42);font-size:11px;}
-        .home-rd .hr-progress{position:relative;overflow:hidden;padding:14px;border-radius:22px;border:1px solid rgba(255,255,255,0.7);background:rgba(255,255,255,0.62);backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%);min-height:102px;display:flex;flex-direction:column;justify-content:space-between;}
+        .home-rd .hr-progress{position:relative;overflow:hidden;min-height:102px;display:flex;flex-direction:column;justify-content:space-between;background:var(--glass-bg-strong);}
         .home-rd .hr-progress-head{display:flex;align-items:center;justify-content:space-between;}
-        .home-rd .hr-progress-label{color:#6B7280;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;}
-        .home-rd .hr-progress-count{font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:13px;font-weight:700;color:#0A0A0A;letter-spacing:-0.2px;}
-        .home-rd .hr-progress-count em{font-style:normal;color:#9CA3AF;}
-        .home-rd .hr-progress-text{font-size:12.5px;font-weight:600;color:#0A0A0A;line-height:1.32;letter-spacing:-0.1px;}
+        .home-rd .hr-progress-label{color:var(--ink-soft);font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;}
+        .home-rd .hr-progress-count{font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:13px;font-weight:700;color:var(--ink);letter-spacing:-0.2px;}
+        .home-rd .hr-progress-count em{font-style:normal;color:var(--ink-mute);}
+        .home-rd .hr-progress-text{font-size:12.5px;font-weight:600;color:var(--ink);line-height:1.32;letter-spacing:-0.1px;}
         .home-rd .hr-bar{position:relative;width:100%;height:8px;border-radius:999px;background:rgba(10,10,10,0.08);overflow:hidden;}
-        .home-rd .hr-bar-fill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:#0A0A0A;transition:width .4s ease;}
-        /* ФИКС #18: переключатель утро/вечер без скруглённых углов. */
-        .home-rd .hr-tabs{display:flex;gap:0;margin:0 20px 16px;padding:5px;border:1px solid rgba(255,255,255,0.7);border-radius:0;background:rgba(255,255,255,0.5);backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);box-shadow:0 8px 24px rgba(0,0,0,0.04);}
-        .home-rd .hr-tab{flex:1;min-height:46px;border:0;border-radius:0;background:transparent;color:#6B7280;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:700;transition:all .18s ease;}
-        .home-rd .hr-tab.active{background:rgba(255,255,255,0.95);color:#0A0A0A;box-shadow:0 4px 14px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.9);}
+        .home-rd .hr-bar-fill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--ink);transition:width .4s ease;}
+        .home-rd .hr-tabs{display:flex;gap:0;margin:0 20px 16px;padding:5px;border:1px solid var(--glass-border);border-radius:4px;background:var(--glass-bg);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);box-shadow:var(--glass-shadow);}
+        .home-rd .hr-tab{flex:1;min-height:46px;border:0;border-radius:4px;background:transparent;color:var(--ink-soft);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:700;transition:all .18s ease;}
+        .home-rd .hr-tab.active{background:rgba(255,255,255,0.95);color:var(--ink);box-shadow:0 4px 14px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.9);}
         .home-rd .hr-tab svg{width:16px;height:16px;}
         .home-rd .hr-section-head{display:flex;flex-direction:column;margin:0 22px 12px;}
-        .home-rd .hr-section-title{font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:16px;font-weight:700;letter-spacing:-0.3px;color:#0A0A0A;}
-        .home-rd .hr-section-sub{margin-top:3px;color:#6B7280;font-size:12px;}
+        .home-rd .hr-section-title{font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:16px;font-weight:700;letter-spacing:-0.3px;color:var(--ink);}
+        .home-rd .hr-section-sub{margin-top:3px;color:var(--ink-soft);font-size:12px;}
         .home-rd .hr-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:0 18px 8px;}
-        .home-rd .hr-card{position:relative;min-height:248px;display:flex;flex-direction:column;padding:14px 14px 16px;border:1px solid rgba(255,255,255,0.7);border-radius:22px;background:rgba(255,255,255,0.6);backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%);cursor:pointer;box-shadow:0 10px 28px rgba(0,0,0,0.05);transition:transform .16s ease,box-shadow .16s ease,opacity .16s ease;}
-        .home-rd .hr-card.current{border-color:rgba(10,10,10,0.08);background:radial-gradient(120% 70% at 0% 0%,rgba(255,255,255,0.45) 0%,transparent 60%),#D5FE61;box-shadow:0 14px 34px rgba(213,254,97,0.38),0 10px 28px rgba(0,0,0,0.06);backdrop-filter:none;-webkit-backdrop-filter:none;}
+        .home-rd .hr-card{position:relative;min-height:248px;display:flex;flex-direction:column;padding:14px 14px 16px;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,opacity .16s ease;}
+        .home-rd .hr-card.current{border-color:rgba(10,10,10,0.08);background:radial-gradient(120% 70% at 0% 0%,rgba(255,255,255,0.45) 0%,transparent 60%),var(--accent);box-shadow:0 14px 34px rgba(213,254,97,0.38),0 10px 28px rgba(0,0,0,0.06);backdrop-filter:none;-webkit-backdrop-filter:none;}
         .home-rd .hr-card.done{opacity:0.78;}
         .home-rd .hr-card:active{transform:scale(0.985);}
         .home-rd .hr-card-top{display:flex;align-items:flex-start;justify-content:space-between;min-height:32px;}
-        .home-rd .hr-stepdot{width:32px;height:32px;border:0;border-radius:12px;display:grid;place-items:center;background:rgba(10,10,10,0.08);color:#0A0A0A;cursor:pointer;font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:12px;font-weight:700;line-height:1;letter-spacing:-0.3px;transition:background .16s ease,transform .12s ease;}
+        .home-rd .hr-stepdot{width:32px;height:32px;border:0;border-radius:12px;display:grid;place-items:center;background:rgba(10,10,10,0.08);color:var(--ink);cursor:pointer;font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:12px;font-weight:700;line-height:1;letter-spacing:-0.3px;transition:background .16s ease,transform .12s ease;}
         .home-rd .hr-stepdot:active{transform:scale(0.92);}
-        .home-rd .hr-card.current .hr-stepdot{background:#0A0A0A;color:#D5FE61;box-shadow:0 6px 14px rgba(10,10,10,0.18);}
-        .home-rd .hr-card.done .hr-stepdot{background:#D5FE61;color:#0A0A0A;}
+        .home-rd .hr-card.current .hr-stepdot{background:var(--ink);color:var(--accent);box-shadow:0 6px 14px rgba(10,10,10,0.18);}
+        .home-rd .hr-card.done .hr-stepdot{background:var(--accent);color:var(--ink);}
         /* ФИКС #10: убрана белая подложка-прямоугольник под иконкой на лайм-карточке (current).
            Раньше ::before рисовал 96x116 #fff с opacity:1 на .current — это и был «белый прямоугольник».
            Также увеличен размер иконки средств (72x100 → 96x132). */
@@ -945,18 +753,18 @@ export default function HomePage() {
         .home-rd .hr-icon.blend{mix-blend-mode:multiply;filter:none;}
         .home-rd .hr-card-bottom{margin-top:auto;}
         .home-rd .hr-kicker{margin-bottom:5px;font-size:9.5px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(10,10,10,0.42);}
-        .home-rd .hr-card.current .hr-kicker{color:#0A0A0A;}
+        .home-rd .hr-card.current .hr-kicker{color:var(--ink);}
         .home-rd .hr-card.done .hr-kicker{color:rgba(10,10,10,0.32);}
-        .home-rd .hr-itemtitle{margin-bottom:4px;font-size:15px;font-weight:700;color:#0A0A0A;line-height:1.18;letter-spacing:-0.1px;}
+        .home-rd .hr-itemtitle{margin-bottom:4px;font-size:15px;font-weight:700;color:var(--ink);line-height:1.18;letter-spacing:-0.1px;}
         .home-rd .hr-card.done .hr-itemtitle{text-decoration:line-through;text-decoration-color:rgba(10,10,10,0.32);}
-        .home-rd .hr-itemsub{color:#6B7280;font-size:11.5px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-        .home-rd .hr-retake{width:100%;background:transparent;border:none;color:#6B7280;text-decoration:underline;cursor:pointer;font-size:13px;font-weight:600;padding:14px 0 4px;}
+        .home-rd .hr-itemsub{color:var(--ink-soft);font-size:11.5px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+        .home-rd .hr-retake{width:100%;background:transparent;border:none;color:var(--ink-soft);text-decoration:underline;cursor:pointer;font-size:13px;font-weight:600;padding:14px 0 4px;}
       `}</style>
       {/* Topbar */}
       <div className="hr-topbar">
         <div className="hr-logo">SkinIQ</div>
         <button className="hr-avatar" aria-label="Профиль" onClick={() => router.push('/profile')}>
-          {(userName?.[0] || 'С').toUpperCase()}
+          {(userName?.[0] || 'S').toUpperCase()}
         </button>
       </div>
 
@@ -986,7 +794,7 @@ export default function HomePage() {
           <div className="hr-bento">
             <div className="hr-streak">
               <div className="hr-streak-head">
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#D5FE61" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M8.5 14.5A3.5 3.5 0 0 0 12 18a3.5 3.5 0 0 0 3.5-3.5c0-2.5-3.5-4.2-3.5-7.5-1.9 1.3-4.5 3.8-4.5 7.5Z"/>
                   <path d="M12 2C8.2 5.2 5 8.8 5 13a7 7 0 0 0 14 0c0-3.8-2.3-6.6-4.8-9.1"/>
                 </svg>
@@ -998,7 +806,7 @@ export default function HomePage() {
               </div>
               <div className="hr-streak-foot">{tab === 'AM' ? 'Утренний уход' : 'Вечерний уход'}</div>
             </div>
-            <div className="hr-progress">
+            <div className="hr-progress glass-card-sm">
               <div className="hr-progress-head">
                 <span className="hr-progress-label">Прогресс</span>
                 <span className="hr-progress-count">{completedCount}<em>/{totalCount}</em></span>
@@ -1038,7 +846,7 @@ export default function HomePage() {
       <div className="hr-grid">
         {routineItems.map((item, index) => {
           const isCurrentStep = !item.done && index === currentStepIndex;
-          const cls = `hr-card${isCurrentStep ? ' current' : ''}${item.done ? ' done' : ''}`;
+          const cls = `hr-card glass-card-sm${isCurrentStep ? ' current' : ''}${item.done ? ' done' : ''}`;
           const isBlend = (item.icon || '').includes('cream');
           return (
             <div key={item.id} className={cls} onClick={() => toggleItem(item.id)}>
@@ -1091,6 +899,7 @@ export default function HomePage() {
               clientLogger.warn('Failed to set retake flags:', error);
             }
             queryClient.invalidateQueries({ queryKey: ['quiz', 'active'] });
+            invalidatePlanWarmCache();
             window.location.href = '/quiz?retakeFromHome=1';
           }}
         >
@@ -1098,7 +907,6 @@ export default function HomePage() {
         </button>
       </div>
 
-    </div>
-    </PaymentGate>
+    </div>,
   );
 }

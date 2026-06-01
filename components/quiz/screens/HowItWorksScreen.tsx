@@ -32,6 +32,7 @@ function HowItWorksScreenComponent({
 
   return (
     <div
+      className="qz-phone-frame-fixed"
       style={{
         padding: 0,
         margin: 0,
@@ -66,7 +67,7 @@ function HowItWorksScreenComponent({
         }}
       >
         <img
-          src="/ea01dd6e_nano_4K.jpg"
+          src="/onboarding/how-it-works.jpg"
           alt={screen.title}
           fetchPriority="high"
           decoding="sync"
@@ -82,7 +83,7 @@ function HowItWorksScreenComponent({
         />
       </div>
 
-      <BackButtonFixed show={true} onClick={onBack} color="#FFFFFF" />
+      <BackButtonFixed show={true} onClick={onBack} color="var(--canvas-white)" />
 
       {/* Контейнер контента: по центру экрана по вертикали и горизонтали */}
       <div
@@ -113,7 +114,7 @@ function HowItWorksScreenComponent({
             left: '50%',
             transform: 'translate(-50%, -50%)',
             width: '100%',
-            maxWidth: 300,
+            maxWidth: 340,
             boxSizing: 'border-box',
             pointerEvents: 'auto',
             display: 'flex',
@@ -124,14 +125,13 @@ function HowItWorksScreenComponent({
         >
           {/* Единый прозрачный контейнер для заголовка и шагов */}
           <div
+            className="glass-card-dark"
             style={{
               width: '100%',
               padding: '18px 16px 20px',
               borderRadius: 20,
-              backgroundColor: 'rgba(0, 0, 0, 0.12)',
               backdropFilter: 'blur(8px)',
               WebkitBackdropFilter: 'blur(8px)',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
               boxSizing: 'border-box',
               display: 'flex',
               flexDirection: 'column',
@@ -142,14 +142,14 @@ function HowItWorksScreenComponent({
             <h1
               className="quiz-how-it-works-title"
               style={{
-                fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontFamily: "var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif",
                 fontWeight: 900,
                 fontStyle: 'normal',
                 fontSize: '20px',
                 lineHeight: '120%',
                 letterSpacing: '0px',
                 textAlign: 'center',
-                color: '#FFFFFF',
+                color: 'var(--canvas-white)',
                 margin: 0,
               }}
             >
@@ -187,12 +187,12 @@ function HowItWorksScreenComponent({
                     {/* Номер шага — лаймовая цифра над текстом, по центру */}
                     <span
                       style={{
-                        fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+                        fontFamily: "var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif",
                         fontWeight: 700,
                         fontSize: '52px',
                         lineHeight: 1,
                         letterSpacing: '0px',
-                        color: '#D5FE61',
+                        color: 'var(--accent)',
                       }}
                     >
                       {stepNumber}
@@ -202,12 +202,12 @@ function HowItWorksScreenComponent({
                     <div
                       style={{
                         flex: 1,
-                        fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+                        fontFamily: "var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif",
                         fontWeight: 400,
                         fontSize: '13px',
                         lineHeight: '140%',
                         letterSpacing: '0px',
-                        color: '#FFFFFF',
+                        color: 'var(--canvas-white)',
                         textAlign: 'center',
                         whiteSpace: 'pre-line',
                       }}

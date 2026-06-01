@@ -19,7 +19,7 @@ export interface AiComparisonScreenProps {
   isHandlingNext?: boolean;
 }
 
-const LIME = '#D5FE61';
+const LIME = 'var(--accent)';
 
 const TRADITIONAL_ITEMS = [
   'Долгие поиски советов в интернете',
@@ -30,6 +30,12 @@ const SKINIQ_ITEMS = [
   'Точный подбор средств на основе анкеты',
   'Рекомендации за пару секунд',
 ];
+
+interface AiComparisonContent {
+  traditionalItems?: string[];
+  skiniqItems?: string[];
+  hint?: string;
+}
 
 function CrossIcon() {
   return (
@@ -42,7 +48,7 @@ function CrossIcon() {
 
 function CheckIcon() {
   return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <polyline points="20 6 9 17 4 12" />
     </svg>
   );
@@ -56,6 +62,11 @@ function AiComparisonScreenComponent({
   isHandlingNext = false,
 }: AiComparisonScreenProps) {
   const shouldShowBackButton = currentInfoScreenIndex > 0 && !!onBack;
+  const content = (screen.content as AiComparisonContent | undefined) || {};
+  const traditionalItems = content.traditionalItems || TRADITIONAL_ITEMS;
+  const skiniqItems = content.skiniqItems || SKINIQ_ITEMS;
+  const hint = content.hint ||
+    'Большинство персональных планов укладывается в 3–5 средств — от 2 000 ₽/мес в бюджетном сегменте до 5 000+ ₽/мес в премиум.';
 
   return (
     <>
@@ -71,10 +82,10 @@ function AiComparisonScreenComponent({
           height: '100vh',
           maxHeight: '100vh',
           overflow: 'hidden',
-          backgroundColor: '#FFFFFF',
+          backgroundColor: 'var(--canvas-white)',
           fontFamily:
             "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-          color: '#0A0A0A',
+          color: 'var(--ink)',
         }}
       >
         {/* Кремовый фон + лаймовый угловой акцент */}
@@ -101,8 +112,8 @@ function AiComparisonScreenComponent({
             zIndex: 1,
             pointerEvents: 'none',
             background: `
-              radial-gradient(50% 28% at 100% 0%, rgba(213,254,97,0.5) 0%, transparent 60%),
-              radial-gradient(40% 22% at 0% 100%, rgba(213,254,97,0.28) 0%, transparent 60%)
+              radial-gradient(50% 28% at 100% 0%, rgba(var(--accent-rgb),0.5) 0%, transparent 60%),
+              radial-gradient(40% 22% at 0% 100%, rgba(var(--accent-rgb),0.28) 0%, transparent 60%)
             `,
           }}
         />
@@ -132,7 +143,7 @@ function AiComparisonScreenComponent({
               lineHeight: '115%',
               letterSpacing: '-0.5px',
               margin: '0 0 6px 4px',
-              color: '#0A0A0A',
+              color: 'var(--ink)',
             }}
           >
             {screen.title || 'Больше никакой путаницы'}
@@ -143,10 +154,10 @@ function AiComparisonScreenComponent({
             {/* Традиционный подбор */}
             <div
               style={{
-                background: 'rgba(255,255,255,0.55)',
+                background: 'var(--glass-bg)',
                 backdropFilter: 'blur(28px) saturate(160%)',
                 WebkitBackdropFilter: 'blur(28px) saturate(160%)',
-                border: '1px solid rgba(255,255,255,0.75)',
+                border: '1px solid var(--glass-border)',
                 borderRadius: '22px',
                 padding: '16px 18px 18px',
                 boxShadow: '0 8px 24px rgba(0,0,0,0.05)',
@@ -167,7 +178,7 @@ function AiComparisonScreenComponent({
                 Традиционный подбор
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {TRADITIONAL_ITEMS.map((t) => (
+                {traditionalItems.map((t) => (
                   <div key={t} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                     <div
                       style={{
@@ -194,13 +205,13 @@ function AiComparisonScreenComponent({
             <div
               style={{
                 position: 'relative',
-                background: 'rgba(255,255,255,0.65)',
+                background: 'var(--glass-bg-strong)',
                 backdropFilter: 'blur(28px) saturate(160%)',
                 WebkitBackdropFilter: 'blur(28px) saturate(160%)',
                 border: `1.5px solid ${LIME}`,
                 borderRadius: '22px',
                 padding: '16px 18px 18px',
-                boxShadow: '0 10px 28px rgba(213,254,97,0.22)',
+                boxShadow: '0 10px 28px rgba(var(--accent-rgb),0.22)',
                 overflow: 'hidden',
               }}
             >
@@ -213,7 +224,7 @@ function AiComparisonScreenComponent({
                   width: 110,
                   height: 110,
                   background:
-                    'radial-gradient(circle, rgba(213,254,97,0.45) 0%, transparent 65%)',
+                    'radial-gradient(circle, rgba(var(--accent-rgb),0.45) 0%, transparent 65%)',
                   pointerEvents: 'none',
                 }}
               />
@@ -225,7 +236,7 @@ function AiComparisonScreenComponent({
                   fontWeight: 700,
                   fontSize: '14px',
                   letterSpacing: '-0.2px',
-                  color: '#0A0A0A',
+                  color: 'var(--ink)',
                   marginBottom: 12,
                   textTransform: 'uppercase',
                 }}
@@ -233,7 +244,7 @@ function AiComparisonScreenComponent({
                 SkinIQ с AI ✨
               </div>
               <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {SKINIQ_ITEMS.map((t) => (
+                {skiniqItems.map((t) => (
                   <div key={t} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                     <div
                       style={{
@@ -247,12 +258,12 @@ function AiComparisonScreenComponent({
                         justifyContent: 'center',
                         flexShrink: 0,
                         marginTop: 2,
-                        boxShadow: '0 2px 5px rgba(213,254,97,0.4)',
+                        boxShadow: '0 2px 5px rgba(var(--accent-rgb),0.4)',
                       }}
                     >
                       <CheckIcon />
                     </div>
-                    <div style={{ fontSize: 14, lineHeight: 1.45, color: '#0A0A0A', fontWeight: 500 }}>{t}</div>
+                    <div style={{ fontSize: 14, lineHeight: 1.45, color: 'var(--ink)', fontWeight: 500 }}>{t}</div>
                   </div>
                 ))}
               </div>
@@ -263,8 +274,8 @@ function AiComparisonScreenComponent({
           <div
             style={{
               marginTop: 6,
-              background: 'rgba(10,10,10,0.06)',
-              border: '1px dashed rgba(10,10,10,0.16)',
+              background: 'rgba(var(--ink-rgb),0.06)',
+              border: '1px dashed rgba(var(--ink-rgb),0.16)',
               borderRadius: 16,
               padding: '12px 14px',
               fontSize: 12.5,
@@ -272,7 +283,7 @@ function AiComparisonScreenComponent({
               color: '#1A1A1A',
             }}
           >
-            💡 Большинство планов укладывается в <b>3–5 средств</b> — от <b>2 000 ₽/мес</b> в бюджете до <b>5 000+ ₽/мес</b> в премиум.
+            💡 {hint}
           </div>
         </div>
 

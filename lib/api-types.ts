@@ -338,11 +338,14 @@ export interface PlanProgressStatus {
 
 export interface SubmitAnswersResponse {
   success: boolean;
+  status?: 'processing';
+  retryAfterMs?: number;
   profile?: {
     id: string;
     version: number;
   };
   answersCount?: number;
+  isDuplicate?: boolean;
   error?: string;
 }
 
@@ -399,4 +402,3 @@ export interface ProductFromBatch {
   concerns: string[];
   activeIngredients?: string[];
 }
-

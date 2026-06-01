@@ -11,6 +11,12 @@ import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
 import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 import type { Questionnaire, Question } from '@/lib/quiz/types';
 
+const debugLog = (...args: unknown[]) => {
+  if (process.env.NODE_ENV === 'development') {
+    console.log(...args);
+  }
+};
+
 // ФИКС: Единый тип режима экрана для ясности логики
 export type ViewMode =
   | 'LOADING_PROGRESS'
@@ -243,7 +249,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
         const rawIds = allQuestionsRaw.map(q => q.id).sort((a, b) => a - b).join(',');
         const answersKeys = Object.keys(answers).sort((a, b) => Number(a) - Number(b)).join(',');
         const hash = `${rawIds}|${answersKeys}`;
-        // Отладка: console.log('🔍 [useQuizComputed] allQuestionsHash computed', { hash, allQuestionsRawLength: allQuestionsRaw.length, answersRevision });
+        // Отладка: debugLog('🔍 [useQuizComputed] allQuestionsHash computed', { hash, allQuestionsRawLength: allQuestionsRaw.length, answersRevision });
         return hash;
       }, [allQuestionsRawHash, answersRevision]);
   
@@ -277,7 +283,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
         isRetakingQuiz,
         showRetakeScreen,
         logger: {
-          log: (message: string, data?: any) => console.log(`🔍 [filterQuestions] ${message}`, data),
+          log: (message: string, data?: any) => debugLog(`🔍 [filterQuestions] ${message}`, data),
           warn: (message: string, data?: any) => console.warn(`⚠️ [filterQuestions] ${message}`, data),
           error: (message: string, data?: any) => console.error(`❌ [filterQuestions] ${message}`, data),
         },
@@ -290,7 +296,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
         // НЕ перезаписываем ref, оставляем предыдущее значение
       }
 
-      // Отладка: console.log('🔍 [useQuizComputed] filterQuestions result', { allQuestionsRawLength: allQuestionsRaw.length, filteredLength: filtered.length });
+      // Отладка: debugLog('🔍 [useQuizComputed] filterQuestions result', { allQuestionsRawLength: allQuestionsRaw.length, filteredLength: filtered.length });
 
       return filtered;
     } catch (err) {
@@ -361,30 +367,32 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     // const savedProgressAnswersCount уже вычислен выше как useMemo
     const currentAnswersCount = Object.keys(answers || {}).length;
 
-    console.log('🔍 [useQuizComputed] viewMode: computing', {
-      isLoadingProgress,
-      isLoadingQuestionnaire,
-      isQuestionnaireLoading,
-      questionnaireError: !!questionnaireError,
-      progressError: !!progressError,
-      hasQuestionnaire,
-      savedProgressAnswersCount,
-      savedProgress: savedProgress ? {
-        answersCount: savedProgressAnswersCount,
-        questionIndex: savedProgress.questionIndex,
-        infoScreenIndex: savedProgress.infoScreenIndex,
-      } : null,
-      currentAnswersCount,
-      isStartingOver,
-      hasResumed,
-      isRetakingQuiz,
-      showRetakeScreen,
-      currentInfoScreenIndex,
-      initialInfoScreensLength: initialInfoScreens.length,
-      pendingInfoScreen,
-      allQuestionsLength: allQuestions.length,
-      allQuestionsHash
-    });
+    if (isDev) {
+      debugLog('🔍 [useQuizComputed] viewMode: computing', {
+        isLoadingProgress,
+        isLoadingQuestionnaire,
+        isQuestionnaireLoading,
+        questionnaireError: !!questionnaireError,
+        progressError: !!progressError,
+        hasQuestionnaire,
+        savedProgressAnswersCount,
+        savedProgress: savedProgress ? {
+          answersCount: savedProgressAnswersCount,
+          questionIndex: savedProgress.questionIndex,
+          infoScreenIndex: savedProgress.infoScreenIndex,
+        } : null,
+        currentAnswersCount,
+        isStartingOver,
+        hasResumed,
+        isRetakingQuiz,
+        showRetakeScreen,
+        currentInfoScreenIndex,
+        initialInfoScreensLength: initialInfoScreens.length,
+        pendingInfoScreen,
+        allQuestionsLength: allQuestions.length,
+        allQuestionsHash
+      });
+    }
 
     const isTelegramInitDataMissing = !hasTelegramInitData;
 
@@ -394,7 +402,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     const savedCount = savedProgressAnswersCount;
     
     // ИСПРАВЛЕНО: Добавлено подробное логирование для диагностики
-    console.log('🔍 [useQuizComputed] проверка резюм-экрана (самый высокий приоритет)', {
+    debugLog('🔍 [useQuizComputed] проверка резюм-экрана (самый высокий приоритет)', {
       showResumeScreen,
       savedCount,
       currentAnswersCount,
@@ -419,7 +427,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     const shouldSuppressResumeForRetake = isRetakingQuiz;
 
     if (isRetakingQuiz && showRetakeScreen) {
-      console.log('📺 [useQuizComputed] viewMode: RETAKE_SELECT (retake from home — higher priority than RESUME)', {
+      debugLog('📺 [useQuizComputed] viewMode: RETAKE_SELECT (retake from home — higher priority than RESUME)', {
         isRetakingQuiz,
         showRetakeScreen,
       });
@@ -427,7 +435,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     }
     
     if ((showResumeScreen || shouldShowResumeImmediately) && !shouldSuppressResumeForRetake && !hasResumed) {
-      console.log('📺 [useQuizComputed] viewMode: RESUME (highest priority - before errors)', {
+      debugLog('📺 [useQuizComputed] viewMode: RESUME (highest priority - before errors)', {
         showResumeScreen,
         savedCount,
         currentAnswersCount,
@@ -442,7 +450,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     // Используем isQuestionnaireQueryError чтобы показывать ERROR даже при refetch (когда error временно сброшен)
     const hasQuestionnaireError = !!(questionnaireError || isQuestionnaireQueryError);
     if (hasQuestionnaireError || progressError) {
-      console.log('📺 [useQuizComputed] viewMode: ERROR (data loading error)', {
+      debugLog('📺 [useQuizComputed] viewMode: ERROR (data loading error)', {
         questionnaireError: questionnaireError?.message,
         questionnaireErrorStatus: (questionnaireError as any)?.status,
         isQuestionnaireQueryError,
@@ -452,7 +460,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       });
 
       if ((questionnaireError as any)?.status === 403 || (progressError as any)?.status === 403) {
-        console.log('🚫 [useQuizComputed] viewMode: FORBIDDEN_ERROR (403)', {
+        debugLog('🚫 [useQuizComputed] viewMode: FORBIDDEN_ERROR (403)', {
           message: 'Пользователь должен открыть приложение через Telegram Mini App'
         });
         return 'ERROR';
@@ -461,7 +469,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     }
 
     // Приоритет 1: Резюм-экран (уже проверен выше, но оставляем для логирования)
-    console.log('🔍 [useQuizComputed] проверка резюм-экрана (после проверки ошибок)', {
+    debugLog('🔍 [useQuizComputed] проверка резюм-экрана (после проверки ошибок)', {
       showResumeScreen,
       savedCount,
       minRequired: QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN,
@@ -475,7 +483,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
 
     // Приоритет 3: Экран выбора тем при перепрохождении
     if (isRetakingQuiz && showRetakeScreen) {
-      console.log('📺 [useQuizComputed] viewMode: RETAKE_SELECT (retake screen)');
+      debugLog('📺 [useQuizComputed] viewMode: RETAKE_SELECT (retake screen)');
       return 'RETAKE_SELECT';
     }
 
@@ -490,7 +498,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
                                      currentAnswersCount === 0; // НЕ активно отвечает
     
     if (onInitial && !shouldShowResumeInstead) {
-      console.log('📺 [useQuizComputed] viewMode: INITIAL_INFO (showing initial screens)', {
+      debugLog('📺 [useQuizComputed] viewMode: INITIAL_INFO (showing initial screens)', {
         currentInfoScreenIndex,
         currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
         initialLen,
@@ -502,7 +510,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     // Приоритет 4: Загрузка анкеты (если данные еще не получены)
     // Не показываем лоадер, если запрос уже завершился ошибкой (иначе бесконечный лоадер при refetch)
     if (isLoadingAnyQuestionnaire && !hasQuestionnaire && !hasQuestionnaireError) {
-      console.log('📺 [useQuizComputed] viewMode: LOADING_QUESTIONNAIRE (waiting for questionnaire data)', {
+      debugLog('📺 [useQuizComputed] viewMode: LOADING_QUESTIONNAIRE (waiting for questionnaire data)', {
         isLoadingQuestionnaire,
         isQuestionnaireLoading,
         hasQuestionnaire
@@ -512,7 +520,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
 
     // Приоритет 5: Загрузка прогресса (если анкета уже есть, но прогресс еще грузится)
     if (isLoadingProgress && hasQuestionnaire) {
-      console.log('📺 [useQuizComputed] viewMode: LOADING_PROGRESS (questionnaire ready, waiting for progress)', {
+      debugLog('📺 [useQuizComputed] viewMode: LOADING_PROGRESS (questionnaire ready, waiting for progress)', {
         isLoadingProgress,
         hasQuestionnaire
       });
@@ -522,7 +530,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     // Приоритет 6: Загрузка внутреннего состояния (loading из quizState)
     // ИСПРАВЛЕНО: Не показываем LOADER, если анкета уже загружена в ref или запрос завершился ошибкой
     if (isQuestionnaireLoading && !hasQuestionnaire && !hasQuestionnaireError) {
-      console.log('📺 [useQuizComputed] viewMode: LOADING_PROGRESS (waiting for internal state)', {
+      debugLog('📺 [useQuizComputed] viewMode: LOADING_PROGRESS (waiting for internal state)', {
         isQuestionnaireLoading,
         hasQuestionnaire
       });
@@ -532,14 +540,14 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     // Приоритет 7: Нет анкеты - это критическая ошибка после загрузки
     // Не показываем лоадер "waiting for Telegram", если запрос анкеты уже завершился ошибкой (500 и т.д.)
     if (!hasQuestionnaire && !isLoadingAnyQuestionnaire) {
-      console.log('📺 [useQuizComputed] viewMode: ERROR (no questionnaire after loading)', {
+      debugLog('📺 [useQuizComputed] viewMode: ERROR (no questionnaire after loading)', {
         hasQuestionnaire,
         isLoadingQuestionnaire,
         isQuestionnaireLoading,
         hasQuestionnaireError,
       });
       if (isTelegramInitDataMissing && !hasQuestionnaireError) {
-        console.log('📺 [useQuizComputed] viewMode: LOADING_PROGRESS (waiting for Telegram initData)', {
+        debugLog('📺 [useQuizComputed] viewMode: LOADING_PROGRESS (waiting for Telegram initData)', {
           isTelegramInitDataMissing,
         });
         return 'LOADING_PROGRESS';
@@ -549,7 +557,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
 
     // Приоритет 8: Анкета есть, но все вопросы отфильтрованы - ошибка
     if (hasQuestionnaire && allQuestions.length === 0 && !isLoadingProgress && !isLoadingAnyQuestionnaire) {
-      console.log('📺 [useQuizComputed] viewMode: ERROR (questionnaire exists but no questions after filtering)', {
+      debugLog('📺 [useQuizComputed] viewMode: ERROR (questionnaire exists but no questions after filtering)', {
         hasQuestionnaire,
         allQuestionsLength: allQuestions.length,
         allQuestionsRawLength: allQuestionsRaw.length,
@@ -566,7 +574,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     // ИСПРАВЛЕНО: Проверяем, что pendingInfoScreen не null, чтобы не показывать INFO экран без данных
     const effectivePending = pendingInfoScreenRef?.current ?? pendingInfoScreen;
     if (effectivePending && effectivePending !== null) {
-      console.log('📺 [useQuizComputed] viewMode: PENDING_INFO (pending info screen)', {
+      debugLog('📺 [useQuizComputed] viewMode: PENDING_INFO (pending info screen)', {
         effectivePending,
         pendingInfoScreenRef: pendingInfoScreenRef?.current,
         pendingInfoScreen,
@@ -578,7 +586,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     // Приоритет 10: Вопросы
     // ИСПРАВЛЕНО: Не показываем ERROR если есть pendingInfoScreen, даже если currentQuestion null
     if (allQuestions.length > 0 && !effectivePending) {
-      console.log('📺 [useQuizComputed] viewMode: QUESTION (questions available)', {
+      debugLog('📺 [useQuizComputed] viewMode: QUESTION (questions available)', {
         allQuestionsLength: allQuestions.length,
         firstQuestionId: allQuestions[0]?.id,
         firstQuestionCode: allQuestions[0]?.code,
@@ -593,14 +601,14 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     // ИСПРАВЛЕНО: Не показываем ERROR если есть pendingInfoScreen - это нормальное состояние при переходе к инфо-экрану
     // ИСПРАВЛЕНО: Проверяем, что effectivePending не null
     if (effectivePending && effectivePending !== null) {
-      console.log('📺 [useQuizComputed] viewMode: PENDING_INFO (fallback check)', {
+      debugLog('📺 [useQuizComputed] viewMode: PENDING_INFO (fallback check)', {
         effectivePending,
         allQuestionsLength: allQuestions.length,
       });
       return 'PENDING_INFO';
     }
     
-    console.log('❌ [useQuizComputed] viewMode: ERROR (no questions, no screens, no progress)', {
+    debugLog('❌ [useQuizComputed] viewMode: ERROR (no questions, no screens, no progress)', {
       allQuestionsLength: allQuestions.length,
       allQuestionsRawLength: allQuestionsRaw.length,
       questionnaireExists: !!questionnaire,
@@ -687,7 +695,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
   // ФИКС: currentQuestion вычисляется ТОЛЬКО если viewMode === 'QUESTION'
   // Это убирает ситуацию "currentQuestion null → page думает, что вопрос не найден"
   const currentQuestion = useMemo(() => {
-    console.log('🔍 [useQuizComputed] currentQuestion: computing', {
+    debugLog('🔍 [useQuizComputed] currentQuestion: computing', {
       viewMode,
       currentQuestionIndex,
       allQuestionsLength: allQuestions.length,
@@ -698,7 +706,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
 
     // КРИТИЧНО: Вычисляем вопрос только если viewMode === 'QUESTION'
     if (viewMode !== 'QUESTION') {
-      console.log('⚠️ [useQuizComputed] currentQuestion: viewMode is not QUESTION, returning null', { viewMode });
+      debugLog('⚠️ [useQuizComputed] currentQuestion: viewMode is not QUESTION, returning null', { viewMode });
       return null;
     }
 
@@ -713,7 +721,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     const isValidIndex = currentQuestionIndex >= 0 && currentQuestionIndex < questionsToUse.length;
     const isOutOfBounds = currentQuestionIndex >= questionsToUse.length;
 
-    console.log('🔍 [useQuizComputed] currentQuestion: validation', {
+    debugLog('🔍 [useQuizComputed] currentQuestion: validation', {
       currentQuestionIndex,
       questionsToUseLength: questionsToUse.length,
       isValidIndex,
@@ -732,7 +740,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
         const hasAnsweredBudget = budgetQuestion && effectiveAnswers[budgetQuestion.id] !== undefined;
         
         if (hasAnsweredBudget && budgetQuestion) {
-          console.log('🔧 [useQuizComputed] currentQuestion: индекс выходит за границы, но есть ответ на budget, возвращаем budget', {
+          debugLog('🔧 [useQuizComputed] currentQuestion: индекс выходит за границы, но есть ответ на budget, возвращаем budget', {
             currentQuestionIndex,
             questionsToUseLength: questionsToUse.length,
             budgetQuestionId: budgetQuestion.id,
@@ -740,12 +748,12 @@ export function useQuizComputed(params: UseQuizComputedParams) {
           return budgetQuestion;
         }
         
-        console.log('✅ [useQuizComputed] currentQuestion: все вопросы пройдены, возвращаем null для финализации', {
+        debugLog('✅ [useQuizComputed] currentQuestion: все вопросы пройдены, возвращаем null для финализации', {
           currentQuestionIndex,
           questionsToUseLength: questionsToUse.length
         });
       } else {
-        console.log('❌ [useQuizComputed] currentQuestion: invalid index, попытаемся использовать ближайший валидный вопрос', {
+        debugLog('❌ [useQuizComputed] currentQuestion: invalid index, попытаемся использовать ближайший валидный вопрос', {
           currentQuestionIndex,
           questionsToUseLength: questionsToUse.length
         });
@@ -756,7 +764,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       if (questionsToUse.length > 0) {
         const clampedIndex = Math.max(0, Math.min(currentQuestionIndex, questionsToUse.length - 1));
         const fallbackQuestion = questionsToUse[clampedIndex];
-        console.log('🔧 [useQuizComputed] currentQuestion: используем fallback-вопрос по скорректированному индексу', {
+        debugLog('🔧 [useQuizComputed] currentQuestion: используем fallback-вопрос по скорректированному индексу', {
           clampedIndex,
           fallbackQuestionId: fallbackQuestion?.id,
           fallbackQuestionCode: fallbackQuestion?.code,
@@ -770,7 +778,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
 
     const question = questionsToUse[currentQuestionIndex];
 
-    console.log('🔍 [useQuizComputed] currentQuestion: got question', {
+    debugLog('🔍 [useQuizComputed] currentQuestion: got question', {
       questionId: question?.id,
       questionCode: question?.code,
       questionText: question?.text?.substring(0, 50)
@@ -778,7 +786,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
 
     // ФИКС: Проверка на undefined и валидность вопроса
     if (!question || !question.id) {
-      console.log('❌ [useQuizComputed] currentQuestion: question is invalid, returning null', {
+      debugLog('❌ [useQuizComputed] currentQuestion: question is invalid, returning null', {
         question,
         hasQuestion: !!question,
         hasId: question ? !!question.id : false
@@ -786,7 +794,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       return null;
     }
 
-    console.log('✅ [useQuizComputed] currentQuestion: returning valid question', {
+    debugLog('✅ [useQuizComputed] currentQuestion: returning valid question', {
       questionId: question.id,
       questionCode: question.code
     });

@@ -179,7 +179,9 @@ const formatMessage = (...args: any[]): string => {
 export const clientLogger = {
   log: (...args: any[]) => {
     const message = formatMessage(...args);
-    console.log(...args); // Всегда выводим в консоль
+    if (isDevelopment) {
+      console.log(...args);
+    }
     // ИСПРАВЛЕНО: В production отправляем только критичные логи (error, критичные warn)
   // В development отправляем больше, но все равно с троттлингом
     // Проверяем, является ли это критичным логом
@@ -276,7 +278,9 @@ export const clientLogger = {
   
   info: (...args: any[]) => {
     const message = formatMessage(...args);
-    console.info(...args);
+    if (isDevelopment) {
+      console.info(...args);
+    }
     // ИСПРАВЛЕНО: info логи отправляем только в development или только критичные в production
     try {
       const isCriticalInfo = 

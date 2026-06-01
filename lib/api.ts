@@ -6,6 +6,7 @@ import { shouldBlockApiRequest } from './route-utils';
 import { request as baseRequest } from './api/client';
 import { getCachedData, setCachedData } from './api/cache';
 import { getActiveRequest, setActiveRequest, removeActiveRequest, createRequestKey } from './api/dedup';
+import { invalidatePlanWarmCache } from './plan-warm-cache';
 import type { 
   UserProfileResponse, 
   ProfileResponse, 
@@ -394,16 +395,20 @@ export const api = {
   },
 
   async addToWishlist(productId: number) {
-    return request('/wishlist', {
+    const result = await request('/wishlist', {
       method: 'POST',
       body: JSON.stringify({ productId }),
     });
+    invalidatePlanWarmCache();
+    return result;
   },
 
   async removeFromWishlist(productId: number) {
-    return request(`/wishlist?productId=${productId}`, {
+    const result = await request(`/wishlist?productId=${productId}`, {
       method: 'DELETE',
     });
+    invalidatePlanWarmCache();
+    return result;
   },
 
   async submitWishlistFeedback(productId: number, feedback: string) {
@@ -460,10 +465,12 @@ export const api = {
   },
 
   async replaceProductInPlan(oldProductId: number, newProductId: number) {
-    return request('/plan/replace-product', {
+    const result = await request('/plan/replace-product', {
       method: 'POST',
       body: JSON.stringify({ oldProductId, newProductId }),
     });
+    invalidatePlanWarmCache();
+    return result;
   },
 
   // Корзина
@@ -482,16 +489,20 @@ export const api = {
   },
 
   async addToCart(productId: number, quantity: number = 1) {
-    return request('/cart', {
+    const result = await request('/cart', {
       method: 'POST',
       body: JSON.stringify({ productId, quantity }),
     });
+    invalidatePlanWarmCache();
+    return result;
   },
 
   async removeFromCart(productId: number) {
-    return request(`/cart?productId=${productId}`, {
+    const result = await request(`/cart?productId=${productId}`, {
       method: 'DELETE',
     });
+    invalidatePlanWarmCache();
+    return result;
   },
 
   // Анкета (используем существующие методы)

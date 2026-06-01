@@ -20,6 +20,35 @@ interface AnswerInput {
   answerValues?: string[];
 }
 
+const SUBMISSION_PROCESSING_LEASE_MS = 2 * 60 * 1000;
+
+function isUniqueConstraintError(error: any): boolean {
+  return error?.code === 'P2002';
+}
+
+function submissionProcessingResponse() {
+  return ApiResponse.success({
+    success: false,
+    status: 'processing',
+    retryAfterMs: 1000,
+  }, 202);
+}
+
+function serializeProfile(profile: any) {
+  return {
+    id: profile.id,
+    version: profile.version,
+    skinType: profile.skinType,
+    sensitivityLevel: profile.sensitivityLevel,
+    acneLevel: profile.acneLevel,
+    dehydrationLevel: profile.dehydrationLevel,
+    rosaceaRisk: profile.rosaceaRisk,
+    pigmentationRisk: profile.pigmentationRisk,
+    ageGroup: profile.ageGroup,
+    notes: profile.notes,
+  };
+}
+
 // ИСПРАВЛЕНО: Добавлен GET метод для получения ответов пользователя
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -79,6 +108,10 @@ export async function POST(request: NextRequest) {
   const method = 'POST';
   const path = '/api/questionnaire/answers';
   let userId: string | undefined;
+  // ФИКС код-ревью #2: помним, забрали ли мы строку QuestionnaireSubmission под собственное
+  // владение (status='processing'). Если потом упадём — нужно пометить её 'failed', чтобы
+  // повторный сабмит мог пройти, а не висеть «in progress» вечно.
+  let claimedSubmissionKey: { questionnaireId: number; clientSubmissionId: string } | null = null;
 
   try {
     // ИСПРАВЛЕНО: Логирование только при включенном DEBUG флаге
@@ -191,21 +224,54 @@ export async function POST(request: NextRequest) {
       return ApiResponse.badRequest('No valid answers for this questionnaire');
     }
 
-    // Идемпотентность: если клиент прислал clientSubmissionId и мы уже обрабатывали этот сабмит,
-    // сразу возвращаем существующий результат без повторной тяжелой работы.
+    const questionnaireSubmission = (prisma as any).questionnaireSubmission;
+
+    const completeClaim = async (profile: any): Promise<void> => {
+      if (!clientSubmissionId || !claimedSubmissionKey) return;
+
+      const completed = await questionnaireSubmission.updateMany({
+        where: {
+          userId,
+          questionnaireId,
+          clientSubmissionId,
+          status: 'processing',
+        },
+        data: {
+          profileId: profile.id,
+          profileVersion: profile.version,
+          status: 'completed',
+          errorMessage: null,
+        },
+      });
+
+      if (completed.count !== 1) {
+        throw new Error('Questionnaire submission claim was lost before completion');
+      }
+
+      claimedSubmissionKey = null;
+    };
+
+    // Захватываем singleton-строку submission ДО тяжёлой работы. В схеме есть
+    // @@unique([userId, questionnaireId]), поэтому compare-and-set ниже не даёт
+    // двум ретраям одновременно создавать новую версию профиля.
     if (clientSubmissionId) {
       try {
-        const existingSubmission = await (prisma as any).questionnaireSubmission.findUnique({
+        const now = new Date();
+        const staleBefore = new Date(now.getTime() - SUBMISSION_PROCESSING_LEASE_MS);
+        let existingSubmission = await questionnaireSubmission.findUnique({
           where: {
-            userId_questionnaireId_clientSubmissionId: {
+            userId_questionnaireId: {
               userId,
               questionnaireId,
-              clientSubmissionId,
             },
           },
         });
 
-        if (existingSubmission && existingSubmission.profileId && existingSubmission.profileVersion !== null) {
+        if (
+          existingSubmission?.clientSubmissionId === clientSubmissionId &&
+          existingSubmission.status === 'completed' &&
+          existingSubmission.profileId
+        ) {
           logger.info('Idempotent questionnaire submission detected, returning existing profile', {
             userId,
             questionnaireId,
@@ -224,30 +290,90 @@ export async function POST(request: NextRequest) {
 
             return ApiResponse.success({
               success: true,
-              profile: {
-                id: existingProfile.id,
-                version: existingProfile.version,
-                skinType: existingProfile.skinType,
-                sensitivityLevel: existingProfile.sensitivityLevel,
-                acneLevel: existingProfile.acneLevel,
-                dehydrationLevel: existingProfile.dehydrationLevel,
-                rosaceaRisk: existingProfile.rosaceaRisk,
-                pigmentationRisk: existingProfile.pigmentationRisk,
-                ageGroup: existingProfile.ageGroup,
-                notes: existingProfile.notes,
-              },
+              profile: serializeProfile(existingProfile),
               answersCount: undefined,
               isDuplicate: true,
             });
           }
         }
+
+        if (!existingSubmission) {
+          try {
+            await questionnaireSubmission.create({
+              data: {
+                userId,
+                questionnaireId,
+                clientSubmissionId,
+                status: 'processing',
+                createdAt: now,
+              },
+            });
+            claimedSubmissionKey = { questionnaireId, clientSubmissionId };
+          } catch (claimCreateError: any) {
+            if (!isUniqueConstraintError(claimCreateError)) throw claimCreateError;
+            existingSubmission = await questionnaireSubmission.findUnique({
+              where: {
+                userId_questionnaireId: {
+                  userId,
+                  questionnaireId,
+                },
+              },
+            });
+          }
+        }
+
+        if (!claimedSubmissionKey && existingSubmission) {
+          const isFreshProcessing =
+            existingSubmission.status === 'processing' &&
+            new Date(existingSubmission.createdAt).getTime() >= staleBefore.getTime();
+
+          if (isFreshProcessing) {
+            logger.info('Questionnaire submission is already processing', {
+              userId,
+              questionnaireId,
+              clientSubmissionId,
+            });
+            return submissionProcessingResponse();
+          }
+
+          const claimed = await questionnaireSubmission.updateMany({
+            where: {
+              id: existingSubmission.id,
+              clientSubmissionId: existingSubmission.clientSubmissionId ?? null,
+              status: existingSubmission.status,
+              ...(existingSubmission.status === 'processing'
+                ? { createdAt: { lt: staleBefore } }
+                : {}),
+            },
+            data: {
+              clientSubmissionId,
+              profileId: null,
+              profileVersion: null,
+              status: 'processing',
+              errorMessage: null,
+              createdAt: now,
+            },
+          });
+
+          if (claimed.count !== 1) {
+            logger.info('Questionnaire submission was claimed by another request', {
+              userId,
+              questionnaireId,
+              clientSubmissionId,
+            });
+            return submissionProcessingResponse();
+          }
+
+          claimedSubmissionKey = { questionnaireId, clientSubmissionId };
+        }
       } catch (idempotencyCheckError) {
-        logger.warn('Failed to check questionnaire submission idempotency, continuing as new submission', {
+        logger.error('Failed to claim questionnaire submission idempotency key', idempotencyCheckError, {
           userId,
           questionnaireId,
           clientSubmissionId,
           error: (idempotencyCheckError as any)?.message,
         });
+        return ApiResponse.error('Не удалось безопасно начать обработку анкеты. Попробуйте ещё раз.', 503);
       }
     }
 
@@ -286,6 +412,8 @@ export async function POST(request: NextRequest) {
           lastSubmissionId: recentSubmission.id,
           profileId: existingProfileBeforeTransaction.id,
         });
+
+        await completeClaim(existingProfileBeforeTransaction);
         
         // Возвращаем успешный ответ, чтобы избежать ошибки 301 и повторной обработки
         return ApiResponse.success({
@@ -1158,33 +1286,10 @@ export async function POST(request: NextRequest) {
           profileVersion: profile.version,
     });
 
-    // ВАЖНО: Если clientSubmissionId передан, фиксируем успешный сабмит в QuestionnaireSubmission,
-    // чтобы повторные запросы с тем же ключом отдавали уже созданный профиль.
+    // Фиксируем успешный claim, чтобы повторные запросы с тем же ключом отдавали профиль.
     if (clientSubmissionId) {
       try {
-        await (prisma as any).questionnaireSubmission.upsert({
-              where: {
-            userId_questionnaireId_clientSubmissionId: {
-                userId, 
-              questionnaireId,
-              clientSubmissionId,
-            },
-          },
-          update: {
-            profileId: profile.id,
-            profileVersion: profile.version,
-            status: 'completed',
-            errorMessage: null,
-          },
-          create: {
-            userId,
-            questionnaireId,
-            clientSubmissionId,
-            profileId: profile.id,
-            profileVersion: profile.version,
-            status: 'completed',
-          },
-        });
+        await completeClaim(profile);
         logger.info('QuestionnaireSubmission stored for idempotency', {
           userId,
           questionnaireId,
@@ -1193,12 +1298,13 @@ export async function POST(request: NextRequest) {
           profileVersion: profile.version,
         });
       } catch (submissionError: any) {
-        logger.warn('Failed to store QuestionnaireSubmission (idempotency)', {
-        userId,
-        questionnaireId,
+        logger.error('Failed to complete QuestionnaireSubmission (idempotency)', submissionError, {
+          userId,
+          questionnaireId,
           clientSubmissionId,
           error: submissionError?.message,
         });
+        throw submissionError;
       }
     }
 
@@ -1287,6 +1393,30 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: unknown) {
     const duration = Date.now() - startTime;
+
+    if (claimedSubmissionKey && userId) {
+      try {
+        await (prisma as any).questionnaireSubmission.updateMany({
+          where: {
+            userId,
+            questionnaireId: claimedSubmissionKey.questionnaireId,
+            clientSubmissionId: claimedSubmissionKey.clientSubmissionId,
+            status: 'processing',
+          },
+          data: {
+            status: 'failed',
+            errorMessage: String((error as any)?.message || error).slice(0, 500),
+          },
+        });
+      } catch (claimError: any) {
+        logger.error('Failed to mark QuestionnaireSubmission as failed', claimError, {
+          userId,
+          questionnaireId: claimedSubmissionKey.questionnaireId,
+          clientSubmissionId: claimedSubmissionKey.clientSubmissionId,
+        });
+      }
+    }
+
     logApiError(method, path, error, userId || undefined);
     
     return ApiResponse.internalError(error, { userId: userId || undefined, method, path, duration });

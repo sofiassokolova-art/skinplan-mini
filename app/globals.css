@@ -494,6 +494,123 @@ html, body {
   --color-success: #10B981;
   --color-warning: #F59E0B;
   --color-error: #EF4444;
+
+  /* ─────────────────────────────────────────────────────────────────────
+     Редизайн-палитра (чёрно-лайм-беж). Единый источник правды для
+     home / plan v2 / quiz screens. Литеральные значения в этих
+     поверхностях должны быть заменены на эти токены.
+     ───────────────────────────────────────────────────────────────────── */
+  --ink: #0A0A0A;                       /* основной чёрный (текст, dark surface) */
+  --ink-soft: #6B7280;                  /* приглушённый серый (caption / sub) */
+  --ink-mute: #9CA3AF;                  /* ещё более тихий (divider / max) */
+  --canvas: #F4F2EE;                    /* бежевый фон приложения */
+  --canvas-white: #FFFFFF;
+  --accent: #D5FE61;                    /* лаймовый акцент (current, badges) */
+  --ink-rgb: 10, 10, 10;
+  --canvas-white-rgb: 255, 255, 255;
+  --accent-rgb: 213, 254, 97;
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-bg-strong: rgba(255, 255, 255, 0.62);
+  --glass-border: rgba(255, 255, 255, 0.70);
+  --glass-dark-bg: rgba(10, 10, 10, 0.12);
+  --glass-dark-border: rgba(255, 255, 255, 0.15);
+  --glass-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+  --glass-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.06);
+  --blur: blur(24px) saturate(160%);
+  --blur-lg: blur(28px) saturate(160%);
+
+  --radius-card-sm: 22px;
+  --radius-card-md: 24px;
+  --radius-card-lg: 28px;
+
+  /* Единый clearance для нижнего pill-навбара. Все fullscreen-fallback
+     (error / empty / loader) должны держать минимум столько padding-bottom. */
+  --bottom-nav-clearance: 120px;
+}
+
+/* ───── Унифицированные glass-карточки ─────────────────────────────────
+   Один рецепт, три размера. Заменяет inline-стили в home/page.tsx,
+   plan-page-v2.tsx и quiz-экранах. */
+.glass-card-sm,
+.glass-card-md,
+.glass-card-lg {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+.glass-card-sm { border-radius: var(--radius-card-sm); padding: 14px; }
+.glass-card-md { border-radius: var(--radius-card-md); padding: 18px; }
+.glass-card-lg {
+  border-radius: var(--radius-card-lg);
+  padding: 22px;
+  box-shadow: var(--glass-shadow-lg);
+  -webkit-backdrop-filter: var(--blur-lg);
+  backdrop-filter: var(--blur-lg);
+}
+.glass-card-dark {
+  background: var(--glass-dark-bg);
+  border-color: var(--glass-dark-border);
+  color: var(--canvas-white);
+}
+
+/* Утилитарный clearance под нижний навбар. Применять на любых fullscreen-
+   контейнерах, особенно на error/empty/loader-фолбэках. */
+.app-bottom-nav-clearance {
+  padding-bottom: var(--bottom-nav-clearance);
+  box-sizing: border-box;
+}
+
+/* Phone-frame на широких вьюпортах: ≥640px центрируем мини-апп в макс.
+   ширине 420px и кладём нейтральный фон снаружи. Mobile (< 640px) —
+   no-op, поведение не меняется. */
+@media (min-width: 640px) {
+  body.has-phone-frame {
+    background-color: #1A1A1A !important;
+  }
+  body.has-phone-frame > #__next {
+    margin-inline: auto;
+    max-width: 420px;
+    min-height: 100vh;
+    background-color: var(--canvas);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+    position: relative;
+    overflow: hidden;
+  }
+  /* WelcomeScreen и HowItWorksScreen используют position:fixed на весь
+     вьюпорт. На phone-frame ограничиваем рамкой 420px. */
+  body.has-phone-frame .qz-phone-frame-fixed {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  body.has-phone-frame .qz-fixed-cta {
+    left: 50% !important;
+    right: auto !important;
+    width: min(420px, 100vw) !important;
+    transform: translateX(-50%);
+  }
+  body.has-phone-frame .qz-back-fixed {
+    left: calc(50% - 210px) !important;
+  }
+}
+
+/* Уважение OS-настройки prefers-reduced-motion. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-fade-in-soft,
+  .animate-rise-in-centered,
+  .animate-pulse-subtle,
+  .page-transition-enter {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+  *, *::before, *::after {
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Текстовые стили */
@@ -505,32 +622,45 @@ html, body {
   color: var(--color-text-muted);
 }
 
-/* Кнопки */
+/* Кнопки — единый чёрный pill-стиль бренда.
+   Раньше .btn-primary был бирюзовым (#0A5F59), что не вязалось с
+   редизайном (черно-лайм-беж). Теперь это тот же ink-pill, что
+   используется в home/error-фолбэках и квиз-вопросах. */
 .btn-primary {
-  background-color: var(--color-primary);
-  color: white;
-  padding: 12px 24px;
-  border-radius: 12px;
-  font-weight: 600;
-  transition: all 0.2s ease;
+  background-color: var(--ink);
+  color: var(--canvas-white);
+  padding: 14px 28px;
+  border-radius: 999px;
+  border: 1px solid var(--ink);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
 }
 
 .btn-primary:hover {
-  background-color: var(--color-primary-dark);
-  box-shadow: var(--shadow-button);
+  box-shadow: 0 8px 22px rgba(10, 10, 10, 0.22);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: translateY(0) scale(0.99);
 }
 
 .btn-secondary {
-  background-color: var(--color-primary-light);
-  color: var(--color-primary);
-  padding: 12px 24px;
-  border-radius: 12px;
+  background-color: transparent;
+  color: var(--ink);
+  padding: 14px 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(10, 10, 10, 0.18);
   font-weight: 600;
-  transition: all 0.2s ease;
+  font-size: 15px;
+  transition: all 0.16s ease;
 }
 
 .btn-secondary:hover {
-  background-color: #D1F7F0;
+  background-color: rgba(10, 10, 10, 0.04);
+  border-color: rgba(10, 10, 10, 0.28);
 }
 
 /* Карточки */

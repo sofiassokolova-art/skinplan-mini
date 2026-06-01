@@ -15,6 +15,11 @@ import type { GeneratedPlan, ProfileResponse } from '@/lib/api-types';
 import { clientLogger } from '@/lib/client-logger';
 import { PLAN_TIMEOUTS } from '@/lib/config/timeouts';
 import { safeSessionStorageRemove } from '@/lib/storage-utils';
+import {
+  invalidatePlanWarmCache,
+  readPlanWarmCache,
+  writePlanWarmCache,
+} from '@/lib/plan-warm-cache';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AppLoader } from '@/components/AppLoader';
 
@@ -82,20 +87,6 @@ interface PlanData {
   scores?: unknown[]; // РЕФАКТОРИНГ: any[] -> unknown[]
 }
 
-// ФИКС #12: модульный «тёплый» кэш плана (stale-while-revalidate).
-// Если пользователь уже открывал /plan в течение TTL, при возврате с главной
-// данные берутся из кэша мгновенно, без общего AppLoader и сетевого loadPlan.
-const PLAN_WARM_TTL_MS = 60_000;
-let planWarmCache: { data: PlanData; ts: number } | null = null;
-function readWarmPlanCache(): PlanData | null {
-  if (!planWarmCache) return null;
-  if (Date.now() - planWarmCache.ts > PLAN_WARM_TTL_MS) return null;
-  return planWarmCache.data;
-}
-function writeWarmPlanCache(data: PlanData): void {
-  planWarmCache = { data, ts: Date.now() };
-}
-
 const PlanLoadingView = ({ message }: { message: string }) => (
   <AppLoader fullScreen variant="light" message={message} />
 );
@@ -104,9 +95,12 @@ export default function PlanPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isDev = process.env.NODE_ENV === 'development';
-  // ФИКС #12: снимок тёплого кэша на момент маунта (см. модульный planWarmCache).
-  // Если есть свежий кэш — пропускаем общий лоадер и рендерим данные сразу.
-  const initialWarmPlan = typeof window !== 'undefined' ? readWarmPlanCache() : null;
+  // Кэш скоупится Telegram-пользователем. Он нужен только для мгновенного
+  // первого кадра: ниже useEffect всё равно запускает фоновый loadPlan.
+  const initialWarmCache = typeof window !== 'undefined'
+    ? readPlanWarmCache<PlanData>()
+    : null;
+  const initialWarmPlan = initialWarmCache?.data ?? null;
   const [loading, setLoading] = useState(initialWarmPlan === null);
   const [error, setError] = useState<string | null>(null);
   const [planData, setPlanData] = useState<PlanData | null>(initialWarmPlan);
@@ -885,6 +879,7 @@ export default function PlanPage() {
     
     if (state === 'generating') {
       clientLogger.log('✅ State=generating detected, starting polling');
+      invalidatePlanWarmCache();
       pollPlanStatusStartTimeRef.current = Date.now(); // Сбрасываем таймер при старте polling
       setGeneratingState('generating');
       generatingStateRef.current = 'generating'; // ИСПРАВЛЕНО: Синхронизируем ref сразу
@@ -934,21 +929,18 @@ export default function PlanPage() {
           sessionStorage.removeItem('profile_check_cache_timestamp');
           clientLogger.log('✅ Кэш профиля очищен при загрузке страницы плана');
         } catch (cacheError) {
-          clientLogger.warn('⚠️ Не удалось загрузить кэш профиля при загрузке:', cacheError);
+          clientLogger.warn('⚠️ Не удалось очистить кэш профиля при загрузке:', cacheError);
         }
       }
 
-      // ФИКС #12: если на маунте есть свежий тёплый кэш плана — пропускаем
-      // полный loadPlan, общий лоадер не показывается, контент уже отрендерен
-      // из initialWarmPlan через useState. Следующий заход за пределами TTL
-      // нормально перезагрузит план.
+      // Тёплый кэш скрывает общий лоадер, но не отменяет сетевую проверку.
+      // Это важно после retake и мутаций плана.
       if (initialWarmPlan !== null) {
-        clientLogger.log('✅ Тёплый кэш плана на маунте — loadPlan пропущен', {
-          ageMs: Date.now() - (planWarmCache?.ts ?? Date.now()),
+        clientLogger.log('✅ Тёплый кэш плана на маунте — обновляем в фоне', {
+          ageMs: Date.now() - (initialWarmCache?.ts ?? Date.now()),
         });
-      } else {
-        loadPlan();
       }
+      loadPlan();
     }
     
     return () => {
@@ -968,7 +960,6 @@ export default function PlanPage() {
         pollingIntervalRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ИСПРАВЛЕНО: Если нет профиля, сразу редиректим на /quiz вместо показа экрана ошибки
@@ -1437,9 +1428,9 @@ export default function PlanPage() {
         todayEvening,
         planExpired, // Сохраняем флаг истечения плана
       };
-      // ФИКС #12: пишем тёплый кэш плана — следующие заходы на /plan в пределах
-      // TTL отрендерятся мгновенно без общего лоадера (см. readWarmPlanCache).
-      writeWarmPlanCache(nextPlanData);
+      // Следующий заход на /plan сможет отрисовать первый кадр мгновенно,
+      // но всё равно перепроверит данные на сервере.
+      writePlanWarmCache(nextPlanData, nextPlanData.profile?.id);
       safeSetPlanData(nextPlanData);
 
       safeSetLoading(false);

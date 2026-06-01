@@ -126,10 +126,11 @@ function LayoutContent({
   // На страницах анкеты блокируем скролл body и скроллим только контент анкеты
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (!isOnQuizPage) return;
-
     const html = document.documentElement;
     const body = document.body;
+    body.classList.toggle('has-phone-frame', isOnQuizPage);
+
+    if (!isOnQuizPage) return;
 
     const prevHtmlOverflow = html.style.overflow;
     const prevBodyOverflow = body.style.overflow;
@@ -142,6 +143,7 @@ function LayoutContent({
     body.style.height = '100%';
 
     return () => {
+      body.classList.remove('has-phone-frame');
       html.style.overflow = prevHtmlOverflow;
       body.style.overflow = prevBodyOverflow;
       html.style.height = prevHtmlHeight;
