@@ -137,7 +137,7 @@ function RecognizeYourselfScreenComponent({
         }}
       >
         <div
-          className="animate-rise-in-centered"
+          className="animate-rise-in"
           style={{
             width: '100%',
             backgroundColor: 'rgba(0, 0, 0, 0.32)',
