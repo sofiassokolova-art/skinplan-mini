@@ -1504,6 +1504,40 @@ export default function PlanPage() {
     });
   }
 
+  // Экран «Обновить» для ErrorBoundary и повторной загрузки. Объявлен здесь,
+  // чтобы был доступен и при loading-ветке ниже (раньше был после неё, что
+  // вызывало TDZ при попытке использовать в раннем return loading-ветки).
+  const planErrorFallback = (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '100vh',
+      padding: '20px',
+      background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+    }}>
+      <p style={{ fontSize: '18px', color: '#D32F2F', marginBottom: '20px', textAlign: 'center' }}>
+        Не удалось загрузить план. Пожалуйста, попробуйте обновить страницу.
+      </p>
+      <button
+        onClick={() => { setError(null); setLoading(true); loadPlan(0); }}
+        style={{
+          padding: '12px 24px',
+          background: '#0A5F59',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          fontSize: '16px',
+          fontWeight: 600,
+          cursor: 'pointer',
+        }}
+      >
+        Обновить
+      </button>
+    </div>
+  );
+
   // Если загрузка, показываем лоадер
   if (loading || !planData) {
     // Показываем лоадер генерации, если план генерируется
@@ -1511,7 +1545,23 @@ export default function PlanPage() {
       return <PlanLoadingView message="Генерируем ваш план..." />;
     }
 
-    // Обычный лоадер
+    // ФИКС «двойного лоадера»: при обычной загрузке плана сразу рендерим V2,
+    // у которого свой скелетон. Раньше пользователь видел подряд два визуала:
+    // полноэкранный «Загружаем план...» (этот компонент) и затем shimmer-скелетон
+    // внутри PlanPageV2. Теперь — один непрерывный скелетон, который сам
+    // превращается в контент. PlanPageV2 в режиме loading рендерит PlanV2Skeleton.
+    const usePlanV2 = process.env.NEXT_PUBLIC_PLAN_V2 !== 'false';
+    if (usePlanV2) {
+      return (
+        <ErrorBoundary fallback={planErrorFallback}>
+          <Suspense fallback={<PlanLoadingView message="Загружаем план..." />}>
+            <PlanPageV2 />
+          </Suspense>
+        </ErrorBoundary>
+      );
+    }
+
+    // Legacy: для не-V2 fallback оставляем прежний лоадер
     return <PlanLoadingView message="Загружаем план..." />;
   }
 
@@ -1557,38 +1607,6 @@ export default function PlanPage() {
       </div>
     );
   }
-
-  // Экран «Обновить» для ErrorBoundary и повторной загрузки
-  const planErrorFallback = (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '100vh',
-      padding: '20px',
-      background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-    }}>
-      <p style={{ fontSize: '18px', color: '#D32F2F', marginBottom: '20px', textAlign: 'center' }}>
-        Не удалось загрузить план. Пожалуйста, попробуйте обновить страницу.
-      </p>
-      <button
-        onClick={() => { setError(null); setLoading(true); loadPlan(0); }}
-        style={{
-          padding: '12px 24px',
-          background: '#0A5F59',
-          color: 'white',
-          border: 'none',
-          borderRadius: '8px',
-          fontSize: '16px',
-          fontWeight: 600,
-          cursor: 'pointer',
-        }}
-      >
-        Обновить
-      </button>
-    </div>
-  );
 
   // Рендерим план
   // V2: новый компонент сам подгружает /api/plan/page-context и
