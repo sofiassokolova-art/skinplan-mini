@@ -601,6 +601,7 @@ html, body {
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in,
   .animate-fade-in-soft,
+  .animate-rise-in,
   .animate-rise-in-centered,
   .animate-pulse-subtle,
   .page-transition-enter {
@@ -730,6 +731,20 @@ html, body {
 
 .animate-rise-in-centered {
   animation: riseInCentered 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Для нижних панелей без translate-центрирования: не сдвигаем их по X. */
+@keyframes riseIn {
+  from {
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-rise-in {
+  animation: riseIn 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Анимация пульсации для загрузки */

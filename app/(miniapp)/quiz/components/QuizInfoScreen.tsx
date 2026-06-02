@@ -161,7 +161,6 @@ function StepScreenAutoAdvance({
     if (calledRef.current || isHandlingNext) return;
     calledRef.current = true;
     handleNext();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return null;
 }
@@ -892,7 +891,13 @@ export function QuizInfoScreen({
             }}>
               {screen.title}
             </h1>
-            <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: '96px' }}>
+            <div style={{
+              marginTop: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              paddingBottom: 'calc(clamp(24px, 5vh, 60px) + 72px)',
+            }}>
               {cards.map((card, i) => (
                 <div key={i} style={{
                   background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(24px)',

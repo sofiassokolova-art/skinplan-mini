@@ -10,6 +10,7 @@ import { useState, useCallback, useRef, useEffect, useMemo, memo } from 'react';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
 import { FixedContinueButton } from '@/components/quiz/buttons';
 import type { Question } from '@/lib/quiz/types';
+import { GOAL_IMAGE_URLS } from '../image-assets';
 
 interface QuizQuestionProps {
   question: Question;
@@ -145,6 +146,8 @@ const LimeOptionCard = memo(function LimeOptionCard({
           }}
           sizes={isSkinType ? '(max-width: 768px) 100vw, 640px' : '(max-width: 768px) 100vw, 420px'}
           priority={isSkinType}
+          loading={isGoalsQuestion ? 'eager' : undefined}
+          fetchPriority={isGoalsQuestion && index < 2 ? 'high' : undefined}
         />
       </div>
       <div
@@ -746,15 +749,7 @@ export const QuizQuestion = memo(function QuizQuestion({
       let imageUrl = '/tone6.webp';
 
       if (isGoalsQuestion) {
-        const goalImages: Record<number, string> = {
-          0: '/wrinkles6.webp',
-          1: '/acne6.webp',
-          2: '/pores6.webp',
-          3: '/puff6.webp',
-          4: '/pigmentation6.webp',
-          5: '/tone6.webp',
-        };
-        imageUrl = goalImages[index] || '/tone6.webp';
+        imageUrl = GOAL_IMAGE_URLS[index] || '/tone6.webp';
       } else if (isSkinTypeQuestion) {
         // Порядок строго соответствует options в seed-questionnaire-v2:
         // 0: Тип 1 — Сухая
@@ -1137,16 +1132,7 @@ export const QuizQuestion = memo(function QuizQuestion({
               const currentAnswers = ((answers[question.id] as string[]) || []);
               const isSelected = currentAnswers.includes(option.value);
 
-              const goalImages: Record<number, string> = {
-                0: '/wrinkles6.webp',
-                1: '/acne6.webp',
-                2: '/pores6.webp',
-                3: '/puff6.webp',
-                4: '/pigmentation6.webp',
-                5: '/tone6.webp',
-              };
-
-              const imageUrl = goalImages[index] || '/tone6.webp';
+              const imageUrl = GOAL_IMAGE_URLS[index] || '/tone6.webp';
 
               return (
                 <LimeOptionCard

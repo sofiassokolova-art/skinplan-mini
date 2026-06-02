@@ -28,6 +28,7 @@ import type { Question } from '@/lib/quiz/types';
 import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
 import { getInitialInfoScreens, getInfoScreenAfterQuestion } from '@/app/(miniapp)/quiz/info-screens';
 import { useQuizHandlers } from '../hooks/useQuizHandlers';
+import { GOAL_IMAGE_URLS } from '../image-assets';
 type Screen = 'LOADER' | 'ERROR' | 'RETAKE' | 'RESUME' | 'INFO' | 'INITIAL_INFO' | 'QUESTION';
 
 /** Откладывает рендер QuizResumeScreen до после монтирования — один и тот же вывод на сервере и при первом клиентском рендере (loader), устраняет hydration mismatch. */
@@ -74,15 +75,23 @@ interface QuizRendererProps {
   dataError?: Error | null; // Информация об ошибке для отображения в ERROR экране
 }
 
-// Preload критических ресурсов при загрузке компонента
+// Preload критических ресурсов при загрузке компонента.
 // Шрифт Inter уже подключается через next/font в layout (inter-regular, inter-semibold, inter-bold).
 // Файла inter-var.woff2 в public/fonts нет — не прелоадим, чтобы не было 404.
-const preloadCriticalResources = () => {};
+const preloadCriticalResources = () => {
+  if (typeof window === 'undefined') return;
+
+  // Экран целей открывается сразу после стартовых экранов. Прогреваем его
+  // небольшие WebP заранее, чтобы карточки не появлялись по очереди.
+  GOAL_IMAGE_URLS.forEach((src) => {
+    const image = new window.Image();
+    image.src = src;
+  });
+};
 
 const isDevEnv = process.env.NODE_ENV === 'development';
 const devLog = (...args: any[]) => {
   if (isDevEnv) {
-    // eslint-disable-next-line no-console
     console.log(...args);
   }
 };

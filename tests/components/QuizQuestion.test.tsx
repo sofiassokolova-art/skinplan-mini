@@ -73,6 +73,40 @@ describe('QuizQuestion', () => {
     expect(screen.getByText('Комбинированная')).toBeInTheDocument();
   });
 
+  it('должен загружать картинки целей сразу, включая карточки ниже первого экрана', () => {
+    const goalsQuestion: Question = {
+      ...mockQuestion,
+      code: 'skin_goals',
+      type: 'multi_choice',
+      text: 'На чём вы хотите сфокусироваться?',
+      options: [
+        { id: 1, label: 'Сократить морщины', value: 'wrinkles' },
+        { id: 2, label: 'Избавиться от акне', value: 'acne' },
+        { id: 3, label: 'Сделать поры менее заметными', value: 'pores' },
+      ],
+    };
+
+    render(
+      <QuizQuestion
+        question={goalsQuestion}
+        currentQuestionIndex={0}
+        allQuestionsLength={5}
+        answers={{}}
+        isRetakingQuiz={false}
+        isSubmitting={false}
+        {...mockHandlers}
+        showBackButton={false}
+      />
+    );
+
+    const images = screen.getAllByRole('img');
+    expect(images).toHaveLength(3);
+    images.forEach((image) => expect(image).toHaveAttribute('loading', 'eager'));
+    expect(images[0]).toHaveAttribute('fetchpriority', 'high');
+    expect(images[1]).toHaveAttribute('fetchpriority', 'high');
+    expect(images[2]).not.toHaveAttribute('fetchpriority');
+  });
+
   it('должен вызывать onAnswer при выборе опции', async () => {
     render(
       <QuizQuestion

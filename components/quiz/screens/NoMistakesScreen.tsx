@@ -1,10 +1,5 @@
 // components/quiz/screens/NoMistakesScreen.tsx
-// ФИКС #1: Редизайн экрана «Вы уже сделали главное» (id=no_mistakes) — sunk-cost
-// финальный мотивационный экран перед закрывающей tinder-последовательностью.
-// Стиль повторяет уже редизайненные экраны (PersonalAnalysisScreen / HowItWorks):
-// кремовый фон + лаймовые угловые акценты + стеклянная карточка с чек-листом.
-// Старый монолитный рендер этого экрана (в QuizInfoScreen.tsx) теперь не используется
-// для no_mistakes — мы возвращаем этот компонент по id.
+// Финальный продающий экран перед закрывающей последовательностью квиза.
 
 import React from 'react';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
@@ -19,19 +14,10 @@ export interface NoMistakesScreenProps {
   isHandlingNext?: boolean;
 }
 
-const DONE_LIST: Array<{ title: string; desc: string }> = [
-  {
-    title: 'Анкета пройдена',
-    desc: 'Тип кожи, чувствительность и активные проблемы зафиксированы',
-  },
-  {
-    title: 'Цели и предпочтения собраны',
-    desc: 'Учли формат ухода, шаги и бюджет',
-  },
-  {
-    title: 'Идёт подбор средств',
-    desc: 'Сейчас матчим продукты под ваш профиль и бюджет',
-  },
+const PLAN_BENEFITS = [
+  'Средства под ваш тип кожи',
+  'Учитываем цели и бюджет',
+  'Понятная схема ухода по шагам',
 ];
 
 function CheckIcon() {
@@ -48,6 +34,24 @@ function CheckIcon() {
       aria-hidden
     >
       <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+function SparkleIcon() {
+  return (
+    <svg
+      width="27"
+      height="27"
+      viewBox="0 0 28 28"
+      fill="none"
+      stroke="var(--ink)"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M14 2.5c1.6 7 4.5 9.9 11.5 11.5-7 1.6-9.9 4.5-11.5 11.5C12.4 18.5 9.5 15.6 2.5 14 9.5 12.4 12.4 9.5 14 2.5Z" />
     </svg>
   );
 }
@@ -81,10 +85,7 @@ function NoMistakesScreenComponent({
       <div
         style={{
           position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
+          inset: 0,
           width: '100%',
           height: '100vh',
           maxHeight: '100vh',
@@ -94,7 +95,6 @@ function NoMistakesScreenComponent({
           color: 'var(--ink)',
         }}
       >
-        {/* Кремовый фон (как в PersonalAnalysisScreen / simple_care / health_trust) */}
         <img
           src="/image%201576994977.webp"
           alt=""
@@ -108,9 +108,9 @@ function NoMistakesScreenComponent({
             objectPosition: 'center',
             zIndex: 0,
             pointerEvents: 'none',
+            opacity: 0.78,
           }}
         />
-        {/* Лаймовый угловой акцент */}
         <div
           aria-hidden
           style={{
@@ -119,8 +119,9 @@ function NoMistakesScreenComponent({
             zIndex: 1,
             pointerEvents: 'none',
             background: `
-              radial-gradient(50% 28% at 100% 0%, rgba(var(--accent-rgb),0.55) 0%, transparent 60%),
-              radial-gradient(40% 22% at 0% 100%, rgba(var(--accent-rgb),0.28) 0%, transparent 60%)
+              radial-gradient(58% 30% at 100% 0%, rgba(var(--accent-rgb),0.62) 0%, transparent 68%),
+              radial-gradient(50% 24% at 0% 100%, rgba(var(--accent-rgb),0.48) 0%, transparent 68%),
+              linear-gradient(180deg, rgba(255,251,241,0.28) 0%, rgba(255,251,241,0.1) 100%)
             `,
           }}
         />
@@ -134,147 +135,192 @@ function NoMistakesScreenComponent({
             height: '100%',
             maxWidth: '420px',
             margin: '0 auto',
-            padding: '80px 20px 110px',
+            padding:
+              'calc(clamp(20px, 4vh, 40px) + 54px) 20px calc(clamp(24px, 5vh, 60px) + 76px)',
             boxSizing: 'border-box',
-            display: 'flex',
-            flexDirection: 'column',
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
           }}
         >
-          {/* Header — берём из screen.title */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: 7,
+              marginBottom: 13,
+              fontSize: '11px',
+              fontWeight: 700,
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              color: 'var(--ink)',
+            }}
+          >
+            <span>Персональный анализ</span>
+            <span style={{ color: 'var(--accent)', fontSize: 16, lineHeight: 0.7 }}>•</span>
+            <span style={{ color: '#B7D914' }}>92%</span>
+          </div>
+
           <h1
             style={{
               fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 700,
-              fontSize: '26px',
-              lineHeight: '115%',
-              letterSpacing: '-0.5px',
-              textAlign: 'left',
-              margin: '0 0 18px 4px',
+              fontSize: 'clamp(24px, 7vw, 30px)',
+              lineHeight: 1.12,
+              letterSpacing: '-0.9px',
+              textAlign: 'center',
+              margin: '0 auto 13px',
               color: 'var(--ink)',
             }}
           >
             {screen.title}
           </h1>
 
-          {/* Hero — лаймовая «галочка успеха» + sunk-cost фраза */}
+          <p
+            style={{
+              margin: '0 auto 18px',
+              maxWidth: 355,
+              fontSize: 'clamp(13px, 3.7vw, 15px)',
+              lineHeight: 1.48,
+              textAlign: 'center',
+              color: 'rgba(var(--ink-rgb),0.78)',
+            }}
+          >
+            {screen.subtitle}
+          </p>
+
           <div
             style={{
-              position: 'relative',
-              background: 'var(--glass-bg)',
-              backdropFilter: 'blur(28px) saturate(160%)',
-              WebkitBackdropFilter: 'blur(28px) saturate(160%)',
-              border: '1px solid var(--glass-border)',
-              borderRadius: '24px',
-              padding: '22px 22px 20px',
-              marginBottom: '14px',
-              boxShadow: '0 10px 32px rgba(0,0,0,0.06)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 16,
+              background: 'rgba(255,255,255,0.52)',
+              backdropFilter: 'blur(24px) saturate(150%)',
+              WebkitBackdropFilter: 'blur(24px) saturate(150%)',
+              border: '1px solid rgba(255,255,255,0.78)',
+              borderRadius: 24,
+              padding: '17px 18px 9px',
+              boxShadow: '0 12px 34px rgba(49,42,28,0.09)',
+              marginBottom: 12,
             }}
           >
             <div
               style={{
-                width: 56,
-                height: 56,
-                flexShrink: 0,
+                width: 112,
+                height: 112,
+                margin: '0 auto 9px',
+                padding: 9,
+                boxSizing: 'border-box',
                 borderRadius: '50%',
-                background: 'var(--accent)',
-                border: '1px solid rgba(0,0,0,0.08)',
+                background: `conic-gradient(var(--accent) 0deg 331deg, rgba(255,255,255,0.56) 331deg 360deg)`,
+                boxShadow: '0 5px 18px rgba(var(--accent-rgb),0.24)',
+              }}
+            >
+              <div
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'rgba(255,252,244,0.92)',
+                  fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontSize: 31,
+                  fontWeight: 600,
+                  letterSpacing: '-2px',
+                }}
+              >
+                92<span style={{ fontSize: 18, letterSpacing: '-1px' }}>%</span>
+              </div>
+            </div>
+
+            <div
+              style={{
+                marginBottom: 14,
+                fontSize: 14,
+                fontWeight: 600,
+                textAlign: 'center',
+                color: 'var(--ink)',
+              }}
+            >
+              План формируется
+            </div>
+
+            <div style={{ height: 1, background: 'rgba(var(--ink-rgb),0.12)', marginBottom: 13 }} />
+
+            <h2
+              style={{
+                margin: '0 0 6px',
+                fontSize: 15,
+                fontWeight: 700,
+                color: 'var(--ink)',
+              }}
+            >
+              В вашем плане:
+            </h2>
+            {PLAN_BENEFITS.map((benefit) => (
+              <div
+                key={benefit}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  minHeight: 42,
+                  borderBottom: '1px solid rgba(var(--ink-rgb),0.1)',
+                }}
+              >
+                <div
+                  style={{
+                    width: 24,
+                    height: 24,
+                    flexShrink: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                    background: 'var(--accent)',
+                    boxShadow: '0 2px 7px rgba(var(--accent-rgb),0.38)',
+                  }}
+                >
+                  <CheckIcon />
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.35 }}>{benefit}</span>
+              </div>
+            ))}
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 14,
+              padding: '13px 16px',
+              borderRadius: 19,
+              border: '1px solid rgba(183,217,20,0.62)',
+              background: 'rgba(231,252,142,0.44)',
+              boxShadow: '0 8px 20px rgba(var(--accent-rgb),0.16)',
+            }}
+          >
+            <div
+              style={{
+                width: 42,
+                height: 42,
+                flexShrink: 0,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 6px 16px rgba(var(--accent-rgb),0.5)',
+                borderRadius: '50%',
+                border: '1px solid rgba(var(--ink-rgb),0.24)',
               }}
             >
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
+              <SparkleIcon />
             </div>
-            <p
-              style={{
-                fontSize: '14px',
-                fontWeight: 500,
-                lineHeight: 1.45,
-                color: '#1A1A1A',
-                margin: 0,
-                whiteSpace: 'pre-line',
-              }}
-            >
-              {screen.subtitle || 'Осталось буквально несколько секунд до вашего персонального плана ухода.'}
-            </p>
-          </div>
-
-          {/* Чек-лист «что уже сделано» */}
-          <div
-            style={{
-              background: 'var(--glass-bg)',
-              backdropFilter: 'blur(28px) saturate(160%)',
-              WebkitBackdropFilter: 'blur(28px) saturate(160%)',
-              border: '1px solid var(--glass-border)',
-              borderRadius: '24px',
-              padding: '20px 22px 22px',
-              boxShadow: '0 10px 32px rgba(0,0,0,0.06)',
-            }}
-          >
-            <h2
-              style={{
-                fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontWeight: 700,
-                fontSize: '16px',
-                lineHeight: 1.2,
-                letterSpacing: '-0.3px',
-                color: 'var(--ink)',
-                margin: '0 0 16px 0',
-              }}
-            >
-              Что уже сделано
-            </h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {DONE_LIST.map((item) => (
-                <div key={item.title} style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
-                  <div
-                    style={{
-                      width: '28px',
-                      height: '28px',
-                      borderRadius: '50%',
-                      background: 'var(--accent)',
-                      border: '1px solid rgba(0,0,0,0.08)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                      marginTop: '1px',
-                      boxShadow: '0 2px 6px rgba(var(--accent-rgb),0.4)',
-                    }}
-                  >
-                    <CheckIcon />
-                  </div>
-                  <div>
-                    <div
-                      style={{
-                        fontSize: '16px',
-                        fontWeight: 700,
-                        lineHeight: 1.25,
-                        letterSpacing: '-0.2px',
-                        color: 'var(--ink)',
-                        marginBottom: '3px',
-                      }}
-                    >
-                      {item.title}
-                    </div>
-                    <div style={{ fontSize: '13px', fontWeight: 500, lineHeight: 1.45, color: '#4B5563' }}>
-                      {item.desc}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <span style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.34 }}>
+              Только то, что действительно нужно вашей коже
+            </span>
           </div>
         </div>
 
         <FixedContinueButton
-          ctaText={screen.ctaText || 'Продолжить'}
+          ctaText={screen.ctaText || 'Завершить анализ'}
           onClick={onContinue}
           disabled={isHandlingNext}
         />

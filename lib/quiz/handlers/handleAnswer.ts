@@ -15,7 +15,6 @@ export interface HandleAnswerParams {
   allQuestions: Question[];
   questionnaire: Questionnaire | null;
   setAnswers: React.Dispatch<React.SetStateAction<Record<number, string | string[]>>>;
-  saveProgress: (answers: Record<number, string | string[]>, questionIndex: number, infoScreenIndex: number) => Promise<void>;
   currentQuestionIndex: number;
   currentInfoScreenIndex: number;
   saveQuizProgressMutation: {
@@ -46,7 +45,6 @@ export async function handleAnswer({
   allQuestions,
   questionnaire,
   setAnswers,
-  saveProgress,
   currentQuestionIndex,
   currentInfoScreenIndex,
   saveQuizProgressMutation,
@@ -214,9 +212,6 @@ export async function handleAnswer({
     });
   }
   
-  // ИСПРАВЛЕНО: Ответы сохраняются только на сервер через API, не в localStorage
-  await saveProgress(newAnswers, currentQuestionIndex, currentInfoScreenIndex);
-  
   // Пропускаем сохранение на сервер, если это дубликат
   if (isDuplicateServerSave) {
     if (process.env.NODE_ENV === 'development') {
@@ -248,8 +243,8 @@ export async function handleAnswer({
         return; // Не сохраняем, если questionId невалидный
       }
 
-      // ФИКС: Используем React Query мутацию для сохранения прогресса
-      // КРИТИЧНО: Логируем перед сохранением для диагностики
+      // Добавляем сохранение в последовательную фоновую очередь. UI и навигация
+      // не должны ждать сеть, а быстрые изменения одного вопроса схлопываются.
       clientLogger.log('💾 Сохранение ответа в БД', {
         questionnaireId: questionnaire.id,
         questionId: actualQuestionId,
@@ -268,9 +263,9 @@ export async function handleAnswer({
         questionIndex: currentQuestionIndex,
         infoScreenIndex: currentInfoScreenIndex,
       });
-      // Сохраняем информацию о последнем сохраненном ответе для дедупликации
+      // Сохраняем последнее поставленное в очередь значение для дедупликации.
       lastSavedAnswerRef.current = { questionId: actualQuestionId, answer: value };
-      clientLogger.log('✅ Successfully saved to server (React Query)', {
+      clientLogger.log('✅ Ответ поставлен в очередь фонового сохранения', {
         questionnaireId: questionnaire.id,
         questionId: actualQuestionId,
       });
@@ -456,4 +451,3 @@ export async function handleAnswer({
     }
   }
 }
-

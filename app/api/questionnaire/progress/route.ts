@@ -559,23 +559,18 @@ export async function POST(request: NextRequest) {
       questionnaireId = activeQuestionnaire.id;
     }
 
-    // КРИТИЧНО: Логируем перед сохранением в БД для диагностики
-    // ВАЖНО: Указываем saveToDb: true, чтобы логи сохранялись в PostgreSQL
-    logger.info('💾 Сохранение ответа в БД (Prisma upsert)', {
-      userId,
-      questionnaireId,
-      questionId: questionIdNum,
-      questionIdType: typeof questionIdNum,
-      hasAnswerValue: answerValue !== undefined && answerValue !== null,
-      hasAnswerValues: answerValues !== undefined && answerValues !== null,
-      answerValue: answerValue || null,
-      answerValues: answerValues || null,
-      questionIndex,
-      infoScreenIndex,
-    }, {
-      userId: userId || undefined,
-      saveToDb: true, // КРИТИЧНО: Сохраняем в БД для диагностики
-    });
+    if (process.env.NODE_ENV === 'development') {
+      logger.info('💾 Сохранение ответа в БД (Prisma upsert)', {
+        userId,
+        questionnaireId,
+        questionId: questionIdNum,
+        questionIdType: typeof questionIdNum,
+        hasAnswerValue: answerValue !== undefined && answerValue !== null,
+        hasAnswerValues: answerValues !== undefined && answerValues !== null,
+        questionIndex,
+        infoScreenIndex,
+      });
+    }
 
     // ИСПРАВЛЕНО: Используем upsert вместо delete + create для предотвращения race condition
     // Это устраняет ошибку "Unique constraint failed" при одновременных запросах
@@ -600,75 +595,65 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // КРИТИЧНО: Логируем после успешного сохранения
-    // ВАЖНО: Указываем saveToDb: true, чтобы логи сохранялись в PostgreSQL
-    logger.info('✅ Ответ успешно сохранен в БД', {
-      userId,
-      questionnaireId,
-      questionId: questionIdNum,
-      savedAnswerId: savedAnswer.id,
-      answerValue: savedAnswer.answerValue,
-      answerValues: savedAnswer.answerValues,
-    }, {
-      userId: userId || undefined,
-      saveToDb: true, // КРИТИЧНО: Сохраняем в БД для диагностики
-    });
+    if (process.env.NODE_ENV === 'development') {
+      logger.info('✅ Ответ успешно сохранен в БД', {
+        userId,
+        questionnaireId,
+        questionId: questionIdNum,
+        savedAnswerId: savedAnswer.id,
+        answerValue: savedAnswer.answerValue,
+        answerValues: savedAnswer.answerValues,
+      });
+    }
 
-    // ВОССТАНОВЛЕНО: Сохраняем прогресс в KV для новых пользователей (когда нет профиля)
-    // Это позволяет новым пользователям вернуться к анкете после выхода
-    const existingProfile = await prisma.skinProfile.findFirst({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-    });
+    // KV используется как дополнительный кеш восстановления. Пишем его без
+    // отдельного чтения skinProfile: завершенные анкеты игнорируют этот кеш.
+    const redis = getRedis();
+    const kvProgressKey = `questionnaire:progress:${userId}:${questionnaireId}`;
     
-    if (!existingProfile) {
-      const redis = getRedis();
-      const kvProgressKey = `questionnaire:progress:${userId}:${questionnaireId}`;
-      
-      if (redis) {
+    if (redis) {
+      try {
+        // Получаем текущий прогресс из KV или создаем новый
+        let currentProgress: any = null;
         try {
-          // Получаем текущий прогресс из KV или создаем новый
-          let currentProgress: any = null;
-          try {
-            const cached = await redis.get(kvProgressKey);
-            if (cached) {
-              currentProgress = typeof cached === 'string' ? JSON.parse(cached) : cached;
-            }
-          } catch (parseError) {
-            // Игнорируем ошибки парсинга
+          const cached = await redis.get(kvProgressKey);
+          if (cached) {
+            currentProgress = typeof cached === 'string' ? JSON.parse(cached) : cached;
           }
+        } catch (parseError) {
+          // Игнорируем ошибки парсинга
+        }
           
-          // Обновляем ответы в прогрессе
-          const updatedAnswers = currentProgress?.answers || {};
-          if (answerValue) {
-            updatedAnswers[questionIdNum] = answerValue;
-          } else if (answerValues) {
-            updatedAnswers[questionIdNum] = answerValues;
-          }
+        // Обновляем ответы в прогрессе
+        const updatedAnswers = currentProgress?.answers || {};
+        if (answerValue) {
+          updatedAnswers[questionIdNum] = answerValue;
+        } else if (answerValues) {
+          updatedAnswers[questionIdNum] = answerValues;
+        }
           
-          // Сохраняем обновленный прогресс в KV (TTL 7 дней)
-          const progressData = {
-            answers: updatedAnswers,
-            questionIndex: questionIndex ?? currentProgress?.questionIndex ?? 0,
-            infoScreenIndex: infoScreenIndex ?? currentProgress?.infoScreenIndex ?? 0,
-            timestamp: Date.now(),
-          };
+        // Сохраняем обновленный прогресс в KV (TTL 7 дней)
+        const progressData = {
+          answers: updatedAnswers,
+          questionIndex: questionIndex ?? currentProgress?.questionIndex ?? 0,
+          infoScreenIndex: infoScreenIndex ?? currentProgress?.infoScreenIndex ?? 0,
+          timestamp: Date.now(),
+        };
           
-          await redis.set(kvProgressKey, JSON.stringify(progressData), { ex: 7 * 24 * 60 * 60 });
+        await redis.set(kvProgressKey, JSON.stringify(progressData), { ex: 7 * 24 * 60 * 60 });
           
-          if (process.env.NODE_ENV === 'development') {
-            console.log('✅ Questionnaire progress saved to KV cache for new user', {
-              userId,
-              questionnaireId,
-              questionId: questionIdNum,
-              answersCount: Object.keys(updatedAnswers).length,
-            });
-          }
-        } catch (kvError) {
-          // Ошибка KV не критична - продолжаем работу
-          if (process.env.NODE_ENV === 'development') {
-            console.warn('⚠️ Failed to save progress to KV:', kvError);
-          }
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Questionnaire progress saved to KV cache', {
+            userId,
+            questionnaireId,
+            questionId: questionIdNum,
+            answersCount: Object.keys(updatedAnswers).length,
+          });
+        }
+      } catch (kvError) {
+        // Ошибка KV не критична - продолжаем работу
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('⚠️ Failed to save progress to KV:', kvError);
         }
       }
     }
