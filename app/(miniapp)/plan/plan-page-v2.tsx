@@ -725,15 +725,21 @@ function PlanV2SkeletonStyles() {
 function PlanV2Styles() {
   return (
     <style jsx global>{`
-      /* ФИКС #14: чистый бежевый фон плана как в превью (раньше поверх лежали
-         цветные радиальные градиенты, из-за чего фон визуально был не беж). */
+      /* Повторяем мягкие цветовые пятна главной: карточки остаются читаемыми,
+         а план визуально продолжает тот же экранный стиль приложения. */
       .pv2-root {
         min-height: 100vh;
         padding: 0 20px var(--bottom-nav-clearance);
         font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
         color: var(--ink);
         position: relative;
-        background: var(--canvas);
+        background:
+          radial-gradient(72% 32% at 0% 0%, rgba(255,224,188,0.7) 0%, transparent 62%),
+          radial-gradient(50% 22% at 100% 18%, rgba(213,254,97,0.42) 0%, transparent 70%),
+          radial-gradient(64% 26% at 100% 55%, rgba(220,210,196,0.55) 0%, transparent 65%),
+          radial-gradient(78% 32% at 10% 92%, rgba(213,254,97,0.46) 0%, transparent 62%),
+          var(--canvas);
+        background-attachment: fixed;
       }
       /* Зеркало #19: подложка html/body тоже беж, чтобы overscroll не светил белым. */
       html, body { background-color: var(--canvas); }
@@ -837,8 +843,8 @@ function PlanV2Styles() {
         margin-bottom: 18px;
       }
       .pv2-score-hint {
-        background: var(--glass-bg);
-        border: 1px solid rgba(255,255,255,0.6);
+        background: rgba(10,10,10,0.88);
+        border: 1px solid rgba(255,255,255,0.08);
         border-radius: 18px;
         padding: 14px 16px;
         display: flex;
@@ -846,7 +852,12 @@ function PlanV2Styles() {
         justify-content: space-between;
         gap: 12px;
       }
-      .pv2-score-hint-text { font-size: 13px; color: var(--ink-soft); line-height: 1.5; }
+      .pv2-score-hint-text { font-size: 13px; color: rgba(255,255,255,0.78); line-height: 1.5; }
+      .pv2-score-hint .pv2-icon-circle {
+        background: rgba(var(--accent-rgb),0.16);
+        border-color: rgba(var(--accent-rgb),0.34);
+      }
+      .pv2-score-hint .pv2-icon-circle svg { stroke: var(--accent); }
 
       .pv2-icon-circle {
         width: 36px;

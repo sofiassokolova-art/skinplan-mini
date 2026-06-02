@@ -19,6 +19,11 @@ import { handleNext } from '@/lib/quiz/handlers/handleNext';
 import { resumeQuiz } from '@/lib/quiz/handlers/resumeQuiz';
 import { startOver } from '@/lib/quiz/handlers/startOver';
 import { submitAnswers } from '@/lib/quiz/handlers/submitAnswers';
+import {
+  createQuizProgressSaveQueue,
+  type QuizProgressSaveParams,
+} from '@/lib/quiz/progress-save-queue';
+import { clientLogger } from '@/lib/client-logger';
 
 export type Screen =
   | 'LOADER'
@@ -125,18 +130,75 @@ export function useQuizHandlers({ currentQuestion, screen }: UseQuizHandlersPara
     [setSavedProgress, setShowResumeScreen, hasResumedRef, setHasResumed, quizState.lastSavedAnswerRef],
   );
 
+  const saveProgressMutationRef = useRef(saveProgressMutation);
+  saveProgressMutationRef.current = saveProgressMutation;
+
+  const progressSaveQueueRef = useRef<ReturnType<typeof createQuizProgressSaveQueue> | null>(null);
+  if (!progressSaveQueueRef.current) {
+    progressSaveQueueRef.current = createQuizProgressSaveQueue(
+      (params) => saveProgressMutationRef.current.mutateAsync(params),
+      {
+        onError: (err, params) => {
+          const lastSaved = quizState.lastSavedAnswerRef.current;
+          const failedAnswer = params.answerValues ?? params.answerValue;
+          if (
+            lastSaved?.questionId === params.questionId &&
+            JSON.stringify(lastSaved.answer) === JSON.stringify(failedAnswer)
+          ) {
+            quizState.lastSavedAnswerRef.current = null;
+          }
+
+          clientLogger.error('❌ Не удалось сохранить прогресс анкеты в фоне', {
+            questionId: params.questionId,
+            questionnaireId: params.questionnaireId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        },
+      },
+    );
+  }
+
+  const enqueueProgressSave = useCallback((params: QuizProgressSaveParams) => {
+    progressSaveQueueRef.current?.enqueue(params);
+  }, []);
+
+  const queuedProgressMutation = useMemo(
+    () => ({
+      mutateAsync: async (params: QuizProgressSaveParams) => {
+        enqueueProgressSave(params);
+      },
+    }),
+    [enqueueProgressSave],
+  );
+
   const saveProgress = useCallback(
-    async (answersToSave: Record<number, string | string[]>, questionIndex: number, infoScreenIndex: number) => {
-      return await saveProgressMutation.mutateAsync({
-        questionnaireId: questionnaire?.id || 0,
-        questionId: -1,
-        answerValue: undefined,
-        answerValues: undefined,
-        questionIndex,
-        infoScreenIndex,
-      });
+    async (_answersToSave: Record<number, string | string[]>, questionIndex: number, infoScreenIndex: number) => {
+      if (!questionnaire?.id) return;
+
+      quizState.pendingProgressRef.current = { questionIndex, infoScreenIndex };
+      if (quizState.saveProgressTimeoutRef.current) {
+        clearTimeout(quizState.saveProgressTimeoutRef.current);
+      }
+
+      quizState.saveProgressTimeoutRef.current = setTimeout(() => {
+        const pending = quizState.pendingProgressRef.current;
+        quizState.pendingProgressRef.current = null;
+        quizState.saveProgressTimeoutRef.current = null;
+
+        enqueueProgressSave({
+          questionnaireId: questionnaire.id,
+          questionId: -1,
+          questionIndex: pending?.questionIndex ?? questionIndex,
+          infoScreenIndex: pending?.infoScreenIndex ?? infoScreenIndex,
+        });
+      }, 500);
     },
-    [saveProgressMutation, questionnaire?.id],
+    [
+      enqueueProgressSave,
+      questionnaire?.id,
+      quizState.pendingProgressRef,
+      quizState.saveProgressTimeoutRef,
+    ],
   );
 
   const handleResume = useCallback(() => {
@@ -396,10 +458,9 @@ export function useQuizHandlers({ currentQuestion, screen }: UseQuizHandlersPara
           allQuestions,
           questionnaire,
           setAnswers,
-          saveProgress,
           currentQuestionIndex,
           currentInfoScreenIndex,
-          saveQuizProgressMutation: saveProgressMutation,
+          saveQuizProgressMutation: queuedProgressMutation,
           lastSavedAnswerRef: quizState.lastSavedAnswerRef,
           setCurrentQuestionIndex,
           currentQuestionIndexRef: quizState.currentQuestionIndexRef,
@@ -418,10 +479,9 @@ export function useQuizHandlers({ currentQuestion, screen }: UseQuizHandlersPara
       allQuestions,
       questionnaire,
       setAnswers,
-      saveProgress,
       currentQuestionIndex,
       currentInfoScreenIndex,
-      saveProgressMutation,
+      queuedProgressMutation,
       quizState.lastSavedAnswerRef,
       setCurrentQuestionIndex,
       quizState.currentQuestionIndexRef,
@@ -609,4 +669,3 @@ export function useQuizHandlers({ currentQuestion, screen }: UseQuizHandlersPara
     onSubmit,
   };
 }
-

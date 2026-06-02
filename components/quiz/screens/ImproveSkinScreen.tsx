@@ -129,7 +129,7 @@ function ImproveSkinScreenComponent({
             height: '100%',
             maxWidth: '420px',
             margin: '0 auto',
-            padding: '60px 20px 132px',
+            padding: 'calc(clamp(20px, 4vh, 40px) + 56px) 20px 132px',
             boxSizing: 'border-box',
             display: 'flex',
             flexDirection: 'column',

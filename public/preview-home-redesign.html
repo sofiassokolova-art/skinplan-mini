@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>SkinIQ — превью главной</title>
+  <style>
+    @font-face {
+      font-family: "Inter";
+      src: url("./fonts/inter-regular.ttf") format("truetype");
+      font-weight: 400;
+    }
+    @font-face {
+      font-family: "Inter";
+      src: url("./fonts/inter-semibold.ttf") format("truetype");
+      font-weight: 600;
+    }
+    @font-face {
+      font-family: "Inter";
+      src: url("./fonts/inter-bold.ttf") format("truetype");
+      font-weight: 700;
+    }
+    @font-face {
+      font-family: "Unbounded";
+      src: url("./fonts/unbounded-bold.ttf") format("truetype");
+      font-weight: 700;
+    }
+
+    :root {
+      --canvas: #f4f2ee;
+      --ink: #0a0a0a;
+      --ink-soft: rgba(10, 10, 10, 0.58);
+      --ink-mute: rgba(10, 10, 10, 0.36);
+      --accent: #d5fe61;
+      --glass: rgba(255, 255, 255, 0.56);
+      --glass-strong: rgba(255, 255, 255, 0.72);
+      --glass-border: rgba(255, 255, 255, 0.76);
+      --shadow: 0 12px 34px rgba(56, 48, 36, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: #1a1a1a;
+      color: var(--ink);
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    button {
+      color: inherit;
+      font: inherit;
+    }
+
+    .app {
+      position: relative;
+      width: min(100%, 430px);
+      min-height: 100svh;
+      margin: 0 auto;
+      overflow-x: hidden;
+      padding: max(18px, env(safe-area-inset-top)) 18px 112px;
+      background:
+        radial-gradient(78% 30% at 0% 0%, rgba(255, 224, 188, 0.82) 0%, transparent 66%),
+        radial-gradient(54% 24% at 100% 17%, rgba(213, 254, 97, 0.48) 0%, transparent 72%),
+        radial-gradient(68% 25% at 100% 59%, rgba(220, 210, 196, 0.55) 0%, transparent 66%),
+        radial-gradient(80% 28% at 7% 100%, rgba(213, 254, 97, 0.5) 0%, transparent 65%),
+        var(--canvas);
+    }
+
+    .topbar,
+    .progress-head,
+    .tabs,
+    .section-head,
+    .featured-top,
+    .next-card-top,
+    .bottom-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .topbar {
+      margin-bottom: 15px;
+    }
+
+    .logo {
+      font-family: "Unbounded", sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.7px;
+    }
+
+    .avatar {
+      position: relative;
+      width: 42px;
+      height: 42px;
+      border: 2px solid rgba(255, 255, 255, 0.88);
+      border-radius: 50%;
+      background: linear-gradient(145deg, #282828, #080808);
+      color: var(--accent);
+      display: grid;
+      place-items: center;
+      font-family: "Unbounded", sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      box-shadow: 0 7px 18px rgba(10, 10, 10, 0.18);
+    }
+
+    .avatar::after {
+      content: "";
+      position: absolute;
+      right: 1px;
+      bottom: 1px;
+      width: 9px;
+      height: 9px;
+      border: 2px solid var(--canvas);
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    .greeting {
+      margin-bottom: 5px;
+      color: var(--ink-soft);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    h1 {
+      margin: 0 0 14px;
+      font-family: "Unbounded", sans-serif;
+      font-size: 29px;
+      line-height: 1.13;
+      letter-spacing: -1.1px;
+    }
+
+    .progress-card {
+      position: relative;
+      overflow: hidden;
+      min-height: 128px;
+      margin-bottom: 12px;
+      padding: 15px 18px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 25px;
+      color: white;
+      background:
+        radial-gradient(95% 125% at 105% -20%, rgba(213, 254, 97, 0.22) 0%, transparent 66%),
+        #111;
+      box-shadow: 0 16px 36px rgba(10, 10, 10, 0.19);
+    }
+
+    .progress-card::after {
+      content: "";
+      position: absolute;
+      top: -52px;
+      right: -34px;
+      width: 152px;
+      height: 152px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(213, 254, 97, 0.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .eyebrow {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .progress-value {
+      margin-top: 7px;
+      color: var(--accent);
+      font-family: "Unbounded", sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -1px;
+    }
+
+    .progress-sub {
+      margin-top: 5px;
+      color: rgba(255, 255, 255, 0.64);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .progress-badge {
+      position: relative;
+      z-index: 1;
+      width: 63px;
+      height: 63px;
+      flex-shrink: 0;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(213, 254, 97, 0.22);
+      border-radius: 50%;
+      color: var(--accent);
+      background: rgba(255, 255, 255, 0.04);
+      font-family: "Unbounded", sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .progress-track {
+      height: 7px;
+      margin-top: 14px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: inherit;
+      background: var(--accent);
+      transition: width 0.28s ease;
+    }
+
+    .tabs {
+      gap: 4px;
+      margin-bottom: 15px;
+      padding: 5px;
+      border: 1px solid var(--glass-border);
+      border-radius: 15px;
+      background: var(--glass);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .tab {
+      flex: 1;
+      height: 44px;
+      border: 0;
+      border-radius: 11px;
+      color: var(--ink-soft);
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 700;
+      transition: 0.18s ease;
+    }
+
+    .tab.active {
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+    }
+
+    .tab svg {
+      width: 17px;
+      height: 17px;
+    }
+
+    .section-head {
+      margin: 0 3px 9px;
+    }
+
+    .section-title {
+      font-family: "Unbounded", sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .section-note {
+      color: var(--ink-soft);
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .featured-card,
+    .next-card {
+      border: 1px solid rgba(255, 255, 255, 0.75);
+      background: rgba(255, 255, 255, 0.56);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(20px);
+    }
+
+    .featured-card {
+      position: relative;
+      min-height: 198px;
+      margin-bottom: 14px;
+      overflow: hidden;
+      padding: 15px 15px 14px;
+      border-radius: 24px;
+      background:
+        radial-gradient(100% 115% at 96% 100%, rgba(213, 254, 97, 0.38) 0%, transparent 62%),
+        rgba(255, 255, 255, 0.68);
+    }
+
+    .step-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 0 9px;
+      border-radius: 999px;
+      color: var(--ink);
+      background: var(--accent);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .featured-product {
+      position: absolute;
+      top: 21px;
+      right: 15px;
+      width: 118px;
+      height: 130px;
+      object-fit: contain;
+      filter: drop-shadow(0 13px 14px rgba(0, 0, 0, 0.14));
+    }
+
+    .featured-copy {
+      position: relative;
+      z-index: 1;
+      width: 59%;
+      margin-top: 26px;
+    }
+
+    .featured-title {
+      margin-bottom: 6px;
+      font-family: "Unbounded", sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.18;
+      letter-spacing: -0.65px;
+    }
+
+    .featured-sub {
+      color: var(--ink-soft);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .featured-action {
+      position: absolute;
+      right: 15px;
+      bottom: 14px;
+      left: 15px;
+      height: 43px;
+      border: 0;
+      border-radius: 999px;
+      color: white;
+      background: var(--ink);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      transition: transform 0.14s ease;
+    }
+
+    .featured-action:active {
+      transform: scale(0.985);
+    }
+
+    .featured-action.done {
+      color: var(--ink);
+      background: var(--accent);
+    }
+
+    .next-heading {
+      margin: 0 3px 9px;
+      font-family: "Unbounded", sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.45px;
+    }
+
+    .next-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .next-card {
+      position: relative;
+      min-height: 165px;
+      overflow: hidden;
+      padding: 12px;
+      border-radius: 20px;
+      cursor: pointer;
+    }
+
+    .next-card-top {
+      position: relative;
+      z-index: 1;
+    }
+
+    .next-kicker {
+      color: var(--ink-mute);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .next-number {
+      width: 25px;
+      height: 25px;
+      display: grid;
+      place-items: center;
+      border-radius: 9px;
+      color: var(--ink);
+      background: rgba(10, 10, 10, 0.07);
+      font-family: "Unbounded", sans-serif;
+      font-size: 9px;
+      font-weight: 700;
+    }
+
+    .next-product {
+      position: absolute;
+      top: 35px;
+      right: 11px;
+      left: 11px;
+      width: calc(100% - 22px);
+      height: 81px;
+      object-fit: contain;
+      filter: drop-shadow(0 9px 10px rgba(0, 0, 0, 0.1));
+    }
+
+    .next-title {
+      position: absolute;
+      right: 12px;
+      bottom: 13px;
+      left: 12px;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .bottom-nav {
+      position: fixed;
+      z-index: 10;
+      right: max(16px, calc((100vw - 430px) / 2 + 16px));
+      bottom: max(18px, env(safe-area-inset-bottom));
+      left: max(16px, calc((100vw - 430px) / 2 + 16px));
+      height: 63px;
+      padding: 0 18px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 999px;
+      background:
+        radial-gradient(120% 90% at 50% 0%, rgba(213, 254, 97, 0.12) 0%, transparent 70%),
+        rgba(10, 10, 10, 0.94);
+      box-shadow: 0 15px 30px rgba(10, 10, 10, 0.22);
+    }
+
+    .nav-item {
+      width: 50px;
+      height: 50px;
+      border: 0;
+      border-radius: 50%;
+      color: rgba(255, 255, 255, 0.46);
+      background: transparent;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+    }
+
+    .nav-item.active {
+      color: var(--accent);
+    }
+
+    .nav-item svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    @media (min-height: 870px) {
+      .app {
+        padding-top: max(27px, env(safe-area-inset-top));
+      }
+      .next-card {
+        min-height: 174px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="logo">SkinIQ</div>
+      <button class="avatar" aria-label="Профиль">С</button>
+    </header>
+
+    <div class="greeting">Добрый день, София</div>
+    <h1>Уход на сегодня</h1>
+
+    <section class="progress-card" aria-label="Прогресс ухода">
+      <div class="progress-head">
+        <div>
+          <div class="eyebrow">Ваш прогресс</div>
+          <div class="progress-value"><span id="progress-main">1 из 4</span> шагов</div>
+          <div class="progress-sub" id="progress-sub">Продолжайте в своём темпе</div>
+        </div>
+        <div class="progress-badge" id="progress-badge">25%</div>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill" style="width: 25%"></div>
+      </div>
+    </section>
+
+    <div class="tabs" role="tablist" aria-label="Время ухода">
+      <button class="tab active" id="tab-am" type="button" role="tab" aria-selected="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>
+        </svg>
+        Утро
+      </button>
+      <button class="tab" id="tab-pm" type="button" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"></path>
+        </svg>
+        Вечер
+      </button>
+    </div>
+
+    <section aria-label="Текущий шаг">
+      <div class="section-head">
+        <div class="section-title">Сейчас</div>
+        <div class="section-note">Следуйте плану по порядку</div>
+      </div>
+      <article class="featured-card">
+        <div class="featured-top">
+          <span class="step-chip" id="featured-step">Шаг 1</span>
+        </div>
+        <img class="featured-product" id="featured-product" src="./icons/clean/cleanser_true.png" alt="">
+        <div class="featured-copy">
+          <div class="featured-title" id="featured-title">Мягкое очищение</div>
+          <div class="featured-sub" id="featured-sub">Подготовьте кожу к уходу</div>
+        </div>
+        <button class="featured-action" id="featured-action" type="button">Отметить шаг</button>
+      </article>
+    </section>
+
+    <section aria-label="Следующие шаги">
+      <h2 class="next-heading">Дальше</h2>
+      <div class="next-grid" id="next-grid"></div>
+    </section>
+  </main>
+
+  <nav class="bottom-nav" aria-label="Основная навигация">
+    <button class="nav-item active" aria-label="Главная">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 11.5 12 4l9 7.5"></path><path d="M5.5 10v9h13v-9"></path><path d="M9.5 19v-5h5v5"></path>
+      </svg>
+    </button>
+    <button class="nav-item" aria-label="План">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M7 4h10M7 8h10M7 12h7"></path><path d="M5 3h14v18H5z"></path>
+      </svg>
+    </button>
+    <button class="nav-item" aria-label="Избранное">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20.8 4.6a5.2 5.2 0 0 0-7.4 0L12 6l-1.4-1.4a5.2 5.2 0 1 0-7.4 7.4L12 20.8 20.8 12a5.2 5.2 0 0 0 0-7.4Z"></path>
+      </svg>
+    </button>
+    <button class="nav-item" aria-label="Корзина">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 5h2l2 10h9l2-7H7"></path><circle cx="10" cy="19" r="1"></circle><circle cx="17" cy="19" r="1"></circle>
+      </svg>
+    </button>
+  </nav>
+
+  <script>
+    const routines = {
+      am: [
+        { title: "Мягкое очищение", sub: "Подготовьте кожу к уходу", icon: "./icons/clean/cleanser_true.png" },
+        { title: "Тонизация", sub: "Верните коже комфорт", icon: "./icons/clean/toner_true.png" },
+        { title: "Увлажнение", sub: "Поддержите защитный барьер", icon: "./icons/clean/cream_true.png" },
+        { title: "Защита SPF", sub: "Завершите утренний уход", icon: "./icons/clean/spf_true.png" }
+      ],
+      pm: [
+        { title: "Очищение", sub: "Удалите SPF и загрязнения", icon: "./icons/clean/cleanser_true.png" },
+        { title: "Восстановление", sub: "Нанесите активное средство", icon: "./icons/clean/serum_true.png" },
+        { title: "Питание", sub: "Закрепите уход кремом", icon: "./icons/clean/cream_true.png" },
+        { title: "Уход за губами", sub: "Добавьте финальный штрих", icon: "./icons/clean/lipbalm_true.png" }
+      ]
+    };
+
+    let activeTab = "am";
+    let completed = { am: 0, pm: 0 };
+
+    const el = (id) => document.getElementById(id);
+
+    function render() {
+      const steps = routines[activeTab];
+      const currentIndex = Math.min(completed[activeTab], steps.length - 1);
+      const isFinished = completed[activeTab] >= steps.length;
+      const current = steps[currentIndex];
+      const visibleNext = steps.filter((_, index) => index > currentIndex).slice(0, 2);
+      const pct = Math.round((completed[activeTab] / steps.length) * 100);
+
+      el("tab-am").classList.toggle("active", activeTab === "am");
+      el("tab-pm").classList.toggle("active", activeTab === "pm");
+      el("tab-am").setAttribute("aria-selected", String(activeTab === "am"));
+      el("tab-pm").setAttribute("aria-selected", String(activeTab === "pm"));
+
+      el("progress-main").textContent = `${completed[activeTab]} из ${steps.length}`;
+      el("progress-badge").textContent = `${pct}%`;
+      el("progress-fill").style.width = `${Math.max(4, pct)}%`;
+      el("progress-sub").textContent = isFinished ? "Уход на сегодня завершён" : "Продолжайте в своём темпе";
+
+      el("featured-step").textContent = isFinished ? "Готово" : `Шаг ${currentIndex + 1}`;
+      el("featured-title").textContent = isFinished ? "Уход завершён" : current.title;
+      el("featured-sub").textContent = isFinished ? "Кожа получила всё необходимое" : current.sub;
+      el("featured-product").src = current.icon;
+      el("featured-action").textContent = isFinished ? "Все шаги отмечены" : "Отметить шаг";
+      el("featured-action").classList.toggle("done", isFinished);
+
+      el("next-grid").innerHTML = visibleNext.length
+        ? visibleNext.map((item, offset) => `
+            <article class="next-card">
+              <div class="next-card-top">
+                <span class="next-kicker">Шаг ${currentIndex + offset + 2}</span>
+                <span class="next-number">${currentIndex + offset + 2}</span>
+              </div>
+              <img class="next-product" src="${item.icon}" alt="">
+              <div class="next-title">${item.title}</div>
+            </article>
+          `).join("")
+        : `
+            <article class="next-card">
+              <div class="next-kicker">После ухода</div>
+              <div class="next-title">Возвращайтесь вечером</div>
+            </article>
+            <article class="next-card">
+              <div class="next-kicker">SkinIQ</div>
+              <div class="next-title">Прогресс сохранён</div>
+            </article>
+          `;
+    }
+
+    el("tab-am").addEventListener("click", () => {
+      activeTab = "am";
+      render();
+    });
+
+    el("tab-pm").addEventListener("click", () => {
+      activeTab = "pm";
+      render();
+    });
+
+    el("featured-action").addEventListener("click", () => {
+      if (completed[activeTab] < routines[activeTab].length) {
+        completed[activeTab] += 1;
+        render();
+      }
+    });
+
+    completed.am = 1;
+    render();
+  </script>
+</body>
+</html>

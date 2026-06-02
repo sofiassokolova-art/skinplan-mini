@@ -70,8 +70,6 @@ export function useQuizProgress() {
  * Хук для сохранения прогресса анкеты (мутация)
  */
 export function useSaveQuizProgress() {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: (params: {
       questionnaireId: number;
@@ -89,10 +87,8 @@ export function useSaveQuizProgress() {
         params.questionIndex,
         params.infoScreenIndex
       ) as Promise<any>,
-    onSuccess: () => {
-      // Инвалидируем кэш прогресса после сохранения
-      queryClient.invalidateQueries({ queryKey: [QUIZ_PROGRESS_QUERY_KEY] });
-    },
+    // Локальный state квиза обновляется оптимистично. Повторный GET прогресса
+    // после каждого ответа создавал каскад запросов и мог перетирать свежий UI.
     retry: QUIZ_CONFIG.RETRY.SAVE_PROGRESS_MAX_ATTEMPTS,
     retryDelay: 1000,
   });
