@@ -5,7 +5,6 @@
 
 import { useEffect, useState, useCallback, useRef, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
 import { useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
 import { clientLogger } from '@/lib/client-logger';
@@ -15,7 +14,6 @@ import { AppLoader } from '@/components/AppLoader';
 import { HomeEmptyState } from '@/components/HomeEmptyState';
 import { getStepMeta, STEP_ICONS } from '@/lib/routine-step-meta';
 import { getClientUserScope } from '@/lib/client-user-scope';
-import { invalidatePlanWarmCache } from '@/lib/plan-warm-cache';
 interface RoutineItem {
   id: string;
   title: string;
@@ -107,7 +105,6 @@ function applyDoneFromStorage(items: RoutineItem[], tab: 'AM' | 'PM'): RoutineIt
 
 export default function HomePage() {
   const router = useRouter();
-  const queryClient = useQueryClient();
   const { initialize } = useTelegram();
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -748,9 +745,16 @@ export default function HomePage() {
            Раньше ::before рисовал 96x116 #fff с opacity:1 на .current — это и был «белый прямоугольник».
            Также увеличен размер иконки средств (72x100 → 96x132). */
         .home-rd .hr-iconwrap{position:relative;flex:1;display:flex;align-items:center;justify-content:center;padding:16px 8px 12px;min-height:148px;}
-        .home-rd .hr-iconwrap::before{display:none;}
+        /* Мягкое белое «облако» под иконкой — добавляет визуальной массы пустоватым иконкам
+           и сохраняет реальный цвет средства (крем/масло/etc) поверх лайм-карточки. */
+        .home-rd .hr-iconwrap::before{content:"";display:block;position:absolute;left:50%;top:50%;width:130px;height:130px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,0.78) 0%,rgba(255,255,255,0.42) 55%,transparent 80%);transform:translate(-50%,-50%);pointer-events:none;z-index:0;}
+        .home-rd .hr-card.current .hr-iconwrap::before{background:radial-gradient(circle,rgba(255,255,255,0.92) 0%,rgba(255,255,255,0.58) 55%,transparent 82%);}
+        .home-rd .hr-card.done .hr-iconwrap::before{opacity:0.55;}
         .home-rd .hr-icon{position:relative;z-index:1;display:block;width:96px;height:132px;object-fit:contain;filter:drop-shadow(0 12px 14px rgba(0,0,0,0.12));}
+        /* ФИКС: убираем mix-blend-mode на лайм-карточке — multiply красил крем в лайм.
+           На обычных карточках оставляем мягкий multiply, чтобы крем «вплавился» в белый фон. */
         .home-rd .hr-icon.blend{mix-blend-mode:multiply;filter:none;}
+        .home-rd .hr-card.current .hr-icon.blend{mix-blend-mode:normal;filter:drop-shadow(0 12px 14px rgba(0,0,0,0.12));}
         .home-rd .hr-card-bottom{margin-top:auto;}
         .home-rd .hr-kicker{margin-bottom:5px;font-size:9.5px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(10,10,10,0.42);}
         .home-rd .hr-card.current .hr-kicker{color:var(--ink);}
@@ -883,28 +887,6 @@ export default function HomePage() {
             </div>
           );
         })}
-      </div>
-
-      {/* Ретейк ссылка */}
-      <div style={{ padding: '0 22px' }}>
-        <button
-          type="button"
-          className="hr-retake"
-          onClick={async () => {
-            try {
-              const { setFullRetakeFromHome, setIsRetakingQuiz } = await import('@/lib/user-preferences');
-              await setFullRetakeFromHome(true);
-              await setIsRetakingQuiz(true);
-            } catch (error) {
-              clientLogger.warn('Failed to set retake flags:', error);
-            }
-            queryClient.invalidateQueries({ queryKey: ['quiz', 'active'] });
-            invalidatePlanWarmCache();
-            window.location.href = '/quiz?retakeFromHome=1';
-          }}
-        >
-          Изменились цели? Перепройти анкету
-        </button>
       </div>
 
     </div>,

@@ -81,9 +81,12 @@ function getInitDataForClient(): string {
 }
 
 // Глобальный кеш — чтобы множество PaymentGate (на /quiz) не спамили /api/me/entitlements
+// и (главное) чтобы навигация между табами (/home → /plan → /cart) не показывала
+// каждый раз лоадер «Проверяем доступ...». Поднимаем TTL до 60s: при оплате/мутации
+// мы и так руками сбрасываем кэш (entitlementsCache = null).
 let entitlementsCache: { codes: string[]; ts: number } | null = null;
 let entitlementsPromise: Promise<string[]> | null = null;
-const ENTITLEMENTS_TTL_MS = 5000;
+const ENTITLEMENTS_TTL_MS = 60_000;
 
 function requiredEntitlementCode(productCode: string): string {
   if (productCode === 'plan_access') return 'paid_access';
@@ -91,6 +94,12 @@ function requiredEntitlementCode(productCode: string): string {
   if (productCode === 'retake_full') return 'retake_full_access';
   // Для подписки пока не вводим отдельный код — считаем, что она тоже даёт paid_access
   return 'paid_access';
+}
+
+function getCachedEntitlement(productCode: string): boolean | null {
+  if (!entitlementsCache) return null;
+  if (Date.now() - entitlementsCache.ts > ENTITLEMENTS_TTL_MS) return null;
+  return entitlementsCache.codes.includes(requiredEntitlementCode(productCode));
 }
 
 async function fetchEntitlementCodes(initData: string): Promise<string[]> {
@@ -147,11 +156,15 @@ export function PaymentGate({
   const [providerPaymentId, setProviderPaymentId] = useState<string | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // hasPaid = "уверены, что оплата есть" (проверяется через Entitlement)
-  const [hasPaid, setHasPaid] = useState(false);
+  // hasPaid = "уверены, что оплата есть" (проверяется через Entitlement).
+  // Инициализируем из глобального кеша, чтобы при навигации между табами
+  // (/home → /plan → /cart) не моргал лоадер «Проверяем доступ...»: если уже
+  // проверяли в этой сессии и кеш свежий — сразу рендерим контент.
+  const cachedAccess = getCachedEntitlement(productCode);
+  const [hasPaid, setHasPaid] = useState<boolean>(cachedAccess === true);
   const [checkingDbPayment, setCheckingDbPayment] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
-  const [checkedOnce, setCheckedOnce] = useState(false);
+  const [checkedOnce, setCheckedOnce] = useState<boolean>(cachedAccess !== null);
   const [initDataReady, setInitDataReady] = useState(false);
   const { setPaywallVisible } = usePaywallVisibility();
 
