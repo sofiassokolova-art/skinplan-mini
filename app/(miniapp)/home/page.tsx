@@ -698,64 +698,53 @@ export default function HomePage() {
       }}
     >
       <style>{`
-        /* ФИКС #19: подкрашиваем html/body в цвет финального слоя фона главной,
-           чтобы при overscroll/листании (iOS Telegram WebApp) не светилась белая подложка
-           там, где контент длиннее экрана. Стиль действует только пока главная смонтирована. */
         html, body { background-color: var(--canvas); }
         .home-rd .hr-topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 20px 14px;}
         .home-rd .hr-logo{font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:18px;font-weight:700;letter-spacing:-0.4px;color:var(--ink);}
-        .home-rd .hr-avatar{position:relative;width:40px;height:40px;border:0;padding:0;border-radius:50%;background:linear-gradient(135deg,#2A2A2A,var(--ink));color:var(--accent);display:grid;place-items:center;cursor:pointer;box-shadow:0 0 0 2px rgba(255,255,255,0.9),0 6px 18px rgba(10,10,10,0.18);font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;font-weight:700;}
+        .home-rd .hr-avatar{position:relative;width:40px;height:40px;border:0;padding:0;border-radius:50%;background:linear-gradient(135deg,#2A2A2A,var(--ink));color:var(--accent);display:grid;place-items:center;cursor:pointer;box-shadow:0 0 0 2px rgba(255,255,255,0.9),0 6px 18px rgba(10,10,10,0.18);font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;font-weight:600;}
         .home-rd .hr-avatar::after{content:"";position:absolute;bottom:1px;right:1px;width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--canvas);}
         .home-rd .hr-heading{padding:0 20px 14px;}
-        .home-rd .hr-intro{font-size:13px;font-weight:600;color:var(--ink-soft);margin-bottom:6px;}
+        .home-rd .hr-intro{font-size:13px;font-weight:500;color:var(--ink-soft);margin-bottom:5px;}
         .home-rd .hr-title{font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:26px;font-weight:700;color:var(--ink);line-height:1.15;letter-spacing:-0.6px;}
-        .home-rd .hr-bento{display:grid;grid-template-columns:minmax(0,0.85fr) minmax(0,1.15fr);gap:10px;padding:0 20px 14px;}
-        .home-rd .hr-streak{position:relative;overflow:hidden;padding:14px 14px 12px;border-radius:22px;border:1px solid rgba(255,255,255,0.06);background:radial-gradient(120% 80% at 100% 0%,rgba(213,254,97,0.22) 0%,transparent 60%),var(--ink);color:#fff;min-height:102px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 14px 32px rgba(10,10,10,0.18);}
-        .home-rd .hr-streak::before{content:"";position:absolute;top:-34px;right:-28px;width:110px;height:110px;background:radial-gradient(circle,rgba(213,254,97,0.32) 0%,transparent 70%);}
-        .home-rd .hr-streak-head{position:relative;display:flex;align-items:center;gap:6px;color:rgba(255,255,255,0.6);font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;}
-        .home-rd .hr-streak-num{position:relative;font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:38px;line-height:1;font-weight:700;letter-spacing:-1.5px;color:var(--accent);}
-        .home-rd .hr-streak-unit{font-size:12.5px;font-weight:600;color:rgba(255,255,255,0.78);}
-        .home-rd .hr-streak-foot{position:relative;color:rgba(255,255,255,0.42);font-size:11px;}
-        .home-rd .hr-progress{position:relative;overflow:hidden;min-height:102px;display:flex;flex-direction:column;justify-content:space-between;background:var(--glass-bg-strong);}
-        .home-rd .hr-progress-head{display:flex;align-items:center;justify-content:space-between;}
-        .home-rd .hr-progress-label{color:var(--ink-soft);font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;}
-        .home-rd .hr-progress-count{font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:13px;font-weight:700;color:var(--ink);letter-spacing:-0.2px;}
-        .home-rd .hr-progress-count em{font-style:normal;color:var(--ink-mute);}
-        .home-rd .hr-progress-text{font-size:12.5px;font-weight:600;color:var(--ink);line-height:1.32;letter-spacing:-0.1px;}
-        .home-rd .hr-bar{position:relative;width:100%;height:8px;border-radius:999px;background:rgba(10,10,10,0.08);overflow:hidden;}
-        .home-rd .hr-bar-fill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--ink);transition:width .4s ease;}
-        .home-rd .hr-tabs{display:flex;gap:0;margin:0 20px 16px;padding:5px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);box-shadow:var(--glass-shadow);}
-        .home-rd .hr-tab{flex:1;min-height:46px;border:0;border-radius:10px;background:transparent;color:var(--ink-soft);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:700;transition:all .18s ease;}
-        .home-rd .hr-tab.active{background:rgba(255,255,255,0.95);color:var(--ink);box-shadow:0 4px 14px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.9);}
-        .home-rd .hr-tab svg{width:16px;height:16px;}
-        .home-rd .hr-section-head{display:flex;flex-direction:column;margin:0 22px 12px;}
-        .home-rd .hr-section-title{font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:16px;font-weight:700;letter-spacing:-0.3px;color:var(--ink);}
-        .home-rd .hr-section-sub{margin-top:3px;color:var(--ink-soft);font-size:12px;}
-        .home-rd .hr-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:0 18px 8px;}
-        .home-rd .hr-card{position:relative;min-height:248px;display:flex;flex-direction:column;padding:14px 14px 16px;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,opacity .16s ease;}
-        .home-rd .hr-card.current{border-color:rgba(10,10,10,0.08);background:radial-gradient(120% 70% at 0% 0%,rgba(255,255,255,0.45) 0%,transparent 60%),var(--accent);box-shadow:0 14px 34px rgba(213,254,97,0.38),0 10px 28px rgba(0,0,0,0.06);backdrop-filter:none;-webkit-backdrop-filter:none;}
-        .home-rd .hr-card.done{opacity:0.78;}
-        .home-rd .hr-card:active{transform:scale(0.985);}
-        .home-rd .hr-card-top{display:flex;align-items:flex-start;justify-content:space-between;min-height:32px;}
-        .home-rd .hr-stepdot{width:32px;height:32px;border:0;border-radius:12px;display:grid;place-items:center;background:rgba(10,10,10,0.08);color:var(--ink);cursor:pointer;font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:12px;font-weight:700;line-height:1;letter-spacing:-0.3px;transition:background .16s ease,transform .12s ease;}
-        .home-rd .hr-stepdot:active{transform:scale(0.92);}
-        .home-rd .hr-card.current .hr-stepdot{background:var(--ink);color:var(--accent);box-shadow:0 6px 14px rgba(10,10,10,0.18);}
-        .home-rd .hr-card.done .hr-stepdot{background:var(--accent);color:var(--ink);}
-        /* Средства показываем без декоративной подложки, чтобы карточки оставались легче. */
-        .home-rd .hr-iconwrap{position:relative;flex:1;display:flex;align-items:center;justify-content:center;padding:16px 8px 12px;min-height:148px;}
-        .home-rd .hr-icon{position:relative;z-index:1;display:block;width:96px;height:132px;object-fit:contain;filter:drop-shadow(0 12px 14px rgba(0,0,0,0.12));}
-        /* ФИКС: убираем mix-blend-mode на лайм-карточке — multiply красил крем в лайм.
-           На обычных карточках оставляем мягкий multiply, чтобы крем «вплавился» в белый фон. */
-        .home-rd .hr-icon.blend{mix-blend-mode:multiply;filter:none;}
-        .home-rd .hr-card.current .hr-icon.blend{mix-blend-mode:normal;filter:drop-shadow(0 12px 14px rgba(0,0,0,0.12));}
-        .home-rd .hr-card-bottom{margin-top:auto;}
-        .home-rd .hr-kicker{margin-bottom:5px;font-size:9.5px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(10,10,10,0.42);}
-        .home-rd .hr-card.current .hr-kicker{color:var(--ink);}
-        .home-rd .hr-card.done .hr-kicker{color:rgba(10,10,10,0.32);}
-        .home-rd .hr-itemtitle{margin-bottom:4px;font-size:15px;font-weight:700;color:var(--ink);line-height:1.18;letter-spacing:-0.1px;}
-        .home-rd .hr-card.done .hr-itemtitle{text-decoration:line-through;text-decoration-color:rgba(10,10,10,0.32);}
-        .home-rd .hr-itemsub{color:var(--ink-soft);font-size:11.5px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-        .home-rd .hr-retake{width:100%;background:transparent;border:none;color:var(--ink-soft);text-decoration:underline;cursor:pointer;font-size:13px;font-weight:600;padding:14px 0 4px;}
+        .home-rd .hr-progress-card{position:relative;overflow:hidden;margin:0 20px 12px;padding:15px 18px 14px;border-radius:25px;border:1px solid rgba(255,255,255,0.07);color:#fff;background:radial-gradient(95% 125% at 105% -20%, rgba(213,254,97,0.22) 0%, transparent 66%), #111;box-shadow:0 16px 36px rgba(10,10,10,0.19);min-height:128px;}
+        .home-rd .hr-progress-card::after{content:"";position:absolute;top:-52px;right:-34px;width:152px;height:152px;border-radius:50%;background:radial-gradient(circle, rgba(213,254,97,0.18) 0%, transparent 70%);pointer-events:none;}
+        .home-rd .hr-progress-head{position:relative;display:flex;align-items:flex-start;justify-content:space-between;gap:14px;}
+        .home-rd .hr-eyebrow{color:rgba(255,255,255,0.5);font-size:9px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;}
+        .home-rd .hr-progress-value{margin-top:7px;color:var(--accent);font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:24px;font-weight:700;letter-spacing:-1px;line-height:1;}
+        .home-rd .hr-progress-sub{margin-top:5px;color:rgba(255,255,255,0.64);font-size:12px;font-weight:500;}
+        .home-rd .hr-progress-badge{position:relative;z-index:1;width:60px;height:60px;flex-shrink:0;display:grid;place-items:center;border:1px solid rgba(213,254,97,0.22);border-radius:50%;color:var(--accent);background:rgba(255,255,255,0.04);font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;font-weight:600;}
+        .home-rd .hr-track{position:relative;height:7px;margin-top:14px;overflow:hidden;border-radius:999px;background:rgba(255,255,255,0.1);}
+        .home-rd .hr-fill{position:absolute;left:0;top:0;bottom:0;border-radius:inherit;background:var(--accent);transition:width 0.28s ease;}
+        .home-rd .hr-tabs{display:flex;gap:4px;margin:0 20px 16px;padding:5px;border:1px solid var(--glass-border);border-radius:14px;background:var(--glass-bg);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);box-shadow:var(--glass-shadow);}
+        .home-rd .hr-tab{flex:1;min-height:44px;border:0;border-radius:10px;background:transparent;color:var(--ink-soft);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:500;transition:all .18s ease;}
+        .home-rd .hr-tab.active{background:rgba(255,255,255,0.92);color:var(--ink);box-shadow:0 4px 14px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.9);font-weight:600;}
+        .home-rd .hr-tab svg{width:17px;height:17px;}
+        .home-rd .hr-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 23px 10px;}
+        .home-rd .hr-section-title{font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:16px;font-weight:600;letter-spacing:-0.3px;color:var(--ink);}
+        .home-rd .hr-section-note{color:var(--ink-soft);font-size:11px;font-weight:500;}
+        .home-rd .hr-featured-wrap{padding:0 20px 16px;}
+        .home-rd .hr-featured{position:relative;overflow:hidden;padding:16px 18px 70px;border-radius:24px;border:1px solid rgba(255,255,255,0.7);background:radial-gradient(100% 115% at 96% 100%, rgba(213,254,97,0.38) 0%, transparent 62%), rgba(255,255,255,0.66);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 12px 34px rgba(56,48,36,0.08);min-height:222px;}
+        .home-rd .hr-chip{display:inline-flex;align-items:center;min-height:24px;padding:0 10px;border-radius:999px;color:var(--ink);background:var(--accent);font-size:9.5px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;}
+        .home-rd .hr-featured-product{position:absolute;top:18px;right:18px;width:108px;height:118px;object-fit:contain;filter:drop-shadow(0 13px 14px rgba(0,0,0,0.14));pointer-events:none;}
+        .home-rd .hr-featured-product.blend{mix-blend-mode:multiply;filter:drop-shadow(0 8px 10px rgba(0,0,0,0.08));}
+        .home-rd .hr-featured-copy{position:relative;z-index:1;width:58%;margin-top:30px;}
+        .home-rd .hr-featured-title{margin-bottom:6px;font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:18px;font-weight:600;line-height:1.18;letter-spacing:-0.5px;color:var(--ink);}
+        .home-rd .hr-featured-sub{color:var(--ink-soft);font-size:12.5px;line-height:1.4;font-weight:400;}
+        .home-rd .hr-featured-action{position:absolute;right:16px;bottom:14px;left:16px;height:44px;border:0;border-radius:999px;color:#fff;background:var(--ink);cursor:pointer;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;transition:transform 0.14s ease,opacity 0.14s ease;}
+        .home-rd .hr-featured-action:active{transform:scale(0.985);}
+        .home-rd .hr-featured-action.done{color:var(--ink);background:var(--accent);}
+        .home-rd .hr-undo{margin:-6px 20px 14px;display:flex;justify-content:center;}
+        .home-rd .hr-undo button{background:transparent;border:0;padding:6px 10px;color:var(--ink-soft);font-size:12px;font-weight:500;text-decoration:underline;cursor:pointer;}
+        .home-rd .hr-next-heading{font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:15px;font-weight:600;letter-spacing:-0.35px;color:var(--ink);margin:0 23px 10px;}
+        .home-rd .hr-next-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:0 20px 8px;}
+        .home-rd .hr-next-card{position:relative;overflow:hidden;min-height:164px;padding:12px;border-radius:20px;border:1px solid rgba(255,255,255,0.7);background:rgba(255,255,255,0.56);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 12px 34px rgba(56,48,36,0.08);cursor:default;}
+        .home-rd .hr-next-top{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;}
+        .home-rd .hr-next-kicker{color:var(--ink-mute);font-size:9px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;}
+        .home-rd .hr-next-number{width:24px;height:24px;display:grid;place-items:center;border-radius:9px;color:var(--ink);background:rgba(10,10,10,0.07);font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:9px;font-weight:600;}
+        .home-rd .hr-next-product{position:absolute;top:32px;right:12px;left:12px;width:calc(100% - 24px);height:78px;object-fit:contain;filter:drop-shadow(0 9px 10px rgba(0,0,0,0.1));pointer-events:none;}
+        .home-rd .hr-next-product.blend{mix-blend-mode:multiply;filter:none;}
+        .home-rd .hr-next-title{position:absolute;right:12px;bottom:12px;left:12px;font-size:13px;font-weight:600;line-height:1.2;color:var(--ink);}
+        .home-rd .hr-retake{width:100%;background:transparent;border:none;color:var(--ink-soft);text-decoration:underline;cursor:pointer;font-size:13px;font-weight:500;padding:14px 0 4px;}
       `}</style>
       {/* Topbar */}
       <div className="hr-topbar">
@@ -779,108 +768,159 @@ export default function HomePage() {
         <div className="hr-title">Уход на&nbsp;сегодня</div>
       </div>
 
-      {/* Progress bento */}
+      {/* Dark progress card */}
       {totalCount > 0 && (() => {
         const remaining = totalCount - completedCount;
         const ratio = totalCount > 0 ? completedCount / totalCount : 0;
-        const remText =
+        const pct = Math.round(ratio * 100);
+        const subText =
           remaining === 0
-            ? 'Все шаги выполнены сегодня'
+            ? 'Уход на сегодня завершён'
             : `Осталось ${remaining} ${remaining === 1 ? 'шаг' : remaining < 5 ? 'шага' : 'шагов'}`;
         return (
-          <div className="hr-bento">
-            <div className="hr-streak">
-              <div className="hr-streak-head">
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M8.5 14.5A3.5 3.5 0 0 0 12 18a3.5 3.5 0 0 0 3.5-3.5c0-2.5-3.5-4.2-3.5-7.5-1.9 1.3-4.5 3.8-4.5 7.5Z"/>
-                  <path d="M12 2C8.2 5.2 5 8.8 5 13a7 7 0 0 0 14 0c0-3.8-2.3-6.6-4.8-9.1"/>
-                </svg>
-                Сегодня
-              </div>
+          <section className="hr-progress-card" aria-label="Прогресс ухода">
+            <div className="hr-progress-head">
               <div>
-                <span className="hr-streak-num">{completedCount}</span>
-                <span className="hr-streak-unit">&nbsp;из {totalCount}</span>
+                <div className="hr-eyebrow">{tab === 'AM' ? 'Утренний уход' : 'Вечерний уход'}</div>
+                <div className="hr-progress-value">{completedCount} из {totalCount} шагов</div>
+                <div className="hr-progress-sub">{subText}</div>
               </div>
-              <div className="hr-streak-foot">{tab === 'AM' ? 'Утренний уход' : 'Вечерний уход'}</div>
+              <div className="hr-progress-badge">{pct}%</div>
             </div>
-            <div className="hr-progress glass-card-sm">
-              <div className="hr-progress-head">
-                <span className="hr-progress-label">Прогресс</span>
-                <span className="hr-progress-count">{completedCount}<em>/{totalCount}</em></span>
-              </div>
-              <div className="hr-progress-text">{remText}</div>
-              <div className="hr-bar">
-                <div className="hr-bar-fill" style={{ width: `${Math.max(6, ratio * 100)}%` }} />
-              </div>
+            <div className="hr-track">
+              <div className="hr-fill" style={{ width: `${Math.max(4, pct)}%` }} />
             </div>
-          </div>
+          </section>
         );
       })()}
 
       {/* Toggle AM/PM */}
-      <div className="hr-tabs">
-        <button className={`hr-tab${tab === 'AM' ? ' active' : ''}`} onClick={() => setTab('AM')}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <div className="hr-tabs" role="tablist" aria-label="Время ухода">
+        <button
+          className={`hr-tab${tab === 'AM' ? ' active' : ''}`}
+          role="tab"
+          aria-selected={tab === 'AM'}
+          onClick={() => setTab('AM')}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
           </svg>
           Утро
         </button>
-        <button className={`hr-tab${tab === 'PM' ? ' active' : ''}`} onClick={() => setTab('PM')}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <button
+          className={`hr-tab${tab === 'PM' ? ' active' : ''}`}
+          role="tab"
+          aria-selected={tab === 'PM'}
+          onClick={() => setTab('PM')}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/>
           </svg>
           Вечер
         </button>
       </div>
 
-      {/* Section head */}
-      <div className="hr-section-head">
-        <div className="hr-section-title">{tab === 'AM' ? 'Утренний уход' : 'Вечерний уход'}</div>
-        <div className="hr-section-sub">Нажмите, чтобы отметить шаг</div>
-      </div>
-
-      {/* Routine grid */}
-      <div className="hr-grid">
-        {routineItems.map((item, index) => {
-          const isCurrentStep = !item.done && index === currentStepIndex;
-          const cls = `hr-card glass-card-sm${isCurrentStep ? ' current' : ''}${item.done ? ' done' : ''}`;
-          const isBlend = (item.icon || '').includes('cream');
-          return (
-            <div key={item.id} className={cls} onClick={() => toggleItem(item.id)}>
-              <div className="hr-card-top">
+      {/* Featured (current) step */}
+      {(() => {
+        const isFinished = currentStepIndex < 0;
+        const currentItem = !isFinished ? routineItems[currentStepIndex] : null;
+        const currentStepNumber = !isFinished ? currentStepIndex + 1 : routineItems.length;
+        const lastDoneIdx = (() => {
+          for (let i = routineItems.length - 1; i >= 0; i -= 1) {
+            if (routineItems[i].done) return i;
+          }
+          return -1;
+        })();
+        const featuredIcon = currentItem?.icon || (lastDoneIdx >= 0 ? routineItems[lastDoneIdx].icon : '');
+        const featuredBlend = (featuredIcon || '').includes('cream');
+        const handleMarkStep = () => {
+          if (isFinished) return;
+          if (!currentItem) return;
+          toggleItem(currentItem.id);
+        };
+        return (
+          <>
+            <section className="hr-featured-wrap" aria-label="Текущий шаг">
+              <div className="hr-section-head">
+                <div className="hr-section-title">{isFinished ? 'Готово' : 'Сейчас'}</div>
+                {!isFinished && <div className="hr-section-note">Следуйте плану по порядку</div>}
+              </div>
+              <article className="hr-featured">
+                <span className="hr-chip">{isFinished ? 'Готово' : `Шаг ${currentStepNumber}`}</span>
+                {featuredIcon && (
+                  <img
+                    className={`hr-featured-product${featuredBlend ? ' blend' : ''}`}
+                    src={featuredIcon}
+                    alt=""
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                )}
+                <div className="hr-featured-copy">
+                  <div className="hr-featured-title">
+                    {isFinished ? 'Уход завершён' : currentItem?.title}
+                  </div>
+                  <div className="hr-featured-sub">
+                    {isFinished ? 'Кожа получила всё необходимое' : currentItem?.subtitle}
+                  </div>
+                </div>
                 <button
-                  className="hr-stepdot"
-                  aria-label={item.done ? 'Снять отметку' : 'Отметить шаг'}
-                  onClick={(e) => { e.stopPropagation(); toggleItem(item.id); }}
+                  className={`hr-featured-action${isFinished ? ' done' : ''}`}
+                  type="button"
+                  onClick={handleMarkStep}
+                  disabled={isFinished}
                 >
-                  {item.done ? (
-                    <svg width="13" height="10" viewBox="0 0 14 10" fill="none">
-                      <path d="M1 5l4 4 8-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  ) : (
-                    index + 1
-                  )}
+                  {isFinished ? 'Все шаги отмечены' : 'Отметить шаг'}
+                </button>
+              </article>
+            </section>
+            {completedCount > 0 && (
+              <div className="hr-undo">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (lastDoneIdx >= 0) toggleItem(routineItems[lastDoneIdx].id);
+                  }}
+                >
+                  Отменить последний шаг
                 </button>
               </div>
+            )}
+          </>
+        );
+      })()}
 
-              <div className="hr-iconwrap">
-                <img
-                  className={`hr-icon${isBlend ? ' blend' : ''}`}
-                  src={item.icon}
-                  alt=""
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                />
-              </div>
-
-              <div className="hr-card-bottom">
-                <div className="hr-kicker">{isCurrentStep ? 'Сейчас' : `Шаг ${index + 1}`}</div>
-                <div className="hr-itemtitle">{item.title}</div>
-                <div className="hr-itemsub">{item.subtitle}</div>
-              </div>
+      {/* Next steps */}
+      {(() => {
+        if (currentStepIndex < 0) return null;
+        const upcoming = routineItems.slice(currentStepIndex + 1, currentStepIndex + 3);
+        if (upcoming.length === 0) return null;
+        return (
+          <section aria-label="Следующие шаги">
+            <h2 className="hr-next-heading">Дальше</h2>
+            <div className="hr-next-grid">
+              {upcoming.map((item, offset) => {
+                const stepNumber = currentStepIndex + offset + 2;
+                const blend = (item.icon || '').includes('cream');
+                return (
+                  <article key={item.id} className="hr-next-card">
+                    <div className="hr-next-top">
+                      <span className="hr-next-kicker">Шаг {stepNumber}</span>
+                      <span className="hr-next-number">{stepNumber}</span>
+                    </div>
+                    <img
+                      className={`hr-next-product${blend ? ' blend' : ''}`}
+                      src={item.icon}
+                      alt=""
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                    <div className="hr-next-title">{item.title}</div>
+                  </article>
+                );
+              })}
             </div>
-          );
-        })}
-      </div>
+          </section>
+        );
+      })()}
 
     </div>,
   );
