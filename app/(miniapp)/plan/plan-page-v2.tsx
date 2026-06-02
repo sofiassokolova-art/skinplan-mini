@@ -386,22 +386,27 @@ function ProductsSection(props: {
       <div className="pv2-product-list">
         {products.map((p) => {
           const isBusy = busyId === p.id;
+          // У продуктов без imageUrl показываем иконку-заглушку поверх лаймового неонового
+          // пятна. Иконки часто PNG с белым/прозрачным фоном (например clay-mask) —
+          // лайм-glow создаёт визуальный «вес» и скрывает разнородные подложки.
+          const hasRealImage = !!p.imageUrl;
           return (
             <div className="glass-card-sm pv2-product-card" key={p.id}>
-              <div
-                className="pv2-product-img"
-                style={
-                  p.imageUrl
-                    ? { backgroundImage: `url(${p.imageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                    : {
-                        // #15: иконка-заглушка по шагу (как на главной)
-                        backgroundImage: `url(${inferStepIcon(p.name)})`,
-                        backgroundSize: 'contain',
-                        backgroundPosition: 'center',
-                        backgroundRepeat: 'no-repeat',
-                      }
-                }
-              />
+              <div className={`pv2-product-img ${hasRealImage ? '' : 'pv2-product-img-icon'}`}>
+                {hasRealImage ? (
+                  <div
+                    className="pv2-product-img-fill"
+                    style={{ backgroundImage: `url(${p.imageUrl})` }}
+                  />
+                ) : (
+                  <img
+                    className="pv2-product-img-icon-img"
+                    src={inferStepIcon(p.name)}
+                    alt=""
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                )}
+              </div>
               <div className="pv2-product-info">
                 <div className="pv2-product-name">{p.name}</div>
                 {p.shortDescription && <div className="pv2-product-desc">{p.shortDescription}</div>}
@@ -411,22 +416,24 @@ function ProductsSection(props: {
                   </div>
                 )}
                 <div className="pv2-product-actions">
+                  {/* Лайк слева — самое доступное действие большим пальцем */}
                   <button
-                    className="pv2-icon-btn"
-                    onClick={() => onReplace(p)}
-                    disabled={isBusy || p.replacementsCount === 0}
-                    aria-label="Заменить"
-                    title={p.replacementsCount > 0 ? `Заменить (${p.replacementsCount} аналогов)` : 'Нет аналогов'}
-                  >
-                    <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2"/><path d="M21 4v6h-6M3 20v-6h6"/></svg>
-                  </button>
-                  <button
-                    className={`pv2-icon-btn ${p.state.inWishlist ? 'pv2-icon-active' : ''}`}
+                    className={`pv2-icon-btn pv2-icon-heart ${p.state.inWishlist ? 'pv2-icon-active' : ''}`}
                     onClick={() => onToggleWishlist(p)}
                     disabled={isBusy}
                     aria-label={p.state.inWishlist ? 'Убрать из избранного' : 'В избранное'}
                   >
                     <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                  </button>
+                  <button
+                    className="pv2-text-btn"
+                    onClick={() => onReplace(p)}
+                    disabled={isBusy || p.replacementsCount === 0}
+                    aria-label="Заменить"
+                    title={p.replacementsCount > 0 ? `Заменить (${p.replacementsCount} аналогов)` : 'Нет аналогов'}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden><path d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2"/><path d="M21 4v6h-6M3 20v-6h6"/></svg>
+                    Заменить
                   </button>
                   <div className="pv2-spacer" />
                   <button
@@ -917,7 +924,11 @@ function PlanV2Styles() {
         scrollbar-width: none;
         -ms-overflow-style: none;
         margin: 0 -22px;
-        padding: 4px 22px 6px;
+        /* Сдвигаем первую карточку внутрь — раньше она прилипала к левому краю
+           glass-card-контейнера (padding 22px ровно компенсировался отрицательным
+           margin-left). Добавили 12px дополнительного отступа слева. */
+        padding: 4px 22px 6px 34px;
+        scroll-padding-inline-start: 34px;
       }
       .pv2-profile-carousel::-webkit-scrollbar { display: none; }
       /* Карточки профиля кожи показывают аккуратный peek следующего элемента.
@@ -1043,6 +1054,7 @@ function PlanV2Styles() {
         gap: 14px;
       }
       .pv2-product-img {
+        position: relative;
         width: 92px;
         height: 92px;
         border-radius: 16px;
@@ -1050,6 +1062,40 @@ function PlanV2Styles() {
         backdrop-filter: blur(12px);
         border: 1px solid rgba(255,255,255,0.8);
         flex-shrink: 0;
+        overflow: hidden;
+      }
+      .pv2-product-img-fill {
+        position: absolute;
+        inset: 0;
+        background-size: cover;
+        background-position: center;
+      }
+      /* Когда нет реального фото — рисуем неоновое лаймовое пятно за иконкой.
+         Это даёт визуальную опору для PNG-иконок (маска/крем/etc), у которых
+         бывает белый или прозрачный фон — без glow иконка «висит в воздухе». */
+      .pv2-product-img-icon {
+        background: radial-gradient(60% 60% at 50% 55%, rgba(var(--accent-rgb),0.85) 0%, rgba(var(--accent-rgb),0.45) 45%, rgba(255,255,255,0.5) 75%, rgba(255,255,255,0.7) 100%);
+      }
+      .pv2-product-img-icon::before {
+        content: "";
+        position: absolute;
+        inset: -6px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(var(--accent-rgb),0.55) 0%, transparent 60%);
+        filter: blur(8px);
+        z-index: 0;
+        pointer-events: none;
+      }
+      .pv2-product-img-icon-img {
+        position: relative;
+        z-index: 1;
+        display: block;
+        width: 78%;
+        height: 78%;
+        margin: 11% auto 0;
+        object-fit: contain;
+        mix-blend-mode: multiply;
+        filter: drop-shadow(0 4px 10px rgba(10,10,10,0.18));
       }
       .pv2-product-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
       .pv2-product-name {
@@ -1091,8 +1137,10 @@ function PlanV2Styles() {
         cursor: pointer;
         flex-shrink: 0;
         padding: 0;
+        transition: transform .14s ease, background .14s ease;
       }
       .pv2-icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+      .pv2-icon-btn:active { transform: scale(0.92); }
       .pv2-icon-btn svg {
         width: 16px;
         height: 16px;
@@ -1102,7 +1150,38 @@ function PlanV2Styles() {
         stroke-linecap: round;
         stroke-linejoin: round;
       }
-      .pv2-icon-btn.pv2-icon-active svg { fill: var(--ink); stroke: var(--ink); }
+      .pv2-icon-heart.pv2-icon-active {
+        background: var(--accent);
+        border-color: var(--accent);
+        box-shadow: 0 6px 14px rgba(var(--accent-rgb),0.45);
+      }
+      .pv2-icon-heart.pv2-icon-active svg { fill: var(--ink); stroke: var(--ink); }
+      /* Текстовая кнопка «Заменить» — заметнее круглой иконки и понятнее по действию */
+      .pv2-text-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 36px;
+        padding: 0 14px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.7);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255,255,255,0.8);
+        color: var(--ink);
+        font-family: var(--font-inter), sans-serif;
+        font-weight: 600;
+        font-size: 13px;
+        letter-spacing: -0.1px;
+        cursor: pointer;
+        transition: transform .14s ease, background .14s ease;
+      }
+      .pv2-text-btn:active { transform: scale(0.97); }
+      .pv2-text-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+      .pv2-text-btn svg {
+        width: 14px; height: 14px;
+        stroke: var(--ink); fill: none; stroke-width: 1.8;
+        stroke-linecap: round; stroke-linejoin: round;
+      }
       .pv2-spacer { flex: 1; }
       .pv2-cart-cta {
         background: var(--accent);

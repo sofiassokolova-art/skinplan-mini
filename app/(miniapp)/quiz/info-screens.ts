@@ -236,16 +236,18 @@ export const INFO_SCREENS: InfoScreen[] = [
 
   // 37) Вы узнаёте себя в этом? (Tinder-экран 1)
   // ПЕРЕАНКОРИРОВАН: было после motivation_focus (удалён) — теперь напрямую после no_mistakes.
+  // Фон: фото девушки с welcome-экрана — на двух подряд tinder-экранах создаём эффект
+  // «это про вас», совпадая с первым визуальным якорем анкеты.
   {
     id: 'recognize_yourself_1',
     title: 'Вы узнаёте себя в этом?',
     subtitle: '«Я часто чувствую недовольство своей кожей, когда смотрю в зеркало»',
-    image: '/lookimgclosely.webp',
+    image: '/onboarding/welcome.webp',
     type: 'tinder',
     showAfterInfoScreenId: 'no_mistakes',
     ctaText: '', // Кнопки будут отдельными (Нет/Да)
   },
-  
+
   // Второй Tinder перед планом. ИЗМЕНЕН ТОН: раньше было «не знаю какие средства» —
   // два подряд негативных утверждения (про недовольство в зеркале + растерянность) создавали
   // эмоциональную просадку прямо перед закрытием. Теперь — позитивный identity-claim:
@@ -254,7 +256,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'recognize_yourself_2',
     title: 'Это похоже на вас?',
     subtitle: '«Я хочу понимать СВОЮ кожу и подбирать уход осознанно — а не следовать общим советам из интернета»',
-    image: '/quiz4.webp',
+    image: '/onboarding/welcome.webp',
     type: 'tinder',
     showAfterInfoScreenId: 'recognize_yourself_1',
     ctaText: '', // Кнопки будут отдельными (Нет/Да)

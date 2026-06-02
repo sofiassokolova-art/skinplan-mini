@@ -129,27 +129,65 @@ function ImproveSkinScreenComponent({
             height: '100%',
             maxWidth: '420px',
             margin: '0 auto',
-            padding: '72px 20px 132px',
+            padding: '60px 20px 132px',
             boxSizing: 'border-box',
             display: 'flex',
             flexDirection: 'column',
             gap: 14,
           }}
         >
+          {/* Eyebrow со статистикой — социальное доказательство сверху */}
+          <div
+            style={{
+              alignSelf: 'flex-start',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '7px 14px',
+              borderRadius: 999,
+              background: 'rgba(255,255,255,0.78)',
+              border: '1px solid rgba(255,255,255,0.85)',
+              backdropFilter: 'blur(14px)',
+              WebkitBackdropFilter: 'blur(14px)',
+              boxShadow: '0 6px 18px rgba(0,0,0,0.06)',
+            }}
+          >
+            <span
+              aria-hidden
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: LIME,
+                boxShadow: `0 0 0 4px rgba(var(--accent-rgb),0.25)`,
+              }}
+            />
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                letterSpacing: '-0.1px',
+                color: 'var(--ink)',
+              }}
+            >
+              92% видят результат за 28 дней
+            </span>
+          </div>
+
           {/* Header: transformation */}
           <h1
             style={{
               fontFamily:
                 "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 700,
-              fontSize: '24px',
-              lineHeight: '115%',
-              letterSpacing: '-0.5px',
-              margin: '0 0 8px 4px',
+              fontSize: '26px',
+              lineHeight: '112%',
+              letterSpacing: '-0.6px',
+              margin: '4px 4px 0',
               color: 'var(--ink)',
             }}
           >
-            Посмотрите, как меняется ваша кожа
+            Посмотрите, как <span style={{ color: 'var(--ink)', background: `linear-gradient(180deg, transparent 60%, ${LIME} 60%)`, padding: '0 4px', borderRadius: 4 }}>меняется</span> ваша кожа
           </h1>
 
           {/* Transformation-карточка: from → to */}
@@ -249,6 +287,52 @@ function ImproveSkinScreenComponent({
                 {screen.subtitle}
               </div>
             )}
+            {/* Конкретные обещания результата — рисуют картинку «что я получу» */}
+            <div
+              style={{
+                marginTop: 14,
+                paddingTop: 14,
+                borderTop: '1px solid rgba(0,0,0,0.06)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+              }}
+            >
+              {[
+                'Меньше высыпаний и покраснений',
+                'Ровный тон и сияние без фильтров',
+                'Кожа выглядит увлажнённой и плотной',
+              ].map((line) => (
+                <div
+                  key={line}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    fontSize: 13,
+                    color: 'var(--ink)',
+                  }}
+                >
+                  <span
+                    aria-hidden
+                    style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: '50%',
+                      background: LIME,
+                      display: 'grid',
+                      placeItems: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <svg width="10" height="8" viewBox="0 0 14 10" fill="none">
+                      <path d="M1 5l4 4 8-8" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </span>
+                  <span style={{ lineHeight: 1.35 }}>{line}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* CTA-карточка: финальный вопрос + кнопка «Получить план» */}
