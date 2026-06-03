@@ -186,6 +186,26 @@ export default async function RootLayout({
       if (raw) sessionStorage.setItem('tg_init_data', decodeURIComponent(raw));
     }
   } catch (_) {}
+  // Закрыть нативный системный лоадер Telegram БЕЗ SDK: ready()/expand() под капотом
+  // шлют события web_app_ready / web_app_expand в нативный мост, который Telegram
+  // инжектит сам (TelegramWebviewProxy на iOS/Android, external.notify на Windows,
+  // postMessage в вебе/десктопе). Если telegram.org/js недоступен (частый случай на
+  // мобильных операторах РФ), мост всё равно есть — и лоадер можно закрыть напрямую.
+  function dismissSystemLoaderViaBridge(){
+    try {
+      var data = JSON.stringify({});
+      if (window.TelegramWebviewProxy && typeof window.TelegramWebviewProxy.postEvent === 'function') {
+        window.TelegramWebviewProxy.postEvent('web_app_ready', data);
+        window.TelegramWebviewProxy.postEvent('web_app_expand', data);
+      } else if (window.external && typeof window.external.notify === 'function') {
+        window.external.notify(JSON.stringify({ eventType: 'web_app_ready', eventData: {} }));
+        window.external.notify(JSON.stringify({ eventType: 'web_app_expand', eventData: {} }));
+      } else if (window.parent && window.parent !== window) {
+        window.parent.postMessage(JSON.stringify({ eventType: 'web_app_ready', eventData: {} }), '*');
+        window.parent.postMessage(JSON.stringify({ eventType: 'web_app_expand', eventData: {} }), '*');
+      }
+    } catch (_) {}
+  }
   function done(){
     try {
       var wa = window.Telegram && window.Telegram.WebApp;
@@ -219,6 +239,7 @@ export default async function RootLayout({
     telegramSdkFinished = true;
     markStartup('telegramSdkError');
     reportStartup('telegram-sdk-error', true);
+    dismissSystemLoaderViaBridge();
     try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {}
   };
   document.head.appendChild(s);
@@ -235,6 +256,7 @@ export default async function RootLayout({
     telegramSdkFinished = true;
     markStartup('telegramSdkTimeout', { src: s.src });
     reportStartup('telegram-sdk-timeout', true);
+    dismissSystemLoaderViaBridge();
     try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {}
   }, 5000);
 })();` }}

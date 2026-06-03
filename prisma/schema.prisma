@@ -548,17 +548,22 @@ model BroadcastLog {
 }
 
 model ClientLog {
-  id        String   @id @default(cuid())
-  userId    String   @map("user_id")
-  level     String
-  message   String
-  context   Json?
-  userAgent String?  @map("user_agent")
-  url       String?
-  createdAt DateTime @default(now()) @map("created_at")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  // userId nullable: первичные (юзер ещё не создан) и анонимные (SDK не загрузился,
+  // нет валидной initData) логи тоже сохраняем — иначе «застрял на первом экране»
+  // невидимо. telegramId хранит источник, когда userId ещё не сопоставлен.
+  userId     String?  @map("user_id")
+  telegramId String?  @map("telegram_id")
+  level      String
+  message    String
+  context    Json?
+  userAgent  String?  @map("user_agent")
+  url        String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([telegramId])
   @@index([level])
   @@index([createdAt])
   @@map("client_logs")

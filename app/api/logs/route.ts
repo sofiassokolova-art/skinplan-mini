@@ -9,8 +9,10 @@ export async function POST(request: NextRequest) {
   try {
     // ИСПРАВЛЕНО: initData не обязателен - можем логировать даже без него
     let userId: string | null = null;
+    let telegramId: string | null = null;
     const identity = await tryGetTelegramIdentityFromRequest(request);
     if (identity.ok) {
+      telegramId = identity.telegramId;
       try {
         const existing = await prisma.user.findUnique({
           where: { telegramId: identity.telegramId },
@@ -64,14 +66,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ИСПРАВЛЕНО: Сохраняем ТОЛЬКО в PostgreSQL, без Redis/KV
-    // Если userId есть - сохраняем в БД
-    // Если userId нет - все равно возвращаем успех (логирование не должно блокировать)
-    if (userId) {
+    // Сохраняем в PostgreSQL. userId может отсутствовать — это две важные ситуации:
+    //  1) Первичная сессия: initData валидна (telegramId есть), но строка User ещё
+    //     не создана (лог стартапа прилетел раньше, чем юзер появился в БД).
+    //  2) Анонимная: SDK/initData не загрузились вовсе (нет ни userId, ни telegramId) —
+    //     ровно случай «застрял на системном лоадере».
+    // Раньше оба случая молча терялись, и «не идёт дальше лоадера» было невидимо в логах.
+    //
+    // Чтобы не превращать эндпоинт в публичную свалку, совсем анонимные логи
+    // (без userId и без telegramId) сохраняем только если они диагностические:
+    // startup_timing или уровень warn/error. Остальной анонимный шум отбрасываем.
+    const ctxType =
+      context && typeof context === 'object' ? (context as any).type : undefined;
+    const isDiagnostic =
+      ctxType === 'startup_timing' || level === 'error' || level === 'warn';
+    const shouldPersist = !!userId || !!telegramId || isDiagnostic;
+
+    if (shouldPersist) {
       try {
         await prisma.clientLog.create({
           data: {
             userId,
+            telegramId,
             level,
             message,
             context: context || null,
@@ -79,10 +95,12 @@ export async function POST(request: NextRequest) {
             url: url || null,
           },
         });
-        
+
         if (process.env.NODE_ENV === 'development') {
           console.log('✅ /api/logs: Log saved to PostgreSQL', {
             userId,
+            telegramId,
+            anonymous: !userId,
             level,
             message: message.substring(0, 50),
           });
@@ -94,16 +112,14 @@ export async function POST(request: NextRequest) {
           error: dbError?.message,
           code: dbError?.code,
           userId,
+          telegramId,
         });
         // Не выбрасываем ошибку - логирование не критично для работы приложения
       }
     } else {
-      // userId нет - это нормально для анонимных логов
-      // В будущем можем сохранять и анонимные логи, но пока просто возвращаем успех
+      // Анонимный недиагностический лог — не сохраняем, но не блокируем ответ
       if (process.env.NODE_ENV === 'development') {
-        console.warn('⚠️ /api/logs: userId is null, log not saved to PostgreSQL', {
-          hasIdentity: identity.ok,
-          telegramId: identity.ok ? identity.telegramId : null,
+        console.warn('⚠️ /api/logs: anonymous non-diagnostic log skipped', {
           level,
           message: message.substring(0, 50),
         });
@@ -142,9 +158,10 @@ export async function POST(request: NextRequest) {
 
     // ИСПРАВЛЕНО: Возвращаем успех независимо от того, сохранился ли лог
     // Логирование не должно блокировать работу приложения
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
-      saved: !!userId, // true если userId есть и лог сохранен
+      saved: shouldPersist, // сохранён, если был userId/telegramId или это диагностический лог
+      anonymous: !userId,
       storedIn: 'postgres',
     });
   } catch (error: any) {
