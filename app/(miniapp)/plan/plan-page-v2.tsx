@@ -368,6 +368,33 @@ function inferStepIcon(name: string | undefined | null): string {
   return '/icons/clean/cleanser_true.png';
 }
 
+// Миниатюра продукта: показываем реальное фото, а если URL битый/не грузится —
+// падаем на иконку-заглушку по шагу ухода (иначе у продукта вроде клинзера
+// оставалась пустая белая плашка). Иконка лежит на лаймовом пятне (фон сзади).
+function ProductThumb({ product }: { product: ProductCard }) {
+  const [failed, setFailed] = useState(false);
+  const showIcon = !product.imageUrl || failed;
+  return (
+    <div className={`pv2-product-img ${showIcon ? 'pv2-product-img-icon' : ''}`}>
+      {showIcon ? (
+        <img
+          className="pv2-product-img-icon-img"
+          src={inferStepIcon(product.name)}
+          alt=""
+          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+        />
+      ) : (
+        <img
+          className="pv2-product-img-fill"
+          src={product.imageUrl!}
+          alt=""
+          onError={() => setFailed(true)}
+        />
+      )}
+    </div>
+  );
+}
+
 function ProductsSection(props: {
   products: ProductCard[];
   busyId: number | null;
@@ -386,26 +413,30 @@ function ProductsSection(props: {
       <div className="pv2-product-list">
         {products.map((p) => {
           const isBusy = busyId === p.id;
-          // У продуктов без imageUrl показываем иконку-заглушку поверх лаймового неонового
-          // пятна. Иконки часто PNG с белым/прозрачным фоном (например clay-mask) —
-          // лайм-glow создаёт визуальный «вес» и скрывает разнородные подложки.
-          const hasRealImage = !!p.imageUrl;
           return (
             <div className="glass-card-sm pv2-product-card" key={p.id}>
-              <div className={`pv2-product-img ${hasRealImage ? '' : 'pv2-product-img-icon'}`}>
-                {hasRealImage ? (
-                  <div
-                    className="pv2-product-img-fill"
-                    style={{ backgroundImage: `url(${p.imageUrl})` }}
-                  />
-                ) : (
-                  <img
-                    className="pv2-product-img-icon-img"
-                    src={inferStepIcon(p.name)}
-                    alt=""
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                  />
-                )}
+              {/* Левая колонка: иконка/фото + под ней действия (лайк, заменить) */}
+              <div className="pv2-product-media">
+                <ProductThumb product={p} />
+                <div className="pv2-product-icon-actions">
+                  <button
+                    className={`pv2-icon-btn pv2-icon-heart ${p.state.inWishlist ? 'pv2-icon-active' : ''}`}
+                    onClick={() => onToggleWishlist(p)}
+                    disabled={isBusy}
+                    aria-label={p.state.inWishlist ? 'Убрать из избранного' : 'В избранное'}
+                  >
+                    <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                  </button>
+                  <button
+                    className="pv2-icon-btn"
+                    onClick={() => onReplace(p)}
+                    disabled={isBusy || p.replacementsCount === 0}
+                    aria-label="Заменить"
+                    title={p.replacementsCount > 0 ? `Заменить (${p.replacementsCount} аналогов)` : 'Нет аналогов'}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden><path d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2"/><path d="M21 4v6h-6M3 20v-6h6"/></svg>
+                  </button>
+                </div>
               </div>
               <div className="pv2-product-info">
                 <div className="pv2-product-name">{p.name}</div>
@@ -416,26 +447,6 @@ function ProductsSection(props: {
                   </div>
                 )}
                 <div className="pv2-product-actions">
-                  {/* Лайк слева — самое доступное действие большим пальцем */}
-                  <button
-                    className={`pv2-icon-btn pv2-icon-heart ${p.state.inWishlist ? 'pv2-icon-active' : ''}`}
-                    onClick={() => onToggleWishlist(p)}
-                    disabled={isBusy}
-                    aria-label={p.state.inWishlist ? 'Убрать из избранного' : 'В избранное'}
-                  >
-                    <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                  </button>
-                  <button
-                    className="pv2-text-btn"
-                    onClick={() => onReplace(p)}
-                    disabled={isBusy || p.replacementsCount === 0}
-                    aria-label="Заменить"
-                    title={p.replacementsCount > 0 ? `Заменить (${p.replacementsCount} аналогов)` : 'Нет аналогов'}
-                  >
-                    <svg viewBox="0 0 24 24" aria-hidden><path d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2"/><path d="M21 4v6h-6M3 20v-6h6"/></svg>
-                    Заменить
-                  </button>
-                  <div className="pv2-spacer" />
                   <button
                     className={`pv2-cart-cta ${p.state.inCart ? 'pv2-in-cart' : ''}`}
                     onClick={() => onToggleCart(p)}
@@ -1064,6 +1075,19 @@ function PlanV2Styles() {
         display: flex;
         gap: 14px;
       }
+      /* Левая колонка: фото/иконка, а под ней кнопки лайк + заменить */
+      .pv2-product-media {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+      }
+      .pv2-product-icon-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+      }
       .pv2-product-img {
         position: relative;
         width: 92px;
@@ -1078,8 +1102,9 @@ function PlanV2Styles() {
       .pv2-product-img-fill {
         position: absolute;
         inset: 0;
-        background-size: cover;
-        background-position: center;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
       }
       /* Когда нет реального фото — рисуем неоновое лаймовое пятно за иконкой.
          Это даёт визуальную опору для PNG-иконок (маска/крем/etc), у которых
@@ -1097,6 +1122,8 @@ function PlanV2Styles() {
         z-index: 0;
         pointer-events: none;
       }
+      /* Иконка лежит ПОВЕРХ лаймового пятна (без multiply — иначе белые части
+         иконки «пробивались» лаймом и фон выглядел необрезанным). */
       .pv2-product-img-icon-img {
         position: relative;
         z-index: 1;
@@ -1105,7 +1132,6 @@ function PlanV2Styles() {
         height: 78%;
         margin: 11% auto 0;
         object-fit: contain;
-        mix-blend-mode: multiply;
         filter: drop-shadow(0 4px 10px rgba(10,10,10,0.18));
       }
       .pv2-product-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -1120,20 +1146,19 @@ function PlanV2Styles() {
       .pv2-product-desc { font-size: 13px; color: var(--ink-soft); margin-bottom: 8px; }
       .pv2-product-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
       .pv2-product-tag {
-        background: rgba(255,255,255,0.7);
-        border: 1px solid rgba(255,255,255,0.7);
+        background: var(--ink);
+        border: 1px solid var(--ink);
         border-radius: 999px;
         padding: 4px 10px;
         font-size: 11px;
-        color: #475467;
+        color: #FFFFFF;
       }
       .pv2-product-actions {
         display: flex;
         align-items: center;
-        gap: 8px;
-        padding: 14px 4px 0;
-        margin-top: 12px;
-        border-top: 1px solid rgba(255,255,255,0.5);
+        justify-content: flex-end;
+        margin-top: auto;
+        padding-top: 14px;
       }
       .pv2-icon-btn {
         width: 36px;
@@ -1167,33 +1192,6 @@ function PlanV2Styles() {
         box-shadow: 0 6px 14px rgba(var(--accent-rgb),0.45);
       }
       .pv2-icon-heart.pv2-icon-active svg { fill: var(--ink); stroke: var(--ink); }
-      /* Текстовая кнопка «Заменить» — заметнее круглой иконки и понятнее по действию */
-      .pv2-text-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        height: 36px;
-        padding: 0 14px;
-        border-radius: 999px;
-        background: rgba(255,255,255,0.7);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255,255,255,0.8);
-        color: var(--ink);
-        font-family: var(--font-inter), sans-serif;
-        font-weight: 600;
-        font-size: 13px;
-        letter-spacing: -0.1px;
-        cursor: pointer;
-        transition: transform .14s ease, background .14s ease;
-      }
-      .pv2-text-btn:active { transform: scale(0.97); }
-      .pv2-text-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-      .pv2-text-btn svg {
-        width: 14px; height: 14px;
-        stroke: var(--ink); fill: none; stroke-width: 1.8;
-        stroke-linecap: round; stroke-linejoin: round;
-      }
-      .pv2-spacer { flex: 1; }
       .pv2-cart-cta {
         background: var(--accent);
         color: var(--ink);
