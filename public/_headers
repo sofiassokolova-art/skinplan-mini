@@ -1,3 +1,17 @@
 # Cloudflare Workers static assets bypass Next.js response headers.
 /_next/static/*
   Cache-Control: public,max-age=31536000,immutable
+
+# Статичные картинки (анкета, онбординг и т.д.) — кэшируем в браузере на неделю,
+# чтобы при повторных заходах и навигации по анкете они не перекачивались.
+# Не immutable: при замене файла обновление дойдёт до клиентов в течение недели.
+/*.webp
+  Cache-Control: public,max-age=604800,stale-while-revalidate=86400
+/*.png
+  Cache-Control: public,max-age=604800,stale-while-revalidate=86400
+/*.jpg
+  Cache-Control: public,max-age=604800,stale-while-revalidate=86400
+/*.svg
+  Cache-Control: public,max-age=604800,stale-while-revalidate=86400
+/onboarding/*
+  Cache-Control: public,max-age=604800,stale-while-revalidate=86400
