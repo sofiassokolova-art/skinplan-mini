@@ -119,7 +119,8 @@ export default async function RootLayout({
   var startup = window.__skiniq_startup_timing = window.__skiniq_startup_timing || {
     startedAtEpochMs: Date.now(),
     marks: {},
-    reported: false
+    reported: false,
+    reports: {}
   };
   function markStartup(name, context) {
     if (!startup.marks[name]) {
@@ -129,9 +130,12 @@ export default async function RootLayout({
       };
     }
   }
-  function reportStartup(reason) {
-    if (startup.reported) return;
-    startup.reported = true;
+  function reportStartup(reason, force) {
+    startup.reports = startup.reports || {};
+    if (startup.reports[reason]) return;
+    if (startup.reported && !force) return;
+    startup.reports[reason] = true;
+    if (!force) startup.reported = true;
     try {
       var connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
       var initData = '';
@@ -182,6 +186,26 @@ export default async function RootLayout({
       if (raw) sessionStorage.setItem('tg_init_data', decodeURIComponent(raw));
     }
   } catch (_) {}
+  // Закрыть нативный системный лоадер Telegram БЕЗ SDK: ready()/expand() под капотом
+  // шлют события web_app_ready / web_app_expand в нативный мост, который Telegram
+  // инжектит сам (TelegramWebviewProxy на iOS/Android, external.notify на Windows,
+  // postMessage в вебе/десктопе). Если telegram.org/js недоступен (частый случай на
+  // мобильных операторах РФ), мост всё равно есть — и лоадер можно закрыть напрямую.
+  function dismissSystemLoaderViaBridge(){
+    try {
+      var data = JSON.stringify({});
+      if (window.TelegramWebviewProxy && typeof window.TelegramWebviewProxy.postEvent === 'function') {
+        window.TelegramWebviewProxy.postEvent('web_app_ready', data);
+        window.TelegramWebviewProxy.postEvent('web_app_expand', data);
+      } else if (window.external && typeof window.external.notify === 'function') {
+        window.external.notify(JSON.stringify({ eventType: 'web_app_ready', eventData: {} }));
+        window.external.notify(JSON.stringify({ eventType: 'web_app_expand', eventData: {} }));
+      } else if (window.parent && window.parent !== window) {
+        window.parent.postMessage(JSON.stringify({ eventType: 'web_app_ready', eventData: {} }), '*');
+        window.parent.postMessage(JSON.stringify({ eventType: 'web_app_expand', eventData: {} }), '*');
+      }
+    } catch (_) {}
+  }
   function done(){
     try {
       var wa = window.Telegram && window.Telegram.WebApp;
@@ -203,15 +227,38 @@ export default async function RootLayout({
     var waEarly = window.Telegram && window.Telegram.WebApp;
     if (waEarly && typeof waEarly.ready === 'function') { done(); return; }
   } catch (_) {}
+  var telegramSdkFinished = false;
   var s = document.createElement('script');
   s.src = 'https://telegram.org/js/telegram-web-app.js';
   s.async = true;
-  s.onload = done;
+  s.onload = function(){
+    telegramSdkFinished = true;
+    done();
+  };
   s.onerror = function(){
+    telegramSdkFinished = true;
     markStartup('telegramSdkError');
+    reportStartup('telegram-sdk-error', true);
+    dismissSystemLoaderViaBridge();
     try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {}
   };
   document.head.appendChild(s);
+  setTimeout(function(){
+    if (telegramSdkFinished) return;
+    try {
+      var waLate = window.Telegram && window.Telegram.WebApp;
+      if (waLate && typeof waLate.ready === 'function') {
+        telegramSdkFinished = true;
+        done();
+        return;
+      }
+    } catch (_) {}
+    telegramSdkFinished = true;
+    markStartup('telegramSdkTimeout', { src: s.src });
+    reportStartup('telegram-sdk-timeout', true);
+    dismissSystemLoaderViaBridge();
+    try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {}
+  }, 5000);
 })();` }}
           />
         )}
@@ -349,7 +396,26 @@ export default async function RootLayout({
 (function(){
   var fallbackCss = "display:block;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;padding:12px 20px;background:rgba(10,95,89,0.95);color:#fff;border-radius:12px;font-family:system-ui,sans-serif;font-size:14px;box-shadow:0 4px 20px rgba(0,0,0,0.2);";
   var fallbackHtml = 'Не удалось загрузить приложение. <a href="javascript:location.reload()" style="color:#fff;text-decoration:underline;font-weight:600">Обновить</a>';
-  var reloadKey = 'skinplan_chunk_reload_done_' + ('${process.env.CF_PAGES_COMMIT_SHA?.slice(0,8) || Date.now()}');
+  function buildReloadKey(){
+    try {
+      var assets = [];
+      var nodes = document.querySelectorAll('script[src*="/_next/static/"],link[href*="/_next/static/"]');
+      for (var i = 0; i < nodes.length; i++) {
+        var url = nodes[i].src || nodes[i].href || '';
+        if (url) assets.push(url.replace(window.location.origin, ''));
+      }
+      assets.sort();
+      var seed = assets.join('|') || 'no-next-assets';
+      var hash = 0;
+      for (var j = 0; j < seed.length; j++) {
+        hash = ((hash * 31) + seed.charCodeAt(j)) >>> 0;
+      }
+      return 'skinplan_chunk_reload_done_' + hash.toString(36);
+    } catch (err) {
+      return 'skinplan_chunk_reload_done_static_v2';
+    }
+  }
+  var reloadKey = buildReloadKey();
   window.__skiniq_mounted = false;
   function showFallback(){
     var e = document.getElementById("loading-timeout-fallback");
