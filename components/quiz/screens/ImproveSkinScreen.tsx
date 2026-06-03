@@ -129,11 +129,16 @@ function ImproveSkinScreenComponent({
             height: '100%',
             maxWidth: '420px',
             margin: '0 auto',
-            padding: 'calc(clamp(20px, 4vh, 40px) + 56px) 20px 132px',
+            padding: 'calc(clamp(20px, 4vh, 40px) + 56px) 20px 40px',
             boxSizing: 'border-box',
             display: 'flex',
             flexDirection: 'column',
             gap: 14,
+            // Контент (transformation-карточка + список + CTA) выше вьюпорта на
+            // невысоких экранах — без прокрутки кнопка «Получить план» уезжала
+            // за нижний край (overflow:hidden у родителя её обрезал).
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
           }}
         >
           {/* Eyebrow со статистикой — социальное доказательство сверху */}
