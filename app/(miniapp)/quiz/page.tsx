@@ -1,39 +1,23 @@
 // app/(miniapp)/quiz/page.tsx
-// Страница анкеты - рефакторинг с разделением на компоненты
+// Страница анкеты.
+// ВАЖНО: тело анкеты грузится через next/dynamic с ssr:false.
+// Причина: SSR тяжёлого дерева квиза на «холодном» Cloudflare-воркере
+// застревал на ~середине потокового HTML, соединение обрывалось
+// (net::ERR_CONNECTION_CLOSED) → белый экран у новых пользователей,
+// которые с / редиректятся прямо на /quiz. Квиз полностью клиентский,
+// серверный HTML всё равно выбрасывался при гидрации — поэтому отдаём
+// с сервера только лёгкий лоадер, а само дерево монтируем на клиенте.
 
 'use client';
 
-import { useState } from 'react';
-import { QuizProvider } from './components/QuizProvider';
-import { QuizRenderer } from './components/QuizRenderer';
-import { QuizErrorBoundary } from '@/components/QuizErrorBoundary';
-import { useQuizEngine } from './hooks/useQuizEngine';
+import dynamic from 'next/dynamic';
+import { QuizInitialLoader } from './components/QuizInitialLoader';
 
-function QuizPageContent() {
-  // Debug state - currently unused but kept for future debugging
-  const [debugLogs] = useState<Array<{ time: string; message: string; data?: any }>>([]);
-  const [showDebugPanel] = useState(false);
-
-  const { screen, currentQuestion, currentInitialInfoScreen, dataError } = useQuizEngine();
-
-  return (
-    <QuizRenderer
-      screen={screen}
-      currentQuestion={currentQuestion}
-      currentInitialInfoScreen={currentInitialInfoScreen}
-      debugLogs={debugLogs}
-      showDebugPanel={showDebugPanel}
-      dataError={dataError}
-    />
-  );
-}
+const QuizClient = dynamic(() => import('./QuizClient'), {
+  ssr: false,
+  loading: () => <QuizInitialLoader />,
+});
 
 export default function QuizPage() {
-  return (
-    <QuizErrorBoundary componentName="QuizProvider">
-      <QuizProvider>
-        <QuizPageContent />
-      </QuizProvider>
-    </QuizErrorBoundary>
-  );
+  return <QuizClient />;
 }
