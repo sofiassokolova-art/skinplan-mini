@@ -2,7 +2,6 @@
 // Root layout для Next.js приложения
 
 import type { Metadata, Viewport } from 'next';
-import { headers } from 'next/headers';
 import Script from 'next/script';
 import localFont from 'next/font/local';
 import './globals.css';
@@ -65,16 +64,19 @@ export const metadata: Metadata = {
 
 const DEV_TELEGRAM_ID = process.env.NEXT_PUBLIC_DEV_TELEGRAM_ID || '987654322';
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const isDev = process.env.NODE_ENV === 'development';
-  const headersList = await headers();
-  const pathname = (headersList as any).get?.('x-pathname') ?? '';
-  const isAdminRoute = pathname.startsWith('/admin');
-
+  // ВАЖНО: не вызываем headers()/cookies() здесь — иначе весь app форсится в
+  // динамический рендер, каждый заход бьёт в Cloudflare Worker (origin), и на
+  // холодном старте TTFB документа доходил до 15–33с (видно в startup-логах,
+  // в т.ч. у пользователей со стабильным VPN — значит упор в Worker/edge, не в сеть).
+  // Без динамических функций оболочка пререндерится статически и отдаётся из
+  // edge-кэша ближайшего PoP. Детект /admin перенесён в клиент: inline-скрипты
+  // ниже сами проверяют location.pathname.
   return (
     <html 
       lang="ru" 
@@ -88,13 +90,11 @@ export default async function RootLayout({
             в кеше браузера → onload стреляет сразу → ready() намного раньше.
             БЕЗ crossOrigin: динамический <script> ниже создаётся без
             crossOrigin → match → preload реально переиспользуется. */}
-        {!isAdminRoute && (
-          <link
-            rel="preload"
-            href="https://telegram.org/js/telegram-web-app.js"
-            as="script"
-          />
-        )}
+        <link
+          rel="preload"
+          href="https://telegram.org/js/telegram-web-app.js"
+          as="script"
+        />
         {/* Preload картинки первого info-экрана:
             до этого фоновая картинка грузилась после рендера → контент
             на экране появлялся "по очереди" (контейнер + потом картинка хлоп).
@@ -102,20 +102,16 @@ export default async function RootLayout({
             с bootstrap-чанками за канал пользователя.
             Иконки списка оптимизированы (64×64 PNG вместо 880×880 JPEG-as-PNG)
             — экономия ~258KB (с 277KB до 19KB суммарно). */}
-        {!isAdminRoute && (
-          <>
-            <link rel="preload" href="/onboarding/welcome.webp" as="image" fetchPriority="high" />
-            <link rel="preload" href="/icons/detailed_3_64.png" as="image" />
-            <link rel="preload" href="/icons/hydration_3_64.png" as="image" />
-            <link rel="preload" href="/icons/face_3_64.png" as="image" />
-          </>
-        )}
+        <link rel="preload" href="/onboarding/welcome.webp" as="image" fetchPriority="high" />
+        <link rel="preload" href="/icons/detailed_3_64.png" as="image" />
+        <link rel="preload" href="/icons/hydration_3_64.png" as="image" />
+        <link rel="preload" href="/icons/face_3_64.png" as="image" />
         {/* Загружаем SDK до React: Telegram system loader должен закрыться,
             даже если загрузка чанков приложения задержалась. */}
-        {!isAdminRoute && (
-          <script
-            dangerouslySetInnerHTML={{ __html: `(function(){
+        <script
+          dangerouslySetInnerHTML={{ __html: `(function(){
   if (typeof window === 'undefined') return;
+  if (window.location.pathname.indexOf('/admin') === 0) return;
   var startup = window.__skiniq_startup_timing = window.__skiniq_startup_timing || {
     startedAtEpochMs: Date.now(),
     marks: {},
@@ -138,6 +134,24 @@ export default async function RootLayout({
     if (!force) startup.reported = true;
     try {
       var connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      // Разбивка холодного старта: connection (DNS+TCP+TLS) vs server (TTFB) vs download.
+      // Отвечает на вопрос «тормозит Worker/edge или сеть пользователя».
+      var navTiming = null;
+      try {
+        var nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+        if (nav) {
+          navTiming = {
+            type: nav.type,
+            dns: Math.round(nav.domainLookupEnd - nav.domainLookupStart),
+            tcp: Math.round(nav.connectEnd - nav.connectStart),
+            tls: nav.secureConnectionStart ? Math.round(nav.connectEnd - nav.secureConnectionStart) : 0,
+            ttfb: Math.round(nav.responseStart - nav.requestStart),
+            download: Math.round(nav.responseEnd - nav.responseStart),
+            requestStart: Math.round(nav.requestStart),
+            responseStart: Math.round(nav.responseStart)
+          };
+        }
+      } catch (_) {}
       var initData = '';
       try {
         initData = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) ||
@@ -162,7 +176,8 @@ export default async function RootLayout({
               downlink: connection.downlink,
               rtt: connection.rtt,
               saveData: connection.saveData
-            } : null
+            } : null,
+            navTiming: navTiming
           },
           url: window.location.href,
           userAgent: navigator.userAgent
@@ -260,10 +275,9 @@ export default async function RootLayout({
     try { window.dispatchEvent(new Event('telegram-webapp-ready')); } catch (_) {}
   }, 5000);
 })();` }}
-          />
-        )}
-        {/* DEV-режим: мок Telegram WebApp для локального браузера (не на /admin) */}
-        {isDev && !isAdminRoute && (
+        />
+        {/* DEV-режим: мок Telegram WebApp для локального браузера (только localhost) */}
+        {isDev && (
           <Script
             id="telegram-dev-mock"
             strategy="afterInteractive"
@@ -356,38 +370,44 @@ export default async function RootLayout({
         {/* Лоадер при открытии — показываем ВСЕГДА (кроме /admin).
             React удалит его при монтировании через useRemoveRootLoading().
             Не зависим от process.env.VERCEL — Vercel build cache может не подставлять его. */}
-        {!isAdminRoute && (
+        <div
+          id="root-loading"
+          suppressHydrationWarning
+          style={{
+            position: 'fixed',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: '#F4F2EE',
+            zIndex: 99998,
+          }}
+        >
+          {/* Лаймовая дуга вращается по тёмному кольцу — брендированный fallback до React. */}
           <div
-            id="root-loading"
-            suppressHydrationWarning
             style={{
-              position: 'fixed',
-              inset: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: '#F4F2EE',
-              zIndex: 99998,
+              width: 56,
+              height: 56,
+              borderRadius: '50%',
+              border: '5px solid rgba(10, 10, 10, 0.16)',
+              borderTopColor: '#D5FE61',
+              animation: 'skinplan-root-loader-spin 0.9s linear infinite',
             }}
-          >
-            {/* Лаймовая дуга вращается по тёмному кольцу — брендированный fallback до React. */}
-            <div
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: '50%',
-                border: '5px solid rgba(10, 10, 10, 0.16)',
-                borderTopColor: '#D5FE61',
-                animation: 'skinplan-root-loader-spin 0.9s linear infinite',
-              }}
-            />
-            <style
-              dangerouslySetInnerHTML={{
-                __html: `@keyframes skinplan-root-loader-spin { to { transform: rotate(360deg); } }`,
-              }}
-            />
-          </div>
-        )}
+          />
+          <style
+            dangerouslySetInnerHTML={{
+              __html: `@keyframes skinplan-root-loader-spin { to { transform: rotate(360deg); } }`,
+            }}
+          />
+        </div>
+        {/* Оболочка статическая (без headers()), поэтому root-loading рендерится
+            всегда. На /admin его некому скрыть (там нет useRemoveRootLoading) —
+            убираем сразу на клиенте. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){if(window.location.pathname.indexOf('/admin')===0){var e=document.getElementById('root-loading');if(e&&e.parentNode)e.parentNode.removeChild(e);}})();`,
+          }}
+        />
         {/* При ошибке загрузки чанков или таймауте — показываем кнопку «Обновить» */}
         <div id="loading-timeout-fallback" style={{ display: 'none' }} />
         <script
