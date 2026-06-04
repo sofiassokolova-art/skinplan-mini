@@ -10,11 +10,14 @@ export async function POST(request: NextRequest) {
     if (!auth.ok) return auth.response;
     const userId = auth.ctx.userId;
 
-    const { productId, feedback } = await request.json();
+    const { productId: rawProductId, feedback } = await request.json();
 
-    if (!productId || !feedback) {
+    // productId — Int в БД; приводим и валидируем, иначе строка/мусор роняет
+    // upsert в общий 500 вместо понятного 400 (ср. cart/wishlist коэрсят так же).
+    const productId = Number(rawProductId);
+    if (!Number.isInteger(productId) || productId <= 0 || !feedback) {
       return NextResponse.json(
-        { error: 'Missing productId or feedback' },
+        { error: 'Missing or invalid productId or feedback' },
         { status: 400 }
       );
     }

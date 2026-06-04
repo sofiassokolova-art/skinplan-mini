@@ -124,8 +124,15 @@ export async function filterProducts(
         'премиум': 'premium',
       };
       const expectedPriceSegment = budgetMapping[profileClassification.budget];
-      const productPriceSegment = (product as any).priceSegment;
-      
+      // Если у продукта не проставлен priceSegment, выводим его из цены — иначе
+      // дорогой продукт с пустым segment проскакивал бы бюджетный фильтр даже в hard.
+      // Пороги совпадают с getBudgetTier: <2000 mass, <5000 mid, иначе premium.
+      let productPriceSegment = (product as any).priceSegment as string | null | undefined;
+      if (!productPriceSegment && typeof (product as any).price === 'number') {
+        const price = (product as any).price as number;
+        productPriceSegment = price < 2000 ? 'mass' : price < 5000 ? 'mid' : 'premium';
+      }
+
       if (expectedPriceSegment && productPriceSegment && productPriceSegment !== expectedPriceSegment) {
         if (strictness === 'hard') {
           return false;

@@ -369,8 +369,11 @@ export async function getProductsForStep(
         }
       }
       
-      // Используем совместимые продукты, если их достаточно
-      if (compatibleProducts.length >= (step.max_items || 3) || compatibleProducts.length > 0) {
+      // Переходим на совместимый набор только если его ДОСТАТОЧНО (>= max_items).
+      // Иначе оставляем исходный список, чтобы не недозаполнить шаг одним-двумя
+      // продуктами. (Раньше здесь было `|| length > 0`, из-за чего порог не работал
+      // и шаг мог схлопнуться до единственного совместимого продукта.)
+      if (compatibleProducts.length >= (step.max_items || 3)) {
         products = compatibleProducts;
       }
     }

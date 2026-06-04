@@ -7,6 +7,7 @@ import type { QuestionnaireAnswers } from '@/lib/skin-analysis-engine';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { calculateSkinIssues } from '@/lib/skin-issues';
+import { formatSkinTypeLabel } from '@/lib/ui-formatters';
 
 // Тело функции вынесено в lib/skin-issues.ts, чтобы plan-generator
 // импортировал её оттуда, а не через '@/app/api/analysis/route'.
@@ -164,15 +165,6 @@ export async function GET(request: NextRequest) {
       .filter(i => i.severity_label === 'критично' || i.severity_label === 'плохо')
       .map(i => i.name);
 
-    // Преобразуем тип кожи в русский
-    const skinTypeRuMap: Record<string, string> = {
-      dry: 'Сухая',
-      oily: 'Жирная',
-      combo: 'Комбинированная',
-      normal: 'Нормальная',
-      sensitive: 'Чувствительная',
-    };
-
     // Получаем рекомендации через API рекомендаций
     let morningSteps: any[] = [];
     let eveningSteps: any[] = [];
@@ -262,7 +254,6 @@ export async function GET(request: NextRequest) {
                 id: p.id,
                 name: p.name,
                 brand: { name: p.brand || (typeof p.brand === 'object' ? p.brand?.name : 'Unknown') },
-                price: (p as any).price || 0,
                 imageUrl: p.imageUrl || null,
                 description: p.description || p.descriptionUser || '',
                 tags: p.tags || (p.concerns || []).slice(0, 2), // Используем теги продукта или concerns
@@ -333,7 +324,7 @@ export async function GET(request: NextRequest) {
         gender: gender || null,
         age: age || null,
         skinType: profile.skinType || 'normal',
-        skinTypeRu: skinTypeRuMap[profile.skinType || 'normal'] || 'Нормальная',
+        skinTypeRu: formatSkinTypeLabel(profile.skinType || 'normal') || 'Нормальная',
         keyProblems,
       },
       issues,

@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logApiRequest, logApiError } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { getCurrentProfile } from '@/lib/get-current-profile';
+import { formatSkinTypeLabel } from '@/lib/ui-formatters';
 import { getCorrelationId, addCorrelationIdToHeaders } from '@/lib/utils/correlation-id';
 import { addCacheHeaders, CachePresets } from '@/lib/utils/api-cache';
 
@@ -43,15 +44,6 @@ export async function GET(request: NextRequest) {
       return responseWithCache;
     }
 
-    // Преобразуем тип кожи в русский для отображения
-    const skinTypeRuMap: Record<string, string> = {
-      dry: 'Сухая',
-      oily: 'Жирная',
-      combo: 'Комбинированная',
-      normal: 'Нормальная',
-      sensitive: 'Чувствительная',
-    };
-
     const duration = Date.now() - startTime;
     logApiRequest(method, path, 200, duration, userId, correlationId);
     
@@ -59,7 +51,7 @@ export async function GET(request: NextRequest) {
       id: profile.id,
       version: profile.version,
       skinType: profile.skinType,
-      skinTypeRu: skinTypeRuMap[profile.skinType || 'normal'] || 'Нормальная',
+      skinTypeRu: formatSkinTypeLabel(profile.skinType || 'normal') || 'Нормальная',
       sensitivityLevel: profile.sensitivityLevel,
       dehydrationLevel: profile.dehydrationLevel,
       acneLevel: profile.acneLevel,

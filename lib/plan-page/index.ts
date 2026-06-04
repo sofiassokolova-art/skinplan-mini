@@ -52,16 +52,14 @@ export async function buildPlanPageContext(
   const plan = plan28Record?.planData as Plan28 | null;
   if (!plan || !Array.isArray(plan.days) || plan.days.length === 0) return null;
 
-  // 3. PlanProgress (currentDay, streak)
-  const progress = await prisma.planProgress.findUnique({
-    where: { userId },
-    select: { currentDay: true, currentStreak: true },
-  });
-  const currentDay = clampDay(progress?.currentDay ?? 1);
-  const currentStreak = progress?.currentStreak ?? 0;
-
-  // 4. Cart + Wishlist + ProductReplacement параллельно
-  const [cartRows, wishlistRows, replacementRows] = await Promise.all([
+  // 3+4. PlanProgress + Cart + Wishlist + ProductReplacement — все зависят только
+  // от userId и независимы друг от друга, поэтому одним Promise.all (на один
+  // round-trip меньше). Стоят после проверки плана, чтобы не тратить запросы зря.
+  const [progress, cartRows, wishlistRows, replacementRows] = await Promise.all([
+    prisma.planProgress.findUnique({
+      where: { userId },
+      select: { currentDay: true, currentStreak: true },
+    }),
     prisma.cart.findMany({ where: { userId }, select: { productId: true } }),
     prisma.wishlist.findMany({ where: { userId }, select: { productId: true } }),
     prisma.productReplacement.findMany({
@@ -69,6 +67,8 @@ export async function buildPlanPageContext(
       select: { oldProductId: true, newProductId: true },
     }),
   ]);
+  const currentDay = clampDay(progress?.currentDay ?? 1);
+  const currentStreak = progress?.currentStreak ?? 0;
 
   const cartProductIds = new Set(cartRows.map((r) => r.productId));
   const wishlistProductIds = new Set(wishlistRows.map((r) => r.productId));
