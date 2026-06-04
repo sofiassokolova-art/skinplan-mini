@@ -132,7 +132,6 @@ export async function GET(
         id: alt.brand.id,
         name: alt.brand.name,
       },
-      price: alt.price,
       imageUrl: alt.imageUrl,
       description: alt.descriptionUser || alt.description,
       whyBetter: generateWhyBetter(rejectedProduct, alt, profile),

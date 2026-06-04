@@ -17,7 +17,6 @@ interface CartItem {
     id: number;
     name: string;
     brand: { id: number; name: string };
-    price: number | null;
     imageUrl: string | null;
     link: string | null;
     marketLinks: any;
