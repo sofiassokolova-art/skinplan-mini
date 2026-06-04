@@ -7,6 +7,7 @@ import { ApiResponse } from '@/lib/api-response';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { buildPlanPageContext } from '@/lib/plan-page';
+import { stripPrices } from '@/lib/strip-prices';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,7 +42,8 @@ export async function GET(request: NextRequest) {
     });
 
     logApiRequest(method, path, 200, duration, userId);
-    return ApiResponse.success({ state: 'ok', context });
+    // Политика: цена продукта не должна уходить на клиент (см. lib/strip-prices).
+    return ApiResponse.success(stripPrices({ state: 'ok', context }));
   } catch (error: unknown) {
     const duration = Date.now() - startTime;
     logApiError(method, path, error, userId);

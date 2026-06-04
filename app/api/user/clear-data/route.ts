@@ -39,87 +39,43 @@ export async function POST(request: NextRequest) {
       logger.warn('Failed to clear cache (non-critical)', cacheError, { userId });
     }
 
-    // 3. Удаляем данные из БД
+    // 3. Удаляем данные из БД ОДНОЙ транзакцией (всё-или-ничего).
+    // Раньше это были последовательные deleteMany с проглатыванием ошибок —
+    // сбой посередине оставлял аккаунт в полу-удалённом состоянии. Порядок
+    // сохранён (дети перед родителями), все модели определены в schema.prisma.
+    const [
+      recommendationSessions,
+      planProgress,
+      userAnswers,
+      skinProfiles,
+      planFeedback,
+      wishlist,
+      cart,
+      plan28,
+      clientLogs,
+    ] = await prisma.$transaction([
+      prisma.recommendationSession.deleteMany({ where: { userId } }),
+      prisma.planProgress.deleteMany({ where: { userId } }),
+      prisma.userAnswer.deleteMany({ where: { userId } }),
+      prisma.skinProfile.deleteMany({ where: { userId } }),
+      prisma.planFeedback.deleteMany({ where: { userId } }),
+      prisma.wishlist.deleteMany({ where: { userId } }),
+      prisma.cart.deleteMany({ where: { userId } }),
+      prisma.plan28.deleteMany({ where: { userId } }),
+      prisma.clientLog.deleteMany({ where: { userId } }),
+    ]);
+
     const results = {
-      recommendationSessions: 0,
-      planProgress: 0,
-      userAnswers: 0,
-      skinProfiles: 0,
-      planFeedback: 0,
-      wishlist: 0,
-      cart: 0,
-      plan28: 0,
-      clientLogs: 0,
+      recommendationSessions: recommendationSessions.count,
+      planProgress: planProgress.count,
+      userAnswers: userAnswers.count,
+      skinProfiles: skinProfiles.count,
+      planFeedback: planFeedback.count,
+      wishlist: wishlist.count,
+      cart: cart.count,
+      plan28: plan28.count,
+      clientLogs: clientLogs.count,
     };
-
-    // Удаляем RecommendationSession
-    results.recommendationSessions = (await prisma.recommendationSession.deleteMany({
-      where: { userId },
-    })).count;
-
-    // Удаляем PlanProgress
-    try {
-      results.planProgress = (await prisma.planProgress.deleteMany({
-        where: { userId },
-      })).count;
-    } catch (error: any) {
-      // Игнорируем ошибки схемы
-    }
-
-    // Удаляем UserAnswer
-    results.userAnswers = (await prisma.userAnswer.deleteMany({
-      where: { userId },
-    })).count;
-
-    // Удаляем SkinProfile
-    results.skinProfiles = (await prisma.skinProfile.deleteMany({
-      where: { userId },
-    })).count;
-
-    // Удаляем PlanFeedback
-    try {
-      results.planFeedback = (await prisma.planFeedback.deleteMany({
-        where: { userId },
-      })).count;
-    } catch (error: any) {
-      // Игнорируем ошибки
-    }
-
-    // Удаляем Wishlist
-    try {
-      results.wishlist = (await prisma.wishlist.deleteMany({
-        where: { userId },
-      })).count;
-    } catch (error: any) {
-      // Игнорируем ошибки
-    }
-
-    // Удаляем Cart
-    try {
-      results.cart = (await prisma.cart.deleteMany({
-        where: { userId },
-      })).count;
-    } catch (error: any) {
-      // Игнорируем ошибки
-    }
-
-    // Удаляем Plan28
-    try {
-      results.plan28 = (await prisma.plan28.deleteMany({
-        where: { userId },
-      })).count;
-    } catch (error: any) {
-      // Игнорируем ошибки
-    }
-
-    // Удаляем ClientLog
-    try {
-      results.clientLogs = (await prisma.clientLog.deleteMany({
-        where: { userId },
-      })).count;
-    } catch (error: any) {
-      // Игнорируем ошибки
-    }
 
     // 4. Очищаем теги пользователя (включая флаг оплаты)
     // Это делает пользователя полностью "новым" с точки зрения статусов и сегментов.

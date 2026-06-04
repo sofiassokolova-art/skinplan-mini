@@ -373,6 +373,9 @@ function inferStepIcon(name: string | undefined | null): string {
 // оставалась пустая белая плашка). Иконка лежит на лаймовом пятне (фон сзади).
 function ProductThumb({ product }: { product: ProductCard }) {
   const [failed, setFailed] = useState(false);
+  // Сбрасываем флаг ошибки, если URL картинки сменился (например, после замены
+  // продукта) — иначе однажды «упавшая» миниатюра навсегда залипала на иконке.
+  useEffect(() => { setFailed(false); }, [product.imageUrl]);
   const showIcon = !product.imageUrl || failed;
   return (
     <div className={`pv2-product-img ${showIcon ? 'pv2-product-img-icon' : ''}`}>
@@ -388,6 +391,8 @@ function ProductThumb({ product }: { product: ProductCard }) {
           className="pv2-product-img-fill"
           src={product.imageUrl!}
           alt=""
+          loading="lazy"
+          decoding="async"
           onError={() => setFailed(true)}
         />
       )}
