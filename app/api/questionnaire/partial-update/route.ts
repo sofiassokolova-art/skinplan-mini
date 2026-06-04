@@ -7,6 +7,7 @@ import { buildSkinProfileFromAnswers } from '@/lib/skinprofile-rules-engine';
 import { getTopicById, shouldRebuildPlan } from '@/lib/quiz-topics';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { requireTelegramAuth, getTelegramInitDataFromHeaders } from '@/lib/auth/telegram-auth';
+import { invalidateAllUserCache } from '@/lib/cache';
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
@@ -273,6 +274,15 @@ export async function POST(request: NextRequest) {
         notes: `Создано через тему: ${topic.title}`,
       },
     });
+
+    // Профиль (skinType/sensitivity/medicalMarkers) перезаписан in-place в текущей
+    // версии — сбрасываем кэш плана/контекста, иначе пользователю отдаётся план,
+    // собранный из прежнего профиля той же версии (cache keyed on version).
+    try {
+      await invalidateAllUserCache(userId);
+    } catch (err) {
+      logger.warn('Failed to invalidate cache after partial profile update', { userId, error: err });
+    }
 
     // Проверяем, нужно ли пересобирать план
     const needsPlanRebuild = shouldRebuildPlan(topicId);

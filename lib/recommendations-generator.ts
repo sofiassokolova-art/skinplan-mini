@@ -36,8 +36,12 @@ function matchCondition(condition: any, profileValue: any): boolean {
     if (typeof condition === 'object' && condition !== null && ('equals' in condition || 'not' in condition || 'neq' in condition)) {
       return condition.equals === null || condition.not === null || condition.neq === null;
     }
-    // Для остальных случаев - пропускаем проверку (может быть опциональное поле)
-    return true;
+    // Любой «позитивный» оператор (in/hasSome/hasEvery/contains/startsWith и
+    // массив-in) требует наличия значения: отсутствующее (null) поле его НЕ
+    // удовлетворяет. Иначе, например, правило {concerns: {hasSome:['rosacea']}}
+    // матчило бы пользователя с concerns=null. Совпадение «по отсутствию»
+    // обрабатывается выше (equals/not/neq === null).
+    return false;
   }
 
   // Массив условий = in (любое из значений)
@@ -129,17 +133,22 @@ export async function generateRecommendationsForProfile(
   profileId: string
 ): Promise<RecommendationGenerationResult | RecommendationGenerationError> {
   try {
-    // Получаем профиль
-    const profile = await prisma.skinProfile.findUnique({
-      where: { id: profileId },
-      include: {
-        user: {
-          select: {
-            id: true,
-          },
-        },
-      },
-    });
+    // Профиль, активная анкета и правила рекомендаций независимы друг от друга —
+    // читаем параллельно (на happy-path экономим 2 последовательных round-trip).
+    const [profile, activeQuestionnaire, rules] = await Promise.all([
+      prisma.skinProfile.findUnique({
+        where: { id: profileId },
+        include: { user: { select: { id: true } } },
+      }),
+      prisma.questionnaire.findFirst({
+        where: { isActive: true },
+        select: { id: true },
+      }),
+      prisma.recommendationRule.findMany({
+        where: { isActive: true },
+        orderBy: { priority: 'desc' },
+      }),
+    ]);
 
     if (!profile || profile.userId !== userId) {
       logger.error('Profile not found or does not belong to user', { userId, profileId });
@@ -148,10 +157,6 @@ export async function generateRecommendationsForProfile(
 
     // Используем активную анкету как source of truth для answers/scores
     // ИСПРАВЛЕНО: ранее ошибочно использовали profile.version как questionnaireId
-    const activeQuestionnaire = await prisma.questionnaire.findFirst({
-      where: { isActive: true },
-      select: { id: true },
-    });
     const questionnaireId = activeQuestionnaire?.id ?? null;
     if (!questionnaireId) {
       logger.error('No active questionnaire found for recommendations generation', { userId, profileId });
@@ -208,11 +213,7 @@ export async function generateRecommendationsForProfile(
     // ИСПРАВЛЕНО: Передаем concerns из ответов для правил, которые проверяют concerns: { hasSome: [...] }
     const ruleContext = buildRuleContext(profile as any, skinScores, normalizedSkinType, normalizedSensitivity, questionnaireAnswers.concerns);
 
-    // Ищем подходящее правило
-    const rules = await prisma.recommendationRule.findMany({
-      where: { isActive: true },
-      orderBy: { priority: 'desc' },
-    });
+    // Ищем подходящее правило (rules уже загружены параллельно выше).
 
     // ИСПРАВЛЕНО: Полная поддержка операторов условий (gte/lte/equals/not/hasEvery/in/contains)
     let matchedRule: any = null;

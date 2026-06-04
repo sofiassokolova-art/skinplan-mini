@@ -33,32 +33,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     const { profileVersion, cleanupId } = body;
 
-    // ИСПРАВЛЕНО: Проверяем идемпотентность через QuestionnaireSubmission
-    // Если cleanupId передан и операция уже выполнена, возвращаем успех
-    if (cleanupId) {
-      const existingSubmission = await (prisma as any).questionnaireSubmission.findFirst({
-        where: {
-          userId,
-          // Проверяем по cleanupId или по profileVersion
-          ...(profileVersion ? { profileVersion } : {}),
-        },
-        select: { id: true, status: true },
-      });
-
-      if (existingSubmission && existingSubmission.status === 'completed') {
-        logger.info('Cleanup already completed (idempotent)', {
-          userId,
-          cleanupId,
-          profileVersion,
-          submissionId: existingSubmission.id,
-        });
-        return ApiResponse.success({
-          success: true,
-          alreadyCleaned: true,
-          message: 'Answers already cleaned up',
-        });
-      }
-    }
+    // Идемпотентность обеспечивается естественно: удаление ответов (deleteMany)
+    // при повторном вызове просто удалит 0 строк, а проверки профиля/плана ниже
+    // гарантируют, что мы не чистим раньше готового плана. Прежняя проверка по
+    // `cleanupId` была некорректной (поля cleanupId в QuestionnaireSubmission нет,
+    // findFirst матчил любую завершённую submission и мог ошибочно пропустить
+    // реальную очистку), поэтому удалена.
 
     // Получаем активную анкету
     const questionnaire = await prisma.questionnaire.findFirst({
@@ -110,32 +90,17 @@ export async function POST(request: NextRequest) {
       return ApiResponse.badRequest('Plan not found for current profile version. Cannot cleanup answers without a plan.');
     }
 
-    // ИСПРАВЛЕНО: Удаляем ответы только если план создан
-    // Используем транзакцию для атомарности
-    const deletedCount = await prisma.$transaction(async (tx) => {
-      const deleted = await tx.userAnswer.deleteMany({
-        where: {
-          userId,
-          questionnaireId: questionnaire.id,
-        },
-      });
-
-      // Если cleanupId передан, обновляем QuestionnaireSubmission для идемпотентности
-      if (cleanupId) {
-        await (tx as any).questionnaireSubmission.updateMany({
-          where: {
-            userId,
-            questionnaireId: questionnaire.id,
-          },
-          data: {
-            status: 'completed',
-            // Можно добавить поле cleanupId в QuestionnaireSubmission для более точной идемпотентности
-          },
-        });
-      }
-
-      return deleted.count;
+    // ИСПРАВЛЕНО: Удаляем ответы только если план создан.
+    // (Раньше здесь же updateMany форсил status='completed' на ВСЕХ submission
+    // пользователя — это затирало стейт-машину, на которую опирается /answers, и
+    // было нужно лишь для сломанной cleanupId-идемпотентности. Удалено.)
+    const deleted = await prisma.userAnswer.deleteMany({
+      where: {
+        userId,
+        questionnaireId: questionnaire.id,
+      },
     });
+    const deletedCount = deleted.count;
 
     logger.info('Answers cleaned up successfully', {
       userId,

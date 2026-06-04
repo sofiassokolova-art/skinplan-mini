@@ -9,6 +9,7 @@ import '@/lib/env-check'; // Валидация env переменных при 
 import { ApiResponse } from '@/lib/api-response';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { getCurrentProfile } from '@/lib/get-current-profile';
+import { stripPrices } from '@/lib/strip-prices';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -706,7 +707,8 @@ export async function GET(request: NextRequest) {
     const duration = Date.now() - startTime;
     logApiRequest(method, path, 200, duration, userId);
 
-    return ApiResponse.success(plan);
+    // Политика: цена продукта не должна уходить на клиент (см. lib/strip-prices).
+    return ApiResponse.success(stripPrices(plan));
   } catch (error: unknown) {
     const duration = Date.now() - startTime;
     

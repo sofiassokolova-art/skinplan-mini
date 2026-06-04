@@ -239,7 +239,7 @@ export interface WishlistResponse {
       id: number;
       name: string;
       brand: { id?: number; name: string };
-      price: number | null;
+      // price is intentionally omitted: client must never see product price (policy: prices may differ from store)
       imageUrl: string | null;
       description?: string;
       link?: string | null;
@@ -259,7 +259,7 @@ export interface CartResponse {
       id: number;
       name: string;
       brand: { id?: number; name: string };
-      price: number | null;
+      // price is intentionally omitted: client must never see product price (policy: prices may differ from store)
       imageUrl: string | null;
       description?: string;
       link?: string | null;
@@ -288,7 +288,7 @@ export interface CareStep {
     id: number;
     name: string;
     brand: { name: string };
-    price?: number | null;
+    // price is intentionally omitted: client must never see product price (policy: prices may differ from store)
     imageUrl?: string | null;
     description?: string;
     tags?: string[];
@@ -391,7 +391,7 @@ export interface ProductFromBatch {
     id: number;
     name: string;
   };
-  price: number | null;
+  // price is intentionally omitted: client must never see product price (policy: prices may differ from store)
   volume: string | null;
   imageUrl: string | null;
   description?: string;

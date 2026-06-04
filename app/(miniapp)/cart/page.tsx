@@ -16,7 +16,6 @@ interface WishlistItemData {
     id: number;
     name: string;
     brand: { id: number; name: string };
-    price: number | null;
     imageUrl: string | null;
     link: string | null;
     marketLinks: any;
@@ -40,7 +39,6 @@ export default function FavoritesPage() {
       id: item.product.id,
       name: item.product.name,
       brand: { id: item.product.brand?.id || 0, name: item.product.brand?.name || 'Unknown' },
-      price: item.product.price,
       imageUrl: item.product.imageUrl,
       link: item.product.link || null,
       marketLinks: item.product.marketLinks || null,
@@ -48,7 +46,6 @@ export default function FavoritesPage() {
       id: item.productId,
       name: 'Неизвестный продукт',
       brand: { id: 0, name: 'Unknown' },
-      price: null,
       imageUrl: null,
       link: null,
       marketLinks: null,

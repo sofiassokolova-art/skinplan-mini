@@ -24,14 +24,20 @@ export async function GET(request: NextRequest) {
     if (!auth.ok) return auth.response;
     const userId = auth.ctx.userId;
 
-    // DEPRECATED: Проверяем флаг оплаты в БД через тег пользователя
-    // Это неправильная схема - используйте Entitlement
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { tags: true },
+    // Совместимость: старый клиент мог дергать этот endpoint. Чтобы он не
+    // противоречил канонической схеме, считаем hasPaid по активному Entitlement
+    // (как /api/me/entitlements), а не по устаревшему тегу payment_completed.
+    const paidAccess = await prisma.entitlement.findFirst({
+      where: {
+        userId,
+        code: 'paid_access',
+        active: true,
+        OR: [{ validUntil: null }, { validUntil: { gt: new Date() } }],
+      },
+      select: { id: true },
     });
 
-    const hasPaid = user?.tags?.includes('payment_completed') || false;
+    const hasPaid = !!paidAccess;
 
     return ApiResponse.success({ hasPaid });
   } catch (error: unknown) {
