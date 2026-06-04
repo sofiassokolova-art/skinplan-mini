@@ -33,7 +33,11 @@ async function verifyCode(code: string, stored: string): Promise<boolean> {
     keyMaterial, 256
   );
   const candidateHex = Array.from(new Uint8Array(derived)).map(b => b.toString(16).padStart(2, '0')).join('');
-  return candidateHex === hashHex;
+  // Сравнение за постоянное время — не сливаем timing о коде доступа админа.
+  if (candidateHex.length !== hashHex.length) return false;
+  let diff = 0;
+  for (let i = 0; i < candidateHex.length; i++) diff |= candidateHex.charCodeAt(i) ^ hashHex.charCodeAt(i);
+  return diff === 0;
 }
 
 function issueSessionResponse(token: string, id: string) {

@@ -53,7 +53,6 @@ export async function POST(request: NextRequest) {
         id: p.brand.id,
         name: p.brand.name,
       },
-      price: p.price,
       volume: p.volume,
       imageUrl: p.imageUrl,
       // Приоритет descriptionUser для синхронизации с главной страницей

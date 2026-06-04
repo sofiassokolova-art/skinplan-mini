@@ -30,6 +30,14 @@ function bufToHex(buf: ArrayBuffer): string {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+/** Сравнение подписей за постоянное время — защита от timing-атак. */
+function timingSafeEqualHex(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
 export async function validateTelegramLoginWidget(
   data: TelegramLoginData,
   botToken: string
@@ -51,7 +59,7 @@ export async function validateTelegramLoginWidget(
     const secretKey = await hmacSha256(webAppDataKey, botToken);
     const calculatedHash = bufToHex(await hmacSha256(new Uint8Array(secretKey), dataCheckString));
 
-    if (calculatedHash !== data.hash) {
+    if (!timingSafeEqualHex(calculatedHash, data.hash)) {
       return { valid: false, error: 'Invalid hash' };
     }
 

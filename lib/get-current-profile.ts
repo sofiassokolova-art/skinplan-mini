@@ -88,9 +88,13 @@ async function getCurrentProfileWithDetails(userId: string): Promise<ResolveResu
     // Шаг 1: Определяем наличие колонки current_profile_id с TTL
     // ИСПРАВЛЕНО: Кэш с TTL для безопасной работы на serverless
     const now = Date.now();
+    // Если проб колонки выполняется (cold cache) — сохраняем его результат, чтобы
+    // переиспользовать на Шаге 2 и не делать второй идентичный findUnique.
+    // undefined = проб не выполнялся (warm cache), null = user не найден.
+    let probedUser: { currentProfileId: string | null } | null | undefined = undefined;
     if (!columnState || now - columnState.checkedAt > COLUMN_CHECK_TTL) {
       try {
-        await prisma.user.findUnique({
+        probedUser = await prisma.user.findUnique({
         where: { id: userId },
         select: { currentProfileId: true },
       });
@@ -110,10 +114,12 @@ async function getCurrentProfileWithDetails(userId: string): Promise<ResolveResu
 
     // Шаг 2: Если колонка есть - пытаемся использовать currentProfileId
     if (hasCurrentProfileColumn) {
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { currentProfileId: true },
-        });
+      const user = probedUser !== undefined
+        ? probedUser
+        : await prisma.user.findUnique({
+            where: { id: userId },
+            select: { currentProfileId: true },
+          });
 
       // ИСПРАВЛЕНО: Проверка на отсутствие user записи
       if (!user) {

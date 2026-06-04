@@ -99,11 +99,18 @@ export async function validateTelegramInitData(
     }
     const secretKey = await hmac(new TextEncoder().encode('WebAppData'), botToken);
     const toHex = (buf: Uint8Array) => Array.from(buf).map(b => b.toString(16).padStart(2, '0')).join('');
+    // Сравнение подписей за постоянное время — не сливаем timing о длине совпадения.
+    const hashEquals = (a: string, b: string) => {
+      if (a.length !== b.length) return false;
+      let diff = 0;
+      for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+      return diff === 0;
+    };
 
     let calculatedHash = toHex(await hmac(secretKey, dataCheckString));
 
     // Проверяем подпись: вариант 1 — raw значения (как пришли)
-    if (calculatedHash !== hash) {
+    if (!hashEquals(calculatedHash, hash)) {
       // Вариант 2: декодированные значения (initData может прийти URL-encoded)
       const dataCheckStringDecoded = sortedKeys
         .map(key => {
@@ -118,7 +125,7 @@ export async function validateTelegramInitData(
 
       const calculatedHashDecoded = toHex(await hmac(secretKey, dataCheckStringDecoded));
 
-      if (calculatedHashDecoded === hash) {
+      if (hashEquals(calculatedHashDecoded, hash)) {
         calculatedHash = calculatedHashDecoded;
       } else {
         console.error('❌ Hash validation failed:', {
@@ -153,9 +160,10 @@ export async function validateTelegramInitData(
       }
     }
 
-    // Проверяем время (не старше 24 часов)
+    // Проверяем время (не старше 24 часов). auth_date обязателен — без него
+    // подпись нельзя считать «свежей», иначе токен живёт вечно (replay).
     const now = Math.floor(Date.now() / 1000);
-    if (authDate > 0 && now - authDate > 86400) {
+    if (authDate <= 0 || now - authDate > 86400) {
       return { valid: false, error: 'Data expired' };
     }
 
