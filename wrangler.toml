@@ -4,7 +4,7 @@
 # Deploy staging: npx wrangler deploy --env staging
 
 name = "skinplan-mini-staging"
-main = ".open-next/worker.js"
+main = "worker-entry.js"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat_v2"]
 workers_dev = true
