@@ -262,7 +262,6 @@ export async function GET(request: NextRequest) {
                 id: p.id,
                 name: p.name,
                 brand: { name: p.brand || (typeof p.brand === 'object' ? p.brand?.name : 'Unknown') },
-                price: (p as any).price || 0,
                 imageUrl: p.imageUrl || null,
                 description: p.description || p.descriptionUser || '',
                 tags: p.tags || (p.concerns || []).slice(0, 2), // Используем теги продукта или concerns

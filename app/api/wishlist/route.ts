@@ -84,7 +84,6 @@ export async function GET(request: NextRequest) {
           id: item.product.brand.id,
           name: item.product.brand.name,
         },
-        price: item.product.price,
         imageUrl: item.product.imageUrl,
         link: item.product.link,
         marketLinks: item.product.marketLinks,
