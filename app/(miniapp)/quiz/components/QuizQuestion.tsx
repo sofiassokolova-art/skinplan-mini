@@ -559,11 +559,12 @@ export const QuizQuestion = memo(function QuizQuestion({
         style={{
           marginBottom: '12px',
           marginTop: PROGRESS_BAR_TOP_OFFSET,
-          width: '100vw',
-          maxWidth: '100vw',
-          marginLeft: 'calc(-50vw + 50%)',
-          paddingLeft: '20px',
-          paddingRight: '20px',
+          width: '100%',
+          maxWidth: useLimeStyle ? '640px' : undefined,
+          marginLeft: useLimeStyle ? 'auto' : 0,
+          marginRight: useLimeStyle ? 'auto' : 0,
+          paddingLeft: useLimeStyle ? '20px' : 0,
+          paddingRight: useLimeStyle ? '20px' : 0,
           boxSizing: 'border-box',
         }}
       >
