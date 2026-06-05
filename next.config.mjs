@@ -1,7 +1,5 @@
 /** @type {import('next').NextConfig} */
 import withBundleAnalyzer from '@next/bundle-analyzer';
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
 
 const bundleAnalyzerConfig = withBundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
@@ -11,7 +9,7 @@ const nextConfig = {
   reactStrictMode: true,
   productionBrowserSourceMaps: false,
   images: {
-    unoptimized: true, // Cloudflare Pages не поддерживает оптимизацию изображений Next.js
+    unoptimized: true, // Картинки из telegram CDN отдаём как есть, без Next image optimization
     remotePatterns: [
       {
         protocol: 'https',
@@ -32,8 +30,8 @@ const nextConfig = {
     // Единая CSP для production: eval разрешён (нужен частично для чанков/библиотек), стили — self + внешние
     const cspValue = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org https://*.telegram.org https://static.cloudflareinsights.com data:",
-      "connect-src 'self' https://telegram.org https://api.telegram.org https://*.telegram.org https://fonts.googleapis.com https://fonts.gstatic.com https://cloudflareinsights.com ws: wss:",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org https://*.telegram.org data:",
+      "connect-src 'self' https://telegram.org https://api.telegram.org https://*.telegram.org https://fonts.googleapis.com https://fonts.gstatic.com ws: wss:",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com https://api.fontshare.com",
       "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com https://api.fontshare.com",
       "style-src-attr 'self' 'unsafe-inline'",
@@ -100,21 +98,6 @@ const nextConfig = {
   // Исключаем src из сборки (Vite фронтенд)
   // ОПТИМИЗАЦИЯ: Code splitting для уменьшения размера бандла
   webpack: (config, { isServer }) => {
-    // @prisma/client/wasm exports map points to wasm.mjs for ESM imports,
-    // but only wasm.js exists — alias to the .js file explicitly.
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      '@prisma/client/wasm': require.resolve('@prisma/client/wasm.js'),
-    };
-
-    // CF Workers: lib/db.ts импортирует `@prisma/client/wasm` (wasm-compiler-edge сборка),
-    // чтобы не тянуть Node-runtime с dotenv/fs.readFileSync и движком через fs.readdir.
-    // В dev (next dev) loader НЕ пропатчен и делает import('./query_compiler_bg.wasm') —
-    // включаем asyncWebAssembly, чтобы webpack умел резолвить .wasm как модуль.
-    // В build:cf patch-prisma-wasm-loader делает import webpackIgnore, так что прод-сборку
-    // это не задевает (webpack пропускает импорт, .wasm уходит во wrangler как CompiledWasm).
-    config.experiments = { ...(config.experiments || {}), asyncWebAssembly: true };
-
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
