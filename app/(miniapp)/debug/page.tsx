@@ -216,7 +216,7 @@ export default function DebugPage() {
             <br /><br />
             <strong>Как открыть правильно:</strong>
             <ol style={{ marginLeft: '20px', marginTop: '8px' }}>
-              <li>Откройте бота <code>@skinplanned_bot</code> в Telegram</li>
+              <li>Откройте бота <code>@skiniq_app_bot</code> в Telegram</li>
               <li>Нажмите кнопку "Открыть приложение" или отправьте команду <code>/start</code></li>
               <li>В приложении перейдите на страницу <code>/debug</code></li>
             </ol>
