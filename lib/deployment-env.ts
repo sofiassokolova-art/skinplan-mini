@@ -1,19 +1,18 @@
 // lib/deployment-env.ts
-// Единая проверка production-деплоя (Cloudflare Workers / Pages / Node)
+// Единая проверка production-деплоя (Vercel / Node)
 
 /**
  * Production-деплой ТОЛЬКО при явном маркере:
- *  - DEPLOYMENT_ENV === 'production' (CF Workers: задаётся в [env.production.vars] в wrangler.toml)
- *  - либо CF_PAGES_BRANCH === 'main' (legacy CF Pages)
+ *  - DEPLOYMENT_ENV === 'production' (Vercel: задаётся в Environment Variables проекта
+ *    для окружения Production)
  *
  * Всё остальное (staging, preview, local dev, отсутствующие маркеры) — НЕ прод.
- * Fallback на NODE_ENV=production убран намеренно: в собранном worker'е
- * NODE_ENV всегда 'production', и без явного DEPLOYMENT_ENV staging-воркер
- * ошибочно считался продом.
+ * Fallback на NODE_ENV=production убран намеренно: на Vercel NODE_ENV всегда
+ * 'production' (включая preview-деплои), и без явного DEPLOYMENT_ENV preview
+ * ошибочно считался бы продом.
  */
 export function isProductionDeployment(): boolean {
   if (process.env.DEPLOYMENT_ENV === 'production') return true;
-  if (process.env.CF_PAGES_BRANCH === 'main') return true;
   return false;
 }
 
