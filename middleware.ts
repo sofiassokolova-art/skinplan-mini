@@ -5,7 +5,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { rateLimit, getIdentifier } from './lib/rate-limit';
-import { resetPrismaForRequest } from './lib/db-request-scope';
 
 // Настройки rate limiting для разных endpoints
 const RATE_LIMITS: Record<string, { maxRequests: number; interval: number }> = {
@@ -47,11 +46,6 @@ const publicRoutes = [
 ];
 
 export async function middleware(request: NextRequest) {
-  // CF Workers: инвалидируем кэш PrismaClient на каждый новый request,
-  // иначе fetch-pool привязанный к контексту первого request-а ломает
-  // следующие "Cannot perform I/O on behalf of a different request".
-  resetPrismaForRequest();
-
   const { pathname } = request.nextUrl;
 
   // Rate limiting для критичных endpoints

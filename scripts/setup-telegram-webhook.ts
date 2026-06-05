@@ -6,8 +6,8 @@ import 'dotenv/config';
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_SECRET_TOKEN = process.env.TELEGRAM_SECRET_TOKEN;
 const WEBHOOK_URL = process.env.TELEGRAM_WEBHOOK_URL ||
-  (process.env.CF_PAGES_URL
-    ? `https://${process.env.CF_PAGES_URL}/api/telegram/webhook`
+  (process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}/api/telegram/webhook`
     : process.env.APP_URL
     ? `${process.env.APP_URL}/api/telegram/webhook`
     : (() => { throw new Error('Set TELEGRAM_WEBHOOK_URL or APP_URL in .env'); })());

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "regions": ["fra1"],
+  "functions": {
+    "app/api/admin/broadcasts/worker/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/cron/broadcasts/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/cron/cleanup-logs/route.ts": {
+      "maxDuration": 60
+    }
+  }
+}

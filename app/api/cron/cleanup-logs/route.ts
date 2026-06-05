@@ -1,14 +1,14 @@
 // app/api/cron/cleanup-logs/route.ts
 // Cron job для автоматической очистки логов раз в неделю
-// Настраивается через wrangler.toml → [triggers] crons
+// Дёргается внешним планировщиком (GitHub Actions) с Bearer CRON_SECRET.
+// См. .github/workflows/cron-broadcasts.yml
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
-// Cloudflare Workers Cron вызывает scheduled handler, не HTTP.
-// Этот endpoint используется для ручных вызовов через CRON_SECRET.
+// HTTP-эндпоинт авторизуется через CRON_SECRET (Authorization: Bearer ...).
 function verifyCronRequest(request: NextRequest): boolean {
   if (process.env.CRON_SECRET) {
     const authHeader = request.headers.get('authorization');
