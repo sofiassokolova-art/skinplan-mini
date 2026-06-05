@@ -23,6 +23,15 @@ const nextConfig = {
   },
   // Используем только App Router (app/), не Pages Router (pages/)
   pageExtensions: ['tsx', 'ts'],
+  // Prisma queryCompiler (engineType="client") читает query_compiler_bg.wasm с диска
+  // через readFileSync. Vercel serverless tracing не всегда тащит этот .wasm в бандл
+  // лямбды → DB-роуты падают с ENOENT '/var/task/node_modules/.prisma/client/query_compiler_bg.wasm'.
+  // Принудительно включаем файл в трассировку для всех роутов. Ключ — picomatch-glob по
+  // пути роута: `*` не пересекает `/`, поэтому `/**/*` нужен, чтобы покрыть вложенные
+  // роуты (/api/questionnaire/active), а не только верхнеуровневые.
+  outputFileTracingIncludes: {
+    '/**/*': ['./node_modules/.prisma/client/query_compiler_bg.wasm'],
+  },
   // Security headers
   async headers() {
     const isProduction = process.env.NODE_ENV === 'production';
