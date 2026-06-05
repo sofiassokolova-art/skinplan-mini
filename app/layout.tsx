@@ -104,7 +104,7 @@ export default async function RootLayout({
             — экономия ~258KB (с 277KB до 19KB суммарно). */}
         {!isAdminRoute && (
           <>
-            <link rel="preload" href="/onboarding/welcome.webp" as="image" fetchPriority="high" />
+            <link rel="preload" href="/onboarding/welcome.jpg" as="image" fetchPriority="high" />
             <link rel="preload" href="/icons/detailed_3_64.png" as="image" />
             <link rel="preload" href="/icons/hydration_3_64.png" as="image" />
             <link rel="preload" href="/icons/face_3_64.png" as="image" />
