@@ -1,24 +1,13 @@
 // lib/db.ts
 // Prisma Client для работы с базой данных (Neon PostgreSQL)
-// Использует @prisma/adapter-neon для совместимости с Cloudflare Workers/Pages
+// Использует @prisma/adapter-neon — HTTP fetch транспорт, хорошо подходит для serverless.
 
-// CF Workers: импортируем wasm-сборку клиента ЯВНО (а не основной `@prisma/client`).
-// Причина: Next externalize'ит `@prisma/client`, и в воркер попадает Node-сборка
-// (runtime/client.js), которая на старте автозагружает .env через dotenv/fs.readFileSync
-// и инстанцирует движок через fs.readdir — в workerd эти fs-вызовы не реализованы
-// ("[unenv] fs.readFileSync/readdir is not implemented yet"), и ВСЕ запросы к БД падают.
-// wasm-сборка (runtime/wasm-compiler-edge, engineType="client") не трогает файловую систему
-// и грузит query_compiler_bg.wasm через import-loader (webpackIgnore → esbuild external →
-// wrangler CompiledWasm). Алиас `@prisma/client/wasm` → wasm.js задан в next.config.mjs.
-import { PrismaClient, type Prisma } from '@prisma/client/wasm';
+import { PrismaClient, type Prisma } from '@prisma/client';
 import { PrismaNeon } from '@prisma/adapter-neon';
 import { neonConfig } from '@neondatabase/serverless';
-import { currentPrismaRequestId, resetPrismaForRequest } from './db-request-scope';
 
-// CF Workers: HTTP fetch транспорт через poolQueryViaFetch=true.
-// webSocketConstructor НЕ ставим — даже неиспользуемая ссылка на globalThis.WebSocket
-// заставляет Neon Pool регистрировать обработчики, привязанные к контексту request-а;
-// между запросами CF Workers выбрасывает "Cannot perform I/O on behalf of a different request".
+// HTTP fetch транспорт через poolQueryViaFetch=true — без WebSocket-пула,
+// проще и стабильнее в serverless-функциях Vercel (короткоживущие инстансы).
 neonConfig.poolQueryViaFetch = true;
 
 function isLocalDatabaseUrl(url: string): boolean {
@@ -49,38 +38,12 @@ function createPrismaClient() {
   });
 }
 
-// КРИТИЧНО: в CF Workers НЕ кэшируем PrismaClient между запросами.
-// Pool держит fetch-state (HTTP keep-alive, Response объекты), привязанный
-// к контексту первого request-а. Следующий request видит "Cannot perform I/O
-// on behalf of a different request" → "Connection terminated" → 500/обрезанные ответы.
-//
-// Кешируем по-request: вешаем клиент на globalThis под уникальным ключом, который
-// сбрасывается на каждом новом request-handler-е через requestPrismaScopeKey.
-// В пределах одного request все вызовы prisma.* возвращают тот же клиент.
-const PRISMA_SCOPE_KEY = Symbol.for('skiniq.prismaPerRequest');
-const prismaStore = globalThis as unknown as {
-  [PRISMA_SCOPE_KEY]?: { id: string; client: PrismaClient };
-};
+// Стандартный global singleton: переиспользуем один PrismaClient между запросами
+// и через HMR в dev. На Vercel serverless инстанс живёт между инвокациями — это
+// снижает число подключений к БД и стоимость холодной инициализации клиента.
+const globalForPrisma = globalThis as unknown as { __prisma?: PrismaClient };
 
-// Re-export для удобства (route handlers могут вызвать reset напрямую если нужно)
-export { resetPrismaForRequest };
-
-export const getPrisma = (): PrismaClient => {
-  const reqId = currentPrismaRequestId();
-  const cached = prismaStore[PRISMA_SCOPE_KEY];
-  // В пределах одного request-а возвращаем тот же клиент.
-  // На новом request middleware ставит новый reqId — старый кэш инвалидируется.
-  if (cached && reqId && cached.id === reqId) {
-    return cached.client;
-  }
-  // Fallback: если reqId не выставлен (Node/scripts), кэшируем как обычно
-  if (!reqId && cached) {
-    return cached.client;
-  }
-  const client = createPrismaClient();
-  prismaStore[PRISMA_SCOPE_KEY] = { id: reqId, client };
-  return client;
-};
+export const getPrisma = (): PrismaClient => (globalForPrisma.__prisma ??= createPrismaClient());
 
 // Обратная совместимость — proxy который инициализируется при первом обращении
 export const prisma = new Proxy({} as PrismaClient, {
