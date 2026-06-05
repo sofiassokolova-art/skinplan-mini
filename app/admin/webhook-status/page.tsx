@@ -152,7 +152,7 @@ export default function WebhookStatusPage() {
                 <li>Нажмите кнопку <strong>&quot;Установить webhook&quot;</strong> выше</li>
                 <li>Нажмите <strong>&quot;Проверить webhook&quot;</strong> чтобы увидеть текущий статус</li>
                 <li>Если в статусе есть ошибки - проверьте логи ниже</li>
-                <li>Отправьте команду <code className="bg-blue-100 px-1 rounded">/start</code> боту <code className="bg-blue-100 px-1 rounded">@skinplanned_bot</code> в Telegram</li>
+                <li>Отправьте команду <code className="bg-blue-100 px-1 rounded">/start</code> боту <code className="bg-blue-100 px-1 rounded">@skiniq_app_bot</code> в Telegram</li>
               </ol>
               
               <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
