@@ -294,7 +294,7 @@ export default function SetWebhookPage() {
             lineHeight: '1.8',
             paddingLeft: '20px',
           }}>
-            <li>Если webhook установлен успешно, отправьте команду <code>/start</code> боту @skinplanned_bot</li>
+            <li>Если webhook установлен успешно, отправьте команду <code>/start</code> боту @skiniq_app_bot</li>
             <li>Бот должен ответить приветственным сообщением с кнопкой для открытия Mini App</li>
             <li>Если не работает, проверьте логи в Vercel Dashboard</li>
           </ol>
