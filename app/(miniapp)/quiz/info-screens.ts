@@ -49,7 +49,7 @@ export const INFO_SCREENS: InfoScreen[] = [
   {
     id: 'welcome',
     title: 'Подбери уход для своей кожи со SkinIQ',
-    image: '/onboarding/welcome.webp',
+    image: '/onboarding/welcome.jpg',
     ctaText: 'Продолжить',
   },
   
