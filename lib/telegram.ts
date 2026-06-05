@@ -89,6 +89,16 @@ export async function validateTelegramInitData(
       .map(key => `${key}=${params.get(key)}`)
       .join('\n');
 
+    // КРИТИЧНО: триммим токен. Случайный пробел/перенос строки в env-переменной
+    // (частая ошибка при копипасте в Vercel/CF dashboard) полностью меняет
+    // секретный ключ HMAC → hash НИКОГДА не сойдётся, и все запросы падают на
+    // "Hash validation failed". Триммим один раз здесь — это чокпоинт для всех вызовов.
+    const token = botToken.trim();
+    if (!token) {
+      console.error('❌ Bot token is empty after trim');
+      return { valid: false, error: 'Empty bot token' };
+    }
+
     // Создаем секретный ключ: HMAC-SHA256("WebAppData", botToken) — Web Crypto API
     const toRawBuffer = (bytes: Uint8Array): ArrayBuffer =>
       bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
@@ -97,7 +107,7 @@ export async function validateTelegramInitData(
       const k = await crypto.subtle.importKey('raw', toRawBuffer(key), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
       return new Uint8Array(await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(data)));
     }
-    const secretKey = await hmac(new TextEncoder().encode('WebAppData'), botToken);
+    const secretKey = await hmac(new TextEncoder().encode('WebAppData'), token);
     const toHex = (buf: Uint8Array) => Array.from(buf).map(b => b.toString(16).padStart(2, '0')).join('');
     // Сравнение подписей за постоянное время — не сливаем timing о длине совпадения.
     const hashEquals = (a: string, b: string) => {
@@ -128,8 +138,14 @@ export async function validateTelegramInitData(
       if (hashEquals(calculatedHashDecoded, hash)) {
         calculatedHash = calculatedHashDecoded;
       } else {
+        // ДИАГНОСТИКА: bot id (число до ':') — публичная часть токена, НЕ секрет.
+        // Если он не совпадает с ботом, который обслуживает Mini App, значит на
+        // окружении выставлен токен ЧУЖОГО/старого бота (частая причина после миграции).
+        const tokenBotId = token.split(':')[0] || 'unknown';
         console.error('❌ Hash validation failed:', {
           receivedHash: hash.slice(0, 8) + '…',
+          calculatedHash: calculatedHash.slice(0, 8) + '…',
+          tokenBotId,
           paramsCount: params.size,
           sortedKeys: sortedKeys.slice(0, 6),
         });
