@@ -541,8 +541,12 @@ export function QuizInfoScreen({
       : null;
 
     // Для skin_concerns берём первые 2 жалобы — больше визуально перегружает карточку.
+    // Первую букву строки делаем заглавной (значение «Главный фокус» начинается с большой буквы).
     const concernsList = Array.isArray(concernsRaw)
-      ? concernsRaw.slice(0, 2).map(c => c.toLowerCase()).join(' · ')
+      ? (() => {
+          const joined = concernsRaw.slice(0, 2).map(c => c.toLowerCase()).join(' · ');
+          return joined ? joined.charAt(0).toUpperCase() + joined.slice(1) : null;
+        })()
       : null;
 
     const sensitivityShort = typeof sensitivityLabel === 'string'
@@ -556,7 +560,7 @@ export function QuizInfoScreen({
           padding: 0,
           margin: 0,
           minHeight: '100vh',
-          background: '#FFFFFF',
+          background: 'linear-gradient(rgba(244,242,238,0.45), rgba(244,242,238,0.65)), url(/image%201576994977.png) center / cover no-repeat fixed, var(--canvas)',
           position: 'relative',
           width: '100%',
         }}>
@@ -594,9 +598,13 @@ export function QuizInfoScreen({
               На основе ваших ответов мы уже понимаем, как должен выглядеть ваш уход.
             </p>
 
-            {/* Карточка с резюме ответов */}
+            {/* Карточка с резюме ответов — glassmorphism в стиле приложения */}
             <div style={{
-              background: '#F5F5F0',
+              background: 'rgba(255, 255, 255, 0.55)',
+              backdropFilter: 'blur(20px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+              border: '1px solid rgba(255, 255, 255, 0.70)',
+              boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.5)',
               borderRadius: '20px',
               padding: '20px',
               display: 'flex',
