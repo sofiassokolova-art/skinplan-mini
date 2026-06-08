@@ -72,6 +72,7 @@ model SkinProfile {
 
   @@unique([userId, version])
   @@index([userId])
+  @@index([userId, createdAt])
   @@map("skin_profiles")
 }
 
@@ -87,6 +88,7 @@ model Questionnaire {
   questions      Question[]
   userAnswers    UserAnswer[]
 
+  @@index([isActive])
   @@map("questionnaires")
 }
 
@@ -152,6 +154,7 @@ model UserAnswer {
   @@index([userId])
   @@index([questionnaireId])
   @@index([questionId])
+  @@index([userId, questionnaireId])
   @@map("user_answers")
 }
 
@@ -294,13 +297,14 @@ model RecommendationRuleHistory {
   name           String
   conditionsJson Json               @map("conditions_json")
   stepsJson      Json               @map("steps_json")
-  priority       Int
-  isActive       Boolean            @map("is_active")
-  version        Int
+  priority       Int                @default(0)
+  isActive       Boolean            @default(true) @map("is_active")
+  version        Int                @default(1)
   createdBy      String?            @map("created_by")
   createdAt      DateTime           @default(now()) @map("created_at")
   rule           RecommendationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
 
+  @@index([ruleId])
   @@index([ruleId, version])
   @@map("recommendation_rule_history")
 }
@@ -372,6 +376,7 @@ model Plan28 {
   @@index([userId])
   @@index([skinProfileId])
   @@index([profileVersion])
+  @@index([userId, profileVersion])
   @@map("plan28")
 }
 
