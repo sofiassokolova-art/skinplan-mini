@@ -286,7 +286,7 @@ function ScoreCard({ score, label, description, onHintClick }: { score: number; 
 function ProfileCarousel({ cards }: { cards: ProfileCard[] }) {
   if (cards.length === 0) return null;
   return (
-    <div className="glass-card-lg pv2-section">
+    <div className="pv2-section pv2-profile-section">
       <div className="pv2-section-head">
         <div className="pv2-section-title">Профиль кожи</div>
         <div className="pv2-dots" aria-hidden>
@@ -573,7 +573,7 @@ function PlanV2Skeleton() {
       </div>
 
       {/* Profile carousel */}
-      <div className="glass-card-lg pv2-section pv2-skel-block">
+      <div className="pv2-section pv2-profile-section pv2-skel-block">
         <div className="pv2-section-head">
           <div className="pv2-skel-bar" style={{ width: 120, height: 18 }} />
           <div style={{ display: 'flex', gap: 6 }}>
@@ -749,13 +749,23 @@ function PlanV2Styles() {
         font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
         color: var(--ink);
         position: relative;
+      }
+      /* Фон — на фиксированном псевдо-слое (viewport-anchored). Раньше использовался
+         background-attachment:fixed, но он не закрашивает весь документ в Telegram
+         iOS WebView → при листании появлялся белый/пустой фон. Фиксированный
+         ::before гарантированно покрывает экран на всю высоту. */
+      .pv2-root::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
         background:
           radial-gradient(72% 32% at 0% 0%, rgba(255,224,188,0.7) 0%, transparent 62%),
           radial-gradient(50% 22% at 100% 18%, rgba(213,254,97,0.42) 0%, transparent 70%),
           radial-gradient(64% 26% at 100% 55%, rgba(220,210,196,0.55) 0%, transparent 65%),
           radial-gradient(78% 32% at 10% 92%, rgba(213,254,97,0.46) 0%, transparent 62%),
           var(--canvas);
-        background-attachment: fixed;
       }
       /* Зеркало #19: подложка html/body тоже беж, чтобы overscroll не светил белым. */
       html, body { background-color: var(--canvas); }
@@ -906,6 +916,18 @@ function PlanV2Styles() {
 
       .pv2-section {
         margin-bottom: 14px;
+      }
+      /* Профиль кожи — без стеклянной «подложки» под каруселью: карточки лежат
+         прямо на фоне страницы, без серого frosted-бокса позади скролл-контейнера.
+         Padding сохраняем как у glass-card-lg (22px), чтобы заголовок секции
+         оставался на одной линии с остальными секциями. */
+      .pv2-profile-section {
+        padding: 22px;
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
       }
       .pv2-section-head {
         display: flex;
