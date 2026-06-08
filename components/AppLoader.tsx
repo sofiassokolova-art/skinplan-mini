@@ -45,7 +45,7 @@ const PALETTES: Record<AppLoaderVariant, {
     glow: 'rgba(213, 254, 97, 0.24)',
   },
   light: {
-    background: 'var(--canvas)',
+    background: 'var(--canvas-white)',
     text: 'var(--ink)',
     subText: 'var(--ink-soft)',
     accent: 'var(--accent)',
@@ -100,7 +100,23 @@ export function AppLoader({
           textAlign: 'center',
         }}
       >
-        {shouldShowIndicator && (
+        {/* Индетерминантный лоадер — чёрный крутящийся кружок.
+            Если задан progress — оставляем determinate-полосу с процентами. */}
+        {shouldShowIndicator && safeProgress === null && (
+          <div
+            className="skinplan-loader-spinner"
+            style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
+              border: `3px solid ${palette.track}`,
+              borderTopColor: palette.text,
+              marginBottom: '22px',
+            }}
+          />
+        )}
+
+        {shouldShowIndicator && safeProgress !== null && (
           <div
             style={{
               position: 'relative',
@@ -115,13 +131,12 @@ export function AppLoader({
             }}
           >
             <div
-              className={safeProgress === null ? 'skinplan-loader-bar-indeterminate' : undefined}
               style={{
                 height: '100%',
-                width: safeProgress === null ? '42%' : `${safeProgress}%`,
+                width: `${safeProgress}%`,
                 background: palette.accent,
                 borderRadius: '999px',
-                transition: safeProgress === null ? undefined : 'width 500ms ease-out',
+                transition: 'width 500ms ease-out',
               }}
             />
           </div>
@@ -176,15 +191,13 @@ export function AppLoader({
       </div>
 
       <style jsx>{`
-        :global(.skinplan-loader-bar-indeterminate) {
-          animation: skinplan-loader-slide 1.15s ease-in-out infinite;
+        :global(.skinplan-loader-spinner) {
+          animation: skinplan-loader-spin 0.8s linear infinite;
           will-change: transform;
         }
 
-        @keyframes skinplan-loader-slide {
-          0% { transform: translateX(-120%); }
-          50% { transform: translateX(105%); }
-          100% { transform: translateX(245%); }
+        @keyframes skinplan-loader-spin {
+          to { transform: rotate(360deg); }
         }
       `}</style>
     </div>
