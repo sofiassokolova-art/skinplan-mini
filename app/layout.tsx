@@ -419,8 +419,8 @@ export default async function RootLayout({
               dangerouslySetInnerHTML={{
                 __html: `
 (function(){
-  var fallbackCss = "display:block;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;padding:12px 20px;background:rgba(10,95,89,0.95);color:#fff;border-radius:12px;font-family:system-ui,sans-serif;font-size:14px;box-shadow:0 4px 20px rgba(0,0,0,0.2);";
-  var fallbackHtml = 'Не удалось загрузить приложение. <a href="javascript:location.reload()" style="color:#fff;text-decoration:underline;font-weight:600">Обновить</a>';
+  var fallbackCss = "display:block;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;padding:14px 22px;background:#0A0A0A;color:#F4F2EE;border-radius:14px;font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.4;text-align:center;max-width:calc(100vw - 32px);box-shadow:0 8px 28px rgba(10,10,10,0.28), 0 0 18px rgba(213,254,97,0.18);";
+  var fallbackHtml = 'Не удалось загрузить приложение. <a href="javascript:location.reload()" style="color:#D5FE61;text-decoration:underline;font-weight:600;white-space:nowrap">Обновить</a>';
   function buildReloadKey(){
     try {
       var assets = [];
@@ -451,23 +451,25 @@ export default async function RootLayout({
       if (window.__skiniqReportStartup) window.__skiniqReportStartup("chunk-timeout");
     }
   }
-  function tryReloadOnce(){
-    try {
-      if (!sessionStorage.getItem(reloadKey)) {
-        sessionStorage.setItem(reloadKey, '1');
-        location.reload();
-        return;
-      }
-    } catch (err) {}
+  var MAX_RELOADS = 3;
+  function tryReload(){
+    var n = 0;
+    try { n = parseInt(sessionStorage.getItem(reloadKey) || '0', 10) || 0; } catch (err) {}
+    if (n < MAX_RELOADS) {
+      try { sessionStorage.setItem(reloadKey, String(n + 1)); } catch (err) {}
+      // backoff: рваному HTTP/2-каналу к Cloudflare даём время восстановиться перед перезагрузкой
+      setTimeout(function(){ try { location.reload(); } catch (e) { location.href = location.href; } }, 400 + n * 700);
+      return;
+    }
     showFallback();
   }
   window.addEventListener("error", function(ev){
-    if (ev.message && (ev.message.indexOf("Loading chunk") !== -1 || ev.message.indexOf("ChunkLoadError") !== -1)) { tryReloadOnce(); return; }
+    if (ev.message && (ev.message.indexOf("Loading chunk") !== -1 || ev.message.indexOf("ChunkLoadError") !== -1)) { tryReload(); return; }
     var t = ev.target;
     if (t && (t.tagName === "SCRIPT" || t.tagName === "LINK") && (t.src || t.href)) {
       var u = (t.src || t.href || "").toString();
       // Реагируем только на ошибки загрузки наших чанков, не внешних скриптов (аналитика, CDN)
-      if (u.indexOf("/_next/") !== -1 || u.indexOf("chunks") !== -1) tryReloadOnce();
+      if (u.indexOf("/_next/") !== -1 || u.indexOf("chunks") !== -1) tryReload();
     }
   }, true);
   // Этот script исполняется до разметки #__next ниже по документу.
