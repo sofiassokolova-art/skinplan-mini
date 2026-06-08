@@ -2,7 +2,7 @@
 
 ## Baseline (`0_init`)
 
-`0_init` is a **squashed baseline** generated from `prisma/schema.prisma` on 2026-06-06.
+`0_init` is a **squashed baseline** generated from `prisma/schema.prisma`.
 It reproduces the entire schema (verified: `prisma migrate diff --exit-code` reports no
 difference). The previous history was broken and incomplete (no initial migration; the base
 schema had only ever been applied to Neon via `prisma db push`), so it was replaced.
