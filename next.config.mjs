@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 import withBundleAnalyzer from '@next/bundle-analyzer';
+import { RetryChunkLoadPlugin } from 'webpack-retry-chunk-load-plugin';
 
 const bundleAnalyzerConfig = withBundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
@@ -166,6 +167,20 @@ const nextConfig = {
           },
         },
       };
+
+      // Ретрай загрузки чанков без перезагрузки страницы.
+      // Аудитория сидит через нестабильные VPN → HTTP/2-коннект к Cloudflare
+      // периодически рвётся (ERR_HTTP2_PING_FAILED) и единичный dynamic import
+      // падает с ChunkLoadError. Плагин повторяет загрузку чанка на месте,
+      // юзер не теряет своё место в анкете. inline-фолбэк в layout.tsx остаётся
+      // нижним предохранителем (полная перезагрузка), если ретраи исчерпаны.
+      config.plugins = config.plugins || [];
+      config.plugins.push(
+        new RetryChunkLoadPlugin({
+          maxRetries: 3,
+          retryDelay: 1000,
+        })
+      );
     }
     return config;
   },

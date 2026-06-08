@@ -6,6 +6,7 @@
 // см. комментарий в info-screens.ts).
 
 import React from 'react';
+import Image from 'next/image';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 
@@ -31,11 +32,10 @@ function RecognizeYourselfScreenComponent({
 
   return (
     <div
-      className="animate-fade-in"
+      className="animate-fade-in qz-mobile-fullscreen"
       style={{
         padding: 0,
         margin: 0,
-        minHeight: '100vh',
         position: 'fixed',
         top: 0,
         left: 0,
@@ -63,18 +63,17 @@ function RecognizeYourselfScreenComponent({
               'radial-gradient(circle at top, #2a2a2a 0%, var(--ink) 60%, #000 100%)',
           }}
         >
-          <img
+          <Image
+            className="qz-fullscreen-bg"
             src={screen.image}
             alt=""
             aria-hidden
-            fetchPriority="high"
-            decoding="sync"
+            fill
+            priority
+            quality={95}
+            sizes="100vw"
             style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
               objectPosition: 'center',
-              display: 'block',
             }}
           />
           {/* Затемнение снизу для читаемости */}
@@ -134,6 +133,9 @@ function RecognizeYourselfScreenComponent({
           zIndex: 2,
           padding: 0,
           boxSizing: 'border-box',
+          maxHeight: 'calc(100% - 88px)',
+          overflowY: 'auto',
+          WebkitOverflowScrolling: 'touch',
         }}
       >
         <div

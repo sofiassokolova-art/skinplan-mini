@@ -3,6 +3,7 @@
 // Вынесен из renderInfoScreen для улучшения читаемости
 
 import React from 'react';
+import Image from 'next/image';
 import { FixedContinueButton } from '../buttons/FixedContinueButton';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
@@ -32,11 +33,10 @@ function HowItWorksScreenComponent({
 
   return (
     <div
-      className="qz-phone-frame-fixed"
+      className="qz-phone-frame-fixed qz-mobile-fullscreen"
       style={{
         padding: 0,
         margin: 0,
-        minHeight: '100vh',
         position: 'fixed',
         top: 0,
         left: 0,
@@ -66,19 +66,16 @@ function HowItWorksScreenComponent({
             'radial-gradient(circle at top, #0f172a 0%, #020617 40%, #020617 100%)',
         }}
       >
-        <img
+        <Image
+          className="qz-fullscreen-bg"
           src="/onboarding/how-it-works.webp"
           alt={screen.title}
-          fetchPriority="high"
-          decoding="sync"
+          fill
+          priority
+          quality={95}
+          sizes="100vw"
           style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
             objectPosition: 'center',
-            display: 'block',
-            margin: 0,
-            padding: 0,
           }}
         />
       </div>
@@ -92,7 +89,7 @@ function HowItWorksScreenComponent({
           top: 0,
           left: 'clamp(19px, 5vw, 38px)',
           right: 'clamp(19px, 5vw, 38px)',
-          bottom: 0,
+          bottom: 'var(--quiz-fixed-cta-clearance, calc(96px + env(safe-area-inset-bottom, 0px)))',
           boxSizing: 'border-box',
           pointerEvents: 'none',
         }}

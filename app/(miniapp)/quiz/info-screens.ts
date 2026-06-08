@@ -136,7 +136,7 @@ export const INFO_SCREENS: InfoScreen[] = [
   {
     id: 'simple_care',
     title: 'SkinIQ делает уход за кожей простым и понятным',
-    image: '/image 1576994977.webp',
+    image: '/image 1576994977.png',
     type: 'comparison',
     content: {
       left: {
@@ -175,7 +175,7 @@ export const INFO_SCREENS: InfoScreen[] = [
   {
     id: 'health_trust',
     title: 'SkinIQ заботится\nо вашем здоровье',
-    image: '/image 1576994970.webp',
+    image: '/image 1576994970.png',
     showAfterQuestionCode: 'has_avoid_ingredients',
     ctaText: 'Продолжить',
   },
@@ -234,13 +234,13 @@ export const INFO_SCREENS: InfoScreen[] = [
 
   // 37) Вы узнаёте себя в этом? (Tinder-экран 1)
   // ПЕРЕАНКОРИРОВАН: было после motivation_focus (удалён) — теперь напрямую после no_mistakes.
-  // Фон: фото девушки с welcome-экрана — на двух подряд tinder-экранах создаём эффект
-  // «это про вас», совпадая с первым визуальным якорем анкеты.
+  // Фон: отдельные портретные изображения для двух подряд tinder-экранов создают эффект
+  // «это про вас» перед финальной генерацией плана.
   {
     id: 'recognize_yourself_1',
     title: 'Вы узнаёте себя в этом?',
     subtitle: '«Я часто чувствую недовольство своей кожей, когда смотрю в зеркало»',
-    image: '/onboarding/welcome.webp',
+    image: '/tinder1.jpg',
     type: 'tinder',
     showAfterInfoScreenId: 'no_mistakes',
     ctaText: '', // Кнопки будут отдельными (Нет/Да)
@@ -254,7 +254,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'recognize_yourself_2',
     title: 'Это похоже на вас?',
     subtitle: '«Я хочу понимать СВОЮ кожу и подбирать уход осознанно — а не следовать общим советам из интернета»',
-    image: '/onboarding/welcome.webp',
+    image: '/tinder2.png',
     type: 'tinder',
     showAfterInfoScreenId: 'recognize_yourself_1',
     ctaText: '', // Кнопки будут отдельными (Нет/Да)

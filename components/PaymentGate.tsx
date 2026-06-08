@@ -492,7 +492,8 @@ export function PaymentGate({
             }
           }, 800);
         } else {
-          window.open(paymentUrl, '_blank');
+          toast('Переходим к оплате...', { duration: 1500 });
+          window.location.assign(paymentUrl);
         }
       } else {
         // Если нет paymentUrl, возможно это Telegram Payments или другой провайдер

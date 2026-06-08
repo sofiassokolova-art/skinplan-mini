@@ -34,6 +34,12 @@ yarn-error.log*
 # TypeScript
 *.tsbuildinfo
 
+# Local AI tooling
+.agents/
+.claude/
+.design/
+skills-lock.json
+
 # Backup files
 *.backup
 *.backup*

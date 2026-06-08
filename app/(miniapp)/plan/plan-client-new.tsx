@@ -496,7 +496,7 @@ export function PlanPageClientNew({
     <div style={{
       minHeight: '100svh',
       background: 'linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 68%, #F5FFFC 100%)',
-      paddingBottom: '76px',
+      paddingBottom: 'var(--bottom-nav-clearance)',
       overflowX: 'hidden',
       overscrollBehaviorY: 'contain',
     }}>

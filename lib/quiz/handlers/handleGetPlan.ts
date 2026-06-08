@@ -3,6 +3,7 @@
 // Вынесен из renderInfoScreen для улучшения читаемости
 
 import { clientLogger } from '@/lib/client-logger';
+import { resolveTelegramInitData } from '@/lib/telegram-client';
 
 export interface HandleGetPlanParams {
   // State
@@ -52,20 +53,24 @@ export async function handleGetPlan(params: HandleGetPlanParams): Promise<void> 
     return;
   }
   
-  // Проверяем наличие initData перед отправкой
-  const initData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
+  // Проверяем наличие initData перед отправкой.
+  // ВАЖНО: берём initData через resolveTelegramInitData (SDK → URL hash → sessionStorage),
+  // а НЕ через window.Telegram.WebApp напрямую. На части устройств/сетей скрипт
+  // telegram-web-app.js не загружается, window.Telegram.WebApp не создаётся, но Telegram
+  // всё равно передал валидный initData в URL hash — в этом случае сабмит должен работать.
+  const initData = resolveTelegramInitData();
   const isInTelegram = typeof window !== 'undefined' && !!window.Telegram?.WebApp;
-  
+
   clientLogger.log('📱 Проверка Telegram перед отправкой:', {
     hasWindow: typeof window !== 'undefined',
     hasTelegram: isInTelegram,
     hasInitData: !!initData,
     initDataLength: initData?.length || 0,
   });
-  
-  if ((!isInTelegram || !initData) && !isDev) {
-    console.error('❌ Telegram WebApp или initData недоступен');
-    setError('Пожалуйста, откройте приложение через Telegram Mini App и обновите страницу.');
+
+  if (!initData && !isDev) {
+    console.error('❌ initData недоступен (ни SDK, ни URL hash, ни sessionStorage)');
+    setError('Не удалось получить данные авторизации Telegram. Закройте и откройте приложение заново.');
     return;
   }
   
