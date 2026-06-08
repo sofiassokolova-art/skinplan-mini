@@ -28,7 +28,7 @@ import type { Question } from '@/lib/quiz/types';
 import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
 import { getInitialInfoScreens, getInfoScreenAfterQuestion } from '@/app/(miniapp)/quiz/info-screens';
 import { useQuizHandlers } from '../hooks/useQuizHandlers';
-import { GOAL_IMAGE_URLS } from '../image-assets';
+import { preloadQuizImages } from '../image-assets';
 type Screen = 'LOADER' | 'ERROR' | 'RETAKE' | 'RESUME' | 'INFO' | 'INITIAL_INFO' | 'QUESTION';
 
 /** Откладывает рендер QuizResumeScreen до после монтирования — один и тот же вывод на сервере и при первом клиентском рендере (loader), устраняет hydration mismatch. */
@@ -69,6 +69,8 @@ function ResumeScreenDeferred(props: {
 interface QuizRendererProps {
   screen: Screen;
   currentQuestion: Question | null;
+  allQuestions: Question[];
+  allQuestionsLength: number;
   currentInitialInfoScreen?: any; // Для INITIAL_INFO экрана
   debugLogs: Array<{ time: string; message: string; data?: any }>;
   showDebugPanel: boolean;
@@ -81,12 +83,7 @@ interface QuizRendererProps {
 const preloadCriticalResources = () => {
   if (typeof window === 'undefined') return;
 
-  // Экран целей открывается сразу после стартовых экранов. Прогреваем его
-  // небольшие WebP заранее, чтобы карточки не появлялись по очереди.
-  GOAL_IMAGE_URLS.forEach((src) => {
-    const image = new window.Image();
-    image.src = src;
-  });
+  preloadQuizImages();
 };
 
 const isDevEnv = process.env.NODE_ENV === 'development';
@@ -99,6 +96,8 @@ const devLog = (...args: any[]) => {
 export const QuizRenderer = memo(function QuizRenderer({
   screen,
   currentQuestion,
+  allQuestions: computedAllQuestions,
+  allQuestionsLength: computedAllQuestionsLength,
   currentInitialInfoScreen,
   debugLogs: _debugLogs,
   showDebugPanel,
@@ -197,8 +196,11 @@ export const QuizRenderer = memo(function QuizRenderer({
     const isQuestionScreen = isQuestionScreenUtil(currentQuestion, pendingInfoScreen, false, showRetakeScreen);
     const backgroundColor = getQuizBackgroundColor(isQuestionScreen, currentQuestion);
     const effectiveQuestionnaire = questionnaireQuery.data;
-    const allQuestions = effectiveQuestionnaire ? extractQuestionsFromQuestionnaire(effectiveQuestionnaire) : [];
-    const allQuestionsLength = allQuestions.length;
+    const fallbackAllQuestions = effectiveQuestionnaire ? extractQuestionsFromQuestionnaire(effectiveQuestionnaire) : [];
+    const allQuestions = computedAllQuestions.length > 0 ? computedAllQuestions : fallbackAllQuestions;
+    const allQuestionsLength = computedAllQuestions.length > 0
+      ? computedAllQuestionsLength
+      : fallbackAllQuestions.length;
 
     return {
       backgroundColor,
@@ -207,7 +209,15 @@ export const QuizRenderer = memo(function QuizRenderer({
       allQuestions,
       allQuestionsLength,
     };
-  }, [currentQuestion, pendingInfoScreen, showRetakeScreen, questionnaireQuery.data, progressQuery.data]);
+  }, [
+    currentQuestion,
+    pendingInfoScreen,
+    showRetakeScreen,
+    questionnaireQuery.data,
+    progressQuery.data,
+    computedAllQuestions,
+    computedAllQuestionsLength,
+  ]);
 
   const {
     backgroundColor,

@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import { AppLoader } from '@/components/AppLoader';
+import { preloadQuizImages } from '../image-assets';
 
 interface QuizInitialLoaderProps {
   message?: string;
@@ -25,6 +26,7 @@ function prefetchQuizChunks(): void {
   void import('./QuizInfoScreen');
   void import('./QuizQuestion');
   void import('./QuizResumeScreen');
+  preloadQuizImages();
 }
 
 export function QuizInitialLoader({

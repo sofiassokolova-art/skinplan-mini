@@ -7,6 +7,7 @@
 // блокировка по isSubmittingRef/isSubmitting, диагностика наличия initData, обработка ошибок.
 
 import React from 'react';
+import Image from 'next/image';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
 import { handleGetPlan } from '@/lib/quiz/handlers/handleGetPlan';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
@@ -74,6 +75,7 @@ function ImproveSkinScreenComponent({
     <>
       <BackButtonFixed show={shouldShowBackButton} onClick={onBack ?? (() => {})} />
       <div
+        className="qz-mobile-fullscreen"
         style={{
           position: 'fixed',
           top: 0,
@@ -81,28 +83,24 @@ function ImproveSkinScreenComponent({
           right: 0,
           bottom: 0,
           width: '100%',
-          height: '100vh',
-          maxHeight: '100vh',
           overflow: 'hidden',
-          backgroundColor: 'var(--canvas-white)',
+          backgroundColor: 'var(--canvas)',
           fontFamily:
             "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
           color: 'var(--ink)',
         }}
       >
         {/* Кремовый фон + лаймовые угловые акценты */}
-        <img
-          src="/image%201576994977.webp"
+        <Image
+          className="qz-fullscreen-bg"
+          src="/image%201576994977.png"
           alt=""
           aria-hidden
+          fill
+          quality={95}
+          sizes="100vw"
           style={{
-            position: 'absolute',
-            inset: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
             objectPosition: 'center',
-            zIndex: 0,
             pointerEvents: 'none',
           }}
         />
@@ -129,7 +127,7 @@ function ImproveSkinScreenComponent({
             height: '100%',
             maxWidth: '420px',
             margin: '0 auto',
-            padding: 'calc(clamp(20px, 4vh, 40px) + 56px) 20px 40px',
+            padding: 'calc(clamp(16px, 4vh, 32px) + 56px) 20px calc(24px + env(safe-area-inset-bottom, 0px))',
             boxSizing: 'border-box',
             display: 'flex',
             flexDirection: 'column',

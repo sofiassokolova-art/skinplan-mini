@@ -2,6 +2,7 @@
 // Root layout для Next.js приложения
 
 import type { Metadata, Viewport } from 'next';
+import { Analytics } from '@vercel/analytics/next';
 import { headers } from 'next/headers';
 import Script from 'next/script';
 import localFont from 'next/font/local';
@@ -368,31 +369,55 @@ export default async function RootLayout({
               justifyContent: 'center',
               backgroundColor: '#F4F2EE',
               zIndex: 99998,
+              padding: '24px',
+              boxSizing: 'border-box',
             }}
           >
-            {/* Лаймовая дуга вращается по тёмному кольцу — брендированный fallback до React. */}
+            {/* Брендированный fallback до React: тот же визуальный паттерн, что и AppLoader. */}
             <div
               style={{
-                width: 56,
-                height: 56,
-                borderRadius: '50%',
-                border: '5px solid rgba(10, 10, 10, 0.16)',
-                borderTopColor: '#D5FE61',
-                animation: 'skinplan-root-loader-spin 0.9s linear infinite',
+                width: '100%',
+                maxWidth: 320,
+                height: 8,
+                borderRadius: 999,
+                overflow: 'hidden',
+                background: 'rgba(10, 10, 10, 0.14)',
+                boxShadow: '0 0 18px rgba(213, 254, 97, 0.24)',
               }}
-            />
+            >
+              <div
+                style={{
+                  width: '42%',
+                  height: '100%',
+                  borderRadius: 999,
+                  background: '#D5FE61',
+                  animation: 'skinplan-root-loader-slide 1.15s ease-in-out infinite',
+                  willChange: 'transform',
+                }}
+              />
+            </div>
             <style
               dangerouslySetInnerHTML={{
-                __html: `@keyframes skinplan-root-loader-spin { to { transform: rotate(360deg); } }`,
+                __html: `
+                  @keyframes skinplan-root-loader-slide {
+                    0% { transform: translateX(-120%); }
+                    50% { transform: translateX(105%); }
+                    100% { transform: translateX(245%); }
+                  }
+                `,
               }}
             />
           </div>
         )}
-        {/* При ошибке загрузки чанков или таймауте — показываем кнопку «Обновить» */}
-        <div id="loading-timeout-fallback" style={{ display: 'none' }} />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
+        {/* При ошибке загрузки чанков или таймауте — показываем кнопку «Обновить».
+            Только для miniapp: на /admin React mount не выставляет __skiniq_mounted,
+            поэтому watchdog давал ложный тост. */}
+        {!isAdminRoute && (
+          <>
+            <div id="loading-timeout-fallback" style={{ display: 'none' }} />
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `
 (function(){
   var fallbackCss = "display:block;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;padding:12px 20px;background:rgba(10,95,89,0.95);color:#fff;border-radius:12px;font-family:system-ui,sans-serif;font-size:14px;box-shadow:0 4px 20px rgba(0,0,0,0.2);";
   var fallbackHtml = 'Не удалось загрузить приложение. <a href="javascript:location.reload()" style="color:#fff;text-decoration:underline;font-weight:600">Обновить</a>';
@@ -451,9 +476,11 @@ export default async function RootLayout({
     if (!window.__skiniq_mounted) showFallback();
   }, 8000);
 })();
-            `.trim(),
-          }}
-        />
+                `.trim(),
+              }}
+            />
+          </>
+        )}
         {/* Показывается, если JS не загрузился (например, чанки не дошли) */}
         <noscript>
           <div style={{
@@ -482,7 +509,7 @@ export default async function RootLayout({
             <ServiceWorker />
             {children}
             <Toaster />
-            {/* <Analytics /> */}
+            <Analytics />
           </ErrorBoundary>
         </div>
       </body>

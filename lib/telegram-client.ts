@@ -78,6 +78,20 @@ function getAuthDate(initData: string): number {
 
 const INIT_DATA_MAX_AGE_SEC = 82800; // 23 часа (с запасом от серверных 24ч)
 
+/**
+ * Возвращает лучший доступный initData: SDK → URL hash → sessionStorage.
+ *
+ * Критично для устройств/сетей, где telegram.org/js/telegram-web-app.js не
+ * загружается (тогда window.Telegram.WebApp вообще не создаётся), но Telegram
+ * всё равно передал initData в URL hash. Не завязывайтесь на window.Telegram.WebApp
+ * для решения «можно ли сабмитить» — используйте эту функцию.
+ */
+export function resolveTelegramInitData(): string {
+  if (typeof window === 'undefined') return '';
+  const fromScript = window.Telegram?.WebApp?.initData || '';
+  return fromScript || getInitDataFromHash() || getInitDataFromStorage();
+}
+
 export function sendToTG(payload: unknown): { ok: boolean; reason?: string } {
   try {
     if (!tg) return { ok: false, reason: 'tg-not-available' };

@@ -238,12 +238,11 @@ describe('QuizQuestion', () => {
       />
     );
 
-    // Прогресс-бар рендерится как div с черным фоном и лаймовой полосой
-    const progressBar = document.querySelector('div[style*="background-color: rgb(0, 0, 0)"]');
+    const progressBar = screen.getByRole('progressbar', { name: /прогресс анкеты/i });
     expect(progressBar).toBeInTheDocument();
+    expect(progressBar).toHaveAttribute('aria-valuenow', '60');
     
-    // Проверяем, что есть лаймовая полоса прогресса
-    const progressFill = document.querySelector('div[style*="background-color: rgb(213, 254, 97)"]');
+    const progressFill = progressBar.querySelector('div');
     expect(progressFill).toBeInTheDocument();
   });
 

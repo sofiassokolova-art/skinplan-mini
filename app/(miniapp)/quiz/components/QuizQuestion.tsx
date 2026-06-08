@@ -10,7 +10,7 @@ import { useState, useCallback, useRef, useEffect, useMemo, memo } from 'react';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
 import { FixedContinueButton } from '@/components/quiz/buttons';
 import type { Question } from '@/lib/quiz/types';
-import { GOAL_IMAGE_URLS } from '../image-assets';
+import { GOAL_IMAGE_URLS, SKIN_TYPE_IMAGE_URLS } from '../image-assets';
 
 interface QuizQuestionProps {
   question: Question;
@@ -32,6 +32,39 @@ const devLog = (...args: any[]) => {
     console.log(...args);
   }
 };
+
+function SelectedCheckBadge({ size = 28 }: { size?: number }) {
+  const iconWidth = Math.round(size * 0.5);
+  const iconHeight = Math.round(size * 0.36);
+
+  return (
+    <span
+      aria-hidden
+      style={{
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        backgroundColor: 'var(--ink)',
+        color: 'var(--canvas-white)',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.22)',
+      }}
+    >
+      <svg width={iconWidth} height={iconHeight} viewBox="0 0 14 10" fill="none">
+        <path
+          d="M1 5L5 9L13 1"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </span>
+  );
+}
 
 // Маппинг вопросов на шаги анкеты (соответствует stepNumber/stepLabel в info-screens.ts).
 // Лейбл «Шаг N: название» рендерится над прогресс-баром вместо отдельного экрана.
@@ -112,13 +145,16 @@ const LimeOptionCard = memo(function LimeOptionCard({
       style={{
         padding: '0',
         borderRadius: '16px',
-        border: isSelected ? '2px solid var(--canvas-white)' : 'none',
+        border: isSelected ? '2px solid var(--ink)' : '1px solid rgba(10, 10, 10, 0.08)',
         backgroundColor: isSelected ? 'var(--accent)' : 'var(--canvas-white)',
         cursor: 'pointer',
         textAlign: 'left',
         overflow: 'hidden',
         transition: 'all 0.2s',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        boxShadow: isSelected
+          ? '0 0 0 4px rgba(var(--accent-rgb), 0.45), 0 10px 24px rgba(0, 0, 0, 0.22)'
+          : '0 4px 12px rgba(0, 0, 0, 0.15)',
+        transform: isSelected ? 'translateY(-1px)' : 'none',
       }}
     >
       <div
@@ -131,6 +167,18 @@ const LimeOptionCard = memo(function LimeOptionCard({
           ...(isSkinType ? { transform: 'translateZ(0)', backfaceVisibility: 'hidden' as const } : {}),
         }}
       >
+        {isSelected && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '10px',
+              right: '10px',
+              zIndex: 2,
+            }}
+          >
+            <SelectedCheckBadge size={30} />
+          </div>
+        )}
         <Image
           key={imageUrl}
           src={imageUrl}
@@ -193,17 +241,7 @@ const LimeOptionCard = memo(function LimeOptionCard({
                 boxShadow: isSelected ? 'none' : 'inset 0 2px 4px rgba(0, 0, 0, 0.15)',
               }}
             >
-              {isSelected && (
-                <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
-                  <path
-                    d="M1 5L5 9L13 1"
-                    stroke="var(--canvas-white)"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              )}
+              {isSelected && <SelectedCheckBadge size={28} />}
             </div>
           )}
         </div>
@@ -536,6 +574,7 @@ export const QuizQuestion = memo(function QuizQuestion({
 
   // Отступ сверху: прогресс-бар ниже кнопки «Назад» (зона кнопки ~80px)
   const PROGRESS_BAR_TOP_OFFSET = '52px';
+  const QUIZ_CTA_CLEARANCE = 'var(--quiz-fixed-cta-clearance, calc(96px + env(safe-area-inset-bottom, 0px)))';
 
   // Целевой процент прогресса для текущего экрана
   const targetProgressPercent =
@@ -584,6 +623,11 @@ export const QuizQuestion = memo(function QuizQuestion({
           </p>
         )}
         <div
+          role="progressbar"
+          aria-label="Прогресс анкеты"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(displayProgressPercent)}
           style={{
             width: '100%',
             height: '6px',
@@ -684,8 +728,8 @@ export const QuizQuestion = memo(function QuizQuestion({
               style={{
                 padding: '16px',
                 borderRadius: '16px',
-                border: '1px solid var(--ink)',
-                backgroundColor: isSelected ? '#F2F2F2' : 'var(--canvas-white)',
+                border: isSelected ? '2px solid var(--ink)' : '1px solid var(--ink)',
+                backgroundColor: isSelected ? 'var(--accent)' : 'var(--canvas-white)',
                 cursor: 'pointer',
                 textAlign: 'left',
                 fontSize: '16px',
@@ -695,12 +739,24 @@ export const QuizQuestion = memo(function QuizQuestion({
                   "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'space-between',
                 gap: '12px',
+                boxShadow: isSelected
+                  ? '0 0 0 4px rgba(var(--accent-rgb), 0.38), 0 8px 20px rgba(0, 0, 0, 0.12)'
+                  : 'none',
               }}
             >
-              {isSkinSensitivityQuestion ? (
-                <>
-                  <div
+              <span
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  minWidth: 0,
+                  lineHeight: 1.35,
+                }}
+              >
+                {isSkinSensitivityQuestion && (
+                  <span
                     style={{
                       width: '14px',
                       height: '14px',
@@ -709,18 +765,17 @@ export const QuizQuestion = memo(function QuizQuestion({
                       flexShrink: 0,
                     }}
                   />
-                  <span>{option.label}</span>
-                </>
-              ) : (
-                option.label
-              )}
+                )}
+                <span>{option.label}</span>
+              </span>
+              {isSelected && <SelectedCheckBadge />}
             </button>
           );
         })}
 
         {/* Навигация */}
         {showSubmitButton && hasAnswer(question.id) ? (
-          <div style={{ marginTop: '24px', paddingBottom: isSkinSensitivityQuestion ? '52px' : '100px' }}>
+          <div style={{ marginTop: '24px' }}>
             {renderSubmitOrContinueDisclaimer()}
             <FixedContinueButton
               variant="black"
@@ -752,20 +807,7 @@ export const QuizQuestion = memo(function QuizQuestion({
       if (isGoalsQuestion) {
         imageUrl = GOAL_IMAGE_URLS[index] || '/tone6.webp';
       } else if (isSkinTypeQuestion) {
-        // Порядок строго соответствует options в seed-questionnaire-v2:
-        // 0: Тип 1 — Сухая
-        // 1: Тип 2 — Комбинированная (сухая)
-        // 2: Тип 3 - Нормальная
-        // 3: Тип 3 — Комбинированная (жирная)
-        // 4: Тип 4 — Жирная
-        const skinTypeImages: Record<number, string> = {
-          0: '/dry.webp',
-          1: '/dry (combi).webp',
-          2: '/normal.webp',
-          3: '/oily (combi).webp',
-          4: '/oily.webp',
-        };
-        imageUrl = skinTypeImages[index] || '/normal.webp';
+        imageUrl = SKIN_TYPE_IMAGE_URLS[index] || '/normal.webp';
       }
 
       return imageUrl;
@@ -989,8 +1031,8 @@ export const QuizQuestion = memo(function QuizQuestion({
                 style={{
                   padding: isSkinConcernsQuestion ? '14px' : '16px',
                   borderRadius: '16px',
-                  border: '1px solid var(--ink)',
-                  backgroundColor: isSelected ? '#F2F2F2' : 'var(--canvas-white)',
+                  border: isSelected ? '2px solid var(--ink)' : '1px solid var(--ink)',
+                  backgroundColor: isSelected ? 'var(--accent)' : 'var(--canvas-white)',
                   cursor: 'pointer',
                   textAlign: 'left',
                   fontSize: isSkinConcernsQuestion ? '15px' : '16px',
@@ -999,32 +1041,44 @@ export const QuizQuestion = memo(function QuizQuestion({
                   fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                   display: 'flex',
                   alignItems: 'center',
+                  justifyContent: 'space-between',
                   gap: '12px',
+                  boxShadow: isSelected
+                    ? '0 0 0 4px rgba(var(--accent-rgb), 0.38), 0 8px 20px rgba(0, 0, 0, 0.12)'
+                    : 'none',
                 }}
               >
-                {isSkinSensitivityForMulti ? (
-                  <>
-                    <div
+                <span
+                  style={{
+                    display: 'flex',
+                    alignItems: isSkinConcernsQuestion ? 'flex-start' : 'center',
+                    gap: '12px',
+                    minWidth: 0,
+                    lineHeight: 1.35,
+                  }}
+                >
+                  {isSkinSensitivityForMulti && (
+                    <span
                       style={{
                         width: '14px',
                         height: '14px',
                         borderRadius: '999px',
                         backgroundColor: sensitivityCircleColors[index] ?? 'var(--accent)',
                         flexShrink: 0,
+                        marginTop: isSkinConcernsQuestion ? '3px' : 0,
                       }}
                     />
-                    <span>{renderOptionLabel(String(option.label ?? ''))}</span>
-                  </>
-                ) : (
-                  renderOptionLabel(String(option.label ?? ''))
-                )}
+                  )}
+                  <span>{renderOptionLabel(String(option.label ?? ''))}</span>
+                </span>
+                {isSelected && <SelectedCheckBadge />}
               </button>
             );
           })}
 
         {hasAnswer(question.id) ? (
           showSubmitButton ? (
-            <div style={{ marginTop: '24px', paddingBottom: isSkinSensitivityQuestion ? '52px' : isSkinConcernsQuestion ? '76px' : '100px' }}>
+            <div style={{ marginTop: '24px' }}>
               {renderSubmitOrContinueDisclaimer()}
               <FixedContinueButton
                 variant="black"
@@ -1058,17 +1112,9 @@ export const QuizQuestion = memo(function QuizQuestion({
           paddingLeft: useLimeStyle ? undefined : '20px',
           paddingRight: useLimeStyle ? undefined : '20px',
           paddingTop: isNameQuestion ? '52px' : undefined,
-          paddingBottom: isNameQuestion
-            ? '80px'
-            : isSkinSensitivityQuestion
-            ? '52px'
-            : isSkinTypeQuestion
+          paddingBottom: isSkinTypeQuestion
             ? '40px'
-            : isGoalsQuestion
-            ? '60px'
-            : isSkinConcernsQuestion
-            ? '76px'
-            : '100px',
+            : QUIZ_CTA_CLEARANCE,
           boxSizing: 'border-box',
         }}
       >

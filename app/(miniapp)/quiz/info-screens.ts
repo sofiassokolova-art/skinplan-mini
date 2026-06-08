@@ -136,7 +136,7 @@ export const INFO_SCREENS: InfoScreen[] = [
   {
     id: 'simple_care',
     title: 'SkinIQ делает уход за кожей простым и понятным',
-    image: '/image 1576994977.webp',
+    image: '/image 1576994977.png',
     type: 'comparison',
     content: {
       left: {
@@ -175,7 +175,7 @@ export const INFO_SCREENS: InfoScreen[] = [
   {
     id: 'health_trust',
     title: 'SkinIQ заботится\nо вашем здоровье',
-    image: '/image 1576994970.webp',
+    image: '/image 1576994970.png',
     showAfterQuestionCode: 'has_avoid_ingredients',
     ctaText: 'Продолжить',
   },
@@ -240,7 +240,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'recognize_yourself_1',
     title: 'Вы узнаёте себя в этом?',
     subtitle: '«Я часто чувствую недовольство своей кожей, когда смотрю в зеркало»',
-    image: '/onboarding/welcome.webp',
+    image: '/onboarding/welcome.jpg',
     type: 'tinder',
     showAfterInfoScreenId: 'no_mistakes',
     ctaText: '', // Кнопки будут отдельными (Нет/Да)
@@ -254,7 +254,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'recognize_yourself_2',
     title: 'Это похоже на вас?',
     subtitle: '«Я хочу понимать СВОЮ кожу и подбирать уход осознанно — а не следовать общим советам из интернета»',
-    image: '/onboarding/welcome.webp',
+    image: '/onboarding/welcome.jpg',
     type: 'tinder',
     showAfterInfoScreenId: 'recognize_yourself_1',
     ctaText: '', // Кнопки будут отдельными (Нет/Да)

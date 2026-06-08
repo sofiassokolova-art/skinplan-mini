@@ -102,7 +102,7 @@ export function QuizPageContent(props: QuizPageContentProps) {
     <div
       style={{
         padding: isLimeFullWidthScreen ? '0' : '20px',
-        minHeight: '100vh',
+        minHeight: '100%',
         background: backgroundColor,
         position: 'relative',
       }}
@@ -121,7 +121,7 @@ export function QuizPageContent(props: QuizPageContentProps) {
           maxWidth: isLimeFullWidthScreen ? '100%' : '600px',
           margin: isLimeFullWidthScreen ? '0' : '0 auto',
           padding: isLimeFullWidthScreen ? '0' : '24px',
-          minHeight: isLimeFullWidthScreen ? '100vh' : 'auto',
+          minHeight: isLimeFullWidthScreen ? '100%' : 'auto',
         }}
       >
         <QuizQuestionState

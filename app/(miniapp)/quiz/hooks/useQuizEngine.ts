@@ -13,6 +13,8 @@ export type QuizScreen = 'LOADER' | 'ERROR' | 'RETAKE' | 'RESUME' | 'INFO' | 'IN
 export interface UseQuizEngineResult {
   screen: QuizScreen;
   currentQuestion: Question | null;
+  allQuestions: Question[];
+  allQuestionsLength: number;
   currentInitialInfoScreen: any | null;
   dataError: Error | null;
 }
@@ -122,7 +124,7 @@ export function useQuizEngine(): UseQuizEngineResult {
     isDev,
   });
 
-  const { currentQuestion, currentInitialInfoScreen, viewMode } = quizComputedResult;
+  const { currentQuestion, currentInitialInfoScreen, viewMode, allQuestions } = quizComputedResult;
 
   const screen = useMemo(() => mapViewModeToScreen(viewMode), [viewMode]);
 
@@ -133,8 +135,9 @@ export function useQuizEngine(): UseQuizEngineResult {
   return {
     screen,
     currentQuestion,
+    allQuestions,
+    allQuestionsLength: allQuestions.length,
     currentInitialInfoScreen,
     dataError,
   };
 }
-

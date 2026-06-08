@@ -1,15 +1,14 @@
+// @vitest-environment node
 // tests/api/questionnaire-answers.test.ts
 // API тесты для /api/questionnaire/answers
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 import { POST as postAnswers, GET as getAnswers } from '@/app/api/questionnaire/answers/route';
+import { createPrismaTestClient } from '@/tests/helpers/prisma-test-client';
 
 const hasDatabase = !!process.env.DATABASE_URL;
-const prismaTest = hasDatabase
-  ? new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL! } } })
-  : new PrismaClient();
+const prismaTest = createPrismaTestClient();
 
 const testUserId = 'test-user-api-answers';
 
@@ -23,10 +22,7 @@ vi.mock('@/lib/auth/telegram-auth', async () => {
     ...actual,
     requireTelegramAuth: vi.fn(async (request: NextRequest) => {
       if (!mockPrisma) {
-        const { PrismaClient } = await import('@prisma/client');
-        mockPrisma = hasDatabase
-          ? new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL! } } })
-          : new PrismaClient();
+        mockPrisma = prismaTest;
       }
       
       const telegramId = 'test-user-api-answers';

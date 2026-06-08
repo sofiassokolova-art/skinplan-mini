@@ -650,7 +650,6 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
 
     // ИСПРАВЛЕНО: Используем порядок вопросов, чтобы корректно найти последний отвеченный вопрос.
     // Object.keys для числовых id сортируется по возрастанию, что приводит к неверному "последнему" ответу.
-    const questionByIndexCode = currentQuestion?.code;
     const lastAnsweredQuestion = allQuestions
       .slice()
       .reverse()
@@ -660,20 +659,6 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       currentQuestion = lastAnsweredQuestion;
       clientLogger.log('🔧 [handleNext] Используем последний отвеченный вопрос (fallback вместо null)', {
         questionIndex: currentQuestionIndex,
-        lastAnsweredQuestionId: lastAnsweredQuestion.id,
-        lastAnsweredQuestionCode: lastAnsweredQuestion.code,
-        allQuestionsLength: allQuestions.length,
-      });
-    } else if (
-      currentQuestion &&
-      effectiveAnswers[currentQuestion.id] === undefined &&
-      lastAnsweredQuestion &&
-      lastAnsweredQuestion.id !== currentQuestion.id
-    ) {
-      currentQuestion = lastAnsweredQuestion;
-      clientLogger.log('🔧 [handleNext] Используем последний отвеченный вопрос вместо неотвеченного по индексу', {
-        questionIndex: currentQuestionIndex,
-        questionByIndex: questionByIndexCode || null,
         lastAnsweredQuestionId: lastAnsweredQuestion.id,
         lastAnsweredQuestionCode: lastAnsweredQuestion.code,
         allQuestionsLength: allQuestions.length,
