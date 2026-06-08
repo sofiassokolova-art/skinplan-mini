@@ -34,9 +34,6 @@ yarn-error.log*
 # TypeScript
 *.tsbuildinfo
 
-# Prisma
-prisma/migrations/
-
 # Backup files
 *.backup
 *.backup*
