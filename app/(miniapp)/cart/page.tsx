@@ -113,7 +113,7 @@ export default function FavoritesPage() {
         .fav-rd .fv-cta:active{transform:scale(0.98);}
         .fav-rd .fv-cta.in{background:#0A0A0A;color:#fff;}
         .fav-rd .fv-empty{text-align:center;padding:60px 20px;background:rgba(255,255,255,0.62);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.7);border-radius:24px;margin-top:24px;}
-        .fav-rd .fv-empty-cta{display:inline-block;background:#0A0A0A;color:#D5FE61;padding:14px 32px;border-radius:999px;text-decoration:none;font-family:var(--font-inter),sans-serif;font-size:15px;font-weight:600;letter-spacing:-0.1px;box-shadow:0 10px 24px rgba(10,10,10,0.18);transition:transform .14s ease;}
+        .fav-rd .fv-empty-cta{display:inline-block;background:#0A0A0A;color:#fff;padding:14px 32px;border-radius:999px;text-decoration:none;font-family:var(--font-inter),sans-serif;font-size:15px;font-weight:600;letter-spacing:-0.1px;box-shadow:0 10px 24px rgba(10,10,10,0.18);transition:transform .14s ease;}
         .fav-rd .fv-empty-cta:active{transform:scale(0.98);}
       `}</style>
 

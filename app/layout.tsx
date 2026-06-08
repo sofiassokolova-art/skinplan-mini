@@ -288,7 +288,10 @@ export default async function RootLayout({
         style={{
           margin: 0,
           minHeight: '100vh',
-          backgroundColor: '#FFFFFF',
+          // Беж-канва приложения вместо белого: при overscroll/листании в
+          // Telegram WebView (где background-attachment:fixed не красит весь
+          // документ) из-под контента больше не светит белая подложка.
+          backgroundColor: '#F4F2EE',
         }}
       >
         {/* Контейнер для кнопки «Назад» — первый ребёнок body, блок 80×80 в углу */}

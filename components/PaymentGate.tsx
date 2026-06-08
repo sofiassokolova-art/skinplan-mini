@@ -88,18 +88,64 @@ let entitlementsCache: { codes: string[]; ts: number } | null = null;
 let entitlementsPromise: Promise<string[]> | null = null;
 const ENTITLEMENTS_TTL_MS = 60_000;
 
+// Персистим результат проверки доступа в sessionStorage. Это убирает лоадер
+// «Проверяем доступ...» при переключении вкладок (issue: лоадер постоянно мигал
+// и нижняя навигация пропадала, из-за чего по табам приходилось жать дважды):
+// даже после протухания TTL мы сразу рендерим контент по последнему известному
+// статусу (stale-while-revalidate), а свежую проверку делаем в фоне.
+const ENTITLEMENTS_STORAGE_KEY = 'skinplan:entitlements_cache';
+
+function hydrateEntitlementsCache(): void {
+  if (entitlementsCache || typeof window === 'undefined') return;
+  try {
+    const raw = sessionStorage.getItem(ENTITLEMENTS_STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (parsed && Array.isArray(parsed.codes) && typeof parsed.ts === 'number') {
+      entitlementsCache = { codes: parsed.codes.filter((c: unknown): c is string => typeof c === 'string'), ts: parsed.ts };
+    }
+  } catch {
+    // ignore — невалидный кеш просто игнорируем
+  }
+}
+
+function setEntitlementsCache(codes: string[]): void {
+  entitlementsCache = { codes, ts: Date.now() };
+  if (typeof window !== 'undefined') {
+    try {
+      sessionStorage.setItem(ENTITLEMENTS_STORAGE_KEY, JSON.stringify(entitlementsCache));
+    } catch {
+      // ignore
+    }
+  }
+}
+
+function clearEntitlementsCache(): void {
+  entitlementsCache = null;
+  if (typeof window !== 'undefined') {
+    try {
+      sessionStorage.removeItem(ENTITLEMENTS_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+  }
+}
+
+// Последний известный статус доступа, ИГНОРИРУЯ TTL. Используется только для
+// первичного рендера, чтобы не моргать лоадером — параллельно идёт фоновая
+// перепроверка, которая обновит статус при изменении.
+function getStaleCachedEntitlement(productCode: string): boolean | null {
+  hydrateEntitlementsCache();
+  if (!entitlementsCache) return null;
+  return entitlementsCache.codes.includes(requiredEntitlementCode(productCode));
+}
+
 function requiredEntitlementCode(productCode: string): string {
   if (productCode === 'plan_access') return 'paid_access';
   if (productCode === 'retake_topic') return 'retake_topic_access';
   if (productCode === 'retake_full') return 'retake_full_access';
   // Для подписки пока не вводим отдельный код — считаем, что она тоже даёт paid_access
   return 'paid_access';
-}
-
-function getCachedEntitlement(productCode: string): boolean | null {
-  if (!entitlementsCache) return null;
-  if (Date.now() - entitlementsCache.ts > ENTITLEMENTS_TTL_MS) return null;
-  return entitlementsCache.codes.includes(requiredEntitlementCode(productCode));
 }
 
 async function fetchEntitlementCodes(initData: string): Promise<string[]> {
@@ -157,10 +203,13 @@ export function PaymentGate({
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // hasPaid = "уверены, что оплата есть" (проверяется через Entitlement).
-  // Инициализируем из глобального кеша, чтобы при навигации между табами
-  // (/home → /plan → /cart) не моргал лоадер «Проверяем доступ...»: если уже
-  // проверяли в этой сессии и кеш свежий — сразу рендерим контент.
-  const cachedAccess = getCachedEntitlement(productCode);
+  // Инициализируем из глобального/persisted кеша, чтобы при навигации между
+  // табами (/home → /plan → /cart) не моргал лоадер «Проверяем доступ...».
+  // Берём ПОСЛЕДНИЙ известный статус, игнорируя TTL (stale-while-revalidate):
+  // если в этой сессии уже проверяли — сразу рендерим контент/пейвол по нему,
+  // а свежую проверку делаем в фоне (см. useEffect ниже). Лоадер показывается
+  // только при самом первом входе в сессии, когда статус ещё неизвестен.
+  const cachedAccess = getStaleCachedEntitlement(productCode);
   const [hasPaid, setHasPaid] = useState<boolean>(cachedAccess === true);
   const [checkingDbPayment, setCheckingDbPayment] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
@@ -272,7 +321,7 @@ export function PaymentGate({
         if (!entitlementsPromise) {
           entitlementsPromise = fetchEntitlementCodes(initData)
             .then((codes) => {
-              entitlementsCache = { codes, ts: Date.now() };
+              setEntitlementsCache(codes);
               return codes;
             })
             .finally(() => {
@@ -354,7 +403,7 @@ export function PaymentGate({
 
       try {
         const codes = await fetchEntitlementCodes(initData);
-        entitlementsCache = { codes, ts: Date.now() };
+        setEntitlementsCache(codes);
         const required = requiredEntitlementCode(productCode);
 
         if (codes.includes(required)) {
@@ -403,7 +452,7 @@ export function PaymentGate({
 
       // После старта оплаты сбрасываем кеш entitlement, чтобы второй экран (план/главная)
       // быстрее увидел "paid_access".
-      entitlementsCache = null;
+      clearEntitlementsCache();
 
       // Создаем платеж через правильный endpoint
       const response = await fetch('/api/payments/create', {
@@ -449,7 +498,7 @@ export function PaymentGate({
       // Если платеж уже успешен (идемпотентность)
       if (paymentData.status === 'succeeded' && paymentData.hasAccess) {
         setHasPaid(true);
-        entitlementsCache = null;
+        setEntitlementsCache([requiredEntitlementCode(productCode)]);
         toast.success('Оплата успешно обработана!');
         setTimeout(() => {
           onPaymentComplete();
