@@ -207,7 +207,7 @@ export function PlanPageClient({
     <div style={{
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-      paddingBottom: '120px',
+      paddingBottom: 'var(--bottom-nav-clearance)',
     }}>
       {/* Шапка с прогрессом и инфографикой */}
       <ProgressHeader 
@@ -458,4 +458,3 @@ export function PlanPageClient({
     </div>
   );
 }
-

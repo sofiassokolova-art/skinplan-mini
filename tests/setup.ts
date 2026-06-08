@@ -22,27 +22,29 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-// Моки для window.Telegram
-Object.defineProperty(window, 'Telegram', {
-  writable: true,
-  value: {
-    WebApp: {
-      initData: 'test_init_data',
-      ready: vi.fn(),
-      expand: vi.fn(),
-      close: vi.fn(),
+if (typeof window !== 'undefined') {
+  // Моки для window.Telegram
+  Object.defineProperty(window, 'Telegram', {
+    writable: true,
+    value: {
+      WebApp: {
+        initData: 'test_init_data',
+        ready: vi.fn(),
+        expand: vi.fn(),
+        close: vi.fn(),
+      },
     },
-  },
-});
+  });
 
-// Моки для sessionStorage
-const sessionStorageMock = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
-};
+  // Моки для sessionStorage
+  const sessionStorageMock = {
+    getItem: vi.fn(),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+    clear: vi.fn(),
+  };
 
-Object.defineProperty(window, 'sessionStorage', {
-  value: sessionStorageMock,
-});
+  Object.defineProperty(window, 'sessionStorage', {
+    value: sessionStorageMock,
+  });
+}

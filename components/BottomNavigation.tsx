@@ -47,7 +47,7 @@ export default function BottomNavigation() {
     <nav
       style={{
         position: 'fixed',
-        bottom: '20px',
+        bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
         left: '5%',
         width: '90%',
         height: '64px',

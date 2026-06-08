@@ -3,6 +3,7 @@
 // Вынесен из renderInfoScreen для улучшения читаемости
 
 import React from 'react';
+import Image from 'next/image';
 import { FixedContinueButton } from '../buttons/FixedContinueButton';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
@@ -18,11 +19,10 @@ export interface WelcomeScreenProps {
 function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInfoScreenIndex = 0, onBack }: WelcomeScreenProps) {
   return (
     <div
-      className="animate-fade-in qz-phone-frame-fixed"
+      className="animate-fade-in qz-phone-frame-fixed qz-mobile-fullscreen"
       style={{
         padding: 0,
         margin: 0,
-        minHeight: '100vh',
         position: 'fixed',
         top: 0,
         left: 0,
@@ -48,19 +48,16 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
             height: '100%',
           }}
         >
-          <img
+          <Image
+            className="qz-fullscreen-bg"
             src={screen.image}
             alt={screen.title}
-            fetchPriority="high"
-            decoding="sync"
+            fill
+            priority
+            quality={95}
+            sizes="100vw"
             style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
               objectPosition: 'center',
-              display: 'block',
-              margin: 0,
-              padding: 0,
             }}
           />
         </div>

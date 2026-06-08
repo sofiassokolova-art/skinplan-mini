@@ -7,7 +7,15 @@ import { globalIgnores } from 'eslint/config'
 
 export default tseslint.config([
   // Repo-wide ignores (CI and local)
-  globalIgnores(['dist', '.next', '.open-next', 'coverage']),
+  globalIgnores([
+    'dist',
+    '.next',
+    '.open-next',
+    'coverage',
+    '.agents/**',
+    '.claude/**',
+    '.design/**',
+  ]),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

@@ -19,12 +19,14 @@ function QuizPageContent() {
   const [debugLogs] = useState<Array<{ time: string; message: string; data?: any }>>([]);
   const [showDebugPanel] = useState(false);
 
-  const { screen, currentQuestion, currentInitialInfoScreen, dataError } = useQuizEngine();
+  const { screen, currentQuestion, allQuestions, allQuestionsLength, currentInitialInfoScreen, dataError } = useQuizEngine();
 
   return (
     <QuizRenderer
       screen={screen}
       currentQuestion={currentQuestion}
+      allQuestions={allQuestions}
+      allQuestionsLength={allQuestionsLength}
       currentInitialInfoScreen={currentInitialInfoScreen}
       debugLogs={debugLogs}
       showDebugPanel={showDebugPanel}

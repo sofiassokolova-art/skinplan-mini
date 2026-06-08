@@ -8,6 +8,7 @@ import { useQuizContext } from '../components/QuizProvider';
 import type { Question } from '@/lib/quiz/types';
 import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
+import { filterQuestions } from '@/lib/quiz/filterQuestions';
 import { loadQuestionnaire as loadQuestionnaireHandler } from '@/lib/quiz/loadQuestionnaire';
 import * as userPreferences from '@/lib/user-preferences';
 import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
@@ -38,6 +39,12 @@ interface UseQuizHandlersParams {
   currentQuestion: Question | null;
   screen: Screen;
 }
+
+const navigationFilterLogger = {
+  log: () => undefined,
+  warn: () => undefined,
+  error: (message: string, data?: any) => clientLogger.error(`❌ [useQuizHandlers filterQuestions] ${message}`, data),
+};
 
 export function useQuizHandlers({ currentQuestion, screen }: UseQuizHandlersParams) {
   const {
@@ -103,17 +110,37 @@ export function useQuizHandlers({ currentQuestion, screen }: UseQuizHandlersPara
 
   // memo: all questions & questionnaireFromQuery
   const memoized = useMemo(() => {
-    const effectiveQuestionnaire = questionnaireQuery.data;
-    const allQuestions = effectiveQuestionnaire ? extractQuestionsFromQuestionnaire(effectiveQuestionnaire) : [];
+    const effectiveQuestionnaire = questionnaireQuery.data || questionnaireRef.current || questionnaire;
+    const rawQuestions = effectiveQuestionnaire ? extractQuestionsFromQuestionnaire(effectiveQuestionnaire) : [];
+    const allQuestions = rawQuestions.length > 0
+      ? filterQuestions({
+          questions: rawQuestions,
+          answers,
+          savedProgressAnswers: savedProgress?.answers,
+          isRetakingQuiz,
+          showRetakeScreen,
+          logger: navigationFilterLogger,
+        })
+      : [];
     return {
       questionnaireFromQuery: questionnaireQuery.data,
+      rawQuestions,
       allQuestions,
       allQuestionsLength: allQuestions.length,
     };
-  }, [questionnaireQuery.data]);
+  }, [
+    questionnaireQuery.data,
+    questionnaire,
+    questionnaireRef,
+    answers,
+    savedProgress?.answers,
+    isRetakingQuiz,
+    showRetakeScreen,
+  ]);
 
   const {
     questionnaireFromQuery,
+    rawQuestions,
     allQuestions,
     allQuestionsLength,
   } = memoized;
@@ -201,13 +228,69 @@ export function useQuizHandlers({ currentQuestion, screen }: UseQuizHandlersPara
     ],
   );
 
+  const getAnswersForNavigation = useCallback(
+    (answersOverride?: Record<number, string | string[]>) => {
+      if (answersOverride) return answersOverride;
+      if (answersRef?.current && Object.keys(answersRef.current).length > 0) {
+        return answersRef.current;
+      }
+      return answers;
+    },
+    [answers, answersRef],
+  );
+
+  const getQuestionsForNavigation = useCallback(
+    (answersOverride?: Record<number, string | string[]>) => {
+      const effectiveQuestionnaire = questionnaireFromQuery || questionnaireRef.current || questionnaire;
+      const latestRawQuestions = effectiveQuestionnaire
+        ? extractQuestionsFromQuestionnaire(effectiveQuestionnaire)
+        : rawQuestions;
+
+      if (latestRawQuestions.length === 0) {
+        return allQuestions;
+      }
+
+      try {
+        const filtered = filterQuestions({
+          questions: latestRawQuestions,
+          answers: getAnswersForNavigation(answersOverride),
+          savedProgressAnswers: savedProgress?.answers,
+          isRetakingQuiz,
+          showRetakeScreen,
+          logger: navigationFilterLogger,
+        });
+
+        return filtered.length > 0 ? filtered : latestRawQuestions;
+      } catch (err) {
+        clientLogger.error('❌ [useQuizHandlers] Не удалось отфильтровать вопросы для навигации', {
+          error: err instanceof Error ? err.message : String(err),
+          rawQuestionsLength: latestRawQuestions.length,
+        });
+        return allQuestions.length > 0 ? allQuestions : latestRawQuestions;
+      }
+    },
+    [
+      questionnaireFromQuery,
+      questionnaireRef,
+      questionnaire,
+      rawQuestions,
+      allQuestions,
+      getAnswersForNavigation,
+      savedProgress?.answers,
+      isRetakingQuiz,
+      showRetakeScreen,
+    ],
+  );
+
   const handleResume = useCallback(() => {
     if (!savedProgress) return;
+
+    const savedProgressQuestions = getQuestionsForNavigation(savedProgress.answers);
 
     resumeQuiz({
       savedProgress,
       questionnaire: questionnaireFromQuery || questionnaireRef.current || questionnaire,
-      allQuestions,
+      allQuestions: savedProgressQuestions,
       redirectInProgressRef,
       initCompletedRef,
       setInitCompleted,
@@ -230,10 +313,10 @@ export function useQuizHandlers({ currentQuestion, screen }: UseQuizHandlersPara
     });
   }, [
     savedProgress,
+    getQuestionsForNavigation,
     questionnaireFromQuery,
     questionnaireRef,
     questionnaire,
-    allQuestions,
     redirectInProgressRef,
     initCompletedRef,
     setInitCompleted,
@@ -449,13 +532,16 @@ export function useQuizHandlers({ currentQuestion, screen }: UseQuizHandlersPara
       }
 
       try {
+        const nextAnswers = { ...getAnswersForNavigation(), [questionId]: value };
+        const questionsForNavigation = getQuestionsForNavigation(nextAnswers);
+
         await handleAnswer({
           questionId,
           value,
           currentQuestion,
-          answers,
+          answers: getAnswersForNavigation(),
           answersRef,
-          allQuestions,
+          allQuestions: questionsForNavigation,
           questionnaire,
           setAnswers,
           currentQuestionIndex,
@@ -474,9 +560,9 @@ export function useQuizHandlers({ currentQuestion, screen }: UseQuizHandlersPara
     },
     [
       currentQuestion,
-      answers,
+      getAnswersForNavigation,
       answersRef,
-      allQuestions,
+      getQuestionsForNavigation,
       questionnaire,
       setAnswers,
       currentQuestionIndex,
@@ -492,6 +578,9 @@ export function useQuizHandlers({ currentQuestion, screen }: UseQuizHandlersPara
   const onNext = useCallback(
     async () => {
       try {
+        const latestAnswers = getAnswersForNavigation();
+        const questionsForNavigation = getQuestionsForNavigation(latestAnswers);
+
         await handleNext({
           handleNextInProgressRef,
           currentInfoScreenIndexRef: quizState.currentInfoScreenIndexRef,
@@ -502,13 +591,13 @@ export function useQuizHandlers({ currentQuestion, screen }: UseQuizHandlersPara
           loading: false,
           currentInfoScreenIndex,
           currentQuestionIndex,
-          allQuestions,
+          allQuestions: questionsForNavigation,
           isRetakingQuiz,
           showRetakeScreen,
           hasResumed,
           pendingInfoScreen,
           pendingInfoScreenRef: quizState.pendingInfoScreenRef,
-          answers,
+          answers: latestAnswers,
           answersRef,
           setIsHandlingNext,
           setCurrentInfoScreenIndex,
@@ -534,13 +623,13 @@ export function useQuizHandlers({ currentQuestion, screen }: UseQuizHandlersPara
       questionnaire,
       currentInfoScreenIndex,
       currentQuestionIndex,
-      allQuestions,
+      getAnswersForNavigation,
+      getQuestionsForNavigation,
       isRetakingQuiz,
       showRetakeScreen,
       hasResumed,
       pendingInfoScreen,
       quizState.pendingInfoScreenRef,
-      answers,
       answersRef,
       setCurrentInfoScreenIndex,
       setCurrentQuestionIndex,
@@ -605,11 +694,14 @@ export function useQuizHandlers({ currentQuestion, screen }: UseQuizHandlersPara
   const onBack = useCallback(
     async () => {
       try {
+        const latestAnswers = getAnswersForNavigation();
+        const questionsForNavigation = getQuestionsForNavigation(latestAnswers);
+
         await handleBack({
           currentQuestionIndex,
           currentInfoScreenIndex,
-          allQuestions,
-          answers,
+          allQuestions: questionsForNavigation,
+          answers: latestAnswers,
           questionnaire,
           setCurrentQuestionIndex,
           setCurrentInfoScreenIndex,
@@ -637,8 +729,8 @@ export function useQuizHandlers({ currentQuestion, screen }: UseQuizHandlersPara
     [
       currentQuestionIndex,
       currentInfoScreenIndex,
-      allQuestions,
-      answers,
+      getAnswersForNavigation,
+      getQuestionsForNavigation,
       questionnaire,
       setCurrentQuestionIndex,
       setCurrentInfoScreenIndex,

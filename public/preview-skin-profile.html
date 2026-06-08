@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Превью — Ваш предварительный профиль</title>
+  <style>
+    :root {
+      --canvas: #F4F2EE;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--canvas);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    /* Имитация мобильного вьюпорта мини-аппа */
+    .phone {
+      max-width: 420px;
+      margin: 0 auto;
+      min-height: 100vh;
+      position: relative;
+    }
+    .screen {
+      padding: 0;
+      margin: 0;
+      min-height: 100vh;
+      position: relative;
+      width: 100%;
+      /* Картинка на фоне + лёгкий оверлей для читаемости */
+      background:
+        linear-gradient(rgba(244,242,238,0.45), rgba(244,242,238,0.65)),
+        url(/image%201576994977.png) center / cover no-repeat fixed,
+        var(--canvas);
+    }
+    .content {
+      position: relative;
+      width: 100%;
+      min-height: 100vh;
+      padding: 120px 20px 140px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    h1 {
+      font-family: 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-weight: 700;
+      font-size: 28px;
+      line-height: 120%;
+      color: #000000;
+      margin: 0;
+    }
+    .lead {
+      font-size: 15px;
+      line-height: 140%;
+      color: #666666;
+      margin: 0;
+    }
+    /* Карточка в стиле glassmorphism приложения (.glass) */
+    .card {
+      background: rgba(255, 255, 255, 0.55);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.70);
+      box-shadow:
+        0 8px 32px 0 rgba(0, 0, 0, 0.06),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.5);
+      border-radius: 20px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .row { display: flex; flex-direction: column; gap: 4px; }
+    .row .label { font-size: 13px; color: #888; }
+    .row .value { font-size: 17px; font-weight: 600; color: #000; }
+    .outro {
+      font-size: 15px;
+      line-height: 140%;
+      color: #000000;
+      margin: 0;
+    }
+    .cta {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      padding: 16px 20px 28px;
+      display: flex;
+      justify-content: center;
+      background: linear-gradient(to top, var(--canvas) 60%, transparent);
+    }
+    .cta button {
+      width: 100%;
+      max-width: 380px;
+      height: 56px;
+      border: none;
+      border-radius: 16px;
+      background: #000;
+      color: #fff;
+      font-size: 17px;
+      font-weight: 600;
+      font-family: inherit;
+    }
+  </style>
+</head>
+<body>
+  <div class="phone">
+    <div class="screen">
+      <div class="content">
+        <h1>Ваш предварительный профиль</h1>
+        <p class="lead">На основе ваших ответов мы уже понимаем, как должен выглядеть ваш уход.</p>
+
+        <div class="card">
+          <div class="row">
+            <span class="label">Тип кожи</span>
+            <span class="value">Комбинированная</span>
+          </div>
+          <div class="row">
+            <span class="label">Главный фокус</span>
+            <!-- Первая буква заглавная -->
+            <span class="value">Высыпания · покраснения</span>
+          </div>
+          <div class="row">
+            <span class="label">Чувствительность</span>
+            <span class="value">Лёгкое</span>
+          </div>
+        </div>
+
+        <p class="outro">Ещё несколько вопросов — и мы соберём план под ваши предпочтения и бюджет.</p>
+      </div>
+    </div>
+    <div class="cta"><button>Продолжить</button></div>
+  </div>
+</body>
+</html>

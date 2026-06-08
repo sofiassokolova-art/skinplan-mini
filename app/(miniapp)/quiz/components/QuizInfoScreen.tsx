@@ -17,6 +17,7 @@ import { TestimonialsCarousel, ProductsGrid } from '@/components/quiz/content';
 import { clientLogger } from '@/lib/client-logger';
 import { getInitialInfoScreens } from '../info-screens';
 import { QuizErrorDisplay } from './QuizErrorDisplay';
+import { preloadQuizImages } from '../image-assets';
 
 // ФИКС: Оптимизированный компонент для загрузки изображений с next/image
 // Использует WebP/AVIF оптимизацию, lazy-loading, и правильные размеры
@@ -212,19 +213,7 @@ export function QuizInfoScreen({
     const nextScreen1 = getNextInfoScreenAfterScreen(screenId);
     const nextScreen2 = nextScreen1 ? getNextInfoScreenAfterScreen(nextScreen1.id) : null;
     
-    // Prefetch изображения следующих экранов
-    const prefetchImage = (imageSrc: string | undefined) => {
-      if (!imageSrc) return;
-      const img = document.createElement('img');
-      img.src = imageSrc;
-    };
-    
-    if (nextScreen1?.image) {
-      prefetchImage(nextScreen1.image);
-    }
-    if (nextScreen2?.image) {
-      prefetchImage(nextScreen2.image);
-    }
+    preloadQuizImages([nextScreen1?.image, nextScreen2?.image].filter(Boolean) as string[]);
   }, [screenId]);
 
   // ФИКС: Проверяем что screen существует
@@ -236,7 +225,7 @@ export function QuizInfoScreen({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: 'var(--canvas)',
         padding: '20px',
       }}>
         <div style={{
@@ -541,8 +530,12 @@ export function QuizInfoScreen({
       : null;
 
     // Для skin_concerns берём первые 2 жалобы — больше визуально перегружает карточку.
+    // Первую букву строки делаем заглавной (значение «Главный фокус» начинается с большой буквы).
     const concernsList = Array.isArray(concernsRaw)
-      ? concernsRaw.slice(0, 2).map(c => c.toLowerCase()).join(' · ')
+      ? (() => {
+          const joined = concernsRaw.slice(0, 2).map(c => c.toLowerCase()).join(' · ');
+          return joined ? joined.charAt(0).toUpperCase() + joined.slice(1) : null;
+        })()
       : null;
 
     const sensitivityShort = typeof sensitivityLabel === 'string'
@@ -556,7 +549,7 @@ export function QuizInfoScreen({
           padding: 0,
           margin: 0,
           minHeight: '100vh',
-          background: '#FFFFFF',
+          background: 'linear-gradient(rgba(244,242,238,0.45), rgba(244,242,238,0.65)), url(/image%201576994977.png) center / cover no-repeat fixed, var(--canvas)',
           position: 'relative',
           width: '100%',
         }}>
@@ -594,9 +587,13 @@ export function QuizInfoScreen({
               На основе ваших ответов мы уже понимаем, как должен выглядеть ваш уход.
             </p>
 
-            {/* Карточка с резюме ответов */}
+            {/* Карточка с резюме ответов — glassmorphism в стиле приложения */}
             <div style={{
-              background: '#F5F5F0',
+              background: 'rgba(255, 255, 255, 0.55)',
+              backdropFilter: 'blur(20px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+              border: '1px solid rgba(255, 255, 255, 0.70)',
+              boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.5)',
               borderRadius: '20px',
               padding: '20px',
               display: 'flex',
@@ -665,7 +662,7 @@ export function QuizInfoScreen({
           padding: 0,
           margin: 0,
           minHeight: '100vh',
-          background: '#FFFFFF',
+          background: 'var(--canvas)',
           position: 'relative',
           width: '100%',
         }}>
@@ -819,11 +816,30 @@ export function QuizInfoScreen({
     return (
       <>
         {backButton}
-        <div style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden', background: '#f5f0eb' }}>
+        <div className="qz-mobile-fullscreen" style={{ position: 'relative', overflow: 'hidden', background: 'var(--canvas)' }}>
           {screen.image && (
-            <Image src={screen.image} alt="" fill style={{ objectFit: 'cover', objectPosition: 'center' }} priority />
+            <Image
+              className="qz-fullscreen-bg"
+              src={screen.image}
+              alt=""
+              fill
+              priority
+              quality={95}
+              sizes="100vw"
+              style={{ objectPosition: 'center' }}
+            />
           )}
-          <div style={{ position: 'relative', zIndex: 1, maxWidth: '480px', margin: '0 auto', padding: 'clamp(80px, 25vw, 120px) clamp(16px, 5vw, 24px) clamp(100px, 25vw, 130px)' }}>
+          <div style={{
+            position: 'relative',
+            zIndex: 1,
+            maxWidth: '480px',
+            height: '100%',
+            margin: '0 auto',
+            padding: 'clamp(72px, 18vh, 112px) clamp(16px, 5vw, 24px) var(--quiz-fixed-cta-clearance, calc(96px + env(safe-area-inset-bottom, 0px)))',
+            boxSizing: 'border-box',
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
+          }}>
             <h1 style={{
               fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 700, fontSize: 'clamp(20px, 6vw, 28px)', lineHeight: '1.25',
@@ -875,14 +891,24 @@ export function QuizInfoScreen({
     return (
       <>
         {backButton}
-        <div style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden', background: '#f5f0eb' }}>
+        <div className="qz-mobile-fullscreen" style={{ position: 'relative', overflow: 'hidden', background: 'var(--canvas)' }}>
           {screen.image && (
-            <Image src={screen.image} alt="" fill style={{ objectFit: 'cover', objectPosition: 'center top' }} priority />
+            <Image
+              className="qz-fullscreen-bg"
+              src={screen.image}
+              alt=""
+              fill
+              priority
+              quality={95}
+              sizes="100vw"
+              style={{ objectPosition: 'center top' }}
+            />
           )}
           <div style={{
             position: 'relative', zIndex: 1, maxWidth: '480px', margin: '0 auto', width: '100%',
             padding: 'clamp(80px, 25vw, 120px) clamp(16px, 5vw, 24px) 0',
-            display: 'flex', flexDirection: 'column', minHeight: '100vh', boxSizing: 'border-box',
+            display: 'flex', flexDirection: 'column', height: '100%', boxSizing: 'border-box',
+            overflowY: 'auto', WebkitOverflowScrolling: 'touch',
           }}>
             <h1 style={{
               fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
@@ -931,7 +957,7 @@ export function QuizInfoScreen({
         padding: '20px',
         paddingBottom: '100px',
         minHeight: '100vh',
-        background: '#FFFFFF',
+        background: 'var(--canvas)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -950,13 +976,14 @@ export function QuizInfoScreen({
             marginTop: '80px',
             marginBottom: '24px',
             position: 'relative',
-            background: '#fff', // важно: нейтральная подложка
+            background: 'var(--canvas)',
           }}>
             <Image
               src={screen.image}
               alt={screen.title}
               width={1200}
               height={isTinderScreen ? 400 : 320}
+              quality={95}
               style={{
                 width: '100%',
                 height: '100%',
