@@ -6,6 +6,7 @@
 // Протокол ухода). CTA — стандартная FixedContinueButton.
 
 import React from 'react';
+import Image from 'next/image';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
 import { FixedContinueButton } from '../buttons/FixedContinueButton';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
@@ -78,6 +79,7 @@ function PersonalAnalysisScreenComponent({
       <BackButtonFixed show={shouldShowBackButton} onClick={handleBackWithScroll} />
       {/* ROOT: статичный экран, нет скролла, кремовый фон-картинка */}
       <div
+        className="qz-mobile-fullscreen"
         style={{
           position: 'fixed',
           top: 0,
@@ -85,28 +87,24 @@ function PersonalAnalysisScreenComponent({
           right: 0,
           bottom: 0,
           width: '100%',
-          height: '100vh',
-          maxHeight: '100vh',
           overflow: 'hidden',
-          backgroundColor: 'var(--canvas-white)',
+          backgroundColor: 'var(--canvas)',
           fontFamily:
             "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
           color: 'var(--ink)',
         }}
       >
         {/* Кремовая картинка-фон (та же, что на simple_care/health_trust) */}
-        <img
-          src="/image%201576994977.webp"
+        <Image
+          className="qz-fullscreen-bg"
+          src="/image%201576994977.png"
           alt=""
           aria-hidden
+          fill
+          quality={95}
+          sizes="100vw"
           style={{
-            position: 'absolute',
-            inset: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
             objectPosition: 'center',
-            zIndex: 0,
             pointerEvents: 'none',
           }}
         />
@@ -135,10 +133,12 @@ function PersonalAnalysisScreenComponent({
             height: '100%',
             maxWidth: '420px',
             margin: '0 auto',
-            padding: '80px 20px 110px',
+            padding: 'calc(64px + env(safe-area-inset-top, 0px)) 20px var(--quiz-fixed-cta-clearance, calc(96px + env(safe-area-inset-bottom, 0px)))',
             boxSizing: 'border-box',
             display: 'flex',
             flexDirection: 'column',
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
           }}
         >
           {/* HEADER */}

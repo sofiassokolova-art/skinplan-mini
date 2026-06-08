@@ -313,9 +313,9 @@ export async function handleAnswer({
     });
   }
   
-  // ФИКС A: После изменения ответа на фильтрующие вопросы (age, gender, budget) - нормализация индекса
+  // ФИКС A: После изменения ответа на фильтрующие вопросы - нормализация индекса
   // Список фильтрующих вопросов, которые влияют на filterQuestions()
-  const filteringQuestionCodes = ['age', 'gender', 'budget'];
+  const filteringQuestionCodes = ['age', 'gender', 'budget', 'has_avoid_ingredients'];
   const currentQuestionCode = currentQuestion?.code;
   
   if (currentQuestionCode && filteringQuestionCodes.includes(currentQuestionCode) && 
@@ -367,7 +367,7 @@ export async function handleAnswer({
 
   // ФИКС P1: Нормализация после любого изменения ответа - если currentQuestion.code исчез из allQuestions
   // Это может происходить после изменения фильтрующих ответов или других условий фильтрации
-  // ИСПРАВЛЕНО: Выполняем нормализацию ТОЛЬКО для фильтрующих вопросов (age, gender, budget)
+  // ИСПРАВЛЕНО: Выполняем нормализацию ТОЛЬКО для фильтрующих вопросов
   // Вопросы типа user_name (имя) НЕ должны вызывать нормализацию индекса, чтобы не пропускать вопрос
   const isFilteringQuestion = currentQuestionCode && filteringQuestionCodes.includes(currentQuestionCode);
   const isNameQuestion = currentQuestionCode?.toLowerCase() === 'user_name';

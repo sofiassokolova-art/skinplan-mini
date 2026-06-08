@@ -70,6 +70,7 @@ export function AppLoader({
   const safeProgress = typeof progress === 'number'
     ? Math.max(0, Math.min(100, progress))
     : null;
+  const shouldShowIndicator = showAnimation;
 
   return (
     <div
@@ -99,43 +100,28 @@ export function AppLoader({
           textAlign: 'center',
         }}
       >
-        {showAnimation && (
+        {shouldShowIndicator && (
           <div
             style={{
               position: 'relative',
-              width: '72px',
-              height: '72px',
-              marginBottom: safeProgress === null ? '20px' : '30px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              filter: `drop-shadow(0 0 18px ${palette.glow})`,
-            }}
-          >
-            {/* Статичный CSS-fallback: виден сразу, без ожидания JS-анимации или Lottie. */}
-            <div className="skinplan-loader-ring" />
-          </div>
-        )}
-
-        {safeProgress !== null && (
-          <div
-            style={{
               width: '100%',
               maxWidth: '320px',
               height: '8px',
               background: palette.track,
               borderRadius: '999px',
               overflow: 'hidden',
-              marginBottom: '18px',
+              marginBottom: '22px',
+              boxShadow: `0 0 18px ${palette.glow}`,
             }}
           >
             <div
+              className={safeProgress === null ? 'skinplan-loader-bar-indeterminate' : undefined}
               style={{
                 height: '100%',
-                width: `${safeProgress}%`,
+                width: safeProgress === null ? '42%' : `${safeProgress}%`,
                 background: palette.accent,
                 borderRadius: '999px',
-                transition: 'width 500ms ease-out',
+                transition: safeProgress === null ? undefined : 'width 500ms ease-out',
               }}
             />
           </div>
@@ -190,18 +176,15 @@ export function AppLoader({
       </div>
 
       <style jsx>{`
-        :global(.skinplan-loader-ring) {
-          width: 56px;
-          height: 56px;
-          border-radius: 50%;
-          border: 5px solid ${palette.track};
-          border-top-color: ${palette.accent};
-          animation: skinplan-loader-spin 0.9s linear infinite;
+        :global(.skinplan-loader-bar-indeterminate) {
+          animation: skinplan-loader-slide 1.15s ease-in-out infinite;
           will-change: transform;
         }
 
-        @keyframes skinplan-loader-spin {
-          to { transform: rotate(360deg); }
+        @keyframes skinplan-loader-slide {
+          0% { transform: translateX(-120%); }
+          50% { transform: translateX(105%); }
+          100% { transform: translateX(245%); }
         }
       `}</style>
     </div>

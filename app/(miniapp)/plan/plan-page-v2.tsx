@@ -143,7 +143,7 @@ export function PlanPageV2() {
         <button className="btn-primary" onClick={loadContext}>Обновить</button>
         <style jsx>{`
           .pv2-error {
-            min-height: 100vh;
+            min-height: 100svh;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -744,7 +744,7 @@ function PlanV2Styles() {
       /* Повторяем мягкие цветовые пятна главной: карточки остаются читаемыми,
          а план визуально продолжает тот же экранный стиль приложения. */
       .pv2-root {
-        min-height: 100vh;
+        min-height: 100svh;
         padding: 0 20px var(--bottom-nav-clearance);
         font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
         color: var(--ink);

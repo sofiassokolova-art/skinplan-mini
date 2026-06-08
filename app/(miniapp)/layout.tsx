@@ -182,8 +182,8 @@ function LayoutContent({
       <PageTransition>
         {isOnQuizPage ? (
           <div
+            className="miniapp-quiz-scroll"
             style={{
-              height: '100vh',
               overflowY: 'auto',
               WebkitOverflowScrolling: 'touch',
             }}

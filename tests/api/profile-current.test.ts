@@ -1,15 +1,14 @@
+// @vitest-environment node
 // tests/api/profile-current.test.ts
 // API тесты для /api/profile/current
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 import { GET as getCurrentProfile } from '@/app/api/profile/current/route';
+import { createPrismaTestClient } from '@/tests/helpers/prisma-test-client';
 
 const hasDatabase = !!process.env.DATABASE_URL;
-const prismaTest = hasDatabase
-  ? new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL! } } })
-  : new PrismaClient();
+const prismaTest = createPrismaTestClient();
 
 const testUserId = 'test-user-api-profile-current';
 

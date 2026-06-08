@@ -5,6 +5,7 @@ import { safeSessionStorageSet, safeSessionStorageRemove } from '@/lib/storage-u
 import { api } from '@/lib/api';
 import * as userPreferences from '@/lib/user-preferences';
 import { invalidatePlanWarmCache } from '@/lib/plan-warm-cache';
+import { resolveTelegramInitData } from '@/lib/telegram-client';
 import type { SubmitAnswersResponse } from '@/lib/api-types';
 import type { Questionnaire } from '@/lib/quiz/types';
 import React from 'react';
@@ -43,8 +44,9 @@ export interface SubmitAnswersParams {
 function getTelegramInitDataFallback(params: SubmitAnswersParams): string | null {
   try {
     if (params.initData) return params.initData;
-    if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) return window.Telegram.WebApp.initData;
-    return null;
+    // resolveTelegramInitData: SDK → URL hash → sessionStorage.
+    // Работает даже когда window.Telegram.WebApp отсутствует (SDK-скрипт не загрузился).
+    return resolveTelegramInitData() || null;
   } catch {
     return null;
   }
@@ -108,17 +110,14 @@ export async function submitAnswers(params: SubmitAnswersParams): Promise<void> 
   }
 
   try {
-    // 3) Telegram guard (в проде)
+    // 3) Telegram guard (в проде).
+    // Опираемся на наличие initData (SDK → URL hash → sessionStorage), а НЕ на
+    // window.Telegram.WebApp: на части устройств telegram-web-app.js не грузится,
+    // объект WebApp не создаётся, но initData приходит в URL hash и валиден.
     const initData = getTelegramInitDataFallback(params);
-    const isInTelegram = typeof window !== 'undefined' && !!window.Telegram?.WebApp;
 
-    if (!params.isDev) {
-      if (!isInTelegram) {
-        throw new Error('Пожалуйста, откройте приложение через Telegram Mini App.');
-      }
-      if (!initData) {
-        throw new Error('Не удалось получить данные авторизации. Обновите страницу и откройте через бота.');
-      }
+    if (!params.isDev && !initData) {
+      throw new Error('Не удалось получить данные авторизации Telegram. Закройте и откройте приложение заново.');
     }
 
     // 4) если answers пустые — пробуем подкачать из БД
