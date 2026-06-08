@@ -367,42 +367,29 @@ export default async function RootLayout({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: '#F4F2EE',
+              backgroundColor: '#FFFFFF',
               zIndex: 99998,
               padding: '24px',
               boxSizing: 'border-box',
             }}
           >
-            {/* Брендированный fallback до React: тот же визуальный паттерн, что и AppLoader. */}
+            {/* Чёрный крутящийся кружок на белом фоне (до React mount) */}
             <div
               style={{
-                width: '100%',
-                maxWidth: 320,
-                height: 8,
-                borderRadius: 999,
-                overflow: 'hidden',
-                background: 'rgba(10, 10, 10, 0.14)',
-                boxShadow: '0 0 18px rgba(213, 254, 97, 0.24)',
+                width: 40,
+                height: 40,
+                borderRadius: '50%',
+                border: '3px solid rgba(10, 10, 10, 0.12)',
+                borderTopColor: '#0A0A0A',
+                animation: 'skinplan-root-loader-spin 0.8s linear infinite',
+                willChange: 'transform',
               }}
-            >
-              <div
-                style={{
-                  width: '42%',
-                  height: '100%',
-                  borderRadius: 999,
-                  background: '#D5FE61',
-                  animation: 'skinplan-root-loader-slide 1.15s ease-in-out infinite',
-                  willChange: 'transform',
-                }}
-              />
-            </div>
+            />
             <style
               dangerouslySetInnerHTML={{
                 __html: `
-                  @keyframes skinplan-root-loader-slide {
-                    0% { transform: translateX(-120%); }
-                    50% { transform: translateX(105%); }
-                    100% { transform: translateX(245%); }
+                  @keyframes skinplan-root-loader-spin {
+                    to { transform: rotate(360deg); }
                   }
                 `,
               }}
