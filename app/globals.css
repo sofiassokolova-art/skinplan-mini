@@ -525,7 +525,55 @@ html, body {
 
   /* Единый clearance для нижнего pill-навбара. Все fullscreen-fallback
      (error / empty / loader) должны держать минимум столько padding-bottom. */
-  --bottom-nav-clearance: 120px;
+  --bottom-nav-clearance: calc(112px + env(safe-area-inset-bottom, 0px));
+  --quiz-fixed-cta-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  --quiz-fixed-cta-clearance: calc(96px + env(safe-area-inset-bottom, 0px));
+}
+
+.miniapp-quiz-scroll {
+  height: 100vh;
+  min-height: 100vh;
+  background-color: var(--canvas);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: none;
+}
+
+.qz-mobile-fullscreen {
+  height: 100vh;
+  min-height: 100vh;
+  max-height: 100vh;
+  background-color: var(--canvas);
+  overscroll-behavior: none;
+}
+
+.qz-fullscreen-bg {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 100%;
+  min-height: 100%;
+  object-fit: cover;
+  image-rendering: auto;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+@supports (height: 100svh) {
+  .miniapp-quiz-scroll,
+  .qz-mobile-fullscreen {
+    height: 100svh;
+    min-height: 100svh;
+    max-height: 100svh;
+  }
+}
+
+@supports (height: 100dvh) {
+  .miniapp-quiz-scroll,
+  .qz-mobile-fullscreen {
+    height: 100dvh;
+    min-height: 100dvh;
+    max-height: 100dvh;
+  }
 }
 
 /* ───── Унифицированные glass-карточки ─────────────────────────────────

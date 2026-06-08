@@ -1,16 +1,14 @@
+// @vitest-environment node
 // tests/profile-generation.test.ts
 // Автотесты для генерации профиля после анкеты и подбора средств
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { PrismaClient } from '@prisma/client';
 import { createSkinProfile } from '@/lib/profile-calculator';
 import { getProductsForStep } from '@/lib/product-selection';
-// Используем PrismaClient напрямую для тестов
+import { createPrismaTestClient } from '@/tests/helpers/prisma-test-client';
 
 const hasDatabase = !!process.env.DATABASE_URL;
-const prismaTest = hasDatabase
-  ? new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL! } } })
-  : new PrismaClient();
+const prismaTest = createPrismaTestClient();
 
 // Тестовые данные
 // ВАЖНО: используем testUserId как значение для поля User.id (PK),
@@ -757,4 +755,3 @@ describe.skipIf(!hasDatabase)('Profile Generation and Product Selection', () => 
     });
   });
 });
-

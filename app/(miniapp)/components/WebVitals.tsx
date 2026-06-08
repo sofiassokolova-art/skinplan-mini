@@ -4,7 +4,40 @@
 'use client';
 
 import { useEffect } from 'react';
-import { reportWebVitals } from '@/lib/utils/performance-monitor';
+
+interface WebVitalsMetric {
+  lcp?: number;
+  fid?: number;
+  cls?: number;
+  fcp?: number;
+  ttfb?: number;
+}
+
+async function reportWebVitals(metrics: WebVitalsMetric): Promise<void> {
+  try {
+    const initData = window.Telegram?.WebApp?.initData || null;
+
+    await fetch('/api/logs', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(initData ? { 'X-Telegram-Init-Data': initData } : {}),
+      },
+      body: JSON.stringify({
+        level: 'info',
+        message: 'Web Vitals',
+        context: {
+          type: 'web_vitals',
+          ...metrics,
+          url: window.location.href,
+          userAgent: navigator.userAgent,
+        },
+      }),
+    });
+  } catch (error) {
+    console.debug('Failed to report Web Vitals', error);
+  }
+}
 
 /**
  * Компонент для отслеживания Web Vitals метрик

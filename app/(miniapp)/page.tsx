@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { clientLogger } from '@/lib/client-logger';
 import { api } from '@/lib/api';
 import { REDIRECT_TIMEOUTS, ROOT_LOAD_TIMEOUTS } from '@/lib/config/timeouts';
+import { QuizInitialLoader } from './quiz/components/QuizInitialLoader';
 
 export default function RootPage() {
   const router = useRouter();
@@ -185,26 +186,5 @@ export default function RootPage() {
     };
   }, [router]);
 
-  return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#FFFFFF',
-      }}
-    >
-      <div
-        style={{
-          width: 40,
-          height: 40,
-          borderRadius: '50%',
-          border: '3px solid rgba(15, 23, 42, 0.12)',
-          borderTopColor: '#111827',
-          animation: 'spin 0.8s linear infinite',
-        }}
-      />
-    </div>
-  );
+  return <QuizInitialLoader />;
 }

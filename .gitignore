@@ -34,8 +34,11 @@ yarn-error.log*
 # TypeScript
 *.tsbuildinfo
 
-# Prisma
-prisma/migrations/
+# Local AI tooling
+.agents/
+.claude/
+.design/
+skills-lock.json
 
 # Backup files
 *.backup

@@ -7,6 +7,7 @@
 // (type='comparison' в QuizInfoScreen) теперь не используется для этого экрана.
 
 import React from 'react';
+import Image from 'next/image';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
 import { FixedContinueButton } from '../buttons/FixedContinueButton';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
@@ -72,6 +73,7 @@ function AiComparisonScreenComponent({
     <>
       <BackButtonFixed show={shouldShowBackButton} onClick={onBack ?? (() => {})} />
       <div
+        className="qz-mobile-fullscreen"
         style={{
           position: 'fixed',
           top: 0,
@@ -79,28 +81,24 @@ function AiComparisonScreenComponent({
           right: 0,
           bottom: 0,
           width: '100%',
-          height: '100vh',
-          maxHeight: '100vh',
           overflow: 'hidden',
-          backgroundColor: 'var(--canvas-white)',
+          backgroundColor: 'var(--canvas)',
           fontFamily:
             "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
           color: 'var(--ink)',
         }}
       >
         {/* Кремовый фон + лаймовый угловой акцент */}
-        <img
-          src="/image%201576994977.webp"
+        <Image
+          className="qz-fullscreen-bg"
+          src="/image%201576994977.png"
           alt=""
           aria-hidden
+          fill
+          quality={95}
+          sizes="100vw"
           style={{
-            position: 'absolute',
-            inset: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
             objectPosition: 'center',
-            zIndex: 0,
             pointerEvents: 'none',
           }}
         />
@@ -127,11 +125,13 @@ function AiComparisonScreenComponent({
             height: '100%',
             maxWidth: '420px',
             margin: '0 auto',
-            padding: '72px 20px 110px',
+            padding: 'calc(56px + env(safe-area-inset-top, 0px)) 20px var(--quiz-fixed-cta-clearance, calc(96px + env(safe-area-inset-bottom, 0px)))',
             boxSizing: 'border-box',
             display: 'flex',
             flexDirection: 'column',
             gap: 12,
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
           }}
         >
           <h1
