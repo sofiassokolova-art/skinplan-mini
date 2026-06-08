@@ -687,18 +687,22 @@ export default function HomePage() {
       className="animate-fade-in home-rd"
       style={{
         minHeight: '100vh',
-        background:
-          'radial-gradient(72% 32% at 0% 0%, rgba(255,224,188,0.7) 0%, transparent 62%),' +
-          'radial-gradient(50% 22% at 100% 18%, rgba(213,254,97,0.42) 0%, transparent 70%),' +
-          'radial-gradient(64% 26% at 100% 55%, rgba(220,210,196,0.55) 0%, transparent 65%),' +
-          'radial-gradient(78% 32% at 10% 92%, rgba(213,254,97,0.46) 0%, transparent 62%),' +
-          'var(--canvas)',
-        backgroundAttachment: 'fixed',
         paddingBottom: '120px',
       }}
     >
       <style>{`
         html, body { background-color: var(--canvas); }
+        /* Фон рисуем на фиксированном псевдо-слое (viewport-anchored), а не через
+           background-attachment:fixed — последний не красит весь документ в
+           Telegram iOS WebView, из-за чего при листании появлялась пустая/белая
+           область. Теперь градиент гарантированно покрывает весь экран. */
+        .home-rd{position:relative;}
+        .home-rd::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:
+          radial-gradient(72% 32% at 0% 0%, rgba(255,224,188,0.7) 0%, transparent 62%),
+          radial-gradient(50% 22% at 100% 18%, rgba(213,254,97,0.42) 0%, transparent 70%),
+          radial-gradient(64% 26% at 100% 55%, rgba(220,210,196,0.55) 0%, transparent 65%),
+          radial-gradient(78% 32% at 10% 92%, rgba(213,254,97,0.46) 0%, transparent 62%),
+          var(--canvas);}
         .home-rd .hr-topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 20px 14px;}
         .home-rd .hr-logo{font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:18px;font-weight:700;letter-spacing:-0.4px;color:var(--ink);}
         .home-rd .hr-avatar{position:relative;width:40px;height:40px;border:0;padding:0;border-radius:50%;background:linear-gradient(135deg,#2A2A2A,var(--ink));color:var(--accent);display:grid;place-items:center;cursor:pointer;box-shadow:0 0 0 2px rgba(255,255,255,0.9),0 6px 18px rgba(10,10,10,0.18);font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;font-weight:600;}
