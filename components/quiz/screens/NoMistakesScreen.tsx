@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
 import { FixedContinueButton } from '../buttons/FixedContinueButton';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
+import { getQuizInfoBackgroundImage } from '@/app/(miniapp)/quiz/image-assets';
 
 export interface NoMistakesScreenProps {
   screen: InfoScreen;
@@ -65,6 +66,7 @@ function NoMistakesScreenComponent({
   isHandlingNext = false,
 }: NoMistakesScreenProps) {
   const shouldShowBackButton = currentInfoScreenIndex > 0 && !!onBack;
+  const backgroundImage = screen.image || getQuizInfoBackgroundImage(screen.id);
   const handleBackWithScroll = () => {
     const scrollTop =
       window.pageYOffset ||
@@ -97,7 +99,7 @@ function NoMistakesScreenComponent({
       >
         <Image
           className="qz-fullscreen-bg"
-          src="/image%201576994977.png"
+          src={backgroundImage}
           alt=""
           aria-hidden
           fill

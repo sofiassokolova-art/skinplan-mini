@@ -17,7 +17,7 @@ import { TestimonialsCarousel, ProductsGrid } from '@/components/quiz/content';
 import { clientLogger } from '@/lib/client-logger';
 import { getInitialInfoScreens } from '../info-screens';
 import { QuizErrorDisplay } from './QuizErrorDisplay';
-import { preloadQuizImages } from '../image-assets';
+import { getQuizInfoBackgroundImage, preloadQuizImages } from '../image-assets';
 
 // ФИКС: Оптимизированный компонент для загрузки изображений с next/image
 // Использует WebP/AVIF оптимизацию, lazy-loading, и правильные размеры
@@ -298,7 +298,7 @@ export function QuizInfoScreen({
   }
 
   // ФИКС #1: редизайненный экран no_mistakes "Вы уже сделали главное".
-  // Кремовый фон + лаймовые угловые акценты + стеклянная карточка с чек-листом
+  // Фон из back-картинок + лаймовые угловые акценты + стеклянная карточка с чек-листом
   // (в стиле PersonalAnalysisScreen / HowItWorks), вместо старого монолитного рендера.
   if (screen.id === 'no_mistakes') {
     return (
@@ -500,6 +500,8 @@ export function QuizInfoScreen({
   // пользователю промежуточный «вывод» по его ответам — он видит, что машина уже что-то поняла,
   // и охотнее доходит до конца анкеты.
   if (isSkinPreviewScreen) {
+    const skinPreviewBackgroundImage = getQuizInfoBackgroundImage(screen.id);
+
     // Резолвим ответы пользователя в человекочитаемые label'ы.
     const allQuestions = extractQuestionsFromQuestionnaire(questionnaire);
     const findAnswerLabel = (questionCode: string): string | string[] | null => {
@@ -549,7 +551,7 @@ export function QuizInfoScreen({
           padding: 0,
           margin: 0,
           minHeight: '100vh',
-          background: 'linear-gradient(rgba(244,242,238,0.45), rgba(244,242,238,0.65)), url(/image%201576994977.png) center / cover no-repeat fixed, var(--canvas)',
+          background: `linear-gradient(rgba(244,242,238,0.45), rgba(244,242,238,0.65)), url(${skinPreviewBackgroundImage}) center / cover no-repeat fixed, var(--canvas)`,
           position: 'relative',
           width: '100%',
         }}>

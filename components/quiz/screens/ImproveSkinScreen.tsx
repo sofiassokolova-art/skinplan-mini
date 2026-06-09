@@ -11,6 +11,7 @@ import Image from 'next/image';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
 import { handleGetPlan } from '@/lib/quiz/handlers/handleGetPlan';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
+import { getQuizInfoBackgroundImage } from '@/app/(miniapp)/quiz/image-assets';
 
 export interface ImproveSkinScreenProps {
   screen: InfoScreen;
@@ -47,6 +48,7 @@ function ImproveSkinScreenComponent({
 }: ImproveSkinScreenProps) {
   const shouldShowBackButton = currentInfoScreenIndex > 0 && !!onBack;
   const isCurrentlySubmitting = isSubmitting || isSubmittingRef.current;
+  const backgroundImage = screen.image || getQuizInfoBackgroundImage(screen.id);
 
   const onGetPlanClick = async () => {
     if (isSubmittingRef.current || isSubmitting) {
@@ -90,10 +92,10 @@ function ImproveSkinScreenComponent({
           color: 'var(--ink)',
         }}
       >
-        {/* Кремовый фон + лаймовые угловые акценты */}
+        {/* Фон из back1-back4 + лаймовые угловые акценты */}
         <Image
           className="qz-fullscreen-bg"
-          src="/image%201576994977.png"
+          src={backgroundImage}
           alt=""
           aria-hidden
           fill
