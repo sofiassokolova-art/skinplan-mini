@@ -1,6 +1,6 @@
 // components/quiz/screens/PersonalAnalysisScreen.tsx
 // Экран «Экспертный анализ от SkinIQ» — статичный (position: fixed, без скролла),
-// фон — кремовая текстура (та же, что на simple_care/health_trust) с лаймовыми
+// фон — одна из back-картинок анкеты с лаймовыми
 // углами-overlay. Hero: 92% социального пруфа. Ниже — стеклянная карточка
 // «Что входит в программу» с тремя пунктами (Диагностика / Подбор средств /
 // Протокол ухода). CTA — стандартная FixedContinueButton.
@@ -10,6 +10,7 @@ import Image from 'next/image';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
 import { FixedContinueButton } from '../buttons/FixedContinueButton';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
+import { getQuizInfoBackgroundImage } from '@/app/(miniapp)/quiz/image-assets';
 
 export interface PersonalAnalysisScreenProps {
   screen: InfoScreen;
@@ -59,6 +60,7 @@ function PersonalAnalysisScreenComponent({
 }: PersonalAnalysisScreenProps) {
   const shouldShowBackButton =
     currentInfoScreenIndex > 0 && screen.id !== 'welcome' && !!onBack;
+  const backgroundImage = screen.image || getQuizInfoBackgroundImage(screen.id);
   const handleBackWithScroll = () => {
     const scrollTop =
       window.pageYOffset ||
@@ -77,7 +79,7 @@ function PersonalAnalysisScreenComponent({
   return (
     <>
       <BackButtonFixed show={shouldShowBackButton} onClick={handleBackWithScroll} />
-      {/* ROOT: статичный экран, нет скролла, кремовый фон-картинка */}
+      {/* ROOT: статичный экран, нет скролла, фон-картинка */}
       <div
         className="qz-mobile-fullscreen"
         style={{
@@ -94,10 +96,10 @@ function PersonalAnalysisScreenComponent({
           color: 'var(--ink)',
         }}
       >
-        {/* Кремовая картинка-фон (та же, что на simple_care/health_trust) */}
+        {/* Фон из back1-back4 */}
         <Image
           className="qz-fullscreen-bg"
-          src="/image%201576994977.png"
+          src={backgroundImage}
           alt=""
           aria-hidden
           fill
