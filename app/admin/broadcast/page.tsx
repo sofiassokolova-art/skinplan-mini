@@ -282,7 +282,7 @@ export default function BroadcastAdmin() {
     } else {
       setUserCount(null);
     }
-  }, [filters.skinTypes, filters.concerns, filters.planDay, filters.lastActive, filters.hasPurchases]);
+  }, [filters.sendToAll, filters.skinTypes, filters.concerns, filters.planDay, filters.lastActive, filters.hasPurchases]);
 
   return (
     <div className="w-full max-w-5xl mx-auto pb-32">
