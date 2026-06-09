@@ -6,26 +6,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
-import { AppLoader } from '@/components/AppLoader';
+import { PlanGenerationLoader, type PlanGenerationStep } from './PlanGenerationLoader';
 
-type LoadingStep =
-  | 'saving_answers'
-  | 'building_recommendations'
-  | 'generating_plan'
-  | 'loading_plan'
-  | 'done'
-  | 'error';
-
-const STEP_LABELS: Record<LoadingStep, string> = {
-  saving_answers: 'Сохраняем ответы...',
-  building_recommendations: 'Анализируем кожу...',
-  generating_plan: 'Подбираем средства...',
-  loading_plan: 'Составляем план на 28 дней...',
-  done: 'Готово!',
-  error: 'Произошла ошибка',
-};
-
-const STEP_PROGRESS: Record<LoadingStep, number> = {
+const STEP_PROGRESS: Record<PlanGenerationStep, number> = {
   saving_answers: 10,
   building_recommendations: 30,
   generating_plan: 60,
@@ -37,7 +20,7 @@ const STEP_PROGRESS: Record<LoadingStep, number> = {
 export default function LoadingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [step, setStep] = useState<LoadingStep>('saving_answers');
+  const [step, setStep] = useState<PlanGenerationStep>('saving_answers');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -54,7 +37,7 @@ export default function LoadingPage() {
     const hasFullParams = sid && questionnaireId && answersJson;
 
     if (!hasProfileIdOnly && !hasFullParams) {
-      setError('Отсутствуют необходимые параметры (profileId или sid+questionnaireId+answers)');
+      setError('Не удалось запустить генерацию плана. Вернитесь к анкете и попробуйте ещё раз.');
       setStep('error');
       return;
     }
@@ -149,46 +132,11 @@ export default function LoadingPage() {
   }, [router, searchParams]);
 
   return (
-    <AppLoader
-      variant="light"
-      progress={step === 'error' ? undefined : STEP_PROGRESS[step]}
-      showProgressPercent={false}
-      showAnimation={step !== 'error'}
-      message={STEP_LABELS[step]}
-      subMessage={step !== 'error' && step !== 'done' ? 'Это может занять до 1 минуты' : undefined}
-    >
-      {step === 'error' && error && (
-        <div
-          style={{
-            background: '#1A1A1A',
-            border: '1px solid #D5FE61',
-            borderRadius: '16px',
-            padding: '20px',
-          }}
-        >
-          <p style={{ color: '#FFFFFF', fontSize: '14px', lineHeight: '140%', margin: 0 }}>
-            {error}
-          </p>
-          <button
-            onClick={() => router.push('/quiz')}
-            style={{
-              marginTop: '16px',
-              width: '100%',
-              background: '#D5FE61',
-              color: '#000000',
-              padding: '14px 16px',
-              borderRadius: '999px',
-              border: 'none',
-              fontSize: '16px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-            }}
-          >
-            Вернуться к анкете
-          </button>
-        </div>
-      )}
-    </AppLoader>
+    <PlanGenerationLoader
+      step={step}
+      progress={STEP_PROGRESS[step]}
+      error={error}
+      onBackToQuiz={() => router.push('/quiz')}
+    />
   );
 }
