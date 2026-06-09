@@ -7,6 +7,7 @@ import { useState, useRef, useMemo, useEffect } from 'react';
 import { clientLogger } from '@/lib/client-logger';
 import { filterQuestions } from '@/lib/quiz/filterQuestions';
 import type { Questionnaire, SavedProgress } from '@/lib/quiz/types';
+import { ButtonSkeleton, MiniAppPageSkeleton } from '@/components/ui/SkeletonLoader';
 
 interface QuizResumeScreenProps {
   savedProgress: SavedProgress;
@@ -158,19 +159,7 @@ export function QuizResumeScreen({
   // Ранний return ПОСЛЕ всех хуков — иначе нарушаются Rules of Hooks
   if (!savedProgress) {
     clientLogger.warn('⚠️ QuizResumeScreen: savedProgress is missing');
-    return (
-      <div style={{ 
-        padding: '20px',
-        minHeight: '100vh',
-        background: '#FFFFFF',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
-        <p style={{ color: '#000000', textAlign: 'center' }}>Загрузка...</p>
-      </div>
-    );
+    return <MiniAppPageSkeleton background="#FFFFFF" rows={3} showTopBar={false} />;
   }
 
   // ИСПРАВЛЕНО: Рендерим одинаковый контент на сервере и клиенте для избежания гидратационных ошибок
@@ -179,16 +168,16 @@ export function QuizResumeScreen({
   const buttonText = (() => {
     try {
       if (displayQuestionNumber === null) {
-        return 'Загрузка...';
+        return null;
       }
       // ИСПРАВЛЕНО: Проверяем, что displayQuestionNumber - валидное число
       const questionNum = typeof displayQuestionNumber === 'number' && !isNaN(displayQuestionNumber) 
         ? displayQuestionNumber 
         : null;
-      return questionNum !== null ? `Продолжить с вопроса ${questionNum}` : 'Загрузка...';
+      return questionNum !== null ? `Продолжить с вопроса ${questionNum}` : null;
     } catch (error) {
       clientLogger.error('❌ Ошибка при вычислении текста кнопки:', error);
-      return 'Загрузка...';
+      return null;
     }
   })();
   
@@ -264,7 +253,7 @@ export function QuizResumeScreen({
             }}
             suppressHydrationWarning
           >
-            {buttonText}
+            {buttonText ?? <ButtonSkeleton />}
           </button>
 
           {/* Кнопка "Начать анкету заново" */}

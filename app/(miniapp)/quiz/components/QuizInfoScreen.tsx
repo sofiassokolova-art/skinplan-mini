@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
+import { ButtonSkeleton, SkeletonLoader } from '@/components/ui/SkeletonLoader';
 import type { Questionnaire } from '@/lib/quiz/types';
 import type { InfoScreen } from '../info-screens';
 import { getNextInfoScreenAfterScreen } from '../info-screens';
@@ -64,26 +65,7 @@ function ImageWithLoading({
             Изображение недоступно
           </div>
         ) : (
-          <>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              border: '3px solid rgba(0, 0, 0, 0.1)',
-              borderTop: '3px solid #000000',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
-            }}></div>
-            <style jsx>{`
-              @keyframes spin {
-                0% {
-                  transform: rotate(0deg);
-                }
-                100% {
-                  transform: rotate(360deg);
-                }
-              }
-            `}</style>
-          </>
+          <SkeletonLoader variant="rectangular" width="72%" height="72%" borderRadius="12px" />
         )}
       </div>
     );
@@ -1151,7 +1133,7 @@ export function QuizInfoScreen({
                   marginTop: '20px',
                 }}
               >
-                {isSubmitting ? 'Отправка...' : 'Получить план →'}
+                {isSubmitting ? <ButtonSkeleton light /> : 'Получить план →'}
               </button>
             );
           }

@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { AddToCartButton } from './AddToCartButton';
 import { AddToCartButtonNew } from './AddToCartButtonNew';
 import { api } from '@/lib/api';
+import { InlineListSkeleton } from '@/components/ui/SkeletonLoader';
 import toast from 'react-hot-toast';
 
 interface Product {
@@ -115,7 +116,7 @@ export function RecommendedProducts({
   if (loading) {
     return (
       <div className="bg-white/80 backdrop-blur-[28px] rounded-3xl p-6 border border-white/40 shadow-xl mb-6">
-        <div className="text-center text-gray-500">Загрузка рекомендаций...</div>
+        <InlineListSkeleton rows={3} />
       </div>
     );
   }
@@ -128,7 +129,7 @@ export function RecommendedProducts({
           Рекомендованные средства
         </h3>
         <div className="text-center text-gray-500 py-8">
-          Рекомендации загружаются...
+          <InlineListSkeleton rows={2} dense />
         </div>
       </div>
     );
@@ -209,4 +210,3 @@ export function RecommendedProducts({
     </div>
   );
 }
-

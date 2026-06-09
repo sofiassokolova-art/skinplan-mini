@@ -2,6 +2,7 @@
 // Унифицированная фиксированная кнопка для всех инфо-экранов (текст задаётся через ctaText: «Начать» на первом экране, «Продолжить» на остальных)
 
 import React from 'react';
+import { ButtonSkeleton } from '@/components/ui/SkeletonLoader';
 
 export interface FixedContinueButtonProps {
   ctaText?: string;
@@ -82,7 +83,7 @@ export function FixedContinueButton({
           e.currentTarget.style.transform = 'scale(1)';
         }}
       >
-        {disabled ? (loadingText ?? 'Продолжить') : String(displayText)}
+        {disabled ? <ButtonSkeleton light={isBlack} /> : String(displayText)}
       </button>
     </div>
   );

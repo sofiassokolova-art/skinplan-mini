@@ -21,6 +21,7 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AdminPageSkeleton } from '@/components/ui/SkeletonLoader';
 
 function AdminFonts() {
   return (
@@ -182,11 +183,12 @@ export default function AdminLayout({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center gap-3">
+      <div className="min-h-screen bg-gray-100 p-8">
         <AdminFonts />
-        <div className="text-gray-600">Проверка авторизации...</div>
-        <div className="text-sm text-gray-400">Если загрузка не завершается, откройте страницу входа</div>
-        <a href="/admin/login" className="text-sm text-teal-600 hover:underline">Войти в админку</a>
+        <AdminPageSkeleton cards={4} rows={5} />
+        <div className="mt-6 text-center">
+          <a href="/admin/login" className="text-sm text-teal-600 hover:underline">Войти в админку</a>
+        </div>
       </div>
     );
   }

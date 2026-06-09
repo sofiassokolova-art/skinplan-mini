@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { SelectWithSearch } from '@/components/admin/SelectWithSearch';
 import { MultiSelectWithSearch } from '@/components/admin/MultiSelectWithSearch';
+import { ButtonSkeleton } from '@/components/ui/SkeletonLoader';
 
 interface Brand {
   id: number;
@@ -456,7 +457,7 @@ export default function NewProductPage() {
           disabled={loading}
             className="flex-1 bg-black text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-800 transition-colors"
         >
-          {loading ? 'Сохраняем...' : 'Добавить продукт'}
+          {loading ? <ButtonSkeleton light /> : 'Добавить продукт'}
         </button>
         <button
           type="button"

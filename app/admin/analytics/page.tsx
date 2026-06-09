@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from '@/lib/charts';
+import { AdminPageSkeleton } from '@/components/ui/SkeletonLoader';
 
 const COLORS = ['#8B5CF6', '#EC4899', '#6366F1', '#10B981', '#F59E0B'];
 
@@ -61,11 +62,7 @@ export default function AnalyticsAdmin() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-gray-500">Загрузка...</div>
-      </div>
-    );
+    return <AdminPageSkeleton cards={4} rows={4} />;
   }
 
   if (!stats) {
@@ -199,4 +196,3 @@ export default function AnalyticsAdmin() {
     </div>
   );
 }
-

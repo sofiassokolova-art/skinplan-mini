@@ -10,6 +10,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { getTopicById } from '@/lib/quiz-topics';
 import { CheckCircle } from 'lucide-react';
 import { clientLogger } from '@/lib/client-logger';
+import { MiniAppPageSkeleton } from '@/components/ui/SkeletonLoader';
 
 function QuizUpdateResultContent() {
   const router = useRouter();
@@ -182,9 +183,8 @@ function QuizUpdateResultContent() {
 
 export default function QuizUpdateResultPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<MiniAppPageSkeleton background="linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)" rows={3} />}>
       <QuizUpdateResultContent />
     </Suspense>
   );
 }
-

@@ -155,7 +155,6 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
         ctaText="Начать"
         onClick={onContinue}
         disabled={isHandlingNext}
-        loadingText="Загрузка..."
         variant="lime"
       />
     </div>

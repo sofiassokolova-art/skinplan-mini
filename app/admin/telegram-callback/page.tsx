@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { SkeletonLoader } from '@/components/ui/SkeletonLoader';
 
 export default function TelegramCallback() {
   const router = useRouter();
@@ -90,7 +91,8 @@ export default function TelegramCallback() {
           <h2 className="text-2xl font-bold text-gray-900">Авторизация</h2>
           {status === 'loading' && (
             <div className="mt-4">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+              <SkeletonLoader variant="circular" width="48px" height="48px" style={{ margin: '0 auto' }} />
+              <SkeletonLoader variant="rectangular" width="68%" height="14px" borderRadius="999px" style={{ margin: '18px auto 0' }} />
               <p className="mt-4 text-gray-600">{message}</p>
             </div>
           )}
@@ -111,4 +113,3 @@ export default function TelegramCallback() {
     </div>
   );
 }
-

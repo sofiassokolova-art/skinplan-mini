@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { clientLogger } from '@/lib/client-logger';
+import { MiniAppPageSkeleton, SkeletonLoader } from '@/components/ui/SkeletonLoader';
 
 interface Profile {
   id: string;
@@ -127,14 +128,7 @@ export default function InsightsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#F5FFFC] to-[#E8FBF7]">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-t-4 border-t-[#0A5F59] border-gray-200 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-lg text-[#0A5F59]">Загрузка инсайтов...</p>
-        </div>
-      </div>
-    );
+    return <MiniAppPageSkeleton background="linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)" rows={3} />;
   }
 
   return (
@@ -164,7 +158,7 @@ export default function InsightsPage() {
               )}
             </ul>
           ) : (
-            <div className="text-zinc-600">Загружаем данные профиля...</div>
+            <SkeletonLoader variant="text" lines={4} width="100%" />
           )}
         </section>
         
@@ -282,4 +276,3 @@ export default function InsightsPage() {
     </div>
   );
 }
-

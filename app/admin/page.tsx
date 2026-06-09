@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from '@/lib/charts';
+import { AdminPageSkeleton } from '@/components/ui/SkeletonLoader';
 
 interface Stats {
   users: number;
@@ -143,11 +144,7 @@ export default function AdminDashboard() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-gray-600">Загрузка...</div>
-      </div>
-    );
+    return <AdminPageSkeleton cards={4} rows={5} />;
   }
 
   if (error) {

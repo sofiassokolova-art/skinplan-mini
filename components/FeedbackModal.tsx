@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
+import { ButtonSkeleton } from '@/components/ui/SkeletonLoader';
 import toast from 'react-hot-toast';
 
 interface Product {
@@ -230,11 +231,10 @@ export default function FeedbackModal({
               opacity: !selectedAlt || loading ? 0.6 : 1,
             }}
           >
-            {loading ? 'Заменяем...' : 'Заменить во всём плане'}
+            {loading ? <ButtonSkeleton light /> : 'Заменить во всём плане'}
           </button>
         </div>
       </div>
     </div>
   );
 }
-

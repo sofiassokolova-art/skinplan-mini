@@ -14,6 +14,7 @@ import * as userPreferences from '@/lib/user-preferences';
 import { getInitialInfoScreens } from '../info-screens';
 import type { Questionnaire } from '@/lib/quiz/types';
 import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
+import { MiniAppPageSkeleton } from '@/components/ui/SkeletonLoader';
 
 interface QuizRetakeScreenProps {
   questionnaire: Questionnaire | null;
@@ -140,34 +141,7 @@ export function QuizRetakeScreen({
 
   // До монтирования — лоадер (совпадает с сервером, устраняет hydration mismatch)
   if (!mounted) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        padding: '20px',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#FFFFFF',
-        gap: '24px',
-      }}>
-        <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка…</div>
-        <button
-          onClick={() => router.back()}
-          style={{
-            padding: '12px 24px',
-            borderRadius: '12px',
-            backgroundColor: 'transparent',
-            border: '1px solid #D1D5DB',
-            color: '#6B7280',
-            fontSize: '14px',
-            cursor: 'pointer',
-          }}
-        >
-          Назад
-        </button>
-      </div>
-    );
+    return <MiniAppPageSkeleton background="#FFFFFF" rows={3} showTopBar={false} />;
   }
 
   return (
