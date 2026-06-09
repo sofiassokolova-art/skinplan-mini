@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { verifyAdmin, verifyAdminBoolean } from '@/lib/admin-auth';
+import type { Prisma } from '@prisma/client';
 // ИСПРАВЛЕНО (P0): Убран JWT - используем только verifyAdmin
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
@@ -583,7 +584,7 @@ export async function POST(request: NextRequest) {
       where: {
         status: { in: ['sending', 'scheduled'] },
         message: message.trim(),
-        filtersJson: cleanFilters as any,
+        filtersJson: { equals: cleanFilters as Prisma.InputJsonValue },
         createdAt: { gte: fiveMinutesAgo },
       },
       orderBy: { createdAt: 'desc' },
@@ -649,4 +650,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
