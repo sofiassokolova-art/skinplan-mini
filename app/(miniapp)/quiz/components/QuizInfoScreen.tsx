@@ -18,7 +18,7 @@ import { TestimonialsCarousel, ProductsGrid } from '@/components/quiz/content';
 import { clientLogger } from '@/lib/client-logger';
 import { getInitialInfoScreens } from '../info-screens';
 import { QuizErrorDisplay } from './QuizErrorDisplay';
-import { getQuizInfoBackgroundImage, preloadQuizImages } from '../image-assets';
+import { preloadQuizImages } from '../image-assets';
 
 // ФИКС: Оптимизированный компонент для загрузки изображений с next/image
 // Использует WebP/AVIF оптимизацию, lazy-loading, и правильные размеры
@@ -457,7 +457,6 @@ export function QuizInfoScreen({
             paddingRight: '16px',
             paddingTop: '8px',
             paddingBottom: '160px',
-            animationDelay: '0.1s',
           }}
         >
           {/* Слайдер отзывов */}
@@ -482,7 +481,7 @@ export function QuizInfoScreen({
   // пользователю промежуточный «вывод» по его ответам — он видит, что машина уже что-то поняла,
   // и охотнее доходит до конца анкеты.
   if (isSkinPreviewScreen) {
-    const skinPreviewBackgroundImage = getQuizInfoBackgroundImage(screen.id);
+    const skinPreviewBackgroundImage = '/back1.jpg';
 
     // Резолвим ответы пользователя в человекочитаемые label'ы.
     const allQuestions = extractQuestionsFromQuestionnaire(questionnaire);

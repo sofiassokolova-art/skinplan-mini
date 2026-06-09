@@ -177,7 +177,7 @@ export const INFO_SCREENS: InfoScreen[] = [
   {
     id: 'health_trust',
     title: 'SkinIQ заботится\nо вашем здоровье',
-    image: getQuizInfoBackgroundImage('health_trust'),
+    image: '/back4.jpg',
     showAfterQuestionCode: 'has_avoid_ingredients',
     ctaText: 'Продолжить',
   },
@@ -242,7 +242,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'recognize_yourself_1',
     title: 'Вы узнаёте себя в этом?',
     subtitle: '«Я часто чувствую недовольство своей кожей, когда смотрю в зеркало»',
-    image: '/tinder1.jpg',
+    image: '/tinder1.webp',
     type: 'tinder',
     showAfterInfoScreenId: 'no_mistakes',
     ctaText: '', // Кнопки будут отдельными (Нет/Да)
@@ -256,7 +256,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'recognize_yourself_2',
     title: 'Это похоже на вас?',
     subtitle: '«Я хочу понимать СВОЮ кожу и подбирать уход осознанно — а не следовать общим советам из интернета»',
-    image: '/tinder2.png',
+    image: '/tinder2.webp',
     type: 'tinder',
     showAfterInfoScreenId: 'recognize_yourself_1',
     ctaText: '', // Кнопки будут отдельными (Нет/Да)
