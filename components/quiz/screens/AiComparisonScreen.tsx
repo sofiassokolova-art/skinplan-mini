@@ -1,7 +1,7 @@
 // components/quiz/screens/AiComparisonScreen.tsx
 // ФИКС #2: Редизайн экрана ai_comparison ("Больше никакой путаницы — AI SkinIQ
 // подберёт уход быстро и точно"). Появляется после oral_medications, перед
-// блоком "Предпочтения" (первый вопрос — makeup_frequency). Стиль — кремовый фон
+// блоком "Предпочтения" (первый вопрос — makeup_frequency). Стиль — фон из back-картинок
 // в духе PersonalAnalysisScreen, две сравнительные карточки (традиционный подбор
 // ❌ vs SkinIQ ✅) и price-anchor подсказка. Старый монолитный inline-рендер
 // (type='comparison' в QuizInfoScreen) теперь не используется для этого экрана.
@@ -11,6 +11,7 @@ import Image from 'next/image';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
 import { FixedContinueButton } from '../buttons/FixedContinueButton';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
+import { getQuizInfoBackgroundImage } from '@/app/(miniapp)/quiz/image-assets';
 
 export interface AiComparisonScreenProps {
   screen: InfoScreen;
@@ -66,6 +67,7 @@ function AiComparisonScreenComponent({
   const content = (screen.content as AiComparisonContent | undefined) || {};
   const traditionalItems = content.traditionalItems || TRADITIONAL_ITEMS;
   const skiniqItems = content.skiniqItems || SKINIQ_ITEMS;
+  const backgroundImage = screen.image || getQuizInfoBackgroundImage(screen.id);
   const hint = content.hint ||
     'Большинство персональных планов укладывается в 3–5 средств — от 2 000 ₽/мес в бюджетном сегменте до 5 000+ ₽/мес в премиум.';
 
@@ -88,10 +90,10 @@ function AiComparisonScreenComponent({
           color: 'var(--ink)',
         }}
       >
-        {/* Кремовый фон + лаймовый угловой акцент */}
+        {/* Фон из back1-back4 + лаймовый угловой акцент */}
         <Image
           className="qz-fullscreen-bg"
-          src="/image%201576994977.png"
+          src={backgroundImage}
           alt=""
           aria-hidden
           fill
