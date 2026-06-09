@@ -20,9 +20,38 @@ export const QUIZ_INFO_BACKGROUND_IMAGE_URLS = [
   '/back2.jpg',
   '/back3.jpg',
   '/back4.jpg',
+  '/back5.jpg',
+  '/back6.jpg',
+  '/back7.jpg',
+  '/back8.jpg',
+  '/back9.jpg',
 ] as const;
 
+// Явная раскладка текстур по инфо-экранам в порядке их показа в анкете:
+// personal_analysis → skin_preview → simple_care → health_trust → ai_comparison → want_improve.
+// Это заменяет прежний хеш по ключу, который давал коллизии (два экрана получали одну текстуру).
+//
+// Подбор по контенту и читаемости:
+// - back5–9 — полнокадровые абстрактные текстуры (пенка/крем/глина), идеальны под текст поверх.
+//   Используем их преимущественно. back1–4 — предметка с центральным объектом, под фон хуже;
+//   из них берём только back3 (мазок крема, почти текстура, много белого) на остаточный экран.
+// - Заголовки сидят на фоне тёмным var(--ink) без подложки, поэтому светлые текстуры идут на
+//   экраны с «голым» фоном, а единственная серая back7 — на skin_preview, где есть светлый
+//   скрим (rgba(244,242,238,0.45→0.65)), который её осветляет и держит контраст текста.
+const QUIZ_INFO_BACKGROUND_BY_KEY: Record<string, (typeof QUIZ_INFO_BACKGROUND_IMAGE_URLS)[number]> = {
+  personal_analysis: '/back8.jpg', // айвори-волны — премиальный флагман «персональный анализ»
+  skin_preview: '/back7.jpg',      // серая глина — под светлым скримом; «диагностика/профиль»
+  simple_care: '/back9.jpg',       // чистые мазки — минимализм «просто и понятно»
+  health_trust: '/back6.jpg',      // мягкие кремовые завитки — «забота о здоровье»
+  ai_comparison: '/back5.jpg',     // пенка — свежесть/динамика «быстро и точно»
+  want_improve: '/back3.jpg',      // остаточный из back1–4: самый текстурный, много белого
+};
+
 export function getQuizInfoBackgroundImage(key: string): string {
+  const explicit = QUIZ_INFO_BACKGROUND_BY_KEY[key];
+  if (explicit) return explicit;
+
+  // Фолбэк для незнакомых ключей — детерминированный хеш по строке.
   const hash = Array.from(key).reduce((acc, char) => {
     const next = acc ^ char.charCodeAt(0);
     return Math.imul(next, 16777619) >>> 0;
