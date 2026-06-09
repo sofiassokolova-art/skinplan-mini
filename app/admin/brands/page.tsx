@@ -18,6 +18,7 @@ import {
 } from '@tanstack/react-table';
 import { Search, Eye, EyeOff, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AdminPageSkeleton } from '@/components/ui/SkeletonLoader';
 
 interface Brand {
   id: number;
@@ -223,11 +224,7 @@ export default function BrandsAdmin() {
   });
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-gray-600">Загрузка...</div>
-      </div>
-    );
+    return <AdminPageSkeleton cards={3} rows={8} />;
   }
 
   return (

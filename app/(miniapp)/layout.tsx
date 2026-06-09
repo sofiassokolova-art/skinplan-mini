@@ -27,12 +27,13 @@ const ServiceFeedbackPopup = dynamic(
 // Обновить если изменится кол-во начальных экранов в info-screens.ts.
 const INFO_INITIAL_SCREENS_COUNT = 4;
 
-/** Скрывает статичный «Загрузка...» при первом монтировании React.
+/** Скрывает статичный root skeleton при первом монтировании React.
  * Используем display:none вместо remove() — прямое удаление DOM-ноды,
  * которую знает React, ломает reconciliation (insertBefore crash). */
 function useRemoveRootLoading() {
   useEffect(() => {
     (window as any).__skiniq_mounted = true;
+    document.documentElement.classList.add('skiniq-mounted');
     (window as any).__skiniqMarkStartup?.('reactMounted');
     try {
       const el = document.getElementById('root-loading');

@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Send, RefreshCw, AlertCircle, Image as ImageIcon, Plus, X, ChevronDown, Save, Clock, Construction } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SkeletonLoader } from '@/components/ui/SkeletonLoader';
 
 interface Filters {
   sendToAll?: boolean;
@@ -431,16 +432,18 @@ export default function BroadcastAdmin() {
               <div className="flex items-center justify-between">
         <div>
                   <span className="text-sm text-gray-600 block mb-2">Найдено пользователей:</span>
-                  <span className="text-4xl font-bold text-gray-900">
-                    {userCount !== null ? userCount.toLocaleString('ru-RU') : '—'}
-          </span>
+                  <div className="text-4xl font-bold text-gray-900">
+                    {countLoading ? (
+                      <SkeletonLoader variant="rectangular" width="128px" height="42px" borderRadius="8px" />
+                    ) : userCount !== null ? userCount.toLocaleString('ru-RU') : '—'}
+          </div>
         </div>
         <button
           onClick={handleCount}
           disabled={countLoading}
                   className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
-                  <RefreshCw className={countLoading ? 'animate-spin' : ''} size={18} />
+                  <RefreshCw className={countLoading ? 'opacity-50' : ''} size={18} />
           Обновить
         </button>
       </div>

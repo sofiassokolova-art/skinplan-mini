@@ -4,6 +4,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { ButtonSkeleton } from '@/components/ui/SkeletonLoader';
 
 export default function SetWebhookPage() {
   const [loading, setLoading] = useState(false);
@@ -158,7 +159,7 @@ export default function SetWebhookPage() {
             marginBottom: '24px',
           }}
         >
-          {loading ? 'Установка...' : '🚀 Установить Webhook'}
+          {loading ? <ButtonSkeleton light /> : '🚀 Установить Webhook'}
         </button>
 
         {error && (
@@ -303,4 +304,3 @@ export default function SetWebhookPage() {
     </div>
   );
 }
-

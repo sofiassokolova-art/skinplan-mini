@@ -3,6 +3,8 @@
 
 'use client';
 
+import { ButtonSkeleton } from '@/components/ui/SkeletonLoader';
+
 interface FixedCTAProps {
   onClick?: () => void | Promise<void>;
   disabled?: boolean;
@@ -71,9 +73,8 @@ export function FixedCTA({
           }
         }}
       >
-        {loading ? 'Загрузка...' : children}
+        {loading ? <ButtonSkeleton light={variant === 'primary'} /> : children}
       </button>
     </div>
   );
 }
-

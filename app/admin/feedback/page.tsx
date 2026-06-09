@@ -7,6 +7,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Heart, ThumbsUp, ThumbsDown, Star, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AdminPageSkeleton } from '@/components/ui/SkeletonLoader';
 
 interface ProductFeedback {
   id: string;
@@ -167,11 +168,7 @@ export default function FeedbackAdmin() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-gray-500">Загрузка...</div>
-      </div>
-    );
+    return <AdminPageSkeleton cards={4} rows={5} />;
   }
 
   return (

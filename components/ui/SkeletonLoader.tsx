@@ -46,7 +46,7 @@ export function SkeletonLoader({
   };
 
   if (animated) {
-    baseStyle.animation = 'pulse 1.5s ease-in-out infinite';
+    baseStyle.animation = 'pulse-subtle 1.5s ease-in-out infinite';
   }
 
   // Циркулярный скелетон (для аватаров)
@@ -123,16 +123,184 @@ export function SkeletonLoader({
           }}
         />
       ))}
-      <style jsx>{`
-        @keyframes pulse {
-          0%, 100% {
-            opacity: 1;
-          }
-          50% {
-            opacity: 0.5;
-          }
-        }
-      `}</style>
+    </div>
+  );
+}
+
+export function ButtonSkeleton({
+  width = '116px',
+  height = '16px',
+  light = false,
+}: {
+  width?: string | number;
+  height?: string | number;
+  light?: boolean;
+}) {
+  return (
+    <SkeletonLoader
+      variant="rectangular"
+      width={width}
+      height={height}
+      borderRadius="999px"
+      style={{
+        margin: '0 auto',
+        backgroundColor: light ? 'rgba(255, 255, 255, 0.42)' : 'rgba(10, 10, 10, 0.16)',
+      }}
+    />
+  );
+}
+
+export function InlineListSkeleton({
+  rows = 3,
+  dense = false,
+}: {
+  rows?: number;
+  dense?: boolean;
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: dense ? '10px' : '12px' }}>
+      {Array.from({ length: rows }).map((_, index) => (
+        <div
+          key={index}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: dense ? '44px minmax(0, 1fr)' : '64px minmax(0, 1fr)',
+            gap: '12px',
+            alignItems: 'center',
+            padding: dense ? '10px' : '12px',
+            borderRadius: '8px',
+            background: 'rgba(255, 255, 255, 0.62)',
+            border: '1px solid rgba(229, 231, 235, 0.8)',
+          }}
+        >
+          <SkeletonLoader
+            variant="rectangular"
+            width={dense ? '44px' : '64px'}
+            height={dense ? '44px' : '64px'}
+            borderRadius="8px"
+          />
+          <div>
+            <SkeletonLoader
+              variant="text"
+              lines={1}
+              width="72%"
+              height={dense ? '12px' : '14px'}
+              style={{ marginBottom: '8px' }}
+            />
+            <SkeletonLoader
+              variant="text"
+              lines={1}
+              width={index % 2 === 0 ? '92%' : '58%'}
+              height={dense ? '10px' : '12px'}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function MiniAppPageSkeleton({
+  background = '#F4F2EE',
+  rows = 4,
+  paddingBottom = '120px',
+  showTopBar = true,
+}: {
+  background?: string;
+  rows?: number;
+  paddingBottom?: string;
+  showTopBar?: boolean;
+}) {
+  return (
+    <div
+      className="app-bottom-nav-clearance"
+      style={{
+        minHeight: '100vh',
+        background,
+        backgroundAttachment: 'fixed',
+        padding: `8px 20px ${paddingBottom}`,
+        boxSizing: 'border-box',
+      }}
+      aria-hidden="true"
+    >
+      {showTopBar && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '8px 0 14px',
+          }}
+        >
+          <SkeletonLoader variant="rectangular" width="92px" height="22px" borderRadius="8px" />
+          <SkeletonLoader variant="circular" width="40px" height="40px" />
+        </div>
+      )}
+
+      <SkeletonLoader
+        variant="rectangular"
+        width="52%"
+        height="32px"
+        borderRadius="8px"
+        style={{ margin: '6px 0 18px' }}
+      />
+
+      <InlineListSkeleton rows={rows} />
+    </div>
+  );
+}
+
+export function AdminPageSkeleton({
+  cards = 4,
+  rows = 5,
+  className = '',
+}: {
+  cards?: number;
+  rows?: number;
+  className?: string;
+}) {
+  return (
+    <div className={`space-y-6 pt-8 ${className}`} aria-hidden="true">
+      <div>
+        <SkeletonLoader variant="rectangular" width="240px" height="40px" borderRadius="8px" />
+        <SkeletonLoader
+          variant="rectangular"
+          width="320px"
+          height="16px"
+          borderRadius="8px"
+          style={{ marginTop: '12px' }}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {Array.from({ length: cards }).map((_, index) => (
+          <div key={index} className="bg-white rounded-lg border border-gray-200 shadow-sm p-5">
+            <SkeletonLoader variant="rectangular" width="44%" height="14px" borderRadius="8px" />
+            <SkeletonLoader
+              variant="rectangular"
+              width={index % 2 === 0 ? '66%' : '52%'}
+              height="30px"
+              borderRadius="8px"
+              style={{ marginTop: '14px' }}
+            />
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-5">
+        <SkeletonLoader variant="rectangular" width="36%" height="18px" borderRadius="8px" style={{ marginBottom: '18px' }} />
+        <div className="space-y-3">
+          {Array.from({ length: rows }).map((_, index) => (
+            <SkeletonLoader
+              key={index}
+              variant="rectangular"
+              width="100%"
+              height="44px"
+              borderRadius="8px"
+            />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

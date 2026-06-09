@@ -376,23 +376,87 @@ export default async function RootLayout({
               boxSizing: 'border-box',
             }}
           >
-            {/* Чёрный крутящийся кружок на белом фоне (до React mount) */}
             <div
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: '50%',
-                border: '3px solid rgba(10, 10, 10, 0.12)',
-                borderTopColor: '#0A0A0A',
-                animation: 'skinplan-root-loader-spin 0.8s linear infinite',
-                willChange: 'transform',
+                width: 'min(100%, 360px)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
               }}
-            />
+            >
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 999,
+                  background: 'rgba(213, 254, 97, 0.72)',
+                  margin: '0 auto 8px',
+                  animation: 'skinplan-root-skeleton-pulse 1.5s ease-in-out infinite',
+                }}
+              />
+              <div
+                style={{
+                  width: '64%',
+                  height: 16,
+                  borderRadius: 999,
+                  background: 'rgba(10, 10, 10, 0.12)',
+                  margin: '0 auto',
+                  animation: 'skinplan-root-skeleton-pulse 1.5s ease-in-out infinite',
+                }}
+              />
+              {[0, 1, 2].map((index) => (
+                <div
+                  key={index}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '40px minmax(0, 1fr)',
+                    gap: 12,
+                    alignItems: 'center',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: '1px solid rgba(10, 10, 10, 0.08)',
+                    background: 'rgba(244, 242, 238, 0.72)',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 8,
+                      background: 'rgba(10, 10, 10, 0.1)',
+                      animation: 'skinplan-root-skeleton-pulse 1.5s ease-in-out infinite',
+                    }}
+                  />
+                  <div>
+                    <div
+                      style={{
+                        width: index === 1 ? '78%' : '62%',
+                        height: 12,
+                        borderRadius: 999,
+                        background: 'rgba(10, 10, 10, 0.12)',
+                        marginBottom: 8,
+                        animation: 'skinplan-root-skeleton-pulse 1.5s ease-in-out infinite',
+                      }}
+                    />
+                    <div
+                      style={{
+                        width: index === 2 ? '54%' : '88%',
+                        height: 10,
+                        borderRadius: 999,
+                        background: 'rgba(10, 10, 10, 0.08)',
+                        animation: 'skinplan-root-skeleton-pulse 1.5s ease-in-out infinite',
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
             <style
               dangerouslySetInnerHTML={{
                 __html: `
-                  @keyframes skinplan-root-loader-spin {
-                    to { transform: rotate(360deg); }
+                  @keyframes skinplan-root-skeleton-pulse {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.62; }
                   }
                 `,
               }}

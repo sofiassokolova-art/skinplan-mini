@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Edit, Trash2, Code, Eye, TestTube, RotateCcw, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AdminPageSkeleton, ButtonSkeleton, InlineListSkeleton } from '@/components/ui/SkeletonLoader';
 
 // ИСПРАВЛЕНО (P0): Заменили any на unknown для безопасности типов
 interface Rule {
@@ -423,11 +424,7 @@ export default function RulesAdmin() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-gray-600">Загрузка...</div>
-      </div>
-    );
+    return <AdminPageSkeleton cards={4} rows={8} />;
   }
 
   return (
@@ -567,10 +564,7 @@ export default function RulesAdmin() {
                 className="flex-1 px-6 py-3 bg-black text-white rounded-xl font-bold hover:bg-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {saving ? (
-                  <>
-                    <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                    Сохраняю...
-                  </>
+                  <ButtonSkeleton light />
                 ) : (
                   creatingRule ? 'Создать правило' : 'Сохранить'
                 )}
@@ -683,7 +677,7 @@ export default function RulesAdmin() {
               <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
                 <h4 className="font-bold text-gray-900 mb-3">История версий</h4>
                 {loadingHistory ? (
-                  <div className="text-gray-600 text-sm">Загрузка...</div>
+                  <InlineListSkeleton rows={2} dense />
                 ) : ruleHistory.length === 0 ? (
                   <div className="text-gray-600 text-sm">История версий пуста</div>
                 ) : (
@@ -753,10 +747,7 @@ export default function RulesAdmin() {
               className="w-full px-6 py-3 bg-black text-white rounded-xl font-bold hover:bg-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {testLoading ? (
-                <>
-                  <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                  Тестирую...
-                </>
+                <ButtonSkeleton light />
               ) : (
                 <>
                   <TestTube size={20} />

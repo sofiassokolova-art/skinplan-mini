@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCart, useRemoveFromCart } from '@/hooks/useCart';
 import type { CartResponse } from '@/lib/api-types';
+import { MiniAppPageSkeleton } from '@/components/ui/SkeletonLoader';
 import toast from 'react-hot-toast';
 
 export const dynamic = 'force-dynamic';
@@ -74,11 +75,7 @@ function CartPageContent() {
     '#F4F2EE';
 
   if (loading) {
-    return (
-      <div style={{ minHeight: '100vh', background: bg, backgroundAttachment: 'fixed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ fontSize: '15px', color: '#6B7280' }}>Загрузка…</div>
-      </div>
-    );
+    return <MiniAppPageSkeleton background={bg} rows={4} />;
   }
 
   return (

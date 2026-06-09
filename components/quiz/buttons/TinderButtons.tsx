@@ -5,6 +5,7 @@
 import React from 'react';
 import { handleGetPlan } from '@/lib/quiz/handlers/handleGetPlan';
 import type { HandleGetPlanParams } from '@/lib/quiz/handlers/handleGetPlan';
+import { ButtonSkeleton } from '@/components/ui/SkeletonLoader';
 
 export interface TinderButtonsProps {
   // Screen info
@@ -109,7 +110,7 @@ export function TinderButtons({
             opacity: isCurrentlySubmitting ? 0.6 : 1,
           }}
         >
-          {isCurrentlySubmitting ? 'Отправка...' : 'Получить план ухода'}
+          {isCurrentlySubmitting ? <ButtonSkeleton /> : 'Получить план ухода'}
         </button>
         {!hasInitData && !isDev && (
           <p style={{
@@ -193,4 +194,3 @@ export function TinderButtons({
   // Если это не tinder-экран, не показываем кнопки
   return null;
 }
-

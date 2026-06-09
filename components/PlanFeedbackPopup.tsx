@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
+import { ButtonSkeleton } from '@/components/ui/SkeletonLoader';
 
 interface PlanFeedbackPopupProps {
   onClose: () => void;
@@ -229,11 +230,10 @@ export default function PlanFeedbackPopup({ onClose }: PlanFeedbackPopupProps) {
               transition: 'background-color 0.2s',
             }}
           >
-            {isSubmitting ? 'Отправка...' : 'Отправить'}
+            {isSubmitting ? <ButtonSkeleton light /> : 'Отправить'}
           </button>
         </div>
       </div>
     </div>
   );
 }
-

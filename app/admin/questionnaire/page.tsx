@@ -4,6 +4,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { AdminPageSkeleton } from '@/components/ui/SkeletonLoader';
 
 interface Questionnaire {
   id: number;
@@ -48,7 +49,7 @@ export default function AdminQuestionnaire() {
   };
 
   if (loading) {
-    return <div className="text-center py-12">Загрузка...</div>;
+    return <AdminPageSkeleton cards={2} rows={6} />;
   }
 
   if (!questionnaire) {
@@ -98,4 +99,3 @@ export default function AdminQuestionnaire() {
     </div>
   );
 }
-

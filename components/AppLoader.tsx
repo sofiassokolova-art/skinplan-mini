@@ -4,6 +4,7 @@
 'use client';
 
 import type { CSSProperties, ReactNode } from 'react';
+import { SkeletonLoader } from '@/components/ui/SkeletonLoader';
 
 type AppLoaderVariant = 'dark' | 'mint' | 'light';
 
@@ -71,6 +72,9 @@ export function AppLoader({
     ? Math.max(0, Math.min(100, progress))
     : null;
   const shouldShowIndicator = showAnimation;
+  const skeletonColor = variant === 'dark' ? 'rgba(255, 255, 255, 0.18)' : 'rgba(10, 10, 10, 0.12)';
+  const skeletonColorSoft = variant === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(10, 10, 10, 0.08)';
+  const skeletonAccent = variant === 'dark' ? 'rgba(213, 254, 97, 0.36)' : 'rgba(213, 254, 97, 0.72)';
 
   return (
     <div
@@ -100,45 +104,85 @@ export function AppLoader({
           textAlign: 'center',
         }}
       >
-        {/* Индетерминантный лоадер — чёрный крутящийся кружок.
-            Если задан progress — оставляем determinate-полосу с процентами. */}
-        {shouldShowIndicator && safeProgress === null && (
-          <div
-            className="skinplan-loader-spinner"
-            style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '50%',
-              border: `3px solid ${palette.track}`,
-              borderTopColor: palette.text,
-              marginBottom: '22px',
-            }}
-          />
-        )}
-
-        {shouldShowIndicator && safeProgress !== null && (
+        {shouldShowIndicator && (
           <div
             style={{
-              position: 'relative',
               width: '100%',
-              maxWidth: '320px',
-              height: '8px',
-              background: palette.track,
-              borderRadius: '999px',
-              overflow: 'hidden',
-              marginBottom: '22px',
-              boxShadow: `0 0 18px ${palette.glow}`,
+              marginBottom: message ? '24px' : 0,
             }}
+            aria-hidden="true"
           >
             <div
               style={{
-                height: '100%',
-                width: `${safeProgress}%`,
-                background: palette.accent,
-                borderRadius: '999px',
-                transition: 'width 500ms ease-out',
+                display: 'flex',
+                justifyContent: 'center',
+                marginBottom: '18px',
               }}
+            >
+              <SkeletonLoader
+                variant="circular"
+                width="52px"
+                height="52px"
+                style={{ backgroundColor: skeletonAccent, boxShadow: `0 0 18px ${palette.glow}` }}
+              />
+            </div>
+
+            <SkeletonLoader
+              variant="rectangular"
+              width="64%"
+              height="16px"
+              borderRadius="999px"
+              style={{ margin: '0 auto 10px', backgroundColor: skeletonColor }}
             />
+            <SkeletonLoader
+              variant="rectangular"
+              width="88%"
+              height="10px"
+              borderRadius="999px"
+              style={{ margin: '0 auto 18px', backgroundColor: skeletonColorSoft }}
+            />
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {[0, 1, 2].map((index) => (
+                <div
+                  key={index}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '40px minmax(0, 1fr)',
+                    gap: '12px',
+                    alignItems: 'center',
+                    padding: '10px 12px',
+                    border: `1px solid ${palette.track}`,
+                    borderRadius: '8px',
+                    background: variant === 'dark' ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.54)',
+                  }}
+                >
+                  <SkeletonLoader
+                    variant="rectangular"
+                    width="40px"
+                    height="40px"
+                    borderRadius="8px"
+                    style={{ backgroundColor: skeletonColor }}
+                  />
+                  <div>
+                    <SkeletonLoader
+                      variant="rectangular"
+                      width={index === 1 ? '78%' : '62%'}
+                      height="12px"
+                      borderRadius="999px"
+                      style={{ marginBottom: '8px', backgroundColor: skeletonColor }}
+                    />
+                    <SkeletonLoader
+                      variant="rectangular"
+                      width={index === 2 ? '54%' : '88%'}
+                      height="10px"
+                      borderRadius="999px"
+                      style={{ backgroundColor: skeletonColorSoft }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -190,16 +234,6 @@ export function AppLoader({
         )}
       </div>
 
-      <style jsx>{`
-        :global(.skinplan-loader-spinner) {
-          animation: skinplan-loader-spin 0.8s linear infinite;
-          will-change: transform;
-        }
-
-        @keyframes skinplan-loader-spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }

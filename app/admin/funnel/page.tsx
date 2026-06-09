@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend, Cell } from '@/lib/charts';
 import { cn } from '@/lib/utils';
 import { TrendingUp, Users, FileText, CheckCircle, Target } from 'lucide-react';
+import { AdminPageSkeleton } from '@/components/ui/SkeletonLoader';
 
 const COLORS = ['#8B5CF6', '#EC4899', '#10B981', '#F59E0B'];
 
@@ -55,11 +56,7 @@ export default function FunnelAdmin() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-gray-600">Загрузка...</div>
-      </div>
-    );
+    return <AdminPageSkeleton cards={4} rows={5} />;
   }
 
   if (!funnelData) {
@@ -370,4 +367,3 @@ export default function FunnelAdmin() {
     </div>
   );
 }
-

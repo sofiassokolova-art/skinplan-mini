@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
+import { InlineListSkeleton } from '@/components/ui/SkeletonLoader';
 import toast from 'react-hot-toast';
 
 interface Product {
@@ -155,16 +156,8 @@ export function ReplaceProductModal({ product, isOpen, onClose, onReplace }: Rep
 
         {/* Альтернативы */}
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px' }}>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              border: '4px solid #E5E7EB',
-              borderTop: '4px solid #8B5CF6',
-              borderRadius: '50%',
-              animation: 'spin 0.6s linear infinite',
-              margin: '0 auto',
-            }} />
+          <div style={{ padding: '8px 0 20px' }}>
+            <InlineListSkeleton rows={3} dense />
           </div>
         ) : alternatives.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
@@ -232,14 +225,7 @@ export function ReplaceProductModal({ product, isOpen, onClose, onReplace }: Rep
           </button>
         </div>
 
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
       </div>
     </div>
   );
 }
-

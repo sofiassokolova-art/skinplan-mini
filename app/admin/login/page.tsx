@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { ButtonSkeleton, SkeletonLoader } from '@/components/ui/SkeletonLoader';
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -129,8 +130,9 @@ export default function AdminLogin() {
         backgroundSize: '400% 400%',
       }}>
         <div className="admin-card p-8 max-w-md w-full text-center">
-          <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Проверяем доступ...</p>
+          <SkeletonLoader variant="circular" width="42px" height="42px" style={{ margin: '0 auto 18px' }} />
+          <SkeletonLoader variant="rectangular" width="72%" height="16px" borderRadius="999px" style={{ margin: '0 auto 10px' }} />
+          <SkeletonLoader variant="rectangular" width="48%" height="12px" borderRadius="999px" style={{ margin: '0 auto' }} />
         </div>
       </div>
     );
@@ -220,10 +222,7 @@ export default function AdminLogin() {
             className="w-full bg-gray-900 text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-800 transition-all"
           >
             {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                {needSetCode ? 'Сохраняем код...' : 'Вход...'}
-              </span>
+              <ButtonSkeleton light />
             ) : needSetCode ? (
               'Задать код и войти'
             ) : (

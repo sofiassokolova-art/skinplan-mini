@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Send, Calendar, Users as UsersIcon, CheckCircle, XCircle, Clock } from 'lucide-react';
 import Link from 'next/link';
+import { AdminPageSkeleton } from '@/components/ui/SkeletonLoader';
 
 interface Broadcast {
   id: string;
@@ -91,11 +92,7 @@ export default function BroadcastsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-[#64748b]">Загрузка...</div>
-      </div>
-    );
+    return <AdminPageSkeleton cards={3} rows={6} className="p-10 pt-16" />;
   }
 
   return (

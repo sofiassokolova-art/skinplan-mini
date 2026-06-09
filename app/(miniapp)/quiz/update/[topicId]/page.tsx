@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import { logger } from '@/lib/logger';
 import { clientLogger } from '@/lib/client-logger';
 import { PaymentGate } from '@/components/PaymentGate';
+import { MiniAppPageSkeleton } from '@/components/ui/SkeletonLoader';
 
 export default function QuizTopicPage() {
   const router = useRouter();
@@ -273,17 +274,7 @@ export default function QuizTopicPage() {
   };
 
   if (loading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-      }}>
-        <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка...</div>
-      </div>
-    );
+    return <MiniAppPageSkeleton background="linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)" rows={4} />;
   }
 
   if (!topic || questions.length === 0) {
@@ -452,4 +443,3 @@ export default function QuizTopicPage() {
     </PaymentGate>
   );
 }
-
