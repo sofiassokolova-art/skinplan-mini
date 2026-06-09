@@ -10,7 +10,6 @@ import Image from 'next/image';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
 import { FixedContinueButton } from '../buttons/FixedContinueButton';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
-import { getQuizInfoBackgroundImage } from '@/app/(miniapp)/quiz/image-assets';
 
 export interface PersonalAnalysisScreenProps {
   screen: InfoScreen;
@@ -60,7 +59,7 @@ function PersonalAnalysisScreenComponent({
 }: PersonalAnalysisScreenProps) {
   const shouldShowBackButton =
     currentInfoScreenIndex > 0 && screen.id !== 'welcome' && !!onBack;
-  const backgroundImage = screen.image || getQuizInfoBackgroundImage(screen.id);
+  const backgroundImage = '/back3.jpg';
   const handleBackWithScroll = () => {
     const scrollTop =
       window.pageYOffset ||

@@ -167,18 +167,6 @@ const LimeOptionCard = memo(function LimeOptionCard({
           ...(isSkinType ? { transform: 'translateZ(0)', backfaceVisibility: 'hidden' as const } : {}),
         }}
       >
-        {isSelected && (
-          <div
-            style={{
-              position: 'absolute',
-              top: '10px',
-              right: '10px',
-              zIndex: 2,
-            }}
-          >
-            <SelectedCheckBadge size={30} />
-          </div>
-        )}
         <Image
           key={imageUrl}
           src={imageUrl}
@@ -768,7 +756,6 @@ export const QuizQuestion = memo(function QuizQuestion({
                 )}
                 <span>{option.label}</span>
               </span>
-              {isSelected && <SelectedCheckBadge />}
             </button>
           );
         })}
