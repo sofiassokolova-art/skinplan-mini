@@ -1,6 +1,8 @@
 // Информационные экраны между вопросами анкеты
 // Порядок экранов согласно требованиям пользователя (41 экран)
 
+import { getQuizInfoBackgroundImage } from './image-assets';
+
 export interface Testimonial {
   stars: number;
   text: string;
@@ -136,7 +138,7 @@ export const INFO_SCREENS: InfoScreen[] = [
   {
     id: 'simple_care',
     title: 'SkinIQ делает уход за кожей простым и понятным',
-    image: '/image 1576994977.png',
+    image: getQuizInfoBackgroundImage('simple_care'),
     type: 'comparison',
     content: {
       left: {
@@ -175,7 +177,7 @@ export const INFO_SCREENS: InfoScreen[] = [
   {
     id: 'health_trust',
     title: 'SkinIQ заботится\nо вашем здоровье',
-    image: '/image 1576994970.png',
+    image: getQuizInfoBackgroundImage('health_trust'),
     showAfterQuestionCode: 'has_avoid_ingredients',
     ctaText: 'Продолжить',
   },

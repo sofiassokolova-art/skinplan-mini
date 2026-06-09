@@ -15,11 +15,26 @@ export const SKIN_TYPE_IMAGE_URLS = [
   '/oily.webp',
 ] as const;
 
+export const QUIZ_INFO_BACKGROUND_IMAGE_URLS = [
+  '/back1.jpg',
+  '/back2.jpg',
+  '/back3.jpg',
+  '/back4.jpg',
+] as const;
+
+export function getQuizInfoBackgroundImage(key: string): string {
+  const hash = Array.from(key).reduce((acc, char) => {
+    const next = acc ^ char.charCodeAt(0);
+    return Math.imul(next, 16777619) >>> 0;
+  }, 2166136261);
+
+  return QUIZ_INFO_BACKGROUND_IMAGE_URLS[hash % QUIZ_INFO_BACKGROUND_IMAGE_URLS.length];
+}
+
 export const QUIZ_INFO_IMAGE_URLS = [
   '/onboarding/welcome.jpg',
   '/onboarding/how-it-works.webp',
-  '/image 1576994977.png',
-  '/image 1576994970.png',
+  ...QUIZ_INFO_BACKGROUND_IMAGE_URLS,
 ] as const;
 
 export const QUIZ_TESTIMONIAL_IMAGE_URLS = [
