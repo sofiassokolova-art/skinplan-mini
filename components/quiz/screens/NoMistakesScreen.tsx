@@ -2,11 +2,9 @@
 // Финальный продающий экран перед закрывающей последовательностью квиза.
 
 import React from 'react';
-import Image from 'next/image';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
 import { FixedContinueButton } from '../buttons/FixedContinueButton';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
-import { getQuizInfoBackgroundImage } from '@/app/(miniapp)/quiz/image-assets';
 
 export interface NoMistakesScreenProps {
   screen: InfoScreen;
@@ -20,7 +18,19 @@ const PLAN_BENEFITS = [
   'Средства под ваш тип кожи',
   'Учитываем цели и бюджет',
   'Понятная схема ухода по шагам',
+  'Без лишних трат и ненужных средств',
 ];
+
+// Бежевый фон с мягкими цветовыми пятнами — в том же стиле, что и страница плана
+// (PlanPageV2), но с ДРУГИМ расположением пятен (зеркально/перетасовано): так экран
+// «Ваш SkinIQ-план почти готов» визуально рифмуется с планом, но не повторяет его 1-в-1.
+const PLAN_BLOB_BACKGROUND = `
+  radial-gradient(68% 30% at 100% 0%, rgba(213,254,97,0.46) 0%, transparent 64%),
+  radial-gradient(70% 30% at 0% 14%, rgba(255,224,188,0.70) 0%, transparent 62%),
+  radial-gradient(62% 26% at 0% 86%, rgba(220,210,196,0.55) 0%, transparent 66%),
+  radial-gradient(78% 32% at 100% 98%, rgba(213,254,97,0.50) 0%, transparent 60%),
+  var(--canvas)
+`;
 
 function CheckIcon() {
   return (
@@ -66,7 +76,6 @@ function NoMistakesScreenComponent({
   isHandlingNext = false,
 }: NoMistakesScreenProps) {
   const shouldShowBackButton = currentInfoScreenIndex > 0 && !!onBack;
-  const backgroundImage = screen.image || getQuizInfoBackgroundImage(screen.id);
   const handleBackWithScroll = () => {
     const scrollTop =
       window.pageYOffset ||
@@ -92,40 +101,12 @@ function NoMistakesScreenComponent({
           inset: 0,
           width: '100%',
           overflow: 'hidden',
+          background: PLAN_BLOB_BACKGROUND,
           backgroundColor: 'var(--canvas)',
           fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
           color: 'var(--ink)',
         }}
       >
-        <Image
-          className="qz-fullscreen-bg"
-          src={backgroundImage}
-          alt=""
-          aria-hidden
-          fill
-          quality={95}
-          sizes="100vw"
-          style={{
-            objectPosition: 'center',
-            pointerEvents: 'none',
-            opacity: 0.78,
-          }}
-        />
-        <div
-          aria-hidden
-          style={{
-            position: 'absolute',
-            inset: 0,
-            zIndex: 1,
-            pointerEvents: 'none',
-            background: `
-              radial-gradient(58% 30% at 100% 0%, rgba(var(--accent-rgb),0.62) 0%, transparent 68%),
-              radial-gradient(50% 24% at 0% 100%, rgba(var(--accent-rgb),0.48) 0%, transparent 68%),
-              linear-gradient(180deg, rgba(255,251,241,0.28) 0%, rgba(255,251,241,0.1) 100%)
-            `,
-          }}
-        />
-
         <div
           className="animate-fade-in"
           style={{
@@ -138,29 +119,14 @@ function NoMistakesScreenComponent({
             padding:
               'calc(clamp(16px, 4vh, 32px) + 54px) 20px var(--quiz-fixed-cta-clearance, calc(96px + env(safe-area-inset-bottom, 0px)))',
             boxSizing: 'border-box',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            gap: 16,
             overflowY: 'auto',
             WebkitOverflowScrolling: 'touch',
           }}
         >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: 7,
-              marginBottom: 13,
-              fontSize: '11px',
-              fontWeight: 700,
-              letterSpacing: '0.14em',
-              textTransform: 'uppercase',
-              color: 'var(--ink)',
-            }}
-          >
-            <span>Персональный анализ</span>
-            <span style={{ color: 'var(--accent)', fontSize: 16, lineHeight: 0.7 }}>•</span>
-            <span style={{ color: '#B7D914' }}>92%</span>
-          </div>
-
           <h1
             style={{
               fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
@@ -169,25 +135,12 @@ function NoMistakesScreenComponent({
               lineHeight: 1.12,
               letterSpacing: '-0.9px',
               textAlign: 'center',
-              margin: '0 auto 13px',
+              margin: 0,
               color: 'var(--ink)',
             }}
           >
             {screen.title}
           </h1>
-
-          <p
-            style={{
-              margin: '0 auto 18px',
-              maxWidth: 355,
-              fontSize: 'clamp(13px, 3.7vw, 15px)',
-              lineHeight: 1.48,
-              textAlign: 'center',
-              color: 'rgba(var(--ink-rgb),0.78)',
-            }}
-          >
-            {screen.subtitle}
-          </p>
 
           <div
             style={{
@@ -196,9 +149,8 @@ function NoMistakesScreenComponent({
               WebkitBackdropFilter: 'blur(24px) saturate(150%)',
               border: '1px solid rgba(255,255,255,0.78)',
               borderRadius: 24,
-              padding: '17px 18px 9px',
+              padding: '17px 18px 11px',
               boxShadow: '0 12px 34px rgba(49,42,28,0.09)',
-              marginBottom: 12,
             }}
           >
             <div
@@ -256,7 +208,7 @@ function NoMistakesScreenComponent({
             >
               В вашем плане:
             </h2>
-            {PLAN_BENEFITS.map((benefit) => (
+            {PLAN_BENEFITS.map((benefit, i) => (
               <div
                 key={benefit}
                 style={{
@@ -264,7 +216,10 @@ function NoMistakesScreenComponent({
                   alignItems: 'center',
                   gap: 12,
                   minHeight: 42,
-                  borderBottom: '1px solid rgba(var(--ink-rgb),0.1)',
+                  borderBottom:
+                    i < PLAN_BENEFITS.length - 1
+                      ? '1px solid rgba(var(--ink-rgb),0.1)'
+                      : 'none',
                 }}
               >
                 <div
