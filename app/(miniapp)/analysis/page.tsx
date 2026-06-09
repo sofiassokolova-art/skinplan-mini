@@ -12,6 +12,7 @@ import { CareRoutine } from '@/components/CareRoutine';
 import { FeedbackBlock } from '@/components/FeedbackBlock';
 import { api } from '@/lib/api';
 import { useAddToWishlist, useRemoveFromWishlist } from '@/hooks/useWishlist';
+import { MiniAppPageSkeleton } from '@/components/ui/SkeletonLoader';
 import toast from 'react-hot-toast';
 import { clientLogger } from '@/lib/client-logger';
 import type { AnalysisResponse, CareStep } from '@/lib/api-types';
@@ -238,17 +239,7 @@ function AnalysisPageContent() {
   }
 
   if (loading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-      }}>
-        <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка анализа...</div>
-      </div>
-    );
+    return <MiniAppPageSkeleton background="linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)" rows={4} />;
   }
 
   if (!analysisData) {
@@ -369,17 +360,7 @@ function AnalysisPageContent() {
 
 export default function AnalysisPage() {
   return (
-    <Suspense fallback={
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-      }}>
-        <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка...</div>
-      </div>
-    }>
+    <Suspense fallback={<MiniAppPageSkeleton background="linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)" rows={4} />}>
       <AnalysisPageContent />
     </Suspense>
   );

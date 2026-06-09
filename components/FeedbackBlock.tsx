@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
+import { ButtonSkeleton } from '@/components/ui/SkeletonLoader';
 
 interface FeedbackBlockProps {
   onSubmit: (feedback: {
@@ -344,7 +345,7 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
               opacity: (isSubmitting || !comment.trim()) ? 0.5 : 1,
             }}
           >
-            {isSubmitting ? 'Отправка...' : 'Отправить'}
+            {isSubmitting ? <ButtonSkeleton light /> : 'Отправить'}
           </button>
         </div>
       </div>
@@ -523,4 +524,3 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
     </div>
   );
 }
-

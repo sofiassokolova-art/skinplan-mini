@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
 import { TelegramUserAvatar } from '@/components/TelegramUserAvatar';
+import { MiniAppPageSkeleton } from '@/components/ui/SkeletonLoader';
 import toast from 'react-hot-toast';
 import { clientLogger } from '@/lib/client-logger';
 
@@ -447,32 +448,7 @@ export default function PersonalCabinet() {
   };
 
   if (loading) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        flexDirection: 'column',
-        gap: '16px',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-      }}>
-        <div style={{
-          width: '48px',
-          height: '48px',
-          border: '4px solid rgba(10, 95, 89, 0.2)',
-          borderTop: '4px solid #0A5F59',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }}></div>
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
-      </div>
-    );
+    return <MiniAppPageSkeleton background="linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)" rows={4} />;
   }
 
   if (error && !userProfile) {

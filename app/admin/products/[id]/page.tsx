@@ -10,6 +10,7 @@ import { ArrowLeft, ChevronDown, Plus, X, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SelectWithSearch } from '@/components/admin/SelectWithSearch';
 import { MultiSelectWithSearch } from '@/components/admin/MultiSelectWithSearch';
+import { AdminPageSkeleton, ButtonSkeleton } from '@/components/ui/SkeletonLoader';
 
 interface Brand {
   id: number;
@@ -253,11 +254,7 @@ export default function EditProductPage() {
   };
 
   if (loadingProduct) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-gray-600">Загрузка...</div>
-      </div>
-    );
+    return <AdminPageSkeleton cards={3} rows={6} />;
   }
 
   return (
@@ -630,7 +627,7 @@ export default function EditProductPage() {
               disabled={loading}
               className="px-8 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Сохраняем...' : 'Сохранить изменения'}
+              {loading ? <ButtonSkeleton light /> : 'Сохранить изменения'}
             </button>
           </div>
         </div>

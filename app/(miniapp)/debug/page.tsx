@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
+import { ButtonSkeleton, SkeletonLoader } from '@/components/ui/SkeletonLoader';
 
 export default function DebugPage() {
   const router = useRouter();
@@ -15,7 +16,7 @@ export default function DebugPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
-  const [authStatus, setAuthStatus] = useState<string>('Проверка...');
+  const [authStatus, setAuthStatus] = useState<string>('');
 
   // В продакшене страница недоступна для обычных пользователей
   useEffect(() => {
@@ -134,7 +135,7 @@ export default function DebugPage() {
             cursor: loading ? 'not-allowed' : 'pointer',
           }}
         >
-          {loading ? 'Проверка...' : 'Проверить условия'}
+          {loading ? <ButtonSkeleton light /> : 'Проверить условия'}
         </button>
         
         <button
@@ -149,7 +150,7 @@ export default function DebugPage() {
             cursor: loading ? 'not-allowed' : 'pointer',
           }}
         >
-          {loading ? 'Генерация...' : 'Сгенерировать план'}
+          {loading ? <ButtonSkeleton light /> : 'Сгенерировать план'}
         </button>
         
         <button
@@ -206,7 +207,7 @@ export default function DebugPage() {
         <h3>Информация:</h3>
         <ul style={{ lineHeight: '1.8' }}>
           <li><strong>Статус:</strong> {authStatus}</li>
-          <li><strong>Telegram WebApp:</strong> {mounted ? (isAvailable ? '✅ Доступен' : '❌ Не доступен') : 'Загрузка...'}</li>
+          <li><strong>Telegram WebApp:</strong> {mounted ? (isAvailable ? '✅ Доступен' : '❌ Не доступен') : <SkeletonLoader variant="rectangular" width="96px" height="14px" borderRadius="999px" />}</li>
           <li><strong>initData:</strong> {mounted && initData ? `✅ Есть (${initData.length} символов)` : '❌ Нет'}</li>
         </ul>
         
@@ -255,4 +256,3 @@ export default function DebugPage() {
     </div>
   );
 }
-

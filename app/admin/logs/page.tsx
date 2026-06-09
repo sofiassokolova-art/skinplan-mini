@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { Search, Filter, Trash2, AlertCircle, Info, AlertTriangle, Bug } from 'lucide-react';
+import { InlineListSkeleton } from '@/components/ui/SkeletonLoader';
 
 interface ClientLog {
   id: string;
@@ -217,7 +218,7 @@ export default function LogsPage() {
 
       {/* Список логов */}
       {loading ? (
-        <div className="text-center py-12 text-gray-500">Загрузка...</div>
+        <InlineListSkeleton rows={6} dense />
       ) : logs.length === 0 ? (
         <div className="text-center py-12 text-gray-500">Логи не найдены</div>
       ) : (
@@ -313,4 +314,3 @@ export default function LogsPage() {
     </div>
   );
 }
-

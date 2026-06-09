@@ -9,6 +9,7 @@ import { TestimonialsCarousel, ProductsGrid } from './content';
 import { getNextInfoScreenAfterScreen } from '@/app/(miniapp)/quiz/info-screens';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 import type { Questionnaire } from '@/lib/quiz/types';
+import { ButtonSkeleton } from '@/components/ui/SkeletonLoader';
 
 export interface InfoScreenViewProps {
   screen: InfoScreen;
@@ -266,7 +267,7 @@ export function InfoScreenView({
                   marginTop: '20px',
                 }}
               >
-                {isSubmitting ? 'Отправка...' : 'Получить план →'}
+                {isSubmitting ? <ButtonSkeleton light /> : 'Получить план →'}
               </button>
             );
           }
@@ -302,10 +303,8 @@ export function InfoScreenView({
           ctaText={screen.ctaText || 'Продолжить'}
           onClick={onContinue}
           disabled={isHandlingNext}
-          loadingText="Загрузка..."
         />
       )}
     </div>
   );
 }
-

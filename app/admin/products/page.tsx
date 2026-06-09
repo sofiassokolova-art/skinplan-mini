@@ -19,6 +19,7 @@ import {
 } from '@tanstack/react-table';
 import { Search, Plus, Edit, Trash2, Eye, EyeOff, Download, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AdminPageSkeleton, ButtonSkeleton } from '@/components/ui/SkeletonLoader';
 
 interface Product {
   id: number;
@@ -399,11 +400,7 @@ export default function ProductsAdmin() {
   });
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-white/60">Загрузка...</div>
-      </div>
-    );
+    return <AdminPageSkeleton cards={4} rows={8} />;
   }
 
   return (
@@ -427,7 +424,7 @@ export default function ProductsAdmin() {
               )}
             >
               <Download size={18} />
-              {exportLoading ? 'Скачивание...' : 'Экспорт'}
+              {exportLoading ? <ButtonSkeleton width="76px" height="14px" /> : 'Экспорт'}
               <ChevronDown
                 size={16}
                 className={cn(
@@ -443,14 +440,14 @@ export default function ProductsAdmin() {
                   disabled={exportLoading}
                   className="w-full px-4 py-3 text-left text-sm hover:bg-gray-50 transition-colors rounded-t-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {exportLoading ? '⏳ Скачивание...' : '📊 Экспорт в CSV'}
+                  {exportLoading ? <ButtonSkeleton width="120px" height="14px" /> : '📊 Экспорт в CSV'}
                 </button>
                 <button
                   onClick={() => handleExport('json')}
                   disabled={exportLoading}
                   className="w-full px-4 py-3 text-left text-sm hover:bg-gray-50 transition-colors rounded-b-lg border-t border-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {exportLoading ? '⏳ Скачивание...' : '📄 Экспорт в JSON'}
+                  {exportLoading ? <ButtonSkeleton width="120px" height="14px" /> : '📄 Экспорт в JSON'}
                 </button>
               </div>
             )}

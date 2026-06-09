@@ -4,6 +4,7 @@
 'use client';
 
 import { useState } from 'react';
+import { ButtonSkeleton } from '@/components/ui/SkeletonLoader';
 
 export default function WebhookStatusPage() {
   const [webhookInfo, setWebhookInfo] = useState<any>(null);
@@ -87,7 +88,7 @@ export default function WebhookStatusPage() {
                 disabled={loading}
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
               >
-                {loading ? 'Проверка...' : 'Проверить webhook'}
+                {loading ? <ButtonSkeleton light /> : 'Проверить webhook'}
               </button>
               
               <button
@@ -95,7 +96,7 @@ export default function WebhookStatusPage() {
                 disabled={loading}
                 className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
               >
-                {loading ? 'Установка...' : 'Установить webhook'}
+                {loading ? <ButtonSkeleton light /> : 'Установить webhook'}
               </button>
             </div>
 
@@ -197,4 +198,3 @@ export default function WebhookStatusPage() {
     </div>
   );
 }
-

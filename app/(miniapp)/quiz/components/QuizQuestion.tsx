@@ -780,7 +780,6 @@ export const QuizQuestion = memo(function QuizQuestion({
             <FixedContinueButton
               variant="black"
               ctaText="Получить план"
-              loadingText="Отправка..."
               disabled={isSubmitting}
               onClick={onSubmit}
             />
@@ -900,7 +899,6 @@ export const QuizQuestion = memo(function QuizQuestion({
             <FixedContinueButton
               variant="black"
               ctaText={showSubmitButton ? 'Получить план' : 'Продолжить'}
-              loadingText="Отправка..."
               disabled={isSubmitting}
               onClick={() => {
                 if (showSubmitButton) {
@@ -1083,7 +1081,6 @@ export const QuizQuestion = memo(function QuizQuestion({
               <FixedContinueButton
                 variant="black"
                 ctaText="Получить план"
-                loadingText="Отправка..."
                 disabled={isSubmitting}
                 onClick={onSubmit}
               />

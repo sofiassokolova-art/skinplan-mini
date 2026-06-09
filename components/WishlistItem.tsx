@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { api } from '@/lib/api';
 import { useCart, useAddToCart, useRemoveFromCart } from '@/hooks/useCart';
 import FeedbackModal from './FeedbackModal';
+import { ButtonSkeleton } from '@/components/ui/SkeletonLoader';
 import toast from 'react-hot-toast';
 
 interface Product {
@@ -183,7 +184,7 @@ export default function WishlistItem({ item, onRemove }: WishlistItemProps) {
                 }}
               >
                 {cartLoading ? (
-                  'Загрузка...'
+                  <ButtonSkeleton light />
                 ) : isInCart ? (
                   <>
                     <span>✓</span>
@@ -434,4 +435,3 @@ export default function WishlistItem({ item, onRemove }: WishlistItemProps) {
     </>
   );
 }
-

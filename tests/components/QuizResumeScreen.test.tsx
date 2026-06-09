@@ -214,7 +214,7 @@ describe('QuizResumeScreen', () => {
     });
   });
 
-  it('должен работать без questionnaire (placeholder "Загрузка..." до получения данных)', async () => {
+  it('должен работать без questionnaire (skeleton до получения данных)', async () => {
     const progressWithFallback: SavedProgress = {
       answers: {
         1: 'Иван',
@@ -234,13 +234,14 @@ describe('QuizResumeScreen', () => {
       />
     );
 
-    // При отсутствии questionnaire показывается placeholder "Загрузка..." и disabled кнопка
-    const loadingButton = screen.getByText('Загрузка...');
-    expect(loadingButton).toBeInTheDocument();
-    expect(loadingButton.closest('button')).toBeDisabled();
+    const buttons = screen.getAllByRole('button');
+    expect(buttons[0]).toBeDisabled();
+    const skeleton = buttons[0].querySelector('div');
+    expect(skeleton).toBeInTheDocument();
+    expect(skeleton).toHaveStyle({ width: '116px', height: '16px' });
   });
 
-  it('должен правильно обрабатывать пустой массив вопросов (placeholder "Загрузка...")', async () => {
+  it('должен правильно обрабатывать пустой массив вопросов (skeleton до получения данных)', async () => {
     const emptyQuestionnaire: Questionnaire = {
       id: 1,
       name: 'Пустая анкета',
@@ -260,10 +261,11 @@ describe('QuizResumeScreen', () => {
       />
     );
 
-    // При пустом массиве вопросов также показывается placeholder "Загрузка..."
-    const loadingButton = screen.getByText('Загрузка...');
-    expect(loadingButton).toBeInTheDocument();
-    expect(loadingButton.closest('button')).toBeDisabled();
+    const buttons = screen.getAllByRole('button');
+    expect(buttons[0]).toBeDisabled();
+    const skeleton = buttons[0].querySelector('div');
+    expect(skeleton).toBeInTheDocument();
+    expect(skeleton).toHaveStyle({ width: '116px', height: '16px' });
   });
 
   it('должен правильно находить следующий неотвеченный вопрос', async () => {

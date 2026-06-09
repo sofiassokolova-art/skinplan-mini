@@ -809,6 +809,6 @@ html, body {
   animation: pulse-subtle 1.5s ease-in-out infinite;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+html.skiniq-mounted #root-loading {
+  display: none !important;
 }

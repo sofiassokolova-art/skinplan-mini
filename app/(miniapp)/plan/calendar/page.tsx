@@ -13,6 +13,7 @@ import { clientLogger } from '@/lib/client-logger';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
 import { getPhaseForDay, getPhaseLabel } from '@/lib/plan-types';
 import toast from 'react-hot-toast';
+import { MiniAppPageSkeleton } from '@/components/ui/SkeletonLoader';
 
 export default function PlanCalendarPage() {
   const router = useRouter();
@@ -345,17 +346,7 @@ export default function PlanCalendarPage() {
   };
 
   if (loading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-      }}>
-        <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка...</div>
-      </div>
-    );
+    return <MiniAppPageSkeleton background="linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)" rows={5} />;
   }
 
   if (!plan28) {
@@ -468,4 +459,3 @@ export default function PlanCalendarPage() {
     </div>
   );
 }
-

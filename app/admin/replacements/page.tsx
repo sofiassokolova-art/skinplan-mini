@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { AdminPageSkeleton } from '@/components/ui/SkeletonLoader';
 
 interface Replacement {
   id: string;
@@ -75,16 +76,7 @@ export default function ReplacementsAdmin() {
   };
 
   if (loading && replacements.length === 0) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-      }}>
-        <div>Загрузка...</div>
-      </div>
-    );
+    return <AdminPageSkeleton cards={3} rows={6} />;
   }
 
   return (

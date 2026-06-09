@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { SkeletonLoader } from '@/components/ui/SkeletonLoader';
 
 export default function ClearStoragePage() {
   const router = useRouter();
@@ -118,7 +119,7 @@ export default function ClearStoragePage() {
         <div className="text-center">
           {status === 'idle' || status === 'clearing' ? (
             <>
-              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-600 mx-auto mb-4"></div>
+              <SkeletonLoader variant="circular" width="64px" height="64px" style={{ margin: '0 auto 16px', backgroundColor: 'rgba(139, 92, 246, 0.22)' }} />
               <h1 className="text-2xl font-bold text-gray-800 mb-2">
                 Очистка данных...
               </h1>

@@ -9,6 +9,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
+import { ButtonSkeleton } from '@/components/ui/SkeletonLoader';
 import { handleGetPlan } from '@/lib/quiz/handlers/handleGetPlan';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 
@@ -437,7 +438,7 @@ function ImproveSkinScreenComponent({
                 transition: 'transform .14s ease, box-shadow .14s ease',
               }}
             >
-              {isCurrentlySubmitting ? 'Отправка...' : 'Получить план ухода'}
+              {isCurrentlySubmitting ? <ButtonSkeleton /> : 'Получить план ухода'}
             </button>
             {!hasInitData && !isDev && (
               <p

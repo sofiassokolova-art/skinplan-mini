@@ -4,6 +4,7 @@
 'use client';
 
 import { useState } from 'react';
+import { InlineListSkeleton } from '@/components/ui/SkeletonLoader';
 
 export default function TelegramSetupPage() {
   const [webhookStatus, setWebhookStatus] = useState<any>(null);
@@ -118,7 +119,7 @@ export default function TelegramSetupPage() {
             </div>
 
             {loading && (
-              <div className="text-gray-600">Загрузка...</div>
+              <InlineListSkeleton rows={1} dense />
             )}
 
             {error && (
@@ -162,4 +163,3 @@ export default function TelegramSetupPage() {
     </div>
   );
 }
-

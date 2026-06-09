@@ -9,6 +9,7 @@ import { QuizDebugPanel } from './QuizDebugPanel';
 import { QuizQuestionState } from './QuizQuestionState';
 import { QuizFinalizingLoader } from './QuizFinalizingLoader';
 import type { Question } from '@/lib/quiz/types';
+import { QuestionSkeleton } from '@/components/ui/SkeletonLoader';
 
 // Lazy loading для тяжелого компонента QuizQuestion
 const QuizQuestion = lazy(() => import('./QuizQuestion').then(mod => ({ default: mod.QuizQuestion })));
@@ -139,7 +140,7 @@ export function QuizPageContent(props: QuizPageContentProps) {
         />
 
         {shouldShowQuestion && (
-          <Suspense fallback={<div>Loading question...</div>}>
+          <Suspense fallback={<QuestionSkeleton />}>
             <QuizQuestion
               question={currentQuestion as Question}
               currentQuestionIndex={currentQuestionIndex}

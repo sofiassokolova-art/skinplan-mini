@@ -7,6 +7,7 @@ import { Suspense, useCallback, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { DEV_TELEGRAM } from '@/lib/config/timeouts';
+import { MiniAppPageSkeleton } from '@/components/ui/SkeletonLoader';
 
 function getInitData(): string {
   if (typeof window === 'undefined') return '';
@@ -136,19 +137,7 @@ function TestPaymentContent() {
 export default function PaymentsTestPage() {
   return (
     <Suspense
-      fallback={
-        <div
-          style={{
-            minHeight: '100vh',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: '#F5FFFC',
-          }}
-        >
-          Загрузка…
-        </div>
-      }
+      fallback={<MiniAppPageSkeleton background="#F5FFFC" rows={2} showTopBar={false} />}
     >
       <TestPaymentContent />
     </Suspense>

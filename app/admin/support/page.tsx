@@ -7,6 +7,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Send, User, Clock, AlertCircle, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AdminPageSkeleton } from '@/components/ui/SkeletonLoader';
 // Простая функция форматирования времени
 const formatTime = (date: string | Date) => {
   const d = typeof date === 'string' ? new Date(date) : date;
@@ -281,11 +282,7 @@ export default function SupportAdmin() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-gray-600">Загрузка...</div>
-      </div>
-    );
+    return <AdminPageSkeleton cards={3} rows={7} />;
   }
 
   return (
@@ -517,4 +514,3 @@ export default function SupportAdmin() {
     </div>
   );
 }
-

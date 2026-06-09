@@ -6,6 +6,7 @@
 
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { MiniAppPageSkeleton } from '@/components/ui/SkeletonLoader';
 
 const BOT_LINK = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
   ? `https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME.replace(/^@/, '')}`
@@ -124,7 +125,7 @@ function ReturnContent() {
 
 export default function PaymentsReturnPage() {
   return (
-    <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F5FFFC' }}>Загрузка...</div>}>
+    <Suspense fallback={<MiniAppPageSkeleton background="#F5FFFC" rows={2} showTopBar={false} />}>
       <ReturnContent />
     </Suspense>
   );
