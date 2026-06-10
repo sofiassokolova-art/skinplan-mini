@@ -25,6 +25,7 @@ export const QUIZ_INFO_BACKGROUND_IMAGE_URLS = [
   '/back7.jpg',
   '/back8.jpg',
   '/back9.jpg',
+  '/back10.jpg',
 ] as const;
 
 // Явная раскладка текстур по инфо-экранам в порядке их показа в анкете:
@@ -39,12 +40,12 @@ export const QUIZ_INFO_BACKGROUND_IMAGE_URLS = [
 //   экраны с «голым» фоном, а единственная серая back7 — на skin_preview, где есть светлый
 //   скрим (rgba(244,242,238,0.45→0.65)), который её осветляет и держит контраст текста.
 const QUIZ_INFO_BACKGROUND_BY_KEY: Record<string, (typeof QUIZ_INFO_BACKGROUND_IMAGE_URLS)[number]> = {
-  personal_analysis: '/back8.jpg', // айвори-волны — премиальный флагман «персональный анализ»
-  skin_preview: '/back7.jpg',      // серая глина — под светлым скримом; «диагностика/профиль»
-  simple_care: '/back9.jpg',       // чистые мазки — минимализм «просто и понятно»
-  health_trust: '/back6.jpg',      // мягкие кремовые завитки — «забота о здоровье»
-  ai_comparison: '/back5.jpg',     // пенка — свежесть/динамика «быстро и точно»
-  want_improve: '/back3.jpg',      // остаточный из back1–4: самый текстурный, много белого
+  personal_analysis: '/back6.jpg', // текстура крема — «экспертный анализ»
+  skin_preview: '/back10.jpg',     // кожа — «предварительный профиль»
+  simple_care: '/back5.jpg',       // пенка — «уход просто и понятно»
+  health_trust: '/back8.jpg',      // айвори-волны — «забота о здоровье»
+  ai_comparison: '/back1.jpg',     // переопределяется screen.image; держим явную раскладку
+  want_improve: '/back3.jpg',      // текстурный фон финального экрана «как меняется кожа»
 };
 
 export function getQuizInfoBackgroundImage(key: string): string {

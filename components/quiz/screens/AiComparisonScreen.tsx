@@ -28,11 +28,13 @@ const LIME = 'var(--accent)';
 const TRADITIONAL_ITEMS = [
   'Долгие поиски советов в интернете',
   'Сложно понять, что подойдёт именно вам',
+  'Деньги на средства, которые не подошли',
 ];
 
 const SKINIQ_ITEMS = [
   'Точный подбор средств на основе анкеты',
   'Рекомендации за пару секунд',
+  'Учитываем чувствительность, цели и бюджет',
 ];
 
 interface AiComparisonContent {
@@ -70,8 +72,6 @@ function AiComparisonScreenComponent({
   const traditionalItems = content.traditionalItems || TRADITIONAL_ITEMS;
   const skiniqItems = content.skiniqItems || SKINIQ_ITEMS;
   const backgroundImage = screen.image || getQuizInfoBackgroundImage(screen.id);
-  const hint = content.hint ||
-    'Большинство персональных планов укладывается в 3–5 средств — от 2 000 ₽/мес в бюджетном сегменте до 5 000+ ₽/мес в премиум.';
 
   const titleFont =
     "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif";
@@ -95,7 +95,7 @@ function AiComparisonScreenComponent({
           WebkitBackdropFilter: 'blur(28px) saturate(160%)',
           border: isSkiniq ? `1.5px solid ${LIME}` : '1px solid var(--glass-border)',
           borderRadius: '22px',
-          padding: isSkiniq ? '18px 14px 18px' : '16px 14px',
+          padding: isSkiniq ? '20px 15px 24px' : '18px 15px 22px',
           marginTop: isSkiniq ? 0 : '14px',
           boxShadow: isSkiniq
             ? '0 14px 34px rgba(var(--accent-rgb),0.28)'
@@ -154,7 +154,7 @@ function AiComparisonScreenComponent({
           {heading}
         </div>
 
-        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 11 }}>
+        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {items.map((t) => (
             <div key={t} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
               <div
@@ -225,20 +225,6 @@ function AiComparisonScreenComponent({
           }}
         />
         <div
-          aria-hidden
-          style={{
-            position: 'absolute',
-            inset: 0,
-            zIndex: 1,
-            pointerEvents: 'none',
-            background: `
-              radial-gradient(55% 30% at 100% 0%, rgba(var(--accent-rgb),0.5) 0%, transparent 60%),
-              radial-gradient(45% 24% at 0% 100%, rgba(var(--accent-rgb),0.3) 0%, transparent 60%)
-            `,
-          }}
-        />
-
-        <div
           className="animate-fade-in"
           style={{
             position: 'relative',
@@ -257,37 +243,6 @@ function AiComparisonScreenComponent({
             WebkitOverflowScrolling: 'touch',
           }}
         >
-          {/* Eyebrow-бейдж */}
-          <div
-            style={{
-              alignSelf: 'flex-start',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: '1px',
-              textTransform: 'uppercase',
-              color: 'var(--ink)',
-              background: LIME,
-              padding: '6px 12px',
-              borderRadius: 999,
-              boxShadow: '0 4px 14px rgba(var(--accent-rgb),0.4)',
-            }}
-          >
-            <span
-              aria-hidden
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: '50%',
-                background: 'var(--ink)',
-                display: 'inline-block',
-              }}
-            />
-            AI-подбор ухода
-          </div>
-
           <h1
             style={{
               fontFamily: titleFont,
@@ -304,9 +259,9 @@ function AiComparisonScreenComponent({
             <span style={{ color: 'var(--ink)' }}>AI подберёт уход </span>
             <span
               style={{
-                background: LIME,
-                borderRadius: 7,
-                padding: '0 6px',
+                background: `linear-gradient(180deg, transparent 60%, ${LIME} 60%)`,
+                padding: '0 4px',
+                borderRadius: 4,
                 boxDecorationBreak: 'clone',
                 WebkitBoxDecorationBreak: 'clone',
               }}
@@ -348,39 +303,70 @@ function AiComparisonScreenComponent({
             </div>
           </div>
 
-          {/* Прайс-якорь */}
+          {/* Чёрная карточка-вывод (в стиле «Советы дерматолога» на странице плана) */}
           <div
             style={{
+              position: 'relative',
+              overflow: 'hidden',
               marginTop: 2,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              background: 'var(--glass-bg)',
+              background: 'rgba(10,10,10,0.86)',
               backdropFilter: 'blur(20px) saturate(150%)',
               WebkitBackdropFilter: 'blur(20px) saturate(150%)',
-              border: '1px solid var(--glass-border)',
-              borderRadius: 18,
-              padding: '13px 15px',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 22,
+              padding: '18px 20px',
+              boxShadow: '0 12px 40px rgba(0,0,0,0.18)',
+              color: '#FFFFFF',
             }}
           >
             <div
+              aria-hidden
               style={{
-                flexShrink: 0,
-                fontFamily: titleFont,
-                fontWeight: 700,
-                fontSize: 19,
-                lineHeight: 1,
-                color: 'var(--ink)',
-                background: LIME,
-                borderRadius: 12,
-                padding: '9px 11px',
-                boxShadow: '0 3px 10px rgba(var(--accent-rgb),0.4)',
-                whiteSpace: 'nowrap',
+                position: 'absolute',
+                right: -40,
+                top: -40,
+                width: 160,
+                height: 160,
+                background: 'radial-gradient(circle, rgba(var(--accent-rgb),0.18) 0%, transparent 70%)',
+                pointerEvents: 'none',
+              }}
+            />
+            <div
+              style={{
+                position: 'relative',
+                fontSize: 11,
+                fontWeight: 500,
+                letterSpacing: '0.16em',
+                textTransform: 'uppercase',
+                color: LIME,
+                marginBottom: 9,
               }}
             >
-              3–5
+              Почему это точнее
             </div>
-            <div style={{ fontSize: 12.5, lineHeight: 1.45, color: '#1A1A1A' }}>{hint}</div>
+            <div
+              style={{
+                position: 'relative',
+                fontFamily: titleFont,
+                fontWeight: 700,
+                fontSize: 16,
+                letterSpacing: '-0.3px',
+                lineHeight: 1.3,
+                marginBottom: 8,
+              }}
+            >
+              Только то, что нужно вашей коже
+            </div>
+            <div
+              style={{
+                position: 'relative',
+                fontSize: 13,
+                lineHeight: 1.5,
+                color: 'rgba(255,255,255,0.68)',
+              }}
+            >
+              AI учитывает тип кожи, чувствительность, цели и образ жизни — и собирает план без лишних средств и случайных покупок.
+            </div>
           </div>
         </div>
 

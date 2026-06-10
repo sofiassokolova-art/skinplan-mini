@@ -2,6 +2,7 @@
 // Финальный продающий экран перед закрывающей последовательностью квиза.
 
 import React from 'react';
+import Image from 'next/image';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
 import { FixedContinueButton } from '../buttons/FixedContinueButton';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
@@ -21,15 +22,16 @@ const PLAN_BENEFITS = [
   'Без лишних трат и ненужных средств',
 ];
 
-// Бежевый фон с мягкими цветовыми пятнами — в том же стиле, что и страница плана
-// (PlanPageV2), но с ДРУГИМ расположением пятен (зеркально/перетасовано): так экран
-// «Ваш SkinIQ-план почти готов» визуально рифмуется с планом, но не повторяет его 1-в-1.
-const PLAN_BLOB_BACKGROUND = `
-  radial-gradient(68% 30% at 100% 0%, rgba(213,254,97,0.46) 0%, transparent 64%),
-  radial-gradient(70% 30% at 0% 14%, rgba(255,224,188,0.70) 0%, transparent 62%),
-  radial-gradient(62% 26% at 0% 86%, rgba(220,210,196,0.55) 0%, transparent 66%),
-  radial-gradient(78% 32% at 100% 98%, rgba(213,254,97,0.50) 0%, transparent 60%),
-  var(--canvas)
+// Поверх текстуры back9 — мягкие цветовые пятна в стиле страницы плана (PlanPageV2)
+// + лёгкий скрим для читаемости тёмного текста. Прозрачные участки пропускают текстуру,
+// так экран «Ваш SkinIQ-план почти готов» рифмуется и с планом, и с остальными
+// текстурными инфо-экранами анкеты.
+const PLAN_BLOB_OVERLAY = `
+  radial-gradient(68% 30% at 100% 0%, rgba(213,254,97,0.40) 0%, transparent 64%),
+  radial-gradient(70% 30% at 0% 14%, rgba(255,224,188,0.52) 0%, transparent 62%),
+  radial-gradient(62% 26% at 0% 86%, rgba(220,210,196,0.42) 0%, transparent 66%),
+  radial-gradient(78% 32% at 100% 98%, rgba(213,254,97,0.42) 0%, transparent 60%),
+  linear-gradient(rgba(244,242,238,0.42), rgba(244,242,238,0.58))
 `;
 
 function CheckIcon() {
@@ -101,12 +103,33 @@ function NoMistakesScreenComponent({
           inset: 0,
           width: '100%',
           overflow: 'hidden',
-          background: PLAN_BLOB_BACKGROUND,
           backgroundColor: 'var(--canvas)',
           fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
           color: 'var(--ink)',
         }}
       >
+        {/* Текстура back9 */}
+        <Image
+          className="qz-fullscreen-bg"
+          src="/back9.jpg"
+          alt=""
+          aria-hidden
+          fill
+          quality={90}
+          sizes="100vw"
+          style={{ objectPosition: 'center', pointerEvents: 'none' }}
+        />
+        {/* Бренд-пятна + скрим поверх текстуры */}
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 1,
+            pointerEvents: 'none',
+            background: PLAN_BLOB_OVERLAY,
+          }}
+        />
         <div
           className="animate-fade-in"
           style={{
