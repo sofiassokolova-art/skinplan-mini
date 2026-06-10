@@ -206,16 +206,25 @@ async function getUsersByFilters(filters: any) {
   });
 }
 
-// Обработка одной рассылки
-async function processBroadcast(broadcast: any) {
-  try {
-    // Обновляем статус на sending
-    await prisma.broadcastMessage.update({
-      where: { id: broadcast.id },
-      data: { status: 'sending' },
-    });
+// ИСПРАВЛЕНО: Rate-limit для Telegram — 40ms задержка = ~25 msg/sec
+const DELAY_MS = 40;
+// Бюджет времени на ОДНУ инвокацию воркера. maxDuration функции = 60s, оставляем
+// запас на финальные записи в БД. Если не успели — остаёмся в статусе 'sending'
+// и продолжаем со следующего тика крона (resume по broadcast_logs).
+const TIME_BUDGET_MS = 45_000;
+// Как часто сбрасывать накопленные логи/счётчики в БД (меньше походов в БД).
+const FLUSH_EVERY = 25;
 
-    // Получаем пользователей по фильтрам
+// Обработка одной рассылки.
+// ВОЗОБНОВЛЯЕМАЯ: за один вызов отправляет столько, сколько влезает в бюджет
+// времени, помечая каждого получателя в broadcast_logs. Уже помеченные при
+// повторном запуске пропускаются — это убирает дубли и «зависание» на больших
+// аудиториях (раньше функция убивалась на 60s до перевода в 'completed', а
+// следующий тик слал всё заново с первого пользователя).
+async function processBroadcast(broadcast: any) {
+  const startedAt = Date.now();
+  try {
+    // Получаем целевых пользователей по фильтрам
     const filters = (broadcast.filtersJson as any) || {};
     let users;
 
@@ -235,82 +244,145 @@ async function processBroadcast(broadcast: any) {
     if (users.length === 0) {
       await prisma.broadcastMessage.update({
         where: { id: broadcast.id },
-        data: {
-          status: 'failed',
-        },
+        data: { status: 'failed' },
       });
       return { success: false, error: 'No users found' };
     }
 
-    // ИСПРАВЛЕНО (P0): Rate-limit для Telegram - 40ms задержка = ~25 msg/sec
-    const DELAY_MS = 40;
+    // Кто уже обработан (resume + защита от дублей): берём userId из broadcast_logs
+    const sentLogs = await prisma.broadcastLog.findMany({
+      where: { broadcastId: broadcast.id },
+      select: { userId: true },
+    });
+    const alreadyProcessed = new Set(sentLogs.map((l) => l.userId));
+    const remaining = users.filter((u) => !alreadyProcessed.has(u.id));
+
+    // Переводим в 'sending' (например, из 'scheduled') один раз
+    if (broadcast.status !== 'sending') {
+      await prisma.broadcastMessage.update({
+        where: { id: broadcast.id },
+        data: { status: 'sending' },
+      });
+    }
+
+    // Всё уже отправлено ранее — просто закрываем
+    if (remaining.length === 0) {
+      await prisma.broadcastMessage.update({
+        where: { id: broadcast.id },
+        data: { status: 'completed', sentAt: new Date() },
+      });
+      return { success: true, processed: 0, completed: true };
+    }
 
     const message = broadcast.message as string;
     const buttons = broadcast.buttonsJson as Array<{ text: string; url: string }> | null;
     const imageUrl = broadcast.imageUrl as string | null;
 
-    for (const user of users) {
-      try {
-        const profile = user.skinProfiles[0] || null;
-        const renderedMessage = renderMessage(message, user, profile);
+    // Буферы для батч-записи
+    let pendingLogs: Array<{
+      broadcastId: string;
+      userId: string;
+      telegramId: string;
+      status: string;
+      errorMessage: string | null;
+    }> = [];
+    let sentDelta = 0;
+    let failedDelta = 0;
+    let processedNow = 0;
+    let timedOut = false;
 
-        const result = await sendTelegramMessage(user.telegramId, renderedMessage, undefined, imageUrl || undefined, buttons || undefined);
-
-        // Создаём лог для каждого пользователя
-        await prisma.broadcastLog.create({
-          data: {
-            broadcastId: broadcast.id,
-            userId: user.id,
-            telegramId: user.telegramId,
-            status: result.success ? 'sent' : 'failed',
-            errorMessage: result.error || null,
-          },
-        });
-
-        // Атомарное обновление счётчиков через increment
-        if (result.success) {
-          await prisma.broadcastMessage.update({
-            where: { id: broadcast.id },
-            data: { sentCount: { increment: 1 } },
-          });
-        } else {
-          await prisma.broadcastMessage.update({
-            where: { id: broadcast.id },
-            data: { failedCount: { increment: 1 } },
-          });
-        }
-
-        // Rate-limit - задержка 40ms между сообщениями
-        await new Promise(resolve => setTimeout(resolve, DELAY_MS));
-      } catch (error: any) {
-        console.error(`Error sending to user ${user.id}:`, error);
+    const flush = async () => {
+      if (pendingLogs.length > 0) {
+        await prisma.broadcastLog.createMany({ data: pendingLogs });
+        pendingLogs = [];
+      }
+      if (sentDelta > 0 || failedDelta > 0) {
         await prisma.broadcastMessage.update({
           where: { id: broadcast.id },
-          data: { failedCount: { increment: 1 } },
+          data: {
+            sentCount: { increment: sentDelta },
+            failedCount: { increment: failedDelta },
+          },
         });
+        sentDelta = 0;
+        failedDelta = 0;
       }
+    };
+
+    for (const user of remaining) {
+      // Бюджет времени исчерпан — выходим, продолжим со следующего тика крона
+      if (Date.now() - startedAt > TIME_BUDGET_MS) {
+        timedOut = true;
+        break;
+      }
+
+      const profile = user.skinProfiles[0] || null;
+      const renderedMessage = renderMessage(message, user, profile);
+
+      let result: { success: boolean; error?: string };
+      try {
+        result = await sendTelegramMessage(
+          user.telegramId,
+          renderedMessage,
+          undefined,
+          imageUrl || undefined,
+          buttons || undefined
+        );
+      } catch (error: any) {
+        console.error(`Error sending to user ${user.id}:`, error);
+        result = { success: false, error: error?.message || 'Network error' };
+      }
+
+      pendingLogs.push({
+        broadcastId: broadcast.id,
+        userId: user.id,
+        telegramId: user.telegramId,
+        status: result.success ? 'sent' : 'failed',
+        errorMessage: result.error || null,
+      });
+      if (result.success) sentDelta++;
+      else failedDelta++;
+      processedNow++;
+
+      if (pendingLogs.length >= FLUSH_EVERY) {
+        await flush();
+      }
+
+      // Rate-limit между сообщениями
+      await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
     }
 
-    // Финальное обновление статуса на completed
-    await prisma.broadcastMessage.update({
-      where: { id: broadcast.id },
-      data: {
-        status: 'completed',
-        sentAt: new Date(),
-      },
-    });
+    // Финальный сброс буферов
+    await flush();
 
-    return { success: true, processed: users.length };
+    const totalProcessed = alreadyProcessed.size + processedNow;
+    const allDone = !timedOut && totalProcessed >= users.length;
+
+    if (allDone) {
+      await prisma.broadcastMessage.update({
+        where: { id: broadcast.id },
+        data: { status: 'completed', sentAt: new Date() },
+      });
+      return { success: true, processed: processedNow, completed: true };
+    }
+
+    // Не успели в окне — остаёмся в 'sending', продолжим со следующего тика
+    return {
+      success: true,
+      processed: processedNow,
+      completed: false,
+      remaining: users.length - totalProcessed,
+    };
   } catch (error: any) {
     console.error('Error processing broadcast:', error);
-    await prisma.broadcastMessage.update({
-      where: { id: broadcast.id },
-      data: {
-        status: 'failed',
-      },
-    }).catch(updateError => {
-      console.error('Error updating broadcast status to failed:', updateError);
-    });
+    await prisma.broadcastMessage
+      .update({
+        where: { id: broadcast.id },
+        data: { status: 'failed' },
+      })
+      .catch((updateError) => {
+        console.error('Error updating broadcast status to failed:', updateError);
+      });
     return { success: false, error: error.message || 'Unknown error' };
   }
 }
@@ -332,33 +404,34 @@ export async function runBroadcastWorker(): Promise<BroadcastWorkerResult> {
 
   const now = new Date();
 
-  // Обрабатываем по одной рассылке за раз для избежания таймаутов
-  const scheduledBroadcasts = await prisma.broadcastMessage.findMany({
-    where: {
-      status: 'scheduled',
-      scheduledAt: { lte: now },
-    },
-    orderBy: { scheduledAt: 'asc' },
-    take: 1,
-  });
-
-  const sendingBroadcasts = await prisma.broadcastMessage.findMany({
+  // За один тик обрабатываем РОВНО ОДНУ рассылку (бюджет времени внутри
+  // processBroadcast не даёт превысить лимит функции). Приоритет — уже идущей
+  // 'sending' рассылке (дослать остаток), иначе берём ближайшую назревшую
+  // 'scheduled'. Большие рассылки доедут за несколько тиков крона без дублей.
+  let broadcast = await prisma.broadcastMessage.findFirst({
     where: { status: 'sending' },
     orderBy: { createdAt: 'asc' },
-    take: 1,
   });
 
-  const broadcastsToProcess = [...scheduledBroadcasts, ...sendingBroadcasts];
+  if (!broadcast) {
+    broadcast = await prisma.broadcastMessage.findFirst({
+      where: {
+        status: 'scheduled',
+        scheduledAt: { lte: now },
+      },
+      orderBy: { scheduledAt: 'asc' },
+    });
+  }
 
-  if (broadcastsToProcess.length === 0) {
+  if (!broadcast) {
     return { success: true, processed: 0, message: 'No broadcasts to process' };
   }
 
-  const results = [];
-  for (const broadcast of broadcastsToProcess) {
-    const result = await processBroadcast(broadcast);
-    results.push({ broadcastId: broadcast.id, ...result });
-  }
+  const result = await processBroadcast(broadcast);
 
-  return { success: true, processed: broadcastsToProcess.length, results };
+  return {
+    success: true,
+    processed: 1,
+    results: [{ broadcastId: broadcast.id, ...result }],
+  };
 }
