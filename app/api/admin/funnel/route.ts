@@ -39,28 +39,34 @@ export async function GET(request: NextRequest) {
           where: { questionnaireId: activeQuestionnaire.id },
         })
       : [];
-    const startedQuiz = usersWithAnswers.length;
+    const startedSet = new Set(usersWithAnswers.map((u) => u.userId));
 
-    // Этап 3: Пользователи, которые завершили анкету (есть профиль кожи)
-    const completedQuiz = await prisma.skinProfile.groupBy({
-      by: ['userId'],
-    });
-    const completedQuizCount = completedQuiz.length;
+    // ИСПРАВЛЕНО (#1): Воронка строится как ВЛОЖЕННЫЕ подмножества, чтобы каждый
+    // следующий этап был подмножеством предыдущего (конверсия не может быть > 100%).
+    // Раньше completedQuiz/hasPlan считались по ВСЕМ профилям/сессиям (в т.ч. со
+    // старых версий анкеты), из-за чего конверсии этапов превышали 100%.
+    const profileGroups = await prisma.skinProfile.groupBy({ by: ['userId'] });
+    const profileSet = new Set(profileGroups.map((g) => g.userId));
 
-    // ИСПРАВЛЕНО (P0): hasPlan считается только по БД-факту (RecommendationSession)
-    // Убрана кэш-проверка, т.к. она проверяла только 100 пользователей и делала метрику невалидной
-    // Если нужна точная метрика - план должен быть материализован в БД (Plan28 table)
-    const usersWithSessions = await prisma.recommendationSession.groupBy({
-      by: ['userId'],
-    });
-    
-    const hasPlan = usersWithSessions.length;
+    const sessionGroups = await prisma.recommendationSession.groupBy({ by: ['userId'] });
+    const sessionSet = new Set(sessionGroups.map((g) => g.userId));
 
-    // Вычисляем конверсии
-    const conversionToStarted = totalUsers > 0 ? (startedQuiz / totalUsers) * 100 : 0;
-    const conversionToCompleted = startedQuiz > 0 ? (completedQuizCount / startedQuiz) * 100 : 0;
-    const conversionToPlan = completedQuizCount > 0 ? (hasPlan / completedQuizCount) * 100 : 0;
-    const overallConversion = totalUsers > 0 ? (hasPlan / totalUsers) * 100 : 0;
+    // Завершившие = из начавших те, у кого есть профиль кожи
+    const completedSet = new Set([...startedSet].filter((id) => profileSet.has(id)));
+    // Получившие план = из завершивших те, у кого есть рекомендательная сессия
+    const planSet = new Set([...completedSet].filter((id) => sessionSet.has(id)));
+
+    const startedQuiz = startedSet.size;
+    const completedQuizCount = completedSet.size;
+    const hasPlan = planSet.size;
+
+    // Конверсии с clamp на [0,100] как страховка от деления несогласованных метрик
+    const pct = (num: number, den: number) =>
+      den > 0 ? Math.min(100, (num / den) * 100) : 0;
+    const conversionToStarted = pct(startedQuiz, totalUsers);
+    const conversionToCompleted = pct(completedQuizCount, startedQuiz);
+    const conversionToPlan = pct(hasPlan, completedQuizCount);
+    const overallConversion = pct(hasPlan, totalUsers);
 
     // Данные по периодам (последние 7, 14, 30 дней)
     const now = new Date();
@@ -71,55 +77,51 @@ export async function GET(request: NextRequest) {
       { name: 'Все время', days: null },
     ];
 
-    // ИСПРАВЛЕНО (P0): Периодные метрики считают уникальных пользователей через groupBy с where
-    // Раньше считались записи (профили/сессии), а не уникальные пользователи
+    // ИСПРАВЛЕНО (#2): Периодная воронка строится по ЕДИНОЙ когорте — дате
+    // РЕГИСТРАЦИИ пользователя. Берём зарегистрированных в окне и пересекаем их
+    // с этапными множествами воронки. Раньше знаменатель (periodUsers) считался
+    // по дате регистрации, а числители (started/completed/plan) — по дате
+    // активности, из-за чего конверсия могла превышать 100% (пользователь
+    // зарегистрировался давно, но прошёл анкету недавно).
     const periodData = await Promise.all(periods.map(async (period) => {
-      const startDate = period.days ? new Date(now.getTime() - period.days * 24 * 60 * 60 * 1000) : null;
-      
-      // ИСПРАВЛЕНО (P0): user.count() с where вместо findMany + filter
-      const periodUsers = startDate
-        ? await prisma.user.count({
-            where: { createdAt: { gte: startDate } },
-          })
-        : totalUsers;
+      if (!period.days) {
+        // «Всё время» — используем уже посчитанные глобальные значения
+        return {
+          period: period.name,
+          users: totalUsers,
+          started: startedQuiz,
+          completed: completedQuizCount,
+          hasPlan,
+          conversionToStarted,
+          conversionToCompleted,
+          conversionToPlan,
+          overallConversion,
+        };
+      }
 
-      // ИСПРАВЛЕНО (P0): Считаем уникальных пользователей через groupBy с where
-      const periodStarted = startDate && activeQuestionnaire
-        ? (await prisma.userAnswer.groupBy({
-            by: ['userId'],
-            where: {
-              questionnaireId: activeQuestionnaire.id,
-              createdAt: { gte: startDate },
-            },
-          })).length
-        : startedQuiz;
+      const startDate = new Date(now.getTime() - period.days * 24 * 60 * 60 * 1000);
 
-      // ИСПРАВЛЕНО (P0): Считаем уникальных пользователей, а не записи профилей
-      const periodCompleted = startDate
-        ? (await prisma.skinProfile.groupBy({
-            by: ['userId'],
-            where: { createdAt: { gte: startDate } },
-          })).length
-        : completedQuizCount;
+      const periodUsers = await prisma.user.findMany({
+        where: { createdAt: { gte: startDate } },
+        select: { id: true },
+      });
+      const periodUserSet = new Set(periodUsers.map((u) => u.id));
 
-      // ИСПРАВЛЕНО (P0): Считаем уникальных пользователей, а не записи сессий
-      const periodPlan = startDate
-        ? (await prisma.recommendationSession.groupBy({
-            by: ['userId'],
-            where: { createdAt: { gte: startDate } },
-          })).length
-        : hasPlan;
+      const periodUsersCount = periodUserSet.size;
+      const periodStarted = [...startedSet].filter((id) => periodUserSet.has(id)).length;
+      const periodCompleted = [...completedSet].filter((id) => periodUserSet.has(id)).length;
+      const periodPlan = [...planSet].filter((id) => periodUserSet.has(id)).length;
 
       return {
         period: period.name,
-        users: periodUsers,
+        users: periodUsersCount,
         started: periodStarted,
         completed: periodCompleted,
         hasPlan: periodPlan,
-        conversionToStarted: periodUsers > 0 ? (periodStarted / periodUsers) * 100 : 0,
-        conversionToCompleted: periodStarted > 0 ? (periodCompleted / periodStarted) * 100 : 0,
-        conversionToPlan: periodCompleted > 0 ? (periodPlan / periodCompleted) * 100 : 0,
-        overallConversion: periodUsers > 0 ? (periodPlan / periodUsers) * 100 : 0,
+        conversionToStarted: pct(periodStarted, periodUsersCount),
+        conversionToCompleted: pct(periodCompleted, periodStarted),
+        conversionToPlan: pct(periodPlan, periodCompleted),
+        overallConversion: pct(periodPlan, periodUsersCount),
       };
     }));
 
