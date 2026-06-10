@@ -11,6 +11,13 @@ import {
 } from '@/app/(miniapp)/quiz/info-screens';
 import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
 import { verifyAdminBoolean } from '@/lib/admin-auth';
+import { adminCache } from '@/lib/admin-cache';
+
+// Тяжёлый агрегирующий роут (тянет все ответы анкеты + агрегаты). Даём запас по
+// времени и кэшируем результат, иначе функция убивается дефолтным лимитом Vercel
+// → фронт получает пустой ответ и график/воронка «не отображаются».
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,6 +27,12 @@ export async function GET(request: NextRequest) {
         { error: 'Unauthorized' },
         { status: 401 }
       );
+    }
+
+    // Кэш на 2 минуты — повторные открытия страницы мгновенные
+    const cachedFunnel = adminCache.get<any>('admin_funnel');
+    if (cachedFunnel) {
+      return NextResponse.json(cachedFunnel);
     }
 
     // ИСПРАВЛЕНО (P0): Получаем активную анкету в начале для фильтрации метрик
@@ -125,22 +138,6 @@ export async function GET(request: NextRequest) {
       };
     }));
 
-    // ИСПРАВЛЕНО (P0): Получаем полную активную анкету для screenConversions (порядок экранов как в приложении)
-    const activeQuestionnaireWithQuestions = await prisma.questionnaire.findFirst({
-      where: { isActive: true },
-      include: {
-        questionGroups: {
-          include: {
-            questions: { include: { answerOptions: true } },
-          },
-        },
-        questions: {
-          include: { answerOptions: true },
-          orderBy: [{ groupId: 'asc' }, { position: 'asc' }],
-        },
-      },
-    });
-
     const screenConversions: Array<{
       screenNumber: number;
       screenId: string;
@@ -151,7 +148,27 @@ export async function GET(request: NextRequest) {
       conversionFromStart: number;
     }> = [];
 
-    if (activeQuestionnaireWithQuestions) {
+    // Секция конверсии по экранам зависит от quiz info-screens и тянет ВСЕ ответы
+    // активной анкеты — изолируем в try/catch, чтобы её сбой или тяжесть не
+    // обрушивали весь ответ воронки (основные метрики важнее экранного разреза).
+    try {
+      // ИСПРАВЛЕНО (P0): Получаем полную активную анкету для screenConversions (порядок экранов как в приложении)
+      const activeQuestionnaireWithQuestions = await prisma.questionnaire.findFirst({
+        where: { isActive: true },
+        include: {
+          questionGroups: {
+            include: {
+              questions: { include: { answerOptions: true } },
+            },
+          },
+          questions: {
+            include: { answerOptions: true },
+            orderBy: [{ groupId: 'asc' }, { position: 'asc' }],
+          },
+        },
+      });
+
+      if (activeQuestionnaireWithQuestions) {
       // Порядок экранов как в приложении: getInitialInfoScreens + extractQuestions + цепочки инфо после вопросов
       const allScreens: Array<{
         id: string;
@@ -282,9 +299,15 @@ export async function GET(request: NextRequest) {
 
         previousReached = current.reachedCount;
       }
+      }
+    } catch (screenErr: any) {
+      console.error(
+        'Funnel screenConversions failed; возвращаем воронку без разреза по экранам:',
+        screenErr?.message || screenErr
+      );
     }
 
-    return NextResponse.json({
+    const responseData = {
       funnel: {
         totalUsers,
         startedQuiz,
@@ -297,7 +320,9 @@ export async function GET(request: NextRequest) {
       },
       periodData,
       screenConversions, // Конверсия по экранам анкеты
-    });
+    };
+    adminCache.set('admin_funnel', responseData, 120);
+    return NextResponse.json(responseData);
   } catch (error: any) {
     console.error('Error fetching funnel data:', error);
     return NextResponse.json(
