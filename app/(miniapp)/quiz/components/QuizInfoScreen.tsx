@@ -481,7 +481,7 @@ export function QuizInfoScreen({
   // пользователю промежуточный «вывод» по его ответам — он видит, что машина уже что-то поняла,
   // и охотнее доходит до конца анкеты.
   if (isSkinPreviewScreen) {
-    const skinPreviewBackgroundImage = '/back1.jpg';
+    const skinPreviewBackgroundImage = '/back10.jpg'; // кожа — «Предварительный профиль»
 
     // Резолвим ответы пользователя в человекочитаемые label'ы.
     const allQuestions = extractQuestionsFromQuestionnaire(questionnaire);

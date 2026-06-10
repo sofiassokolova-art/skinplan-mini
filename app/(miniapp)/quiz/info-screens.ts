@@ -177,7 +177,7 @@ export const INFO_SCREENS: InfoScreen[] = [
   {
     id: 'health_trust',
     title: 'SkinIQ заботится\nо вашем здоровье',
-    image: '/back4.jpg',
+    image: '/back8.jpg',
     showAfterQuestionCode: 'has_avoid_ingredients',
     ctaText: 'Продолжить',
   },
