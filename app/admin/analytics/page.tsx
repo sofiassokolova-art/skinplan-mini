@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from '@/lib/charts';
 import { AdminPageSkeleton } from '@/components/ui/SkeletonLoader';
+import MetricsDashboard from '@/components/MetricsDashboard';
 
 const COLORS = ['#8B5CF6', '#EC4899', '#6366F1', '#10B981', '#F59E0B'];
 
@@ -16,10 +17,25 @@ interface AdminStats {
   products?: number;
   plans?: number;
   badFeedback?: number;
+  replacements?: number;
+  churnRate?: number;
+  avgLTV?: number;
   newUsersLast7Days?: number;
   newUsersLast30Days?: number;
   activeUsersLast7Days?: number;
   activeUsersLast30Days?: number;
+  totalWishlistItems?: number;
+  totalProductFeedback?: number;
+  avgFeedbackRating?: number;
+}
+
+interface TopProduct {
+  id: number;
+  name: string;
+  brand: string;
+  wishlistCount: number;
+  feedbackCount: number;
+  avgRating: number;
 }
 
 type Period = 'day' | 'week' | 'month';
@@ -28,6 +44,7 @@ export default function AnalyticsAdmin() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<AdminStats | null>(null);
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [period, setPeriod] = useState<Period>('month'); // ИСПРАВЛЕНО (P0): Добавлен state для периода
 
   useEffect(() => {
@@ -53,6 +70,7 @@ export default function AnalyticsAdmin() {
       if (response.ok) {
         const data = await response.json();
         setStats(data.stats);
+        setTopProducts(data.topProducts || []);
       }
     } catch (error) {
       console.error('Error loading analytics:', error);
@@ -193,6 +211,27 @@ export default function AnalyticsAdmin() {
           </div>
         </div>
       </div>
+
+      {/* ИСПРАВЛЕНО (#8): Расширенные метрики (churn, retention, LTV, топ продуктов) */}
+      <MetricsDashboard
+        data={{
+          users: stats?.users ?? 0,
+          products: stats?.products ?? 0,
+          plans: stats?.plans ?? 0,
+          badFeedback: stats?.badFeedback ?? 0,
+          replacements: stats?.replacements ?? 0,
+          churnRate: stats?.churnRate ?? 0,
+          avgLTV: stats?.avgLTV ?? 0,
+          topProducts,
+          newUsersLast7Days: stats?.newUsersLast7Days ?? 0,
+          newUsersLast30Days: stats?.newUsersLast30Days ?? 0,
+          activeUsersLast7Days: stats?.activeUsersLast7Days ?? 0,
+          activeUsersLast30Days: stats?.activeUsersLast30Days ?? 0,
+          totalWishlistItems: stats?.totalWishlistItems ?? 0,
+          totalProductFeedback: stats?.totalProductFeedback ?? 0,
+          avgFeedbackRating: stats?.avgFeedbackRating ?? 0,
+        }}
+      />
     </div>
   );
 }

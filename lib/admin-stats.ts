@@ -71,46 +71,31 @@ async function calculateChurnRate(): Promise<number> {
 }
 
 /**
- * Вычисляет средний LTV (Lifetime Value)
- * LTV = средняя стоимость плана * средняя длительность использования (в месяцах)
- * Упрощенная формула: считаем на основе количества активных планов и дней активности
+ * Вычисляет средний LTV (Lifetime Value) на основе РЕАЛЬНЫХ платежей.
+ * LTV = суммарный успешный доход / число платящих пользователей
+ * (средний доход на платящего клиента).
+ *
+ * ИСПРАВЛЕНО (#4): раньше LTV считался по захардкоженной ставке 3000 ₽/мес и
+ * длительности updatedAt−createdAt — это была заглушка, не связанная с выручкой.
  */
 async function calculateAvgLTV(): Promise<number> {
-  // Получаем пользователей с активными планами
-  const usersWithPlans = await prisma.skinProfile.groupBy({
-    by: ['userId'],
-    _count: {
-      id: true,
-    },
-  });
+  const [revenueAgg, payers] = await Promise.all([
+    prisma.payment.aggregate({
+      _sum: { amount: true },
+      where: { status: 'succeeded' },
+    }),
+    prisma.payment.groupBy({
+      by: ['userId'],
+      where: { status: 'succeeded' },
+    }),
+  ]);
 
-  if (usersWithPlans.length === 0) return 0;
+  const totalRevenue = revenueAgg._sum.amount || 0;
+  const payingUsers = payers.length;
 
-  // Средняя стоимость месячного ухода (упрощенная оценка)
-  const avgMonthlyPlanCost = 3000; // Примерная стоимость ухода в месяц
+  if (payingUsers === 0) return 0;
 
-  // Вычисляем среднюю длительность активности (в месяцах)
-  const users = await prisma.user.findMany({
-    where: {
-      id: {
-        in: usersWithPlans.map(u => u.userId),
-      },
-    },
-    select: {
-      createdAt: true,
-      updatedAt: true,
-    },
-  });
-
-  const totalMonths = users.reduce((sum, user) => {
-    const daysDiff = (user.updatedAt.getTime() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24);
-    return sum + daysDiff / 30; // Переводим дни в месяцы
-  }, 0);
-
-  const avgMonths = totalMonths / users.length;
-  const avgLTV = avgMonthlyPlanCost * Math.max(1, avgMonths); // Минимум 1 месяц
-
-  return Math.round(avgLTV);
+  return Math.round(totalRevenue / payingUsers);
 }
 
 /**
