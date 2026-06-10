@@ -113,7 +113,7 @@ function RecognizeYourselfScreenComponent({
           style={{
             fontFamily:
               "var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 700,
+            fontWeight: 400,
             fontSize: 'clamp(18px, 5vw, 24px)',
             color: 'var(--canvas-white)',
             letterSpacing: '0px',

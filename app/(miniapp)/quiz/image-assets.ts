@@ -26,6 +26,7 @@ export const QUIZ_INFO_BACKGROUND_IMAGE_URLS = [
   '/back8.jpg',
   '/back9.jpg',
   '/back10.jpg',
+  '/back12.jpg',
   '/back13.jpg',
 ] as const;
 
@@ -46,7 +47,7 @@ const QUIZ_INFO_BACKGROUND_BY_KEY: Record<string, (typeof QUIZ_INFO_BACKGROUND_I
   simple_care: '/back5.jpg',       // пенка — «уход просто и понятно»
   health_trust: '/back8.jpg',      // айвори-волны — «забота о здоровье»
   ai_comparison: '/back13.jpg',    // фон под «боль → решение»
-  want_improve: '/back3.jpg',      // текстурный фон финального экрана «как меняется кожа»
+  want_improve: '/back12.jpg',     // текстурный фон финального экрана «как меняется кожа»
 };
 
 export function getQuizInfoBackgroundImage(key: string): string {
