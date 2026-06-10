@@ -178,13 +178,15 @@ export default function AdminDashboard() {
     { 
       label: 'Всего пользователей', 
       value: stats.users || 0, 
-      change: stats.newUsersLast30Days && stats.users > 0 
-        ? (() => {
-            const previousUsers = Math.max(stats.users - stats.newUsersLast30Days, 1);
-            const growthPercent = Math.round((stats.newUsersLast30Days / previousUsers) * 100);
-            return `+${growthPercent}%`;
-          })()
-        : null,
+      // ИСПРАВЛЕНО (#7): не показываем рост, если до периода пользователей не было
+      // (раньше знаменатель опускался до 1 и процент раздувался на новой базе)
+      change: (() => {
+        const newUsers = stats.newUsersLast30Days ?? 0;
+        const previousUsers = (stats.users ?? 0) - newUsers;
+        if (newUsers <= 0 || previousUsers <= 0) return null;
+        const growthPercent = Math.round((newUsers / previousUsers) * 100);
+        return `+${growthPercent}%`;
+      })(),
       color: 'from-purple-600 to-purple-400'
     },
     { 

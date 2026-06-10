@@ -113,9 +113,8 @@ export async function GET(request: NextRequest) {
       return null;
     });
 
-    // ИСПРАВЛЕНО (P1): Вычисляем доход партнёрки через оптимизированный запрос
-    // Берём только необходимые поля (productId и price) для минимизации памяти
-    // Доход от покупки плана: суммируем успешные платежи по продукту plan_access
+    // ИСПРАВЛЕНО (P1): Вычисляем доход через aggregate (_sum по amount)
+    // Доход от покупки плана: суммируем amount успешных платежей с productCode='plan_access'
     const revenue = await prisma.payment
       .aggregate({
         _sum: {
@@ -137,22 +136,28 @@ export async function GET(request: NextRequest) {
     let startDate: Date;
     let dateFormat: 'day' | 'week' | 'month' = 'month';
     
+    // ИСПРАВЛЕНО (#6): startDate выравнивается на начало САМОГО РАННЕГО бакета
+    // графика в UTC. Раньше окно считалось через локальный setHours/setDate, а
+    // бакеты строились в UTC и на день раньше первого бакета — из-за чего часть
+    // пользователей попадала в выборку, но не в график (cumulative не сходился
+    // с общим числом пользователей).
     if (period === 'day') {
-      // Для дня: последние 24 часа
+      // Последние 24 часовых бакета: [текущий час − 23 ч .. текущий час]
       startDate = new Date(now);
-      startDate.setHours(startDate.getHours() - 24);
+      startDate.setUTCMinutes(0, 0, 0);
+      startDate.setUTCHours(startDate.getUTCHours() - 23);
       dateFormat = 'day';
     } else if (period === 'week') {
-      // Для недели: последние 7 дней
+      // Последние 7 дневных бакетов: [сегодня − 6 дн .. сегодня] (UTC)
       startDate = new Date(now);
-      startDate.setDate(startDate.getDate() - 7);
-      startDate.setHours(0, 0, 0, 0);
+      startDate.setUTCHours(0, 0, 0, 0);
+      startDate.setUTCDate(startDate.getUTCDate() - 6);
       dateFormat = 'week';
     } else {
-      // Для месяца: последние 30 дней
+      // Последние 30 дневных бакетов: [сегодня − 29 дн .. сегодня] (UTC)
       startDate = new Date(now);
-      startDate.setDate(startDate.getDate() - 30);
-      startDate.setHours(0, 0, 0, 0);
+      startDate.setUTCHours(0, 0, 0, 0);
+      startDate.setUTCDate(startDate.getUTCDate() - 29);
       dateFormat = 'month';
     }
     
