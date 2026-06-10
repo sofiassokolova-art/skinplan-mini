@@ -144,8 +144,8 @@ export function QuizInitialLoader({
         )}
       </div>
 
-      <style jsx>{`
-        :global(.skinplan-loader-spinner) {
+      <style jsx global>{`
+        .skinplan-loader-spinner {
           animation: skinplan-loader-spin 0.8s linear infinite;
           will-change: transform;
         }

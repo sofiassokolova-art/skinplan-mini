@@ -828,7 +828,18 @@ export function QuizInfoScreen({
               fontWeight: 700, fontSize: 'clamp(20px, 6vw, 28px)', lineHeight: '1.25',
               color: '#000000', margin: '0 0 clamp(32px, 10vw, 52px) 0',
             }}>
-              SkinIQ делает уход за&nbsp;кожей простым и&nbsp;понятным
+              SkinIQ делает уход за&nbsp;кожей{' '}
+              <span
+                style={{
+                  background: 'linear-gradient(180deg, transparent 60%, var(--accent) 60%)',
+                  padding: '0 4px',
+                  borderRadius: 4,
+                  boxDecorationBreak: 'clone',
+                  WebkitBoxDecorationBreak: 'clone',
+                }}
+              >
+                простым и&nbsp;понятным
+              </span>
             </h1>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'stretch' }}>
               {renderCard(content?.left, '#f0f0f0',
@@ -896,7 +907,7 @@ export function QuizInfoScreen({
             <h1 style={{
               fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 700, fontSize: 'clamp(20px, 6vw, 28px)', lineHeight: '1.25',
-              color: '#000000', margin: '0', maxWidth: 'min(200px, 55%)', whiteSpace: 'pre-line',
+              color: '#000000', margin: '0', maxWidth: 'min(340px, 92%)', whiteSpace: 'pre-line',
             }}>
               {screen.title}
             </h1>
