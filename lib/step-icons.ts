@@ -5,7 +5,7 @@ export function getStepCategoryIcon(category: string): string | null {
   const normalized = String(category || '').trim().toLowerCase();
 
   if (!normalized) return '/icons/treatment_true.png';
-  if (normalized === 'cleanser_oil' || normalized.includes('oil')) return '/icons/oil_true.png';
+  if (normalized === 'cleanser_oil' || normalized.includes('oil')) return '/icons/oil_green.png';
   if (normalized.startsWith('cleanser') || normalized.includes('cleansing')) return '/icons/cleanser_true.png';
   if (normalized.startsWith('toner') || normalized.includes('essence')) return '/icons/toner_true.png';
   if (normalized.startsWith('serum') || normalized.includes('ampoule')) return '/icons/serum_true.png';
@@ -17,7 +17,7 @@ export function getStepCategoryIcon(category: string): string | null {
     normalized.includes('barrier')
   ) return '/icons/cream_true.png';
   if (normalized.startsWith('spf') || normalized.includes('sunscreen')) return '/icons/spf_true.png';
-  if (normalized.startsWith('mask') || normalized.includes('clay') || normalized.includes('peel')) return '/icons/claymask_true.png';
+  if (normalized.startsWith('mask') || normalized.includes('clay') || normalized.includes('peel')) return '/icons/mask_green.png';
   if (
     normalized.startsWith('treatment') ||
     normalized.includes('treatment') ||
@@ -40,7 +40,7 @@ export function getBaseCategoryIcon(baseCategoryName: string): string | null {
     case 'Увлажнение': return '/icons/cream_true.png';
     case 'Крем для глаз': return '/icons/cream_true.png';
     case 'SPF защита': return '/icons/spf_true.png';
-    case 'Маски': return '/icons/claymask_true.png';
+    case 'Маски': return '/icons/mask_green.png';
     case 'Уход за губами': return '/icons/lipbalm_true.png';
     case 'Бальзам': return '/icons/lipbalm_true.png';
     case 'Лечение': return '/icons/treatment_true.png';
