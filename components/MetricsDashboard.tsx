@@ -92,10 +92,14 @@ export default function MetricsDashboard({ data }: MetricsDashboardProps) {
     exportToCSV(data);
   };
 
-  // Вычисляем процент роста пользователей
-  const userGrowth7d = data.newUsersLast7Days > 0
-    ? Math.round((data.newUsersLast7Days / data.activeUsersLast7Days) * 100)
-    : 0;
+  // ИСПРАВЛЕНО (#8): прирост за 7 дней = новые / база до периода.
+  // Раньше делили новых на активных (newUsersLast7Days / activeUsersLast7Days) —
+  // это бессмысленное отношение, не отражающее рост.
+  const userGrowth7d = (() => {
+    const previousUsers = data.users - data.newUsersLast7Days;
+    if (data.newUsersLast7Days <= 0 || previousUsers <= 0) return 0;
+    return Math.round((data.newUsersLast7Days / previousUsers) * 100);
+  })();
 
   // Retention rate (обратный churn)
   const retentionRate = 100 - data.churnRate;
