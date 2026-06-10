@@ -45,8 +45,8 @@ interface Recommendation {
 const ICONS: Record<string, string> = {
   ...STEP_ICONS,
   acid: STEP_ICONS.treatment,
-  oil: '/icons/clean/oil_true.png',
-  mask: '/icons/clean/claymask_true.png',
+  oil: '/icons/oil_green.png',
+  mask: '/icons/mask_green.png',
 };
 
 // ФИКС #17: персистентность отмеченных шагов рутины между переключениями страниц.
