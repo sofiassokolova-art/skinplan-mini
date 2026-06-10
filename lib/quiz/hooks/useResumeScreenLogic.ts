@@ -46,9 +46,15 @@ export function useResumeScreenLogic({
       return;
     }
 
-    // КРИТИЧНО: При retakeFromHome в URL не показываем RESUME — покажем экран выбора тем
-    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('retakeFromHome') === '1') {
-      return;
+    // КРИТИЧНО: При retakeFromHome / retake в URL не показываем RESUME.
+    // retakeFromHome=1 → экран выбора тем; retake=1 (перепрохождение с пейвола/плана) →
+    // пользователь осознанно перепроходит анкету заново, резюм «вы не завершили» здесь неуместен.
+    if (typeof window !== 'undefined') {
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get('retakeFromHome') === '1' || sp.get('retake') === '1') {
+        if (showResumeScreen) setShowResumeScreen(false);
+        return;
+      }
     }
     
     // ИСПРАВЛЕНО: НЕ ждем загрузки прогресса из React Query, если есть savedProgress из sessionStorage
