@@ -108,20 +108,6 @@ function ImproveSkinScreenComponent({
           }}
         />
         <div
-          aria-hidden
-          style={{
-            position: 'absolute',
-            inset: 0,
-            zIndex: 1,
-            pointerEvents: 'none',
-            background: `
-              radial-gradient(50% 28% at 100% 0%, rgba(var(--accent-rgb),0.5) 0%, transparent 60%),
-              radial-gradient(45% 22% at 0% 100%, rgba(var(--accent-rgb),0.3) 0%, transparent 60%)
-            `,
-          }}
-        />
-
-        <div
           className="animate-fade-in"
           style={{
             position: 'relative',

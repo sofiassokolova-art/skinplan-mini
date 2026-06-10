@@ -423,8 +423,13 @@ export function useQuizComputed(params: UseQuizComputedParams) {
                                        savedCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN &&
                                        currentAnswersCount === 0;
 
-    // При isRetakingQuiz не показываем RESUME — приоритет у RETAKE_SELECT (без чтения window → без hydration mismatch)
-    const shouldSuppressResumeForRetake = isRetakingQuiz;
+    // При isRetakingQuiz не показываем RESUME — приоритет у RETAKE_SELECT.
+    // Также подавляем RESUME при retake=1 в URL (перепрохождение с пейвола/плана):
+    // квиз client-only (ssr:false), чтение window здесь не даёт hydration mismatch.
+    const isRetakeFromUrl =
+      typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).get('retake') === '1';
+    const shouldSuppressResumeForRetake = isRetakingQuiz || isRetakeFromUrl;
 
     if (isRetakingQuiz && showRetakeScreen) {
       debugLog('📺 [useQuizComputed] viewMode: RETAKE_SELECT (retake from home — higher priority than RESUME)', {
