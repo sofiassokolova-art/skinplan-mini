@@ -67,10 +67,6 @@ function ImproveSkinScreenComponent({
     });
   };
 
-  const transformationContent = (screen.content as
-    | { from?: string; to?: string; indicator?: string }
-    | undefined) || {};
-
   const hasInitData =
     typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
 
@@ -162,7 +158,7 @@ function ImproveSkinScreenComponent({
                 color: 'var(--ink)',
               }}
             >
-              92% видят результат за 28 дней
+              Первые изменения — уже на 3-й день
             </span>
           </div>
 
@@ -182,7 +178,8 @@ function ImproveSkinScreenComponent({
             Посмотрите, как <span style={{ color: 'var(--ink)', background: `linear-gradient(180deg, transparent 60%, ${LIME} 60%)`, padding: '0 4px', borderRadius: 4 }}>меняется</span> ваша кожа
           </h1>
 
-          {/* Transformation-карточка: from → to */}
+          {/* TIMELINE-карточка: что происходит с кожей по дням — продаём будущим
+              результатом во времени (новый смысл, не дублирует «состав плана») */}
           <div
             style={{
               background: 'var(--glass-bg)',
@@ -190,141 +187,119 @@ function ImproveSkinScreenComponent({
               WebkitBackdropFilter: 'blur(28px) saturate(160%)',
               border: '1px solid var(--glass-border)',
               borderRadius: '24px',
-              padding: '20px 22px',
+              padding: '20px 22px 8px',
               boxShadow: '0 10px 32px rgba(0,0,0,0.06)',
             }}
           >
             <div
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 16,
+                fontSize: '12px',
+                fontWeight: 600,
+                color: '#6B7280',
+                textTransform: 'uppercase',
+                letterSpacing: '0.12em',
+                marginBottom: 4,
               }}
             >
-              <div style={{ flex: 1 }}>
-                <div
-                  style={{
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    color: '#6B7280',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.12em',
-                    marginBottom: 6,
-                  }}
-                >
-                  {transformationContent.from || 'Сейчас'}
-                </div>
-                <div
-                  style={{
-                    fontFamily:
-                      "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-                    fontSize: '17px',
-                    fontWeight: 700,
-                    color: 'var(--ink)',
-                    letterSpacing: '-0.3px',
-                  }}
-                >
-                  {transformationContent.indicator || 'Здоровье кожи'}
-                </div>
-              </div>
-              <div
-                aria-hidden
-                style={{
-                  width: 56,
-                  height: 4,
-                  borderRadius: 2,
-                  background: `linear-gradient(90deg, #D0D0D0 0%, ${LIME} 100%)`,
-                  flexShrink: 0,
-                }}
-              />
-              <div style={{ flex: 1, textAlign: 'right' }}>
-                <div
-                  style={{
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    color: 'var(--ink)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.12em',
-                    marginBottom: 6,
-                  }}
-                >
-                  {transformationContent.to || 'Ваша цель'}
-                </div>
-                <div
-                  style={{
-                    fontFamily:
-                      "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-                    fontSize: '17px',
-                    fontWeight: 700,
-                    color: 'var(--ink)',
-                    letterSpacing: '-0.3px',
-                  }}
-                >
-                  +28 дней
-                </div>
-              </div>
+              28-дневный путь
             </div>
-            {screen.subtitle && (
-              <div
-                style={{
-                  marginTop: 14,
-                  paddingTop: 14,
-                  borderTop: '1px solid rgba(0,0,0,0.06)',
-                  fontSize: '13px',
-                  lineHeight: 1.55,
-                  color: '#4B5563',
-                }}
-              >
-                {screen.subtitle}
-              </div>
-            )}
-            {/* Конкретные обещания результата — рисуют картинку «что я получу» */}
             <div
               style={{
-                marginTop: 14,
-                paddingTop: 14,
-                borderTop: '1px solid rgba(0,0,0,0.06)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 8,
+                fontFamily:
+                  "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontSize: '18px',
+                fontWeight: 700,
+                color: 'var(--ink)',
+                letterSpacing: '-0.4px',
+                marginBottom: 20,
               }}
             >
-              {[
-                'Меньше высыпаний и покраснений',
-                'Ровный тон и сияние без фильтров',
-                'Кожа выглядит увлажнённой и плотной',
-              ].map((line) => (
-                <div
-                  key={line}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    fontSize: 13,
-                    color: 'var(--ink)',
-                  }}
-                >
-                  <span
-                    aria-hidden
+              Что произойдёт с кожей
+            </div>
+
+            {/* Вертикальный таймлайн с лаймовым рельсом */}
+            {[
+              { day: 'День 1–3', text: 'Уходит стянутость — кожа увлажнена и спокойна' },
+              { day: 'Неделя 1', text: 'Тон выравнивается, меньше новых высыпаний' },
+              { day: 'Неделя 2–3', text: 'Поры чище, появляется здоровое сияние' },
+              { day: 'День 28', text: 'Кожа плотная и ровная, сияет без фильтров', highlight: true },
+            ].map((step, i, arr) => {
+              const isLast = i === arr.length - 1;
+              return (
+                <div key={step.day} style={{ display: 'flex', gap: 14, alignItems: 'stretch' }}>
+                  {/* Рельс: точка + соединительная линия */}
+                  <div
                     style={{
-                      width: 18,
-                      height: 18,
-                      borderRadius: '50%',
-                      background: LIME,
-                      display: 'grid',
-                      placeItems: 'center',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      width: 22,
                       flexShrink: 0,
                     }}
                   >
-                    <svg width="10" height="8" viewBox="0 0 14 10" fill="none">
-                      <path d="M1 5l4 4 8-8" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </span>
-                  <span style={{ lineHeight: 1.35 }}>{line}</span>
+                    <div
+                      style={{
+                        width: step.highlight ? 22 : 14,
+                        height: step.highlight ? 22 : 14,
+                        marginTop: step.highlight ? 1 : 4,
+                        borderRadius: '50%',
+                        background: 'var(--accent)',
+                        border: step.highlight ? '2px solid var(--ink)' : '2px solid rgba(255,255,255,0.85)',
+                        boxShadow: step.highlight
+                          ? '0 0 0 5px rgba(var(--accent-rgb),0.22)'
+                          : '0 1px 4px rgba(var(--accent-rgb),0.4)',
+                        display: 'grid',
+                        placeItems: 'center',
+                      }}
+                    >
+                      {step.highlight && (
+                        <svg width="11" height="11" viewBox="0 0 28 28" fill="var(--ink)" aria-hidden>
+                          <path d="M14 2.5c1.6 7 4.5 9.9 11.5 11.5-7 1.6-9.9 4.5-11.5 11.5C12.4 18.5 9.5 15.6 2.5 14 9.5 12.4 12.4 9.5 14 2.5Z" />
+                        </svg>
+                      )}
+                    </div>
+                    {!isLast && (
+                      <div
+                        style={{
+                          flex: 1,
+                          width: 2,
+                          minHeight: 14,
+                          marginTop: 3,
+                          borderRadius: 2,
+                          background:
+                            'linear-gradient(180deg, rgba(var(--accent-rgb),0.7), rgba(var(--accent-rgb),0.3))',
+                        }}
+                      />
+                    )}
+                  </div>
+                  {/* Текст вехи */}
+                  <div style={{ paddingBottom: isLast ? 14 : 18 }}>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: '#5C7A00',
+                        letterSpacing: '0.02em',
+                        marginBottom: 3,
+                      }}
+                    >
+                      {step.day}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 14.5,
+                        fontWeight: step.highlight ? 700 : 600,
+                        lineHeight: 1.35,
+                        letterSpacing: '-0.2px',
+                        color: 'var(--ink)',
+                      }}
+                    >
+                      {step.text}
+                    </div>
+                  </div>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
 
           {/* CTA-карточка: финальный вопрос + кнопка «Получить план» */}
