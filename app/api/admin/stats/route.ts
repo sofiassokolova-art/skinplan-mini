@@ -6,6 +6,13 @@ import { getMetricsStats } from '@/lib/admin-stats';
 import { verifyAdminBoolean } from '@/lib/admin-auth';
 import { adminCache } from '@/lib/admin-cache';
 
+// Тяжёлый агрегирующий роут (много последовательных запросов + getMetricsStats).
+// Поднимаем лимит времени, иначе функция убивается дефолтом Vercel и фронт
+// получает пустой ответ → график роста «не отображается». Результат кэшируется
+// на 2 минуты ниже.
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const isAdmin = await verifyAdminBoolean(request);
