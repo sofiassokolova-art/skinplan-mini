@@ -59,7 +59,7 @@ function PersonalAnalysisScreenComponent({
 }: PersonalAnalysisScreenProps) {
   const shouldShowBackButton =
     currentInfoScreenIndex > 0 && screen.id !== 'welcome' && !!onBack;
-  const backgroundImage = '/back3.jpg';
+  const backgroundImage = '/back6.jpg'; // текстура крема — «Экспертный анализ от SkinIQ»
   const handleBackWithScroll = () => {
     const scrollTop =
       window.pageYOffset ||
