@@ -26,6 +26,7 @@ export const QUIZ_INFO_BACKGROUND_IMAGE_URLS = [
   '/back8.jpg',
   '/back9.jpg',
   '/back10.jpg',
+  '/back13.jpg',
 ] as const;
 
 // Явная раскладка текстур по инфо-экранам в порядке их показа в анкете:
@@ -44,7 +45,7 @@ const QUIZ_INFO_BACKGROUND_BY_KEY: Record<string, (typeof QUIZ_INFO_BACKGROUND_I
   skin_preview: '/back10.jpg',     // кожа — «предварительный профиль»
   simple_care: '/back5.jpg',       // пенка — «уход просто и понятно»
   health_trust: '/back8.jpg',      // айвори-волны — «забота о здоровье»
-  ai_comparison: '/back1.jpg',     // переопределяется screen.image; держим явную раскладку
+  ai_comparison: '/back13.jpg',    // фон под «боль → решение»
   want_improve: '/back3.jpg',      // текстурный фон финального экрана «как меняется кожа»
 };
 
