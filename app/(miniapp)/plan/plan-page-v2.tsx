@@ -359,8 +359,8 @@ function inferStepIcon(name: string | undefined | null): string {
   if (/spf|sunscreen|санскрин|солнцезащит/.test(n)) return '/icons/clean/spf_true.png';
   if (/cleanser|cleansing|пенк|гел[ьяе]\s*для|умыван|foam|wash|очищ|очист/.test(n)) return '/icons/clean/cleanser_true.png';
   if (/balm|бальзам|для\s+губ|lip\b/.test(n)) return '/icons/clean/lipbalm_true.png';
-  if (/oil|масл/.test(n)) return '/icons/clean/oil_true.png';
-  if (/mask|маск/.test(n)) return '/icons/clean/claymask_true.png';
+  if (/oil|масл/.test(n)) return '/icons/oil_green.png';
+  if (/mask|маск/.test(n)) return '/icons/mask_green.png';
   if (/retinol|ретинол|aha|bha|acid|кислот|пилинг|peel/.test(n)) return '/icons/clean/treatment_true.png';
   if (/serum|сыворотк|essence|эссенц/.test(n)) return '/icons/clean/serum_true.png';
   if (/toner|тоник|тонер|mist/.test(n)) return '/icons/clean/toner_true.png';
