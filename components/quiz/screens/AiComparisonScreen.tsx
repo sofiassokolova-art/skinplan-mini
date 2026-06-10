@@ -165,7 +165,17 @@ function AiComparisonScreenComponent({
           >
             AI подберёт уход
             <br />
-            быстро и точно
+            <span
+              style={{
+                color: 'var(--ink)',
+                background:
+                  'linear-gradient(180deg, transparent 60%, var(--accent) 60%)',
+                padding: '0 4px',
+                borderRadius: 4,
+              }}
+            >
+              быстро и точно
+            </span>
           </h1>
 
           {/* CARD A — «Как обычно»: приглушённая, без тени, нейтральные маркеры */}
