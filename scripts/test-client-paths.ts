@@ -1,9 +1,9 @@
 // scripts/test-client-paths.ts
 // Автоматические тесты клиентских путей для проверки синхронизации продуктов
 
-import { PrismaClient } from '@prisma/client';
+import { createScriptPrisma } from './lib/prisma';
 
-const prisma = new PrismaClient();
+const prisma = createScriptPrisma();
 
 interface TestResult {
   name: string;

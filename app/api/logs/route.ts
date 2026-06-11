@@ -66,6 +66,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Клиентский ввод не доверяем: ограничиваем типы и размеры, чтобы эндпоинт
+    // не превращался в свалку произвольных данных, видимых в админ-логах.
+    if (typeof message !== 'string') {
+      return NextResponse.json({ error: 'message must be a string' }, { status: 400 });
+    }
+    const MAX_MESSAGE_LEN = 2_000;
+    const MAX_FIELD_LEN = 1_000;
+    const MAX_CONTEXT_JSON_LEN = 8_000;
+    const safeMessage = message.slice(0, MAX_MESSAGE_LEN);
+    const safeUserAgent = typeof userAgent === 'string' ? userAgent.slice(0, MAX_FIELD_LEN) : null;
+    const safeUrl = typeof url === 'string' ? url.slice(0, MAX_FIELD_LEN) : null;
+    let safeContext: any = null;
+    if (context && typeof context === 'object' && !Array.isArray(context)) {
+      try {
+        safeContext =
+          JSON.stringify(context).length <= MAX_CONTEXT_JSON_LEN
+            ? context
+            : { type: (context as any).type, truncated: true };
+      } catch {
+        safeContext = null; // несериализуемый context отбрасываем
+      }
+    }
+
     // Сохраняем в PostgreSQL. userId может отсутствовать — это две важные ситуации:
     //  1) Первичная сессия: initData валидна (telegramId есть), но строка User ещё
     //     не создана (лог стартапа прилетел раньше, чем юзер появился в БД).
@@ -89,10 +112,10 @@ export async function POST(request: NextRequest) {
             userId,
             telegramId,
             level,
-            message,
-            context: context || null,
-            userAgent: userAgent || null,
-            url: url || null,
+            message: safeMessage,
+            context: safeContext,
+            userAgent: safeUserAgent,
+            url: safeUrl,
           },
         });
 

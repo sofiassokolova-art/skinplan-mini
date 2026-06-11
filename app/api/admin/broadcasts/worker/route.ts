@@ -5,13 +5,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminBoolean } from '@/lib/admin-auth';
 import { runBroadcastWorker } from '@/lib/broadcast-worker';
+import { timingSafeEqual } from '@/lib/timing-safe';
 
 // POST - обработка рассылок (вызывается cron/внешним планировщиком или админом)
 export async function POST(request: NextRequest) {
   try {
-    // Worker может вызываться cron (Bearer CRON_SECRET) или админом (с авторизацией)
-    const authHeader = request.headers.get('authorization');
-    const isCronCall = authHeader === `Bearer ${process.env.CRON_SECRET}`;
+    // Worker может вызываться cron (Bearer CRON_SECRET) или админом (с авторизацией).
+    // Пустой/незаданный CRON_SECRET не даёт cron-доступа (иначе "Bearer undefined"
+    // обходил бы админ-авторизацию).
+    const cronSecret = process.env.CRON_SECRET;
+    const bearer = request.headers.get('authorization')?.replace('Bearer ', '') ?? '';
+    const isCronCall = !!cronSecret && !!bearer && timingSafeEqual(bearer, cronSecret);
 
     if (!isCronCall) {
       const isAdmin = await verifyAdminBoolean(request);

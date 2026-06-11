@@ -1,10 +1,10 @@
 // scripts/seed-admin.ts
 // Создание админа с email и паролем
 
-import { PrismaClient } from '@prisma/client';
+import { createScriptPrisma } from './lib/prisma';
 import bcrypt from 'bcryptjs';
 
-const prisma = new PrismaClient();
+const prisma = createScriptPrisma();
 
 async function seedAdmin() {
   console.log('🌱 Creating admin user...');

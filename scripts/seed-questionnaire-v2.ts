@@ -2,9 +2,9 @@
 // Полный seed анкеты согласно QUIZ_FLOW.md (41 экран)
 // Все вопросы с правильными кодами для связи с инфо-экранами
 
-import { PrismaClient } from '@prisma/client';
+import { createScriptPrisma } from './lib/prisma';
 
-const prisma = new PrismaClient();
+const prisma = createScriptPrisma();
 
 // Функция для создания scoreJson на основе вопроса и ответа
 function createScoreJson(questionCode: string, optionLabel: string): any {

@@ -1,9 +1,9 @@
 // scripts/seed-products.ts
 // Скрипт для заполнения начальных продуктов
 
-import { PrismaClient } from '@prisma/client';
+import { createScriptPrisma } from './lib/prisma';
 
-const prisma = new PrismaClient();
+const prisma = createScriptPrisma();
 
 async function seedProducts() {
   console.log('🌱 Seeding products...');
