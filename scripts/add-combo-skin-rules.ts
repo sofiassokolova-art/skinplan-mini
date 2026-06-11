@@ -1,9 +1,9 @@
 // scripts/add-combo-skin-rules.ts
 // Скрипт для добавления правил рекомендаций для комбинированной кожи
 
-import { PrismaClient } from '@prisma/client';
+import { createScriptPrisma } from './lib/prisma';
 
-const prisma = new PrismaClient();
+const prisma = createScriptPrisma();
 
 const newRules = [
   {

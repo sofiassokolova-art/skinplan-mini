@@ -1,13 +1,17 @@
 // app/api/questionnaire/partial-update/route.ts
 // API для частичного обновления ответов анкеты по теме
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { prisma } from '@/lib/db';
 import { buildSkinProfileFromAnswers } from '@/lib/skinprofile-rules-engine';
 import { getTopicById, shouldRebuildPlan } from '@/lib/quiz-topics';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { requireTelegramAuth, getTelegramInitDataFromHeaders } from '@/lib/auth/telegram-auth';
 import { invalidateAllUserCache } from '@/lib/cache';
+
+// after()-колбэк (фоновая регенерация плана) выполняется в пределах лимита функции —
+// держим запас под генерацию (до 60s, как в /api/plan/generate).
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
@@ -294,16 +298,22 @@ export async function POST(request: NextRequest) {
         // Получаем initData из заголовков для передачи в фоновый запрос
         const initData = getTelegramInitDataFromHeaders(request);
         if (initData) {
-        // Вызываем генерацию плана асинхронно (не ждем завершения)
+        // Генерация плана после отправки ответа. ВАЖНО: не fire-and-forget fetch —
+        // на Vercel процесс замораживается сразу после ответа и «висящий» промис
+        // может не выполниться. after() гарантирует, что рантайм дождётся работы.
         const origin = request.nextUrl.origin;
-        fetch(`${origin}/api/plan/generate`, {
-          method: 'GET',
-          headers: {
-            'X-Telegram-Init-Data': initData,
-          },
-        }).catch(err => {
-          logger.warn('Background plan regeneration failed', { userId, error: err });
-          // Не критично - план пересоберется при следующем запросе
+        after(async () => {
+          try {
+            await fetch(`${origin}/api/plan/generate`, {
+              method: 'GET',
+              headers: {
+                'X-Telegram-Init-Data': initData,
+              },
+            });
+          } catch (err) {
+            logger.warn('Background plan regeneration failed', { userId, error: err });
+            // Не критично - план пересоберется при следующем запросе
+          }
         });
         planRegenerated = true;
         } else {
