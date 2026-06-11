@@ -1,10 +1,10 @@
 // scripts/seed-rules-complete.ts
 // Seed-скрипт для 68 профессиональных правил рекомендаций 2025
 
-import { PrismaClient } from '@prisma/client';
+import { createScriptPrisma } from './lib/prisma';
 import { RECOMMENDATION_RULES } from '../lib/recommendation-rules-complete-2025';
 
-const prisma = new PrismaClient();
+const prisma = createScriptPrisma();
 
 /**
  * Конвертирует новые правила в формат Prisma RecommendationRule

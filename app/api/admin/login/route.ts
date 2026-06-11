@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db';
 import { signAdminToken } from '@/lib/jwt';
 import { logger } from '@/lib/logger';
 import { rateLimit, getIdentifier } from '@/lib/rate-limit';
+import { timingSafeEqual } from '@/lib/timing-safe';
 
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
 
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
     const secretHash = await sha256Hex(secretWord.trim());
     const expectedHash = await sha256Hex(ADMIN_SECRET.trim());
 
-    if (secretHash !== expectedHash) {
+    if (!timingSafeEqual(secretHash, expectedHash)) {
       logger.warn('Invalid admin login attempt');
       return NextResponse.json({ error: 'Неверное секретное слово.' }, { status: 401 });
     }

@@ -1,9 +1,9 @@
 // scripts/seed-admin-telegram.ts
 // Добавление админа в вайт-лист по Telegram username или ID
 
-import { PrismaClient } from '@prisma/client';
+import { createScriptPrisma } from './lib/prisma';
 
-const prisma = new PrismaClient();
+const prisma = createScriptPrisma();
 
 async function seedAdminTelegram() {
   console.log('🌱 Adding admin to whitelist...');

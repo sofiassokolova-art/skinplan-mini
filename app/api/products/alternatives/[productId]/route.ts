@@ -11,11 +11,8 @@ function generateWhyBetter(
 ): string {
   const reasons: string[] = [];
 
-  // Цена
-  if (altProduct.price && oldProduct.price && altProduct.price < oldProduct.price * 0.9) {
-    const diff = Math.round(((oldProduct.price - altProduct.price) / oldProduct.price) * 100);
-    reasons.push(`дешевле на ${diff}%`);
-  }
+  // ВАЖНО: ценовых аргументов здесь быть не должно — клиентский миниапп не показывает
+  // цены (price в БД только для бюджетной логики), и «дешевле на N%» — производная цены.
 
   // Бренд
   if (altProduct.brand.name === 'La Roche-Posay' || altProduct.brand.name === 'Bioderma') {

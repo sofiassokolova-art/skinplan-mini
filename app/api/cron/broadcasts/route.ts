@@ -4,6 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { runBroadcastWorker } from '@/lib/broadcast-worker';
+import { timingSafeEqual } from '@/lib/timing-safe';
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const secret = searchParams.get('secret') || authHeader?.replace('Bearer ', '');
 
-    if (secret !== cronSecret) {
+    if (!secret || !timingSafeEqual(secret, cronSecret)) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }

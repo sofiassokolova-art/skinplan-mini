@@ -44,7 +44,8 @@ export default tseslint.config([
       // CI lint should not be blocked by existing hook-order issues in legacy files.
       // (We still keep exhaustive-deps warnings from the plugin.)
       'react-hooks/rules-of-hooks': 'off',
-      'react-hooks/exhaustive-deps': 'off',
+      // warn (не error): подсвечивает stale-closure баги, но не валит CI.
+      'react-hooks/exhaustive-deps': 'warn',
 
       // Existing API routes contain a few intentionally-empty blocks.
       'no-empty': 'off',

@@ -11,6 +11,10 @@ import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { getCurrentProfile } from '@/lib/get-current-profile';
 import { stripPrices } from '@/lib/strip-prices';
 
+// Генерация может занимать десятки секунд: внутри стоит собственный таймаут 60s,
+// поэтому лимит функции должен быть не меньше (дефолт Vercel может быть ниже).
+export const maxDuration = 60;
+
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
   const method = 'GET';
@@ -455,22 +459,26 @@ export async function GET(request: NextRequest) {
             userId,
             profileVersion: profile.version,
           });
-          // Удаляем старый план для этой версии профиля
-          await prisma.plan28.deleteMany({
-            where: {
-              userId,
-              profileVersion: profile.version,
-            },
-          });
-          // Создаем новый план с текущей датой (createdAt будет установлен автоматически)
-          await prisma.plan28.create({
-            data: {
-              userId,
-              skinProfileId: profile.id,
-              profileVersion: profile.version,
-              planData: plan.plan28 as any,
-            },
-          });
+          // Удаление старого плана и создание нового — атомарно, иначе конкурентный
+          // запрос между deleteMany и create создаёт свой план (двойная вставка по
+          // unique-ключу) или ловит окно «плана нет вовсе».
+          await prisma.$transaction([
+            prisma.plan28.deleteMany({
+              where: {
+                userId,
+                profileVersion: profile.version,
+              },
+            }),
+            // Новый план с текущей датой (createdAt будет установлен автоматически)
+            prisma.plan28.create({
+              data: {
+                userId,
+                skinProfileId: profile.id,
+                profileVersion: profile.version,
+                planData: plan.plan28 as any,
+              },
+            }),
+          ]);
           // "Съедаем" entitlement после использования
           await prisma.entitlement.update({
             where: { userId_code: { userId, code: 'retake_full_access' } },

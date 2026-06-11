@@ -1,9 +1,9 @@
 // scripts/test-all-rules.ts
 // Автотесты для проверки, что все правила рекомендаций генерируют продукты
 
-import { PrismaClient } from '@prisma/client';
+import { createScriptPrisma } from './lib/prisma';
 
-const prisma = new PrismaClient();
+const prisma = createScriptPrisma();
 
 interface RuleStep {
   category?: string[];

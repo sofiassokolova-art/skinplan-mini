@@ -1,9 +1,9 @@
 // scripts/add-comprehensive-rules.ts
 // Скрипт для добавления комплексных правил рекомендаций для покрытия всех возможных комбинаций
 
-import { PrismaClient } from '@prisma/client';
+import { createScriptPrisma } from './lib/prisma';
 
-const prisma = new PrismaClient();
+const prisma = createScriptPrisma();
 
 const newRules = [
   // ========== СУХАЯ КОЖА ==========

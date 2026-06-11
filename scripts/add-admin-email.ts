@@ -5,10 +5,9 @@
 // Использование: npx tsx scripts/add-admin-email.ts <email>
 // Пример: npx tsx scripts/add-admin-email.ts admin@example.com
 
-import 'dotenv/config';
-import { PrismaClient } from '@prisma/client';
+import { createScriptPrisma } from './lib/prisma';
 
-const prisma = new PrismaClient();
+const prisma = createScriptPrisma();
 
 async function main() {
   const email = process.argv[2]?.trim()?.toLowerCase();

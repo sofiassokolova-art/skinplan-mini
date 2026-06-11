@@ -1,9 +1,9 @@
 // scripts/analyze-products-by-step.ts
 // Анализ продуктов по шагам для понимания покрытия правил
 
-import { PrismaClient } from '@prisma/client';
+import { createScriptPrisma } from './lib/prisma';
 
-const prisma = new PrismaClient();
+const prisma = createScriptPrisma();
 
 async function analyzeProductsByStep() {
   console.log('=== Анализ продуктов по шагам ухода ===\n');

@@ -2,9 +2,9 @@
 // Полный seed-скрипт для 120+ продуктов (Россия 2025)
 // Запуск: npm run seed:products-full
 
-import { PrismaClient } from '@prisma/client';
+import { createScriptPrisma } from './lib/prisma';
 
-const prisma = new PrismaClient();
+const prisma = createScriptPrisma();
 
 // Функция для создания slug из названия
 function createSlug(name: string): string {

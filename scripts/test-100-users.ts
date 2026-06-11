@@ -1,11 +1,11 @@
 // scripts/test-100-users.ts
 // Скрипт для создания 100 тестовых пользователей и проверки работы системы
 
-import { PrismaClient } from '@prisma/client';
+import { createScriptPrisma } from './lib/prisma';
 import { createSkinProfile } from '@/lib/profile-calculator';
 import { getProductsForStep } from '@/lib/product-selection';
 
-const prisma = new PrismaClient();
+const prisma = createScriptPrisma();
 
 interface TestResult {
   userId: string;

@@ -57,17 +57,27 @@ function renderMessage(template: string, user: any, profile: any): string {
   return message;
 }
 
-// Отправка сообщения через Telegram Bot API
+// Отправка сообщения через Telegram Bot API.
+// При 429 возвращает retryAfter (секунды из parameters.retry_after) — воркер
+// должен прерваться и продолжить со следующего тика, не помечая юзера failed.
 async function sendTelegramMessage(
   telegramId: string,
   text: string,
   imageBuffer?: Buffer,
   imageUrl?: string,
   buttons?: Array<{ text: string; url: string }>
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; retryAfter?: number }> {
   if (!TELEGRAM_BOT_TOKEN) {
     return { success: false, error: 'TELEGRAM_BOT_TOKEN not configured' };
   }
+
+  const toError = (response: Response, data: any) => ({
+    success: false as const,
+    error: (data?.description as string) || 'Unknown error',
+    ...(response.status === 429 || data?.error_code === 429
+      ? { retryAfter: Number(data?.parameters?.retry_after) || 1 }
+      : {}),
+  });
 
   try {
     const replyMarkup = buttons && buttons.length > 0 ? {
@@ -95,7 +105,7 @@ async function sendTelegramMessage(
 
       const data = await response.json();
       if (!response.ok || !data.ok) {
-        return { success: false, error: data.description || 'Unknown error' };
+        return toError(response, data);
       }
       return { success: true };
     } else if (imageUrl) {
@@ -113,7 +123,7 @@ async function sendTelegramMessage(
 
       const data = await response.json();
       if (!response.ok || !data.ok) {
-        return { success: false, error: data.description || 'Unknown error' };
+        return toError(response, data);
       }
       return { success: true };
     } else {
@@ -130,7 +140,7 @@ async function sendTelegramMessage(
 
       const data = await response.json();
       if (!response.ok || !data.ok) {
-        return { success: false, error: data.description || 'Unknown error' };
+        return toError(response, data);
       }
       return { success: true };
     }
@@ -257,13 +267,7 @@ async function processBroadcast(broadcast: any) {
     const alreadyProcessed = new Set(sentLogs.map((l) => l.userId));
     const remaining = users.filter((u) => !alreadyProcessed.has(u.id));
 
-    // Переводим в 'sending' (например, из 'scheduled') один раз
-    if (broadcast.status !== 'sending') {
-      await prisma.broadcastMessage.update({
-        where: { id: broadcast.id },
-        data: { status: 'sending' },
-      });
-    }
+    // Переход scheduled → sending уже выполнен атомарным захватом в claimBroadcast()
 
     // Всё уже отправлено ранее — просто закрываем
     if (remaining.length === 0) {
@@ -319,7 +323,7 @@ async function processBroadcast(broadcast: any) {
       const profile = user.skinProfiles[0] || null;
       const renderedMessage = renderMessage(message, user, profile);
 
-      let result: { success: boolean; error?: string };
+      let result: { success: boolean; error?: string; retryAfter?: number };
       try {
         result = await sendTelegramMessage(
           user.telegramId,
@@ -331,6 +335,16 @@ async function processBroadcast(broadcast: any) {
       } catch (error: any) {
         console.error(`Error sending to user ${user.id}:`, error);
         result = { success: false, error: error?.message || 'Network error' };
+      }
+
+      // Telegram вернул 429: НЕ помечаем пользователя failed — прерываем тик,
+      // рассылка остаётся в 'sending' и продолжится с этого же юзера позже.
+      if (!result.success && result.retryAfter !== undefined) {
+        console.warn(
+          `Telegram 429 for broadcast ${broadcast.id}, retry_after=${result.retryAfter}s — pausing until next tick`
+        );
+        timedOut = true;
+        break;
       }
 
       pendingLogs.push({
@@ -395,6 +409,41 @@ export interface BroadcastWorkerResult {
   error?: string;
 }
 
+// Перекрывающиеся воркеры (cron-тик каждую минуту при maxDuration 60s, плюс ручной
+// запуск из админки) не должны слать одну рассылку параллельно. Захват атомарный:
+// updateMany с проверкой status+updatedAt (optimistic lock) — выигрывает ровно один.
+// 'sending' со свежим updatedAt считается активно обрабатываемой другим воркером:
+// flush() внутри processBroadcast обновляет updatedAt (~каждые 25 сообщений) и
+// работает как heartbeat. Если воркер умер, lease протухает через STALE_LOCK_MS
+// и следующий тик дошлёт остаток (resume по broadcast_logs).
+const STALE_LOCK_MS = 70_000;
+
+async function claimBroadcast(now: Date) {
+  const staleBefore = new Date(now.getTime() - STALE_LOCK_MS);
+
+  // До 3 попыток: кандидата мог перехватить параллельный воркер
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const candidate =
+      (await prisma.broadcastMessage.findFirst({
+        where: { status: 'sending', updatedAt: { lt: staleBefore } },
+        orderBy: { createdAt: 'asc' },
+      })) ??
+      (await prisma.broadcastMessage.findFirst({
+        where: { status: 'scheduled', scheduledAt: { lte: now } },
+        orderBy: { scheduledAt: 'asc' },
+      }));
+
+    if (!candidate) return null;
+
+    const claimed = await prisma.broadcastMessage.updateMany({
+      where: { id: candidate.id, status: candidate.status, updatedAt: candidate.updatedAt },
+      data: { status: 'sending' }, // @updatedAt обновится — это и есть взятие lease
+    });
+    if (claimed.count === 1) return candidate;
+  }
+  return null;
+}
+
 // Находит готовые к отправке рассылки (scheduled с наступившим временем + sending)
 // и обрабатывает их. Вызывается и из HTTP-роута воркера, и из cron-роута напрямую.
 export async function runBroadcastWorker(): Promise<BroadcastWorkerResult> {
@@ -408,20 +457,7 @@ export async function runBroadcastWorker(): Promise<BroadcastWorkerResult> {
   // processBroadcast не даёт превысить лимит функции). Приоритет — уже идущей
   // 'sending' рассылке (дослать остаток), иначе берём ближайшую назревшую
   // 'scheduled'. Большие рассылки доедут за несколько тиков крона без дублей.
-  let broadcast = await prisma.broadcastMessage.findFirst({
-    where: { status: 'sending' },
-    orderBy: { createdAt: 'asc' },
-  });
-
-  if (!broadcast) {
-    broadcast = await prisma.broadcastMessage.findFirst({
-      where: {
-        status: 'scheduled',
-        scheduledAt: { lte: now },
-      },
-      orderBy: { scheduledAt: 'asc' },
-    });
-  }
+  const broadcast = await claimBroadcast(now);
 
   if (!broadcast) {
     return { success: true, processed: 0, message: 'No broadcasts to process' };
