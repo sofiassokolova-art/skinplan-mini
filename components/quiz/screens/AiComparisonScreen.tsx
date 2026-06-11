@@ -322,7 +322,7 @@ function AiComparisonScreenComponent({
                 fontWeight: 700,
                 letterSpacing: '0.5px',
                 textTransform: 'uppercase',
-                color: '#5C7A00',
+                color: 'var(--ink)',
                 marginBottom: 13,
               }}
             >
