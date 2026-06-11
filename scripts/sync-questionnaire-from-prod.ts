@@ -3,9 +3,9 @@
 // Запуск: SYNC_QUESTIONNAIRE_FROM_URL=https://www.proskiniq.ru npm run sync:questionnaire-from-prod
 // Или: npm run sync:questionnaire-from-prod  (по умолчанию берёт NEXT_PUBLIC_MINI_APP_URL или proskiniq.ru)
 
-import { PrismaClient } from '@prisma/client';
+import { createScriptPrisma } from './lib/prisma';
 
-const prisma = new PrismaClient();
+const prisma = createScriptPrisma();
 
 const PROD_URL =
   process.env.SYNC_QUESTIONNAIRE_FROM_URL ||

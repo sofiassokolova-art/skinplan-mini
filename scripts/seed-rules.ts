@@ -1,9 +1,9 @@
 // scripts/seed-rules.ts
 // Скрипт для заполнения правил рекомендаций
 
-import { PrismaClient } from '@prisma/client';
+import { createScriptPrisma } from './lib/prisma';
 
-const prisma = new PrismaClient();
+const prisma = createScriptPrisma();
 
 async function seedRules() {
   console.log('🌱 Seeding recommendation rules...');

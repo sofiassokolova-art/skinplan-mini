@@ -1,9 +1,9 @@
 // scripts/test-full-product-flow.ts
 // Комплексный тест полного flow от ответов до отображения продуктов в плане
 
-import { PrismaClient } from '@prisma/client';
+import { createScriptPrisma } from './lib/prisma';
 
-const prisma = new PrismaClient();
+const prisma = createScriptPrisma();
 
 interface TestResult {
   name: string;

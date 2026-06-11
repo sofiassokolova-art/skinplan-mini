@@ -1,9 +1,9 @@
 // scripts/seed-questionnaire-full.ts
 // Полный перенос анкеты из Quiz.tsx в базу данных
 
-import { PrismaClient } from '@prisma/client';
+import { createScriptPrisma } from './lib/prisma';
 
-const prisma = new PrismaClient();
+const prisma = createScriptPrisma();
 
 // Маппинг типов из Quiz.tsx в типы БД
 function mapQuestionType(type: string): string {

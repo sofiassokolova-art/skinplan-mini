@@ -1,9 +1,9 @@
 // scripts/seed-questionnaire.ts
 // Скрипт для заполнения начальной анкеты
 
-import { PrismaClient } from '@prisma/client';
+import { createScriptPrisma } from './lib/prisma';
 
-const prisma = new PrismaClient();
+const prisma = createScriptPrisma();
 
 async function seedQuestionnaire() {
   console.log('🌱 Seeding questionnaire...');

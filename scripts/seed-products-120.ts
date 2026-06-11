@@ -2,9 +2,9 @@
 // Полный seed на 120 реальных продуктов для России 2025
 // Аптечные, маркетплейсы, всё актуально на ноябрь 2025
 
-import { PrismaClient } from '@prisma/client';
+import { createScriptPrisma } from './lib/prisma';
 
-const prisma = new PrismaClient();
+const prisma = createScriptPrisma();
 
 // Функция для создания slug
 function createSlug(name: string): string {

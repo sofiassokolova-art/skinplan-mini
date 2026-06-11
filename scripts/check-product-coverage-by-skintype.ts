@@ -3,9 +3,9 @@
 // Проверка продуктового покрытия по skinTypes и категориям
 // Помогает выявить «дыры» — комбинации без продуктов для добавления в БД
 
-import { PrismaClient } from '@prisma/client';
+import { createScriptPrisma } from './lib/prisma';
 
-const prisma = new PrismaClient();
+const prisma = createScriptPrisma();
 
 // Базовые категории продуктов (Product.category)
 const PRODUCT_CATEGORIES = ['cleanser', 'toner', 'serum', 'moisturizer', 'cream', 'treatment', 'spf', 'mask'] as const;
