@@ -134,7 +134,9 @@ export default function PersonalCabinet() {
           resolve();
           return;
         }
-        if (window.Telegram?.WebApp?.initData) {
+        // resolveTelegramInitData: SDK → URL hash → sessionStorage. Скрипт
+        // telegram.org может не загрузиться вовсе — initData всё равно доступен.
+        if (resolveTelegramInitData()) {
           resolve();
           return;
         }
@@ -142,7 +144,7 @@ export default function PersonalCabinet() {
         const maxAttempts = 20;
         const checkInterval = setInterval(() => {
           attempts++;
-          if (window.Telegram?.WebApp?.initData || attempts >= maxAttempts) {
+          if (resolveTelegramInitData() || attempts >= maxAttempts) {
             clearInterval(checkInterval);
             resolve();
           }
@@ -152,7 +154,7 @@ export default function PersonalCabinet() {
 
     const init = async () => {
       await waitForTelegram();
-      if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
+      if (typeof window === 'undefined' || !resolveTelegramInitData()) {
         setError('Откройте приложение через Telegram Mini App');
         setLoading(false);
         return;
