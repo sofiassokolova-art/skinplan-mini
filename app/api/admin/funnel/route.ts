@@ -222,36 +222,21 @@ export async function GET(request: NextRequest) {
         }
       });
 
-      // Вычисляем конверсию для каждого экрана
-      // ИСПРАВЛЕНО (P0): Получаем всех пользователей, которые начали активную анкету
-      const usersWhoStarted = await prisma.userAnswer.groupBy({
-        by: ['userId'],
+      // ИСПРАВЛЕНО (перф): сколько уникальных пользователей дошли до каждого вопроса.
+      // Благодаря @@unique([userId, questionnaireId, questionId]) одна строка =
+      // один пользователь, поэтому _count строк по questionId = число дошедших.
+      // Раньше тянули в память ВСЕ ответы анкеты (findMany) и строили карты в JS —
+      // на больших данных это валило роут по таймауту, и график не отображался.
+      const reachedGroups = await prisma.userAnswer.groupBy({
+        by: ['questionId'],
         where: {
           questionnaireId: activeQuestionnaireWithQuestions.id,
         },
+        _count: { userId: true },
       });
-
-      const userIdsWhoStarted = new Set(usersWhoStarted.map(u => u.userId));
-
-      // ИСПРАВЛЕНО (P0): Получаем все ответы пользователей для активной анкеты
-      const allAnswers = await prisma.userAnswer.findMany({
-        where: {
-          questionnaireId: activeQuestionnaireWithQuestions.id,
-        },
-        select: {
-          userId: true,
-          questionId: true,
-        },
-      });
-
-      // Создаем карту: userId -> Set<questionId> (все вопросы, на которые ответил пользователь)
-      const userAnswersMap = new Map<string, Set<number>>();
-      allAnswers.forEach(answer => {
-        if (!userAnswersMap.has(answer.userId)) {
-          userAnswersMap.set(answer.userId, new Set());
-        }
-        userAnswersMap.get(answer.userId)!.add(answer.questionId);
-      });
+      const reachedByQuestion = new Map<number, number>(
+        reachedGroups.map((g) => [g.questionId, g._count.userId])
+      );
 
       // Для каждого экрана считаем, сколько пользователей до него дошли (в том же порядке, что и в приложении)
       for (let i = 0; i < allScreens.length; i++) {
@@ -259,16 +244,13 @@ export async function GET(request: NextRequest) {
         let reachedCount = 0;
 
         if (screen.type === 'question' && screen.questionId) {
-          reachedCount = Array.from(userAnswersMap.values()).filter(
-            answeredQuestionIds => answeredQuestionIds.has(screen.questionId!)
-          ).length;
+          reachedCount = reachedByQuestion.get(screen.questionId) || 0;
         } else if (screen.type === 'info') {
           if (screen.triggerQuestionId != null) {
-            reachedCount = Array.from(userAnswersMap.values()).filter(
-              answeredQuestionIds => answeredQuestionIds.has(screen.triggerQuestionId!)
-            ).length;
+            reachedCount = reachedByQuestion.get(screen.triggerQuestionId) || 0;
           } else {
-            reachedCount = userIdsWhoStarted.size;
+            // Начальные инфо-экраны: все, кто начал активную анкету
+            reachedCount = startedQuiz;
           }
         }
 
