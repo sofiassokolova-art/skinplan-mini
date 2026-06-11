@@ -1,90 +1,29 @@
 // lib/charts.tsx
-// Динамические re-exports recharts с ssr:false — recharts не попадает
-// в server-bundle CF Workers (экономит ~100 KiB gzipped).
-// Используется только на admin-страницах (page, analytics, funnel).
+// Реэкспорт recharts для admin-страниц (page, analytics, funnel).
 //
-// `import type` стирается компилятором и не тянет recharts в бандл —
-// типы используются только для cast'ов, runtime-импорт идёт через dynamic().
+// ВАЖНО: компоненты реэкспортируются НАПРЯМУЮ, а не через per-primitive
+// next/dynamic. recharts определяет свои под-элементы (<Bar>, <XAxis>, <Line>,
+// <Cell> и т.д.) по ТИПУ дочернего компонента. Если каждый примитив обернуть в
+// next/dynamic, дети превращаются в dynamic-обёртки, recharts их не распознаёт и
+// рисует ПУСТОЙ контейнер графика — без баров/осей/линий и без ошибок в консоли.
+//
+// Прежняя ленивая загрузка (ssr:false на каждый примитив) делалась ради лимита
+// server-bundle Cloudflare Workers (≤3 MiB). После переезда на Vercel это
+// ограничение неактуально, поэтому возвращаем прямой импорт — графики рендерятся.
 'use client';
 
-import dynamic from 'next/dynamic';
-import type {
-  LineChart as TLineChart,
-  Line as TLine,
-  BarChart as TBarChart,
-  Bar as TBar,
-  PieChart as TPieChart,
-  Pie as TPie,
-  XAxis as TXAxis,
-  YAxis as TYAxis,
-  CartesianGrid as TCartesianGrid,
-  Tooltip as TTooltip,
-  Legend as TLegend,
-  ResponsiveContainer as TResponsiveContainer,
-  Cell as TCell,
+export {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  Cell,
 } from 'recharts';
-
-export const LineChart = dynamic(
-  () => import('recharts').then(m => ({ default: m.LineChart as any })),
-  { ssr: false }
-) as unknown as typeof TLineChart;
-
-export const Line = dynamic(
-  () => import('recharts').then(m => ({ default: m.Line as any })),
-  { ssr: false }
-) as unknown as typeof TLine;
-
-export const BarChart = dynamic(
-  () => import('recharts').then(m => ({ default: m.BarChart as any })),
-  { ssr: false }
-) as unknown as typeof TBarChart;
-
-export const Bar = dynamic(
-  () => import('recharts').then(m => ({ default: m.Bar as any })),
-  { ssr: false }
-) as unknown as typeof TBar;
-
-export const PieChart = dynamic(
-  () => import('recharts').then(m => ({ default: m.PieChart as any })),
-  { ssr: false }
-) as unknown as typeof TPieChart;
-
-export const Pie = dynamic(
-  () => import('recharts').then(m => ({ default: m.Pie as any })),
-  { ssr: false }
-) as unknown as typeof TPie;
-
-export const XAxis = dynamic(
-  () => import('recharts').then(m => ({ default: m.XAxis as any })),
-  { ssr: false }
-) as unknown as typeof TXAxis;
-
-export const YAxis = dynamic(
-  () => import('recharts').then(m => ({ default: m.YAxis as any })),
-  { ssr: false }
-) as unknown as typeof TYAxis;
-
-export const CartesianGrid = dynamic(
-  () => import('recharts').then(m => ({ default: m.CartesianGrid as any })),
-  { ssr: false }
-) as unknown as typeof TCartesianGrid;
-
-export const Tooltip = dynamic(
-  () => import('recharts').then(m => ({ default: m.Tooltip as any })),
-  { ssr: false }
-) as unknown as typeof TTooltip;
-
-export const Legend = dynamic(
-  () => import('recharts').then(m => ({ default: m.Legend as any })),
-  { ssr: false }
-) as unknown as typeof TLegend;
-
-export const ResponsiveContainer = dynamic(
-  () => import('recharts').then(m => ({ default: m.ResponsiveContainer as any })),
-  { ssr: false }
-) as unknown as typeof TResponsiveContainer;
-
-export const Cell = dynamic(
-  () => import('recharts').then(m => ({ default: m.Cell as any })),
-  { ssr: false }
-) as unknown as typeof TCell;
