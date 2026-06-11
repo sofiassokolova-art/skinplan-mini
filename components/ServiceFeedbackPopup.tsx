@@ -1,59 +1,42 @@
 // components/ServiceFeedbackPopup.tsx
-// Сервисный попап для отзыва о SkinIQ (показывается раз в неделю).
+// Сервисный попап для отзыва о SkinIQ.
+// Логика показа: до первого ответа («Нравится» / отправленный комментарий) — после
+// ответа не показывается никогда. Закрытие крестиком = «не сейчас»: ставит кулдаун
+// FEEDBACK_COOLDOWN_DAYS, попап вернётся через неделю.
 // Новый стиль: лайм-акцент, glass-карточка, без зелёного #0A5F59 — синхронизирован
 // с дизайном плана и главной (см. .pv2-* и .home-rd в проекте).
 
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { api } from '@/lib/api';
 
-const FEEDBACK_COOLDOWN_DAYS = 7; // Показывать раз в неделю
+const FEEDBACK_COOLDOWN_DAYS = 7; // Кулдаун после закрытия крестиком
 
 export function ServiceFeedbackPopup() {
   const [isVisible, setIsVisible] = useState(false);
   const [stage, setStage] = useState<'ask' | 'comment' | 'thanks'>('ask');
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Компонент живёт в layout и не перемонтируется при клиентской навигации,
+  // поэтому условия показа перепроверяются на каждую смену pathname.
+  const pathname = usePathname();
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const pathname = window.location.pathname;
-      if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
-        return;
-      }
-      if (pathname === '/home') {
-        try {
-          const cached = sessionStorage.getItem('user_preferences_cache');
-          if (cached) {
-            const parsed = JSON.parse(cached);
-            const hasPlanProgress = parsed?.data?.hasPlanProgress ?? false;
-            if (!hasPlanProgress) {
-              return;
-            }
-          } else {
-            return;
-          }
-        } catch {
-          return;
-        }
-      }
-    }
-
     const checkShouldShow = async () => {
       if (typeof window === 'undefined') return;
-      const pathname = window.location.pathname;
-      if (pathname === '/quiz' || pathname.startsWith('/quiz/')) return;
-      if (pathname === '/home') {
+      const path = window.location.pathname;
+      if (path === '/quiz' || path.startsWith('/quiz/')) return;
+      if (path === '/home') {
+        // На главной показываем только пользователям с планом. getHasPlanProgress
+        // читает preferences через общий кэш (sessionStorage/память, дедуп запросов) —
+        // в отличие от прямого чтения sessionStorage не подавляет попап, когда кэш
+        // ещё не записан или только что инвалидирован.
         try {
-          const cached = sessionStorage.getItem('user_preferences_cache');
-          if (cached) {
-            const parsed = JSON.parse(cached);
-            const hasPlanProgress = parsed?.data?.hasPlanProgress ?? false;
-            if (!hasPlanProgress) return;
-          } else {
-            return;
-          }
+          const { getHasPlanProgress } = await import('@/lib/user-preferences');
+          const hasPlanProgress = await getHasPlanProgress();
+          if (!hasPlanProgress) return;
         } catch {
           return;
         }
@@ -109,7 +92,7 @@ export function ServiceFeedbackPopup() {
     }, 3000);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [pathname]);
 
   const persistAfterSend = async () => {
     try {
@@ -144,6 +127,16 @@ export function ServiceFeedbackPopup() {
 
   const handleClose = () => {
     setIsVisible(false);
+    // Закрытие крестиком = «не сейчас»: ставим только дату (кулдаун на неделю),
+    // но не serviceFeedbackSent — попап вернётся через FEEDBACK_COOLDOWN_DAYS.
+    void (async () => {
+      try {
+        const { setLastServiceFeedbackDate } = await import('@/lib/user-preferences');
+        await setLastServiceFeedbackDate(new Date().toISOString());
+      } catch (err) {
+        console.warn('Failed to save service feedback dismiss date:', err);
+      }
+    })();
   };
 
   if (!isVisible) return null;
@@ -305,7 +298,12 @@ export function ServiceFeedbackPopup() {
             <div className="sf-actions">
               <button
                 className="sf-btn ghost"
-                onClick={() => setStage('ask')}
+                onClick={() => {
+                  // Сбрасываем черновик, чтобы текст не утёк в позитивный отзыв,
+                  // если после «Назад» пользователь нажмёт «Нравится»
+                  setComment('');
+                  setStage('ask');
+                }}
                 disabled={isSubmitting}
               >
                 Назад

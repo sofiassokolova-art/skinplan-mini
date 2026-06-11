@@ -112,7 +112,7 @@ function ImproveSkinScreenComponent({
             height: '100%',
             maxWidth: '420px',
             margin: '0 auto',
-            padding: 'calc(clamp(16px, 4vh, 32px) + 56px) 20px calc(24px + env(safe-area-inset-bottom, 0px))',
+            padding: 'calc(clamp(16px, 4vh, 32px) + 56px) 20px calc(48px + env(safe-area-inset-bottom, 0px))',
             boxSizing: 'border-box',
             display: 'flex',
             flexDirection: 'column',
@@ -182,6 +182,9 @@ function ImproveSkinScreenComponent({
               результатом во времени (новый смысл, не дублирует «состав плана») */}
           <div
             style={{
+              // flexShrink: 0 — иначе flex-колонка ужимает карточки под вьюпорт,
+              // и кнопка «Получить план» обрезается overflow:hidden CTA-карточки
+              flexShrink: 0,
               background: 'var(--glass-bg)',
               backdropFilter: 'blur(28px) saturate(160%)',
               WebkitBackdropFilter: 'blur(28px) saturate(160%)',
@@ -278,7 +281,7 @@ function ImproveSkinScreenComponent({
                       style={{
                         fontSize: 12,
                         fontWeight: 700,
-                        color: '#5C7A00',
+                        color: 'var(--ink)',
                         letterSpacing: '0.02em',
                         marginBottom: 3,
                       }}
@@ -305,6 +308,7 @@ function ImproveSkinScreenComponent({
           {/* CTA-карточка: финальный вопрос + кнопка «Получить план» */}
           <div
             style={{
+              flexShrink: 0,
               marginTop: 4,
               background: 'rgba(var(--ink-rgb),0.92)',
               borderRadius: '24px',
@@ -329,19 +333,6 @@ function ImproveSkinScreenComponent({
                 pointerEvents: 'none',
               }}
             />
-            <div
-              style={{
-                position: 'relative',
-                fontSize: '11px',
-                fontWeight: 700,
-                letterSpacing: '0.14em',
-                textTransform: 'uppercase',
-                color: LIME,
-                marginBottom: 8,
-              }}
-            >
-              Финальный шаг
-            </div>
             <h2
               style={{
                 position: 'relative',

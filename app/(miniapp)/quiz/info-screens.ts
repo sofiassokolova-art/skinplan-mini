@@ -227,7 +227,6 @@ export const INFO_SCREENS: InfoScreen[] = [
   {
     id: 'no_mistakes',
     title: 'Ваш SkinIQ-план почти готов',
-    subtitle: 'Мы собрали рекомендации, которые помогут вашей коже выглядеть лучше — без хаотичных покупок и сложных схем.',
     showAfterQuestionCode: 'budget',
     ctaText: 'Завершить анализ',
   },
