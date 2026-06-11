@@ -3,12 +3,11 @@
 // («Ваш SkinIQ-план почти готов»).
 //
 // Стиль выровнен с остальными инфо-экранами анкеты (PersonalAnalysisScreen и др.):
-// заголовок слева (Unbounded), подзаголовок-описание, стеклянные карточки
-// (var(--glass-bg) + blur), лаймовый акцент-делитель. Вместо тяжёлого
-// центрированного «кольца 92%» — спокойный горизонтальный прогресс-бар
-// «План формируется», по-эпловски тонкий и сдержанный.
+// заголовок слева (Unbounded), фон back11 без скрима. Прогресс «План формируется» —
+// чёрная карточка с лаймовым пятном (как CTA на ImproveSkinScreen), бар и цифра
+// анимируются 0 → 99% с ease-out, по заполненной части ходит блик.
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
 import { FixedContinueButton } from '../buttons/FixedContinueButton';
@@ -28,11 +27,8 @@ const PLAN_BENEFITS: Array<{ title: string; desc: string }> = [
   { title: 'Понятная схема по шагам', desc: 'Что и когда наносить' },
 ];
 
-// Поверх текстуры back11 — плотный нейтральный скрим: глушит пузырьки текстуры,
-// чтобы фон читался чистым (без «пятен»), оставляя лишь лёгкий намёк на фактуру.
-const PLAN_BLOB_OVERLAY = `
-  linear-gradient(rgba(244,242,238,0.82), rgba(244,242,238,0.88))
-`;
+const PLAN_PROGRESS = 99;
+const PLAN_PROGRESS_DURATION_MS = 1400;
 
 const TITLE_FONT =
   "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif";
@@ -55,24 +51,6 @@ function CheckIcon() {
   );
 }
 
-function SparkleIcon() {
-  return (
-    <svg
-      width="22"
-      height="22"
-      viewBox="0 0 28 28"
-      fill="none"
-      stroke="var(--ink)"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M14 2.5c1.6 7 4.5 9.9 11.5 11.5-7 1.6-9.9 4.5-11.5 11.5C12.4 18.5 9.5 15.6 2.5 14 9.5 12.4 12.4 9.5 14 2.5Z" />
-    </svg>
-  );
-}
-
 function NoMistakesScreenComponent({
   screen,
   currentInfoScreenIndex,
@@ -81,6 +59,21 @@ function NoMistakesScreenComponent({
   isHandlingNext = false,
 }: NoMistakesScreenProps) {
   const shouldShowBackButton = currentInfoScreenIndex > 0 && !!onBack;
+
+  // Анимация прогресса: бар и цифра разгоняются 0 → 99 с ease-out при появлении.
+  const [progress, setProgress] = useState(0);
+  useEffect(() => {
+    let raf = 0;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min((now - start) / PLAN_PROGRESS_DURATION_MS, 1);
+      const eased = 1 - Math.pow(1 - t, 3); // cubic ease-out
+      setProgress(Math.round(eased * PLAN_PROGRESS));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
   const handleBackWithScroll = () => {
     const scrollTop =
       window.pageYOffset ||
@@ -122,17 +115,6 @@ function NoMistakesScreenComponent({
           sizes="100vw"
           style={{ objectPosition: 'center', pointerEvents: 'none' }}
         />
-        {/* Бренд-пятна + скрим поверх текстуры */}
-        <div
-          aria-hidden
-          style={{
-            position: 'absolute',
-            inset: 0,
-            zIndex: 1,
-            pointerEvents: 'none',
-            background: PLAN_BLOB_OVERLAY,
-          }}
-        />
         <div
           className="animate-fade-in"
           style={{
@@ -161,7 +143,7 @@ function NoMistakesScreenComponent({
               lineHeight: '115%',
               letterSpacing: '-0.6px',
               textAlign: 'left',
-              margin: '0 0 10px 4px',
+              margin: '0 0 20px 4px',
               color: 'var(--ink)',
             }}
           >
@@ -181,28 +163,44 @@ function NoMistakesScreenComponent({
             </p>
           )}
 
-          {/* CARD 1 — прогресс «План формируется» (тонкий бар, по-эпловски) */}
+          {/* CARD 1 — прогресс «План формируется»: чёрная карточка с лаймовым
+              пятном, как CTA-блок на финальном экране (ImproveSkinScreen) */}
           <div
             style={{
-              background: 'var(--glass-bg)',
-              backdropFilter: 'blur(28px) saturate(160%)',
-              WebkitBackdropFilter: 'blur(28px) saturate(160%)',
-              border: '1px solid var(--glass-border)',
+              position: 'relative',
+              overflow: 'hidden',
+              background: 'rgba(var(--ink-rgb),0.92)',
               borderRadius: '22px',
               padding: '18px 20px',
               marginBottom: '14px',
-              boxShadow: '0 10px 32px rgba(0,0,0,0.06)',
+              boxShadow: '0 14px 36px rgba(0,0,0,0.18)',
+              color: 'var(--canvas-white)',
             }}
           >
             <div
+              aria-hidden
               style={{
+                position: 'absolute',
+                top: -40,
+                right: -30,
+                width: 140,
+                height: 140,
+                borderRadius: '50%',
+                background:
+                  'radial-gradient(circle, rgba(var(--accent-rgb),0.45) 0%, transparent 70%)',
+                pointerEvents: 'none',
+              }}
+            />
+            <div
+              style={{
+                position: 'relative',
                 display: 'flex',
                 alignItems: 'baseline',
                 justifyContent: 'space-between',
                 marginBottom: 12,
               }}
             >
-              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--canvas-white)' }}>
                 План формируется
               </span>
               <span
@@ -211,30 +209,55 @@ function NoMistakesScreenComponent({
                   fontSize: 18,
                   fontWeight: 700,
                   letterSpacing: '-0.5px',
-                  color: 'var(--ink)',
+                  color: 'var(--canvas-white)',
                 }}
               >
-                92<span style={{ fontSize: 12, color: '#6B7280' }}>%</span>
+                {progress}<span style={{ fontSize: 12, color: 'rgba(var(--canvas-white-rgb),0.6)' }}>%</span>
               </span>
             </div>
             <div
               style={{
+                position: 'relative',
                 height: 8,
                 borderRadius: 999,
-                background: 'rgba(var(--ink-rgb),0.08)',
+                background: 'rgba(var(--canvas-white-rgb),0.16)',
                 overflow: 'hidden',
               }}
             >
               <div
                 style={{
-                  width: '92%',
+                  position: 'relative',
+                  width: `${progress}%`,
                   height: '100%',
                   borderRadius: 999,
                   background: 'var(--accent)',
                   boxShadow: '0 1px 6px rgba(var(--accent-rgb),0.5)',
+                  overflow: 'hidden',
                 }}
-              />
+              >
+                {/* Бегущий блик по заполненной части */}
+                <div
+                  aria-hidden
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background:
+                      'linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.65) 50%, transparent 70%)',
+                    animation: 'qzPlanBarSheen 2.2s ease-in-out 0.9s infinite',
+                  }}
+                />
+              </div>
             </div>
+            <style>{`
+              @keyframes qzPlanBarSheen {
+                0% { transform: translateX(-100%); }
+                55% { transform: translateX(100%); }
+                100% { transform: translateX(100%); }
+              }
+              @media (prefers-reduced-motion: reduce) {
+                [style*="qzPlanBarSheen"] { animation: none !important; }
+              }
+            `}</style>
           </div>
 
           {/* CARD 2 — «В вашем плане»: чек-лист в стиле PersonalAnalysisScreen */}
@@ -246,7 +269,6 @@ function NoMistakesScreenComponent({
               border: '1px solid var(--glass-border)',
               borderRadius: '22px',
               padding: '20px 22px 22px',
-              marginBottom: '14px',
               boxShadow: '0 10px 32px rgba(0,0,0,0.06)',
             }}
           >
@@ -315,37 +337,6 @@ function NoMistakesScreenComponent({
             </div>
           </div>
 
-          {/* FOOTER — лаймовая плашка-акцент */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 13,
-              padding: '13px 16px',
-              borderRadius: 18,
-              border: '1px solid rgba(183,217,20,0.55)',
-              background: 'rgba(231,252,142,0.40)',
-            }}
-          >
-            <div
-              style={{
-                width: 38,
-                height: 38,
-                flexShrink: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: '50%',
-                background: 'rgba(255,255,255,0.5)',
-                border: '1px solid rgba(var(--ink-rgb),0.18)',
-              }}
-            >
-              <SparkleIcon />
-            </div>
-            <span style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.34 }}>
-              Только то, что действительно нужно вашей коже
-            </span>
-          </div>
         </div>
 
         <FixedContinueButton

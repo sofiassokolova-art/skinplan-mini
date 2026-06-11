@@ -1,7 +1,7 @@
 // components/quiz/screens/PersonalAnalysisScreen.tsx
 // Экран «Экспертный анализ от SkinIQ» — статичный (position: fixed, без скролла),
-// фон — одна из back-картинок анкеты с лаймовыми
-// углами-overlay. Hero: 92% социального пруфа. Ниже — стеклянная карточка
+// фон — одна из back-картинок анкеты без цветных оверлеев.
+// Hero: 92% социального пруфа. Ниже — стеклянная карточка
 // «Что входит в программу» с тремя пунктами (Диагностика / Подбор средств /
 // Протокол ухода). CTA — стандартная FixedContinueButton.
 
@@ -109,21 +109,6 @@ function PersonalAnalysisScreenComponent({
             pointerEvents: 'none',
           }}
         />
-        {/* Лаймовый overlay-акцент по углам */}
-        <div
-          aria-hidden
-          style={{
-            position: 'absolute',
-            inset: 0,
-            zIndex: 1,
-            pointerEvents: 'none',
-            background: `
-              radial-gradient(45% 25% at 100% 0%, rgba(var(--accent-rgb),0.45) 0%, transparent 60%),
-              radial-gradient(40% 20% at 0% 100%, rgba(var(--accent-rgb),0.25) 0%, transparent 60%)
-            `,
-          }}
-        />
-
         {/* CONTENT */}
         <div
           className="animate-fade-in"
