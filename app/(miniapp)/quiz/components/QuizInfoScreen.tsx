@@ -907,9 +907,18 @@ export function QuizInfoScreen({
             <h1 style={{
               fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 700, fontSize: 'clamp(20px, 6vw, 28px)', lineHeight: '1.25',
-              color: '#000000', margin: '0', maxWidth: 'min(340px, 92%)', whiteSpace: 'pre-line',
+              color: '#000000', margin: '0', maxWidth: 'min(340px, 92%)',
             }}>
-              {screen.title}
+              SkinIQ заботится
+              <br />
+              о вашем{' '}
+              <span style={{
+                background: 'linear-gradient(180deg, transparent 60%, var(--accent) 60%)',
+                padding: '0 4px',
+                borderRadius: 4,
+              }}>
+                здоровье
+              </span>
             </h1>
             <div style={{
               marginTop: 'auto',
