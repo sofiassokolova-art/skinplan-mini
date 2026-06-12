@@ -521,6 +521,25 @@ export default function PersonalCabinet() {
     }
   };
 
+  const handleDeleteData = async () => {
+    const confirmed = window.confirm(
+      'Удалить все ваши данные? Это действие необратимо: будут удалены анкета, план ухода и профиль, ' +
+      'а согласие на обработку отозвано. Данные о платежах сохраняются по требованию закона.',
+    );
+    if (!confirmed) return;
+    try {
+      await api.deleteMyData();
+      toast.success('Ваши данные удалены');
+      // Возвращаем пользователя в начало — потребуется новое согласие и анкета.
+      setTimeout(() => {
+        window.location.href = '/quiz';
+      }, 1200);
+    } catch (err) {
+      clientLogger.error('Ошибка удаления данных', err);
+      toast.error('Не удалось удалить данные. Попробуйте позже.');
+    }
+  };
+
   if (loading) {
     return <MiniAppPageSkeleton rows={4} />;
   }
@@ -820,6 +839,30 @@ export default function PersonalCabinet() {
           </span>
           <ChevronRightIcon />
         </Link>
+
+        {/* Политика конфиденциальности */}
+        <Link href="/privacy" className="glass-card-md pf-link-card">
+          <span className="pf-link-icon quiet"><DocIcon /></span>
+          <span className="pf-link-body">
+            <span className="pf-link-title">Политика конфиденциальности</span>
+            <span className="pf-link-sub">Как мы обрабатываем ваши данные</span>
+          </span>
+          <ChevronRightIcon />
+        </Link>
+
+        {/* Удаление данных (право субъекта ПДн) */}
+        <button
+          className="glass-card-md pf-link-card"
+          type="button"
+          onClick={handleDeleteData}
+          style={{ width: '100%' }}
+        >
+          <span className="pf-link-body">
+            <span className="pf-link-title" style={{ color: '#D92D20' }}>Удалить мои данные</span>
+            <span className="pf-link-sub">Отзыв согласия и удаление персональных данных</span>
+          </span>
+          <ChevronRightIcon />
+        </button>
 
         {/* О приложении */}
         <section className="glass-card-md">

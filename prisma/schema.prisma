@@ -26,6 +26,7 @@ model User {
   broadcastLogs            BroadcastLog[]
   cart                     Cart[]
   clientLogs               ClientLog[]
+  consents                 Consent[]
   entitlements             Entitlement[]
   payments                 Payment[]
   plan28s                  Plan28[]
@@ -617,6 +618,25 @@ model Payment {
   @@index([status])
   @@index([idempotencyKey])
   @@map("payments")
+}
+
+/// Журнал согласий на обработку ПДн (152-ФЗ: доказуемость согласия, в т.ч. на спец-категорию — данные о здоровье).
+model Consent {
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  telegramId      String    @map("telegram_id")
+  documentVersion String    @map("document_version")
+  consentTypes    String[]  @default([]) @map("consent_types")
+  accepted        Boolean   @default(true)
+  userAgent       String?   @map("user_agent")
+  ipHash          String?   @map("ip_hash")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  revokedAt       DateTime? @map("revoked_at")
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([telegramId])
+  @@map("consents")
 }
 
 model Entitlement {

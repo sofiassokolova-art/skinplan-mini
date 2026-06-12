@@ -260,6 +260,23 @@ export const api = {
     });
   },
 
+  // Согласие на обработку ПДн (152-ФЗ)
+  async getConsentStatus(): Promise<{ hasConsent: boolean; documentVersion: string; granted: string[] }> {
+    return request('/consent');
+  },
+
+  async recordConsent(consentTypes: string[]) {
+    return request('/consent', {
+      method: 'POST',
+      body: JSON.stringify({ accepted: true, consentTypes }),
+    });
+  },
+
+  // Удаление всех персональных данных пользователя (право субъекта ПДн)
+  async deleteMyData() {
+    return request('/profile/delete', { method: 'POST' });
+  },
+
   // Рекомендации
   async getRecommendations(): Promise<RecommendationsResponse> {
     return request<RecommendationsResponse>('/recommendations');
