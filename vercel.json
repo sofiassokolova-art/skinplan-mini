@@ -11,6 +11,9 @@
     },
     "app/api/cron/cleanup-logs/route.ts": {
       "maxDuration": 60
+    },
+    "app/api/cron/data-retention/route.ts": {
+      "maxDuration": 60
     }
   }
 }

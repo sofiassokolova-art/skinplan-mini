@@ -9,6 +9,8 @@ import { usePaywallVisibility } from '@/providers/PaywallVisibilityContext';
 import { DEV_TELEGRAM } from '@/lib/config/timeouts';
 import { AppLoader } from '@/components/AppLoader';
 import { invalidatePlanWarmCache } from '@/lib/plan-warm-cache';
+import { api } from '@/lib/api';
+import { REQUIRED_CONSENTS } from '@/lib/legal/consent';
 
 const devLog = (...args: unknown[]) => {
   if (process.env.NODE_ENV === 'development') {
@@ -197,6 +199,7 @@ export function PaymentGate({
   children,
 }: PaymentGateProps) {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [agreedToHealth, setAgreedToHealth] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentId, setPaymentId] = useState<string | null>(null);
   const [providerPaymentId, setProviderPaymentId] = useState<string | null>(null);
@@ -435,8 +438,8 @@ export function PaymentGate({
   }, [paymentId, onPaymentComplete, productCode]);
 
   const handlePayment = async () => {
-    if (!agreedToTerms) {
-      toast.error('Необходимо согласиться с пользовательским соглашением');
+    if (!agreedToTerms || !agreedToHealth) {
+      toast.error('Необходимо согласиться с обработкой персональных данных');
       return;
     }
 
@@ -448,6 +451,14 @@ export function PaymentGate({
         toast.error('Откройте приложение через Telegram Mini App для оплаты');
         setIsProcessing(false);
         return;
+      }
+
+      // Фиксируем согласие на обработку ПДн (152-ФЗ). Не блокируем оплату,
+      // если запись согласия не удалась — сами чекбоксы уже подтверждают согласие.
+      try {
+        await api.recordConsent(REQUIRED_CONSENTS);
+      } catch (consentErr) {
+        devLog('⚠️ Не удалось записать согласие (некритично для оплаты):', consentErr);
       }
 
       // После старта оплаты сбрасываем кеш entitlement, чтобы второй экран (план/главная)
@@ -806,7 +817,7 @@ export function PaymentGate({
           </div>
         </div>
 
-        {/* Чекбокс + кнопка */}
+        {/* Чекбоксы согласия + кнопка */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <label style={{
             display: 'flex',
@@ -833,25 +844,55 @@ export function PaymentGate({
               color: '#777',
               lineHeight: 1.5,
             }}>
-              Я согласен с{' '}
+              Я даю согласие на обработку персональных данных в соответствии с{' '}
               <a href="/terms" target="_blank" style={{ color: '#000', textDecoration: 'underline' }}>
                 пользовательским соглашением
               </a>
               {' '}и{' '}
-              <a href="/terms" target="_blank" style={{ color: '#000', textDecoration: 'underline' }}>
+              <a href="/privacy" target="_blank" style={{ color: '#000', textDecoration: 'underline' }}>
                 политикой конфиденциальности
               </a>
+            </span>
+          </label>
+
+          <label style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '10px',
+            cursor: 'pointer',
+          }}>
+            <input
+              type="checkbox"
+              checked={agreedToHealth}
+              onChange={(e) => setAgreedToHealth(e.target.checked)}
+              style={{
+                width: '18px',
+                height: '18px',
+                marginTop: '1px',
+                cursor: 'pointer',
+                accentColor: 'var(--accent)',
+                flexShrink: 0,
+              }}
+            />
+            <span style={{
+              fontFamily: "var(--font-inter), 'Inter', sans-serif",
+              fontSize: 'clamp(11px, 2.8vw, 12px)',
+              color: '#777',
+              lineHeight: 1.5,
+            }}>
+              Я даю согласие на обработку данных о состоянии кожи и здоровье (специальная категория
+              персональных данных) для подбора рекомендаций
             </span>
           </label>
 
           {/* Кнопка в стиле анкеты */}
           <button
             onClick={handlePayment}
-            disabled={!agreedToTerms || isProcessing || !!paymentId}
+            disabled={!agreedToTerms || !agreedToHealth || isProcessing || !!paymentId}
             style={{
               width: '100%',
               height: '40px',
-              background: agreedToTerms && !isProcessing && !paymentId ? 'var(--accent)' : 'rgba(var(--accent-rgb),0.4)',
+              background: agreedToTerms && agreedToHealth && !isProcessing && !paymentId ? 'var(--accent)' : 'rgba(var(--accent-rgb),0.4)',
               color: '#000',
               fontFamily: "var(--font-inter), 'Inter', sans-serif",
               fontWeight: 400,
@@ -860,7 +901,7 @@ export function PaymentGate({
               textTransform: 'uppercase',
               border: 'none',
               borderRadius: 0,
-              cursor: agreedToTerms && !isProcessing && !paymentId ? 'pointer' : 'not-allowed',
+              cursor: agreedToTerms && agreedToHealth && !isProcessing && !paymentId ? 'pointer' : 'not-allowed',
               transition: 'opacity 0.15s',
             }}
           >
