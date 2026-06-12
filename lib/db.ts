@@ -5,6 +5,7 @@
 import { PrismaClient, type Prisma } from '@prisma/client';
 import { PrismaNeon } from '@prisma/adapter-neon';
 import { neonConfig } from '@neondatabase/serverless';
+import { piiEncryptionExtension } from './crypto/prisma-pii-extension';
 
 // HTTP fetch транспорт через poolQueryViaFetch=true — без WebSocket-пула,
 // проще и стабильнее в serverless-функциях Vercel (короткоживущие инстансы).
@@ -28,14 +29,17 @@ function createPrismaClient() {
   const log: Prisma.LogLevel[] = process.env.NODE_ENV === 'development'
     ? ['query', 'error', 'warn']
     : ['error'];
+  // .$extends(piiEncryptionExtension) — прозрачное шифрование чувствительных ПДн.
+  // Возвращаем как PrismaClient: расширение сохраняет все делегаты моделей,
+  // а query-хуки навешаны на реальный инстанс (каст влияет только на типы).
   if (isLocalDatabaseUrl(url)) {
-    return new PrismaClient({ log });
+    return new PrismaClient({ log }).$extends(piiEncryptionExtension) as unknown as PrismaClient;
   }
 
   return new PrismaClient({
     adapter: new PrismaNeon({ connectionString: url }),
     log,
-  });
+  }).$extends(piiEncryptionExtension) as unknown as PrismaClient;
 }
 
 // Стандартный global singleton: переиспользуем один PrismaClient между запросами
