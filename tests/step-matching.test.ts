@@ -35,5 +35,20 @@ describe('step matching: product.step/category -> StepCategory', () => {
     expect(mapStepToStepCategory('spf_50_oily', 'spf')).toContain('spf_50_oily');
     expect(mapStepToStepCategory('spf_50_face', 'spf')).toContain('spf_50_face');
   });
+
+  it('P3.2: распознаёт мицеллярную воду (не как масло)', () => {
+    const byStep = mapStepToStepCategory('cleanser_micellar', 'cleanser');
+    expect(byStep).toContain('cleanser_micellar');
+    expect(byStep).not.toContain('cleanser_oil');
+
+    const byName = mapStepToStepCategory('Мицеллярная вода', 'cleanser');
+    expect(byName).toContain('cleanser_micellar');
+  });
+
+  it('P3.2: гидрофильное масло не маппится в мицеллярку', () => {
+    const mapped = mapStepToStepCategory('cleanser_oil', 'cleanser');
+    expect(mapped).toContain('cleanser_oil');
+    expect(mapped).not.toContain('cleanser_micellar');
+  });
 });
 

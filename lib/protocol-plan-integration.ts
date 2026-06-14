@@ -3,9 +3,63 @@
 // Использует протоколы для определения дней (active/barrier/recovery) и ограничения частоты активных ингредиентов
 
 import type { DermatologyProtocol } from './dermatology-protocols';
+import { getIngredientSchedule } from './dermatology-protocols';
 import type { PlanPhases } from './plan-types';
 import type { ActiveIngredient } from './ingredient-compatibility';
 import { logger } from './logger';
+
+/**
+ * P0.1: Детерминированно распределяет N применений ингредиента по 7 дням недели.
+ * Используется для титрации: вместо «активы каждый день» — равномерно разнесённые дни.
+ * Примеры: 1 → [1]; 2 → [1,4]; 3 → [1,3,5]; 4 → [1,3,5,7] (равные интервалы).
+ */
+export function spreadApplicationDays(frequency: number): number[] {
+  if (frequency <= 0) return [];
+  if (frequency >= 7) return [1, 2, 3, 4, 5, 6, 7];
+  const days: number[] = [];
+  for (let i = 0; i < frequency; i++) {
+    days.push(Math.floor((i * 7) / frequency) + 1);
+  }
+  return Array.from(new Set(days));
+}
+
+/**
+ * P0.1: Возвращает дни недели (1-7), в которые активный ингредиент должен применяться
+ * на указанной неделе согласно протоколу (titrationSchedule + cyclingRules).
+ *
+ * - Явные `days` из cyclingRules имеют приоритет.
+ * - frequency === null → нет ограничений (возвращаем null = можно каждый день).
+ * - frequency >= 7 → ежедневно (null).
+ * - frequency <= 0 → не применять ([]).
+ * - Иначе — равномерно разнесённые дни.
+ *
+ * @param options.naiveCap верхняя граница частоты для retinoid-naive пользователей.
+ */
+export function getApplicationDaysForWeek(
+  ingredient: ActiveIngredient,
+  protocol: DermatologyProtocol,
+  week: number,
+  options?: { naiveCap?: number }
+): number[] | null {
+  const schedule = getIngredientSchedule(ingredient, protocol, week);
+
+  // Явные дни из cyclingRules — приоритет над частотой.
+  if (schedule.days && schedule.days.length > 0) {
+    return schedule.days;
+  }
+
+  let frequency = schedule.frequency;
+  if (frequency === null || frequency === undefined) {
+    return null; // нет ограничений
+  }
+
+  if (options?.naiveCap != null && frequency > options.naiveCap) {
+    frequency = options.naiveCap;
+  }
+
+  if (frequency >= 7) return null; // ежедневно = без ограничений по дням
+  return spreadApplicationDays(frequency);
+}
 
 /**
  * Определяет фазу дня на основе протокола

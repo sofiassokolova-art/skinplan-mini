@@ -646,6 +646,7 @@ export async function filterProductsBasic(
           rosaceaRisk: profileClassification.rosaceaRisk || undefined,
           onIsotretinoin,
           currentOralMeds: profileClassification.currentOralMeds || [],
+          fitzpatrickType: profileClassification.fitzpatrickType, // P2.9: учёт фототипа
         })
       : undefined;
 
