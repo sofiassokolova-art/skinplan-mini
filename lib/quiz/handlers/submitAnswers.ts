@@ -6,6 +6,12 @@ import { api } from '@/lib/api';
 import * as userPreferences from '@/lib/user-preferences';
 import { invalidatePlanWarmCache } from '@/lib/plan-warm-cache';
 import { resolveTelegramInitData } from '@/lib/telegram-client';
+import {
+  buildAnswerArray,
+  generateClientSubmissionId,
+  requestSubmitWithRetry,
+} from './submitAnswersCore';
+import { getPrewarmSubmit } from '@/lib/quiz/prewarm-submit';
 import type { SubmitAnswersResponse } from '@/lib/api-types';
 import type { Questionnaire } from '@/lib/quiz/types';
 import React from 'react';
@@ -34,6 +40,10 @@ export interface SubmitAnswersParams {
   isRetakingQuiz: boolean;
   getInitData: () => Promise<string | null>;
 
+  // Клиентская навигация на /loading (router.replace). Если не передан —
+  // фолбэк на window.location.replace (полная перезагрузка документа).
+  navigate?: (url: string) => void;
+
   scopedStorageKeys: {
     JUST_SUBMITTED: string;
   };
@@ -50,24 +60,6 @@ function getTelegramInitDataFallback(params: SubmitAnswersParams): string | null
   } catch {
     return null;
   }
-}
-
-function buildAnswerArray(answers: Record<number, string | string[]>) {
-  return Object.entries(answers)
-    .filter(([questionId, value]) => {
-      const qId = parseInt(questionId, 10);
-      if (!Number.isFinite(qId) || qId <= 0) return false;
-      return value !== undefined;
-    })
-    .map(([questionId, value]) => {
-      const qId = parseInt(questionId, 10);
-      const isArray = Array.isArray(value);
-      return {
-        questionId: qId,
-        answerValue: isArray ? undefined : (value === null ? undefined : (value as string)),
-        answerValues: isArray ? (value as string[]) : undefined,
-      };
-    });
 }
 
 export async function submitAnswers(params: SubmitAnswersParams): Promise<void> {
@@ -149,63 +141,33 @@ export async function submitAnswers(params: SubmitAnswersParams): Promise<void> 
     // 5) отправка с постоянным clientSubmissionId. Сервер атомарно захватывает
     // submission до создания профиля: если первый запрос ещё выполняется, ретрай
     // получает status=processing и ждёт вместо параллельного запуска.
+    //
+    // ОПТИМИЗАЦИЯ: на финальном экране мог быть запущен фоновый пред-сабмит
+    // (lib/quiz/prewarm-submit). Если он есть для тех же ответов — переиспользуем
+    // его результат (клик становится мгновенным). Один clientSubmissionId на фон
+    // и клик гарантирует, что сервер не создаст дубль профиля.
+    const prewarm = getPrewarmSubmit(params.questionnaire.id, answersToSubmit);
     const clientSubmissionId =
-      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-        ? crypto.randomUUID()
-        : `${params.questionnaire.id}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      prewarm?.clientSubmissionId ?? generateClientSubmissionId(params.questionnaire.id);
 
-    const isNetworkError = (e: any): boolean => {
-      const m = String(e?.message || '').toLowerCase();
-      return (
-        e?.name === 'TypeError' ||
-        m.includes('load failed') ||
-        m.includes('failed to fetch') ||
-        m.includes('networkerror') ||
-        m.includes('network request failed')
-      );
-    };
-
-    const MAX_NETWORK_ATTEMPTS = 3;
-    const MAX_PROCESSING_POLLS = 20;
-    let networkAttempts = 0;
-    let processingPolls = 0;
     let result: SubmitAnswersResponse | undefined;
-    while (!result) {
+
+    if (prewarm?.promise) {
       try {
-        const response = await api.submitAnswers({
-          questionnaireId: params.questionnaire.id,
-          answers: answerArray,
-          clientSubmissionId,
-        });
-
-        if (response.status === 'processing') {
-          processingPolls += 1;
-          if (processingPolls >= MAX_PROCESSING_POLLS) {
-            throw new Error('Профиль ещё создаётся. Подождите несколько секунд и попробуйте снова.');
-          }
-
-          const retryAfterMs = response.retryAfterMs ?? 1000;
-          clientLogger.log('⏳ submitAnswers уже обрабатывается сервером, ждём результат', {
-            processingPolls,
-            retryAfterMs,
-          });
-          await new Promise((resolve) => setTimeout(resolve, retryAfterMs));
-          continue;
-        }
-
-        result = response;
-        break;
+        result = await prewarm.promise;
+        clientLogger.log('⚡ submitAnswers переиспользовал фоновый пред-сабмит');
       } catch (e: any) {
-        networkAttempts += 1;
-        const retriable = isNetworkError(e) && networkAttempts < MAX_NETWORK_ATTEMPTS;
-        if (!retriable) throw e;
-
-        clientLogger.warn(`⚠️ submitAnswers сетевая попытка ${networkAttempts}/${MAX_NETWORK_ATTEMPTS} не удалась`, {
-          message: e?.message,
-          name: e?.name,
-        });
-        await new Promise((r) => setTimeout(r, networkAttempts * 700));
+        // Пред-сабмит упал — делаем обычный запрос с тем же clientSubmissionId.
+        clientLogger.warn('⚠️ пред-сабмит упал, фолбэк на обычный запрос', { message: e?.message });
       }
+    }
+
+    if (!result) {
+      result = await requestSubmitWithRetry({
+        questionnaireId: params.questionnaire.id,
+        answers: answerArray,
+        clientSubmissionId,
+      });
     }
 
     clientLogger.log('📥 submitAnswers result', {
@@ -253,7 +215,14 @@ export async function submitAnswers(params: SubmitAnswersParams): Promise<void> 
     clientLogger.log('🔄 redirect to loading', { loadingUrl, profileId });
 
     if (typeof window !== 'undefined') {
-      window.location.replace(loadingUrl);
+      // Клиентский переход (router.replace) вместо полной перезагрузки документа —
+      // не перекачиваем весь бандл заново. Фолбэк на window.location.replace, если
+      // navigate не передан (например, внешние вызовы submitAnswers).
+      if (params.navigate) {
+        params.navigate(loadingUrl);
+      } else {
+        window.location.replace(loadingUrl);
+      }
     }
   } catch (err: any) {
     clientLogger.error('❌ submitAnswers failed', {
