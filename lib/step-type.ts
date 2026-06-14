@@ -134,7 +134,7 @@ export function stepCategoryMatchesStepType(
  */
 export function getStepCategoriesForType(stepType: StepType): StepCategory[] {
   const allCategories: StepCategory[] = [
-    'cleanser_oil', 'cleanser_gentle', 'cleanser_balancing', 'cleanser_deep',
+    'cleanser_oil', 'cleanser_micellar', 'cleanser_gentle', 'cleanser_balancing', 'cleanser_deep',
     'toner_hydrating', 'toner_soothing', 'toner_exfoliant', 'toner_acid', 'toner_aha', 'toner_bha',
     'serum_hydrating', 'serum_niacinamide', 'serum_vitc', 'serum_anti_redness', 'serum_brightening_soft',
     'serum_peptide', 'serum_antiage', 'serum_exfoliant',

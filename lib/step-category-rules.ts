@@ -10,6 +10,7 @@ import { normalizeSkinTypeForRules, normalizeSensitivityForRules } from './skin-
 export type StepCategory =
   // Очищение
   | "cleanser_oil" // Гидрофильное масло (первое очищение для снятия макияжа)
+  | "cleanser_micellar" // Мицеллярная вода (первое очищение, альтернатива маслу для жирной кожи)
   | "cleanser_gentle"
   | "cleanser_balancing"
   | "cleanser_deep"
@@ -152,10 +153,21 @@ export type StepCategoryRule = {
 export const STEP_CATEGORY_RULES: Record<StepCategory, StepCategoryRule> = {
   // --- Очищение ---
   cleanser_oil: {
-    skinTypesAllowed: ["dry", "normal", "combination_dry", "combination_oily", "oily"],
+    // P3.2: Гидрофильное масло — для сухой/нормальной/комби-сухой кожи. Жирной и комби-жирной
+    // коже масло как первый этап не предлагаем (предпочтительнее водное/гелевое очищение).
+    skinTypesAllowed: ["dry", "normal", "combination_dry"],
     avoidIfContraFromProfile: [],
     avoidIfSensitivity: [],
     preferGoals: ["general", "dehydration"], // maintenance → general, dryness → dehydration
+    avoidDiagnoses: []
+  },
+  cleanser_micellar: {
+    // P3.2: Мицеллярная вода — мягкое первое очищение/снятие макияжа. Подходит всем типам,
+    // в первую очередь как альтернатива гидрофильному маслу для жирной/комби-жирной кожи.
+    skinTypesAllowed: ["dry", "normal", "combination_dry", "combination_oily", "oily"],
+    avoidIfContraFromProfile: [],
+    avoidIfSensitivity: [],
+    preferGoals: ["general", "pores", "acne"],
     avoidDiagnoses: []
   },
   cleanser_gentle: {

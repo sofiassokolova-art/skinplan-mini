@@ -102,6 +102,11 @@ export function getStepDescription(stepCategory: StepCategory, skinIssues?: stri
       subtitle: "Первое очищение для снятия макияжа",
       defaultTags: ["очищение", "масло", "макияж"],
     },
+    cleanser_micellar: {
+      name: "Мицеллярная вода",
+      subtitle: "Мягкое первое очищение и снятие макияжа",
+      defaultTags: ["очищение", "макияж", "для жирной кожи"],
+    },
     cleanser_gentle: {
       name: "Очищение (мягкое)",
       subtitle: "Удаляет загрязнения и макияж, не нарушая защитный барьер кожи",

@@ -1,0 +1,10 @@
+ID,Название,Slug,Бренд,ID Бренда,Бренд активен,Цена,Объем,Описание,Описание для пользователя,Состав,Ссылка,Шаг,Категория,Типы кожи,Проблемы,Активные ингредиенты,Избегать при,Hero,Приоритет,Опубликован,Дата создания,Дата обновления
+,Bioderma Sensibio H2O мицеллярная вода,,Bioderma,,Да,,500 мл,,,,,cleanser_micellar,cleanser,"dry, normal, combination_dry, combination_oily, oily, sensitive","sensitivity, redness",,,Нет,0,Нет,,
+,Bioderma Sebium H2O мицеллярная вода,,Bioderma,,Да,,500 мл,,,,,cleanser_micellar,cleanser,"oily, combination_oily, combination_dry","acne, pores, oiliness",,,Нет,0,Нет,,
+,La Roche-Posay Micellar Water Ultra для чувствительной кожи,,La Roche-Posay,,Да,,400 мл,,,,,cleanser_micellar,cleanser,"dry, normal, combination_dry, sensitive","sensitivity, redness",,,Нет,0,Нет,,
+,La Roche-Posay Micellar Water Ultra для жирной кожи,,La Roche-Posay,,Да,,400 мл,,,,,cleanser_micellar,cleanser,"oily, combination_oily","acne, pores, oiliness",,,Нет,0,Нет,,
+,Uriage Eau Micellaire Thermale для нормальной и сухой кожи,,Uriage,,Да,,500 мл,,,,,cleanser_micellar,cleanser,"dry, normal, combination_dry","dryness, sensitivity",,,Нет,0,Нет,,
+,Uriage Eau Micellaire Thermale для комбинированной и жирной кожи,,Uriage,,Да,,500 мл,,,,,cleanser_micellar,cleanser,"oily, combination_oily","oiliness, pores",,,Нет,0,Нет,,
+,Avene Lotion Micellaire мицеллярная вода,,Avene,,Да,,400 мл,,,,,cleanser_micellar,cleanser,"dry, normal, combination_dry, sensitive","sensitivity, redness",,,Нет,0,Нет,,
+,Garnier Мицеллярная вода для всех типов кожи,,Garnier,,Да,,400 мл,,,,,cleanser_micellar,cleanser,"dry, normal, combination_dry, combination_oily, oily","general",,,Нет,0,Нет,,
+,Garnier Мицеллярная вода для жирной и склонной к несовершенствам кожи,,Garnier,,Да,,400 мл,,,,,cleanser_micellar,cleanser,"oily, combination_oily","acne, pores, oiliness",,,Нет,0,Нет,,

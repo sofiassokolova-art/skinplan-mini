@@ -40,7 +40,8 @@ export const DERMATOLOGY_PROTOCOLS: Record<SkinCondition, DermatologyProtocol> =
     condition: 'acne',
     name: 'Протокол для акне',
     description: 'Специализированный уход для проблемной кожи с акне',
-    allowedIngredients: ['bha', 'azelaic_acid', 'adapalene', 'niacinamide', 'benzoyl_peroxide'],
+    // P0.2: sulfur и мягкие брайтенеры (для постакне-пигментации) явно разрешены.
+    allowedIngredients: ['bha', 'azelaic_acid', 'adapalene', 'niacinamide', 'benzoyl_peroxide', 'sulfur', 'tranexamic_acid', 'arbutin', 'kojic_acid'],
     forbiddenIngredients: ['aha', 'retinol', 'vitamin_c'], // кроме адапалена
     allowedSteps: [
       'cleanser_balancing',
@@ -80,12 +81,10 @@ export const DERMATOLOGY_PROTOCOLS: Record<SkinCondition, DermatologyProtocol> =
         week4: 5,
       },
     ],
+    // P2.7: фиксированные дни [2,5] для BHA убраны — они перекрывали titrationSchedule
+    // и BHA навсегда оставался 2x/нед, не наращиваясь до 3→4→5. Теперь частоту BHA задаёт
+    // titrationSchedule (постепенный рост), а cyclingRules оставляем только для azelaic (ежедневно).
     cyclingRules: [
-      {
-        ingredient: 'bha',
-        frequency: '2x_week',
-        days: [2, 5], // вторник и пятница
-      },
       {
         ingredient: 'azelaic_acid',
         frequency: 'daily',
@@ -103,7 +102,9 @@ export const DERMATOLOGY_PROTOCOLS: Record<SkinCondition, DermatologyProtocol> =
     name: 'Протокол для розацеа',
     description: 'Щадящий уход для чувствительной кожи с розацеа',
     // ИСПРАВЛЕНО (P0): Добавлены недостающие ингредиенты
-    allowedIngredients: ['azelaic_acid', 'niacinamide', 'ceramides', 'peptides', 'hyaluronic_acid'],
+    // P0.2: sulfur, транексамовая кислота и мягкие брайтенеры безопасны/применяются при розацеа
+    // (allowlist здесь жёсткий, поэтому без них продукты ошибочно отсекались).
+    allowedIngredients: ['azelaic_acid', 'niacinamide', 'ceramides', 'peptides', 'hyaluronic_acid', 'sulfur', 'tranexamic_acid', 'arbutin', 'kojic_acid'],
     forbiddenIngredients: ['aha', 'bha', 'retinol', 'retinoid', 'vitamin_c', 'benzoyl_peroxide'],
     // ИСПРАВЛЕНО (P0): Добавлен treatment_acne_azelaic, который есть в routineTemplate
     allowedSteps: [
@@ -192,7 +193,8 @@ export const DERMATOLOGY_PROTOCOLS: Record<SkinCondition, DermatologyProtocol> =
     condition: 'pigmentation',
     name: 'Протокол для пигментации',
     description: 'Осветляющий уход для выравнивания тона кожи',
-    allowedIngredients: ['vitamin_c', 'niacinamide', 'azelaic_acid', 'retinol'],
+    // P0.2: ключевые брайтенеры для пигментации — отдельные категории.
+    allowedIngredients: ['vitamin_c', 'niacinamide', 'azelaic_acid', 'retinol', 'tranexamic_acid', 'arbutin', 'kojic_acid'],
     forbiddenIngredients: [],
     allowedSteps: [
       'cleanser_gentle',
@@ -344,6 +346,48 @@ export const DERMATOLOGY_PROTOCOLS: Record<SkinCondition, DermatologyProtocol> =
 };
 
 /**
+ * P1.4: Возвращает клон протокола с разрешённым витамином C и брайтенерами
+ * для случая коморбидности с пигментацией. Не мутирует исходную константу.
+ */
+function adjustProtocolForPigmentation(base: DermatologyProtocol): DermatologyProtocol {
+  const brighteners: ActiveIngredient[] = ['vitamin_c', 'tranexamic_acid', 'arbutin', 'kojic_acid'];
+  return {
+    ...base,
+    name: `${base.name} + пигментация`,
+    description: `${base.description}. Учтена постакне-пигментация (ПИВ): разрешён витамин C и мягкие брайтенеры.`,
+    allowedIngredients: Array.from(new Set([...base.allowedIngredients, ...brighteners])),
+    forbiddenIngredients: base.forbiddenIngredients.filter(i => !brighteners.includes(i)),
+    allowedSteps: Array.from(new Set([...base.allowedSteps, 'serum_vitc' as StepCategory])),
+    forbiddenSteps: base.forbiddenSteps.filter(s => s !== 'serum_vitc'),
+  };
+}
+
+/**
+ * P2.9: Для тёмного фототипа (V–VI по Фитцпатрику) агрессивные кислоты повышают риск
+ * пост-воспалительной гиперпигментации (ПИВ). Возвращает клон протокола с запретом
+ * AHA/BHA и сильных эксфолиантов. Для I–IV возвращает протокол без изменений.
+ */
+function applyFitzpatrickRestriction(
+  protocol: DermatologyProtocol,
+  fitzpatrickType?: 'I_II' | 'III_IV' | 'V_VI'
+): DermatologyProtocol {
+  if (fitzpatrickType !== 'V_VI') return protocol;
+  const acids: ActiveIngredient[] = ['aha', 'bha', 'glycolic_acid', 'lactic_acid', 'salicylic_acid'];
+  const harshSteps: StepCategory[] = ['treatment_exfoliant_strong', 'mask_acid'];
+  return {
+    ...protocol,
+    forbiddenIngredients: Array.from(new Set([...protocol.forbiddenIngredients, ...acids])),
+    allowedIngredients: protocol.allowedIngredients.filter(i => !acids.includes(i)),
+    forbiddenSteps: Array.from(new Set([...protocol.forbiddenSteps, ...harshSteps])),
+    allowedSteps: protocol.allowedSteps.filter(s => !harshSteps.includes(s)),
+    warnings: [
+      ...protocol.warnings,
+      'Тёмный фототип (V–VI): сильные кислоты исключены из-за риска пост-воспалительной гиперпигментации',
+    ],
+  };
+}
+
+/**
  * Определяет протокол на основе профиля кожи
  */
 export function determineProtocol(profile: {
@@ -354,6 +398,7 @@ export function determineProtocol(profile: {
   rosaceaRisk?: string | null;
   onIsotretinoin?: boolean;
   currentOralMeds?: string[];
+  fitzpatrickType?: 'I_II' | 'III_IV' | 'V_VI';
 }): DermatologyProtocol {
   const diagnoses = profile.diagnoses || [];
   const concerns = profile.concerns || [];
@@ -394,27 +439,23 @@ export function determineProtocol(profile: {
     return DERMATOLOGY_PROTOCOLS.atopic_dermatitis;
   }
 
-  // Акне
-  if (
+  // Акне / пигментация — определяем оба признака заранее для учёта коморбидности
+  const hasAcne =
     concerns.some(c => {
       const cLower = c.toLowerCase();
-      return cLower.includes('акне') || cLower.includes('acne') || 
+      return cLower.includes('акне') || cLower.includes('acne') ||
              cLower.includes('высыпания') || cLower.includes('прыщи');
     }) ||
     diagnoses.some(d => {
       const dLower = d.toLowerCase();
-      return dLower.includes('акне') || dLower.includes('acne') || 
+      return dLower.includes('акне') || dLower.includes('acne') ||
              dLower.includes('угревая') || dLower.includes('комедоны');
-    })
-  ) {
-    return DERMATOLOGY_PROTOCOLS.acne;
-  }
+    });
 
-  // Пигментация (включая мелазму, PIH, постакне)
-  if (
+  const hasPigmentation =
     concerns.some(c => {
       const cLower = c.toLowerCase();
-      return cLower.includes('пигментация') || cLower.includes('пигмент') || 
+      return cLower.includes('пигментация') || cLower.includes('пигмент') ||
              cLower.includes('пятна') || cLower.includes('мелазма') ||
              cLower.includes('melasma') || cLower.includes('постакне') ||
              cLower.includes('post-inflammatory');
@@ -424,9 +465,26 @@ export function determineProtocol(profile: {
       return dLower.includes('мелазма') || dLower.includes('melasma') ||
              dLower.includes('пигментация') || dLower.includes('pih') ||
              dLower.includes('post-inflammatory hyperpigmentation');
-    })
-  ) {
-    return DERMATOLOGY_PROTOCOLS.pigmentation;
+    });
+
+  // Акне
+  if (hasAcne) {
+    // P1.4: коморбидность акне + пигментация (постакне/ПИВ) — очень частый случай.
+    // Базовый протокол акне запрещает vitamin C, что лишает пациента ключевого средства
+    // от ПИВ. При сочетании разрешаем витамин C (azelaic уже разрешён; оба безопасны при акне),
+    // не мутируя общую константу — возвращаем скорректированный клон.
+    if (hasPigmentation) {
+      return applyFitzpatrickRestriction(
+        adjustProtocolForPigmentation(DERMATOLOGY_PROTOCOLS.acne),
+        profile.fitzpatrickType
+      );
+    }
+    return DERMATOLOGY_PROTOCOLS.acne;
+  }
+
+  // Пигментация (включая мелазму, PIH, постакне)
+  if (hasPigmentation) {
+    return applyFitzpatrickRestriction(DERMATOLOGY_PROTOCOLS.pigmentation, profile.fitzpatrickType);
   }
 
   return DERMATOLOGY_PROTOCOLS.normal;
