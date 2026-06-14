@@ -98,22 +98,18 @@ export default function LoadingPage() {
 
         if (cancelled) return;
 
-        // Шаг 4: Загрузка плана (прогрев кэша)
+        // Шаг 4: Прогрев серверного кэша плана — НЕ блокируем переход.
+        // Раньше здесь ждали await api.getPlan(); но /plan всё равно сам грузит план,
+        // и общего клиентского кэша между страницами нет — ожидание было лишним
+        // round-trip'ом. Запускаем без await: если успеет прогреть сервер — хорошо.
         setStep('loading_plan');
-        try {
-          await api.getPlan(resolvedProfileId);
-        } catch (err: any) {
-          // Не критично, план уже сгенерирован
+        void api.getPlan(resolvedProfileId).catch((err: any) => {
           console.warn('Plan preload failed (non-critical):', err);
-        }
+        });
 
-        if (cancelled) return;
-
-        // Шаг 5: Готово — редирект на страницу плана с пейволлом
+        // Шаг 5: Готово — редирект на страницу плана с пейволлом.
         // Поток: лоадер → план → пейволл (без навигации) → после оплаты план разблокируется и появляется навигация
         setStep('done');
-
-        await new Promise((resolve) => setTimeout(resolve, 500));
 
         if (cancelled) return;
 

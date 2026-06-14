@@ -8,9 +8,11 @@
 
 import React from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
 import { ButtonSkeleton } from '@/components/ui/SkeletonLoader';
 import { handleGetPlan } from '@/lib/quiz/handlers/handleGetPlan';
+import { startPrewarmSubmit } from '@/lib/quiz/prewarm-submit';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 import { getQuizInfoBackgroundImage } from '@/app/(miniapp)/quiz/image-assets';
 
@@ -28,6 +30,8 @@ export interface ImproveSkinScreenProps {
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
   submitAnswers: () => Promise<void>;
   error?: string | null;
+  // Ответы пользователя — нужны для фонового пред-сабмита (создаём профиль заранее).
+  answers?: Record<number, string | string[]>;
 }
 
 const LIME = 'var(--accent)';
@@ -46,10 +50,24 @@ function ImproveSkinScreenComponent({
   setLoading,
   submitAnswers,
   error,
+  answers,
 }: ImproveSkinScreenProps) {
+  const router = useRouter();
   const shouldShowBackButton = currentInfoScreenIndex > 0 && !!onBack;
   const isCurrentlySubmitting = isSubmitting || isSubmittingRef.current;
   const backgroundImage = screen.image || getQuizInfoBackgroundImage(screen.id);
+
+  // ОПТИМИЗАЦИЯ загрузки кнопки «Получить план ухода»:
+  // 1) фоновый пред-сабмит — пока пользователь читает экран, создаём профиль на
+  //    сервере заранее, чтобы клик был почти мгновенным;
+  // 2) prefetch /loading — чтобы клиентский переход не качал чанк страницы заново.
+  React.useEffect(() => {
+    router.prefetch('/loading');
+    if (questionnaire?.id && answers && Object.keys(answers).length > 0) {
+      startPrewarmSubmit({ questionnaireId: questionnaire.id, answers, isDev });
+    }
+    // questionnaire/answers на этом экране уже зафиксированы; ре-запуск идемпотентен.
+  }, [router, questionnaire?.id, answers, isDev]);
 
   const onGetPlanClick = async () => {
     if (isSubmittingRef.current || isSubmitting) {
