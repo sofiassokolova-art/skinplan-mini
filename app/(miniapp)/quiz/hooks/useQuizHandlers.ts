@@ -4,6 +4,7 @@
 // Хук‑контроллер: инкапсулирует все хендлеры квиза, чтобы упростить QuizRenderer.
 
 import { useCallback, useMemo, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuizContext } from '../components/QuizProvider';
 import type { Question } from '@/lib/quiz/types';
 import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
@@ -47,6 +48,7 @@ const navigationFilterLogger = {
 };
 
 export function useQuizHandlers({ currentQuestion, screen }: UseQuizHandlersParams) {
+  const router = useRouter();
   const {
     quizState,
     questionnaireQuery,
@@ -664,6 +666,7 @@ export function useQuizHandlers({ currentQuestion, screen }: UseQuizHandlersPara
           submitAnswersRef: { current: null },
           isRetakingQuiz,
           getInitData: async () => null,
+          navigate: (url: string) => router.replace(url),
           scopedStorageKeys: {
             JUST_SUBMITTED: QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED,
           },
@@ -685,6 +688,7 @@ export function useQuizHandlers({ currentQuestion, screen }: UseQuizHandlersPara
       setAnswers,
       isRetakingQuiz,
       isDev,
+      router,
       quizState.setFinalizing,
       quizState.setFinalizingStep,
       quizState.setFinalizeError,
