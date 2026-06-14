@@ -390,12 +390,23 @@ export function getDermatologistRecommendations(
   const dehydrated = hydrationScore > 60; // инвертировано: высокое значение = высокая обезвоженность
   const photoagingHigh = photoagingScore > 60;
 
+  // P1.6: Противопоказания для активов — учитываем при подборе hero-ингредиентов.
+  const diagnosesText = (answers.diagnoses || []).join(' ').toLowerCase();
+  const onIsotretinoin =
+    (answers as any).onIsotretinoin === true ||
+    ((answers as any).currentOralMeds || []).some((m: string) => (m || '').toLowerCase().includes('isotretinoin'));
+  const hasRosacea = diagnosesText.includes('розацеа') || diagnosesText.includes('rosacea') || diagnosesText.includes('купероз');
+  // Ретиноиды наружно противопоказаны при беременности, системном изотретиноине и розацеа.
+  const retinoidsAllowed = !answers.pregnant && !onIsotretinoin && !hasRosacea;
+
   // Герои-ингредиенты
   if (highInflammation) {
     recs.heroActives.push('азелаиновая кислота 15–20%', 'ниацинамид 10%', 'центелла');
   }
   if (highPigmentation) {
-    recs.heroActives.push('транексамовая кислота', 'ниацинамид 10%', 'витамин С 15–20%');
+    recs.heroActives.push('транексамовая кислота', 'ниацинамид 10%');
+    // Витамин C исключаем при изотретиноине (раздражение/хейлит).
+    if (!onIsotretinoin) recs.heroActives.push('витамин С 15–20%');
   }
   if (damagedBarrier) {
     recs.heroActives.push('церамиды', 'пантенол 5%', 'центелла', 'полиглутаминовая кислота');
@@ -403,37 +414,25 @@ export function getDermatologistRecommendations(
   if (dehydrated) {
     recs.heroActives.push('гиалуроновая кислота (многослойная)', 'глицерин 10%+', 'сквалан');
   }
-  if (photoagingHigh && !answers.pregnant) {
-    recs.heroActives.push('ретинол 0.3–1%', 'бакучиол', 'пептиды');
+  if (photoagingHigh) {
+    // Бакучиол/пептиды безопасны всегда; ретинол — только при отсутствии противопоказаний.
+    recs.heroActives.push('бакучиол', 'пептиды');
+    if (retinoidsAllowed) recs.heroActives.push('ретинол 0.3–1%');
   }
 
-  // Обязательные продукты (российские аптечные + премиум)
-  if (highInflammation) {
-    recs.mustHave.push(
-      { name: 'Azelik 15% гель', brand: 'Акрихин', price: 850, category: 'treatment' },
-      { name: 'Baziron AC 5%', brand: 'Galderma', price: 950, category: 'treatment' },
-      { name: 'Effaclar Duo(+) M', brand: 'La Roche-Posay', price: 1650, category: 'moisturizer' }
-    );
-  }
-
-  if (highPigmentation) {
-    recs.mustHave.push(
-      { name: 'Mela B3 сыворотка', brand: 'La Roche-Posay', price: 3200, category: 'serum' },
-      { name: 'Brightening Serum', brand: 'The Ordinary', price: 1450, category: 'serum' }
-    );
-  }
-
-  if (damagedBarrier) {
-    recs.mustHave.push(
-      { name: 'Lipikar Balm AP+M', brand: 'La Roche-Posay', price: 1850, category: 'moisturizer' },
-      { name: 'Atoderm Intensive Baume', brand: 'Bioderma', price: 1650, category: 'moisturizer' },
-      { name: 'Cicaplast Baume B5+', brand: 'La Roche-Posay', price: 950, category: 'moisturizer' }
-    );
-  }
+  // P1.6: Конкретные продукты подбираются из реальной БД через фильтр протокола и
+  // совместимости (см. selectedProducts в plan-generator). Захардкоженный список брендов
+  // с ценами удалён: он обходил слой безопасности (мог рекомендовать актив, запрещённый
+  // протоколом) и раскрывал цены, которые не должны попадать в клиентский ответ.
+  recs.mustHave = [];
 
   // Избегать при беременности
   if (answers.pregnant) {
     recs.avoid.push('ретинол', 'салициловая кислота >2%', 'высокие дозы витамина С');
+  }
+  // Избегать при системном изотретиноине
+  if (onIsotretinoin) {
+    recs.avoid.push('наружные ретиноиды', 'AHA/BHA', 'бензоилпероксид', 'азелаиновая кислота', 'витамин C');
   }
 
   // Формируем шаги рутины

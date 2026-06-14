@@ -2,10 +2,29 @@
 // Скрипт для импорта продуктов из CSV файла Gold Apple
 
 import { PrismaClient } from '@prisma/client';
+import { PrismaNeon } from '@prisma/adapter-neon';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { neonConfig } from '@neondatabase/serverless';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const prisma = new PrismaClient();
+// Prisma в этом проекте работает через driver adapter (миграция на Vercel).
+// Для локального Postgres — PrismaPg, для Neon (staging/prod) — PrismaNeon.
+neonConfig.poolQueryViaFetch = true;
+function createPrisma(): PrismaClient {
+  const connectionString = process.env.DATABASE_URL || 'postgresql://test:test@localhost:5432/skinplan_test';
+  let isLocal = false;
+  try {
+    const { hostname } = new URL(connectionString);
+    isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+  } catch { /* ignore */ }
+  const adapter = isLocal
+    ? new PrismaPg({ connectionString })
+    : new PrismaNeon({ connectionString });
+  return new PrismaClient({ adapter });
+}
+
+const prisma = createPrisma();
 
 // Функция для создания slug из названия
 function createSlug(name: string): string {

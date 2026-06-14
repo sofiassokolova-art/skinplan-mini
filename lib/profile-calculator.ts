@@ -163,11 +163,15 @@ export function createSkinProfile(
   const acneLevel = determineAcneLevel(scores);
   const dehydrationLevel = Math.min(Math.max(Math.round(scores.dehydration || 0), 0), 5);
 
-  // Определяем риски (можно расширить логику)
-  const rosaceaRisk = (scores.rosacea || 0) >= 3 ? 'high' : 
-                     (scores.rosacea || 0) >= 1 ? 'medium' : 'none';
+  // Определяем риски.
+  // P1.3: medium-порог поднят с >=1 до >=2. Текущая анкета даёт rosacea/pigmentation=2
+  // только при ЯВНОМ выборе соответствующей проблемы пользователем, поэтому поведение
+  // сегодня не меняется, но один случайный слабый сигнал (=1) из будущих вопросов больше
+  // не переведёт пользователя в самый строгий протокол розацеа (полный запрет активов).
+  const rosaceaRisk = (scores.rosacea || 0) >= 3 ? 'high' :
+                     (scores.rosacea || 0) >= 2 ? 'medium' : 'none';
   const pigmentationRisk = (scores.pigmentation || 0) >= 3 ? 'high' :
-                          (scores.pigmentation || 0) >= 1 ? 'medium' : 'none';
+                          (scores.pigmentation || 0) >= 2 ? 'medium' : 'none';
 
   // Извлекаем возрастную группу и другие данные
   const ageGroup = scores.age_group as string || null;
