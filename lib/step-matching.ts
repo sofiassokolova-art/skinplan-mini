@@ -53,6 +53,14 @@ export function mapStepToStepCategory(
   ) {
     categories.push('cleanser_oil');
     categories.push('cleanser_gentle');
+  } else if (
+    stepStr === 'cleanser_micellar' ||
+    stepStr.includes('micellar') ||
+    stepStr.includes('мицелл') ||
+    (isCleanserContext && (categoryStr.includes('micellar') || categoryStr.includes('мицелл')))
+  ) {
+    categories.push('cleanser_micellar');
+    categories.push('cleanser_gentle');
   } else if (stepStr.startsWith('cleanser_gentle') || (isCleanserContext && stepStr.includes('gentle'))) {
     categories.push('cleanser_gentle');
   } else if (stepStr.startsWith('cleanser_balancing') || (isCleanserContext && stepStr.includes('balancing'))) {

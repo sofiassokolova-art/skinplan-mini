@@ -16,7 +16,7 @@ import {
  * ИСПРАВЛЕНО (P0): Определяет активные ингредиенты из stepCategory
  * Используется как fallback, если product.activeIngredients пусто или ненадежно
  */
-function getActiveIngredientsFromStepCategory(stepCategory?: StepCategory): ActiveIngredient[] {
+export function getActiveIngredientsFromStepCategory(stepCategory?: StepCategory): ActiveIngredient[] {
   if (!stepCategory) return [];
   
   const ingredients: ActiveIngredient[] = [];

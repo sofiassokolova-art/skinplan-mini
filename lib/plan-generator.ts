@@ -30,8 +30,65 @@ import {
   filterProductsWithDermatologyLogic,
   generateProductJustification,
   generateProductWarnings,
+  getActiveIngredientsFromStepCategory,
   type ProductSelectionContext,
 } from '@/lib/dermatology-product-filter';
+import { getApplicationDaysForWeek } from '@/lib/protocol-plan-integration';
+
+/**
+ * P0.1: Проверяет, можно ли применять активный шаг в конкретный день согласно
+ * титрации/циклированию протокола. Реализует реальную постепенность введения активов
+ * (ретинол 1→2→3→4 раз/нед и т.п.), которая раньше декларировалась, но не исполнялась.
+ *
+ * Логика: шаг разрешён, если у него нет «расписанных» активов (только мягкие/без графика),
+ * либо если текущий день недели входит в объединение разрешённых дней расписанных активов.
+ * Мягкие ингредиенты без расписания (ceramides, HA, niacinamide, peptides) не ограничивают.
+ */
+function isActiveStepAllowedOnDay(
+  stepCategory: StepCategory,
+  dayIndex: number,
+  week: number,
+  protocol: DermatologyProtocol,
+  profileClassification: ProfileClassification
+): boolean {
+  const ingredients = getActiveIngredientsFromStepCategory(stepCategory);
+  if (ingredients.length === 0) return true;
+
+  const dayOfWeek = ((dayIndex - 1) % 7) + 1;
+  const isNaive = profileClassification.retinoidExperience === 'naive';
+  const naiveCapByWeek: Record<number, number> = { 1: 1, 2: 2, 3: 3, 4: 4 };
+
+  const scheduledDayGroups: number[][] = [];
+  for (const ing of ingredients) {
+    const isRamped = ing === 'retinol' || ing === 'retinoid' || ing === 'aha' || ing === 'bha';
+    const days = getApplicationDaysForWeek(ing, protocol, week, {
+      naiveCap: isNaive && isRamped ? naiveCapByWeek[week] : undefined,
+    });
+    if (days === null) continue; // нет ограничений для этого актива
+    scheduledDayGroups.push(days);
+  }
+
+  // Ни у одного актива нет расписания → ограничений нет.
+  if (scheduledDayGroups.length === 0) return true;
+
+  const allowedDays = new Set(scheduledDayGroups.flat());
+  return allowedDays.has(dayOfWeek);
+}
+
+/**
+ * P1.5: Убирает из шаблона рутины шаги, явно запрещённые протоколом (forbiddenSteps).
+ * Раньше запрет применялся только на уровне подбора продукта, из-за чего запрещённый шаг
+ * мог остаться в структуре дня пустым плейсхолдером. Фильтруем только по forbiddenSteps —
+ * базовые шаги (очищение/SPF/увлажнение) при этом не теряются и при необходимости
+ * восстанавливаются через ensureStepPresence.
+ */
+function filterStepsByProtocol(
+  steps: StepCategory[],
+  protocol: DermatologyProtocol
+): StepCategory[] {
+  if (!protocol.forbiddenSteps || protocol.forbiddenSteps.length === 0) return steps;
+  return steps.filter(step => !protocol.forbiddenSteps.includes(step));
+}
 
 // ИСПРАВЛЕНО: PlanDay и PlanWeek теперь используются из plan-types.ts и api-types.ts
 // Удалено локальное определение для избежания конфликтов типов
@@ -2179,8 +2236,9 @@ export async function generate28DayPlan(
     rosaceaRisk: profileClassification.rosaceaRisk || undefined,
     onIsotretinoin: profileClassification.onIsotretinoin,
     currentOralMeds: profileClassification.currentOralMeds,
+    fitzpatrickType: profileClassification.fitzpatrickType, // P2.9: учёт фототипа
   });
-  
+
   logger.info('Dermatology protocol determined', {
     protocol: dermatologyProtocol.condition,
     protocolName: dermatologyProtocol.name,
@@ -2198,6 +2256,7 @@ export async function generate28DayPlan(
     ...adjustedEvening,
     ...(adjustedWeekly || []),
     'cleanser_oil', // Может быть добавлен динамически
+    'cleanser_micellar', // Может быть добавлен динамически (жирная кожа + ежедневный макияж)
   ]);
   
   logger.info('Caching step allowance results', {
@@ -2233,7 +2292,17 @@ export async function generate28DayPlan(
   
   // Определяем, нужно ли двойное очищение (гидрофильное масло вечером) для пользователей с ежедневным макияжем
   const makeupFrequency = medicalMarkers?.makeupFrequency as string | undefined;
-  const needsOilCleansing = makeupFrequency === 'daily';
+  // P3.2: Гидрофильное масло НЕ предлагаем жирной/комби-жирной коже — для неё первым
+  // этапом предпочтительнее водное/гелевое очищение (мицеллярка/гель), а не масло.
+  // Мицеллярной категории в каталоге пока нет, поэтому для жирной кожи просто не добавляем
+  // масляный шаг — основной (балансирующий/гелевый) клинзер закрывает снятие макияжа.
+  const normalizedSkinTypeForCleanse = normalizeSkinTypeForRules(profileClassification.skinType);
+  const isOilySkin = normalizedSkinTypeForCleanse === 'oily' || normalizedSkinTypeForCleanse === 'combination_oily';
+  const needsOilCleansing = makeupFrequency === 'daily' && !isOilySkin;
+  // P3.2: Жирной/комби-жирной коже первым этапом — мицеллярная вода (а не масло).
+  // Шаг активируется автоматически, когда в каталоге появятся мицеллярные средства;
+  // до тех пор он просто не наполняется продуктом и опускается.
+  const needsMicellarCleansing = makeupFrequency === 'daily' && isOilySkin;
   
   // [REMOVED] ~530 lines of legacy weeks generation loop.
   // The loop duplicated product selection, dermatology filtering, and step-building logic
@@ -2433,12 +2502,15 @@ export async function generate28DayPlan(
     const isWeekly = isWeeklyFocusDay(dayIndex, weeklySteps, routineComplexity as any);
     
     // ИСПРАВЛЕНО: Используем шаги из шаблона напрямую, а не из weeks
-    const rawMorningSteps = adjustedMorning;
+    // P1.5: Дополнительно убираем шаги, запрещённые дерматологическим протоколом,
+    // чтобы запрещённый активный шаг не оставался в плане пустым плейсхолдером.
+    const rawMorningSteps = filterStepsByProtocol(adjustedMorning, dermatologyProtocol);
     // Если пользователь ежедневно использует макияж, добавляем гидрофильное масло первым этапом вечернего очищения
-    const rawEveningSteps = dedupeSteps([
+    const rawEveningSteps = filterStepsByProtocol(dedupeSteps([
       ...(needsOilCleansing ? ['cleanser_oil' as StepCategory] : []),
+      ...(needsMicellarCleansing ? ['cleanser_micellar' as StepCategory] : []),
       ...adjustedEvening,
-    ]);
+    ]), dermatologyProtocol);
     
     // Фильтруем шаги по правилам профиля
     const allowedMorningSteps = rawMorningSteps.filter((step) => {
@@ -2485,6 +2557,16 @@ export async function generate28DayPlan(
     const morningSteps: DayStep[] = [];
     for (const stepCategory of morningStepsTemplate) {
       const baseStep = getBaseStepFromStepCategory(stepCategory);
+
+      // P0.1: Титрация — пропускаем активный шаг в дни, когда актив не должен применяться
+      // согласно протоколу (постепенное введение ретинола/кислот/витамина C).
+      if (!isActiveStepAllowedOnDay(stepCategory, dayIndex, weekNum, dermatologyProtocol, profileClassification)) {
+        logger.debug('Active step skipped by titration schedule (morning)', {
+          stepCategory, dayIndex, weekNum, userId,
+        });
+        continue;
+      }
+
       let stepProducts = getProductsForStep(stepCategory, phase);
       
       // ИСПРАВЛЕНО (P1): Если продуктов не найдено, пробуем найти через fallback с логированием причины
@@ -2755,6 +2837,15 @@ export async function generate28DayPlan(
     
     const eveningSteps: DayStep[] = [];
     for (const stepCategory of eveningStepsTemplate) {
+      // P0.1: Титрация — пропускаем активный шаг в дни, когда актив не должен применяться
+      // согласно протоколу (постепенное введение ретинола/кислот).
+      if (!isActiveStepAllowedOnDay(stepCategory, dayIndex, weekNum, dermatologyProtocol, profileClassification)) {
+        logger.debug('Active step skipped by titration schedule (evening)', {
+          stepCategory, dayIndex, weekNum, userId,
+        });
+        continue;
+      }
+
       let stepProducts = getProductsForStep(stepCategory, phase);
       
       // ИСПРАВЛЕНО (P1): Если продуктов не найдено, пробуем найти через fallback с логированием причины

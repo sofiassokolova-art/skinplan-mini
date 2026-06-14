@@ -1,7 +1,7 @@
 // lib/ingredient-compatibility.ts
 // Система проверки совместимости активных ингредиентов
 
-export type ActiveIngredient = 
+export type ActiveIngredient =
   | 'retinol' | 'retinoid' | 'adapalene' | 'tretinoin'
   | 'vitamin_c' | 'ascorbic_acid'
   | 'niacinamide'
@@ -10,7 +10,12 @@ export type ActiveIngredient =
   | 'benzoyl_peroxide'
   | 'peptides'
   | 'ceramides'
-  | 'hyaluronic_acid';
+  | 'hyaluronic_acid'
+  // P0.2: Отдельные категории для мягких брайтенеров и серы.
+  // Раньше они ошибочно подменялись на vitamin_c / azelaic_acid / benzoyl_peroxide,
+  // из-за чего попадали под чужие запреты протоколов и ложные конфликты.
+  | 'tranexamic_acid' | 'arbutin' | 'kojic_acid'
+  | 'sulfur';
 
 export interface IngredientConflict {
   ingredients: ActiveIngredient[];
@@ -123,6 +128,31 @@ export const INGREDIENT_CONFLICTS: IngredientConflict[] = [
     recommendation: 'Используйте витамин C утром, BHA вечером.',
   },
   {
+    // P3.1: Две эксфолиирующие кислоты (AHA + BHA) одновременно усиливают эксфолиацию
+    // и риск раздражения/нарушения барьера. Раньше стек ловился только через дубликат
+    // группы 'acids' (generic-сообщение) и не давал явного парного конфликта в матрице.
+    ingredients: ['aha', 'bha'],
+    severity: 'medium',
+    reason: 'AHA и BHA вместе усиливают эксфолиацию и риск раздражения/нарушения барьера',
+    solution: 'separate_time',
+    recommendation: 'Не используйте AHA и BHA одновременно: чередуйте по дням или используйте в разные приёмы (одна утром/в один день, другая — в другой).',
+  },
+  {
+    // P2.10: бензоилпероксид окисляет витамин C, снижая его эффективность.
+    ingredients: ['benzoyl_peroxide', 'vitamin_c'],
+    severity: 'medium',
+    reason: 'Бензоилпероксид окисляет витамин C и снижает его эффективность',
+    solution: 'separate_time',
+    recommendation: 'Используйте витамин C утром, бензоилпероксид вечером (или в разные дни).',
+  },
+  {
+    ingredients: ['benzoyl_peroxide', 'ascorbic_acid'],
+    severity: 'medium',
+    reason: 'Бензоилпероксид окисляет аскорбиновую кислоту и снижает её эффективность',
+    solution: 'separate_time',
+    recommendation: 'Используйте аскорбиновую кислоту утром, бензоилпероксид вечером.',
+  },
+  {
     ingredients: ['salicylic_acid', 'azelaic_acid'],
     severity: 'low',
     reason: 'Только при сверхчувствительной коже может вызвать раздражение',
@@ -230,8 +260,9 @@ export function extractActiveIngredients(product: {
     { pattern: /\bмолочная\s+кислота\b/i, ingredient: 'lactic_acid' },
     { pattern: /\bazelaic\s+acid\b/i, ingredient: 'azelaic_acid' },
     { pattern: /\bазелаиновая\s+кислота\b/i, ingredient: 'azelaic_acid' },
-    { pattern: /\btranexamic\s+acid\b/i, ingredient: 'azelaic_acid' }, // ИСПРАВЛЕНО: добавлен tranexamic acid (близок к azelaic)
-    { pattern: /\bтранэксамовая\s+кислота\b/i, ingredient: 'azelaic_acid' },
+    // P0.2: транексамовая кислота — отдельный мягкий брайтенер, НЕ azelaic_acid.
+    { pattern: /\btranexamic\s+acid\b/i, ingredient: 'tranexamic_acid' },
+    { pattern: /\bтранэксамовая\s+кислота\b/i, ingredient: 'tranexamic_acid' },
     
     // БПО
     { pattern: /\bbenzoyl\s+peroxide\b/i, ingredient: 'benzoyl_peroxide' },
@@ -245,13 +276,17 @@ export function extractActiveIngredients(product: {
     { pattern: /\bцерамиды\b/i, ingredient: 'ceramides' },
     { pattern: /\bhyaluronic\s+acid\b/i, ingredient: 'hyaluronic_acid' },
     { pattern: /\bгиалуроновая\s+кислота\b/i, ingredient: 'hyaluronic_acid' },
-    { pattern: /\barbutin\b/i, ingredient: 'vitamin_c' }, // ИСПРАВЛЕНО: добавлен arbutin (осветляющий)
-    { pattern: /\bарбутин\b/i, ingredient: 'vitamin_c' },
-    { pattern: /\bkojic\s+acid\b/i, ingredient: 'vitamin_c' }, // ИСПРАВЛЕНО: добавлен kojic acid
-    { pattern: /\bkojic\b/i, ingredient: 'vitamin_c' },
-    { pattern: /\bкоевая\s+кислота\b/i, ingredient: 'vitamin_c' },
-    { pattern: /\bsulfur\b/i, ingredient: 'benzoyl_peroxide' }, // ИСПРАВЛЕНО: добавлен sulfur (антибактериальный)
-    { pattern: /\bсера\b/i, ingredient: 'benzoyl_peroxide' },
+    // P0.2: арбутин/койевая кислота — мягкие брайтенеры, НЕ vitamin_c (иначе ложные
+    // конфликты с ниацинамидом и ошибочный запрет в протоколе акне).
+    { pattern: /\barbutin\b/i, ingredient: 'arbutin' },
+    { pattern: /\bарбутин\b/i, ingredient: 'arbutin' },
+    { pattern: /\bkojic\s+acid\b/i, ingredient: 'kojic_acid' },
+    { pattern: /\bkojic\b/i, ingredient: 'kojic_acid' },
+    { pattern: /\bкоевая\s+кислота\b/i, ingredient: 'kojic_acid' },
+    // P0.2: сера — мягкий антибактериальный/противовоспалительный актив (применяется
+    // в т.ч. при розацеа), НЕ benzoyl_peroxide.
+    { pattern: /\bsulfur\b/i, ingredient: 'sulfur' },
+    { pattern: /\bсера\b/i, ingredient: 'sulfur' },
   ];
 
   for (const { pattern, ingredient } of ingredientPatterns) {
@@ -360,15 +395,20 @@ export function getOptimalTimeOfDay(
   // Утренние ингредиенты
   const morningIngredients: ActiveIngredient[] = [
     'vitamin_c', 'ascorbic_acid',
-    'niacinamide',
   ];
 
   // Универсальные (можно и утром, и вечером)
   const universalIngredients: ActiveIngredient[] = [
     'azelaic_acid', // при чувствительной коже - утром
+    'niacinamide', // P2.8: ниацинамид подходит и утром, и вечером (не только утро)
     'peptides',
     'ceramides',
     'hyaluronic_acid',
+    // P0.2: мягкие брайтенеры и сера — без жёсткой привязки ко времени суток
+    'tranexamic_acid',
+    'arbutin',
+    'kojic_acid',
+    'sulfur',
   ];
 
   const hasEvening = ingredients.some(ing => eveningIngredients.includes(ing));

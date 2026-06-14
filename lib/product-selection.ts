@@ -50,6 +50,7 @@ export async function getProductsForStep(
       'moisturizer': ['moisturizer'],
       'cleanser': ['cleanser'],
       'cleanser_oil': ['cleanser'], // Гидрофильное масло ищется как cleanser с ключевыми словами
+      'cleanser_micellar': ['cleanser'], // Мицеллярная вода ищется как cleanser с ключевыми словами
       'serum': ['serum'],
       'toner': ['toner'],
       'treatment': ['treatment'], // treatment в правилах -> treatment в БД (category)
@@ -60,11 +61,12 @@ export async function getProductsForStep(
     for (const cat of step.category) {
       const normalizedCats = categoryMapping[cat] || [cat];
       const isOilCleanser = cat === 'cleanser_oil' || cat.includes('oil');
-      
+      const isMicellarCleanser = cat === 'cleanser_micellar' || cat.includes('micellar') || cat.includes('мицелл');
+
       for (const normalizedCat of normalizedCats) {
         if (isOilCleanser) {
           // Для гидрофильного масла ищем по ключевым словам: oil, масло, гидрофильное
-          strictCategoryConditions.push({ 
+          strictCategoryConditions.push({
             AND: [
               { category: normalizedCat },
               { OR: [
@@ -79,6 +81,21 @@ export async function getProductsForStep(
           });
           // Также ищем просто по category/step для продуктов, которые уже помечены как oil
           strictCategoryConditions.push({ category: normalizedCat, step: { contains: 'oil', mode: 'insensitive' } });
+        } else if (isMicellarCleanser) {
+          // Для мицеллярной воды ищем по ключевым словам: micellar, мицелляр
+          strictCategoryConditions.push({
+            AND: [
+              { category: normalizedCat },
+              { OR: [
+                { name: { contains: 'micellar', mode: 'insensitive' } },
+                { name: { contains: 'мицелл', mode: 'insensitive' } },
+                { step: { contains: 'micellar', mode: 'insensitive' } },
+                { description: { contains: 'мицелл', mode: 'insensitive' } },
+                { descriptionUser: { contains: 'мицелл', mode: 'insensitive' } },
+              ]}
+            ]
+          });
+          strictCategoryConditions.push({ category: normalizedCat, step: { contains: 'micellar', mode: 'insensitive' } });
         } else {
           // ИСПРАВЛЕНО: Сначала строгое совпадение по category (приоритет)
           strictCategoryConditions.push({ category: normalizedCat });
@@ -301,6 +318,7 @@ export async function getProductsForStep(
       'moisturizer': ['moisturizer'],
       'cleanser': ['cleanser'],
       'cleanser_oil': ['cleanser'],
+      'cleanser_micellar': ['cleanser'],
       'serum': ['serum'],
       'toner': ['toner'],
       'treatment': ['treatment'],

@@ -148,6 +148,7 @@ export async function replaceInactiveBrandProducts(
         rosaceaRisk: profileClassification.rosaceaRisk || undefined,
         onIsotretinoin: profileClassification.onIsotretinoin,
         currentOralMeds: profileClassification.currentOralMeds,
+        fitzpatrickType: profileClassification.fitzpatrickType, // P2.9: учёт фототипа
       });
 
   const result: Array<typeof products[0] & { replacementWarning?: string }> = [];
