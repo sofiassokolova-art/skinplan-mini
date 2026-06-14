@@ -343,6 +343,7 @@ export function QuizInfoScreen({
         setLoading={setLoading}
         submitAnswers={submitAnswers}
         error={error}
+        answers={answers}
       />
     );
   }
