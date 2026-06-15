@@ -11,6 +11,7 @@ import { clientLogger } from '@/lib/client-logger';
 import { invalidatePlanWarmCache } from '@/lib/plan-warm-cache';
 import toast from 'react-hot-toast';
 import { PaymentGate } from '@/components/PaymentGate';
+import { resolvePlanPaywall, hasWinbackOfferParam } from '@/lib/paywall-product';
 import type {
   PlanPageContext,
   ProductCard,
@@ -182,8 +183,10 @@ export function PlanPageV2() {
         не «протекал» только на /home.
       */}
       <PaymentGate
-        price={199}
-        productCode="plan_access"
+        {...resolvePlanPaywall({
+          expired: context.planExpired,
+          winbackOffer: hasWinbackOfferParam(searchParams?.toString()),
+        })}
         isRetaking={isRetaking}
         retakeCta={{ text: 'Изменились цели? Перепройти анкету', href: '/quiz?retake=1' }}
         onPaymentComplete={() => {

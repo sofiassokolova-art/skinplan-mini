@@ -4,7 +4,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
 import { clientLogger } from '@/lib/client-logger';
@@ -14,6 +14,7 @@ import { AppLoader } from '@/components/AppLoader';
 import { HomeEmptyState } from '@/components/HomeEmptyState';
 import { getStepMeta, STEP_ICONS } from '@/lib/routine-step-meta';
 import { getClientUserScope } from '@/lib/client-user-scope';
+import { resolvePlanPaywall, hasWinbackOfferParam } from '@/lib/paywall-product';
 interface RoutineItem {
   id: string;
   title: string;
@@ -115,6 +116,8 @@ export default function HomePage() {
   const [tab, setTab] = useState<'AM' | 'PM'>('AM');
   const [error, setError] = useState<unknown>(null);
   const [userName, setUserName] = useState<string | null>(null); // Имя пользователя для приветствия
+  const [planExpired, setPlanExpired] = useState(false); // План истёк (28+ дней) → paywall продления
+  const searchParams = useSearchParams();
   const progressSyncInFlightRef = useRef(false);
 
   useEffect(() => {
@@ -405,7 +408,8 @@ export default function HomePage() {
       // (после перепрохождения в конце снова будет оплата/гейт).
       if (data?.expired === true) {
         // План истёк: оставляем UX на месте (не редиректим),
-        // строим рутину из plan28 и показываем блюр через PaymentGate.
+        // строим рутину из plan28 и показываем блюр через PaymentGate (продление 499₽).
+        setPlanExpired(true);
         setRecommendations(null as any);
         setError(null);
         try {
@@ -420,6 +424,7 @@ export default function HomePage() {
         return;
       }
 
+      setPlanExpired(false);
       setRecommendations(data as Recommendation);
       setError(null); // ИСПРАВЛЕНО: Очищаем ошибку при успешной загрузке
       
@@ -631,8 +636,10 @@ export default function HomePage() {
 
   const renderWithPaymentGate = (children: ReactNode) => (
     <PaymentGate
-      price={199}
-      productCode="plan_access"
+      {...resolvePlanPaywall({
+        expired: planExpired,
+        winbackOffer: hasWinbackOfferParam(searchParams?.toString()),
+      })}
       isRetaking={false}
       retakeCta={{ text: 'Изменились цели? Перепройти анкету', href: '/quiz?retakeFromHome=1' }}
       onPaymentComplete={() => {
