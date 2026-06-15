@@ -20,7 +20,9 @@ const devLog = (...args: unknown[]) => {
 
 interface PaymentGateProps {
   price?: number;
-  productCode?: 'plan_access' | 'subscription_month' | 'retake_topic' | 'retake_full';
+  /** Старая цена для зачёркивания. Если не задана — берём price * 2. */
+  originalPrice?: number;
+  productCode?: 'plan_access' | 'subscription_month' | 'plan_renewal_discount' | 'retake_topic' | 'retake_full';
   isRetaking: boolean;
   onPaymentComplete: () => void;
   retakeCta?: { text: string; href: string };
@@ -32,7 +34,8 @@ const PRODUCT_PRICES: Record<string, number> = {
   plan_access: 199,
   retake_topic: 49, // ИСПРАВЛЕНО: цена за перепрохождение одной темы
   retake_full: 99, // Цена за полное перепрохождение анкеты
-  subscription_month: 499,
+  subscription_month: 499, // Продление доступа к плану
+  plan_renewal_discount: 99, // Win-back продление со скидкой
 };
 
 function shouldMockTelegramInitData(): boolean {
@@ -143,11 +146,20 @@ function getStaleCachedEntitlement(productCode: string): boolean | null {
 }
 
 function requiredEntitlementCode(productCode: string): string {
-  if (productCode === 'plan_access') return 'paid_access';
   if (productCode === 'retake_topic') return 'retake_topic_access';
   if (productCode === 'retake_full') return 'retake_full_access';
-  // Для подписки пока не вводим отдельный код — считаем, что она тоже даёт paid_access
+  // plan_access, subscription_month (продление), plan_renewal_discount (win-back)
+  // — все дают paid_access (единый код доступа к плану).
   return 'paid_access';
+}
+
+/** Продукт, который продлевает/открывает доступ к плану (гейтится по paid_access). */
+function isPlanAccessProduct(productCode: string): boolean {
+  return (
+    productCode === 'plan_access' ||
+    productCode === 'subscription_month' ||
+    productCode === 'plan_renewal_discount'
+  );
 }
 
 async function fetchEntitlementCodes(initData: string): Promise<string[]> {
@@ -191,6 +203,7 @@ async function fetchEntitlementCodes(initData: string): Promise<string[]> {
 
 export function PaymentGate({
   price,
+  originalPrice,
   productCode = 'plan_access',
   isRetaking,
   onPaymentComplete,
@@ -275,7 +288,7 @@ export function PaymentGate({
   // Поэтому для plan_access мы короткое время перепроверяем entitlement в фоне.
   useEffect(() => {
     if (hasPaid) return;
-    if (productCode !== 'plan_access') return;
+    if (!isPlanAccessProduct(productCode)) return;
 
     // До 30 секунд после монтирования обновляем статус раз в 2 секунды.
     // Глобальный cache/promise внутри PaymentGate не даст спамить API слишком сильно.
@@ -600,23 +613,40 @@ export function PaymentGate({
   const displayPrice =
     typeof price === 'number' && Number.isFinite(price) ? price : (PRODUCT_PRICES[productCode] ?? 0);
 
+  // Старая (зачёркнутая) цена: явная originalPrice, иначе ×2 (маркетинговая «скидка»).
+  const strikePrice =
+    typeof originalPrice === 'number' && Number.isFinite(originalPrice) && originalPrice > displayPrice
+      ? originalPrice
+      : displayPrice * 2;
+
+  const isRenewal = productCode === 'subscription_month' || productCode === 'plan_renewal_discount';
+  const priceCaption = isRenewal ? 'Продление на 28 дней' : 'Единоразовый доступ';
+
   const paywallTitle =
     productCode === 'retake_topic'
       ? 'Перепройдите тему'
       : productCode === 'retake_full'
         ? 'Пройдите анкету заново'
-        : isRetaking
-          ? 'Обновите доступ к плану'
-          : 'Получите полный доступ к плану';
+        : productCode === 'plan_renewal_discount'
+          ? 'Продлите доступ со скидкой'
+          : productCode === 'subscription_month'
+            ? 'Продлите доступ к плану'
+            : isRetaking
+              ? 'Обновите доступ к плану'
+              : 'Получите полный доступ к плану';
 
   const paywallSubtitle =
     productCode === 'retake_topic'
       ? 'Обновите только нужные части рекомендаций'
       : productCode === 'retake_full'
         ? 'Пройдите всю анкету заново. Счёт 28 дней начнётся заново'
-        : isRetaking
-          ? 'Персональные рекомендации на основе новых данных'
-          : 'Персональный уход на 28 дней, подобранный под вашу кожу';
+        : productCode === 'plan_renewal_discount'
+          ? 'Специальная цена для вас — ещё 28 дней ухода по вашему плану'
+          : productCode === 'subscription_month'
+            ? 'Ещё 28 дней доступа к вашему персональному плану ухода'
+            : isRetaking
+              ? 'Персональные рекомендации на основе новых данных'
+              : 'Персональный уход на 28 дней, подобранный под вашу кожу';
 
   const benefits = [
     {
@@ -796,14 +826,14 @@ export function PaymentGate({
               textDecoration: 'line-through',
               marginBottom: '2px',
             }}>
-              {displayPrice * 2} ₽
+              {strikePrice} ₽
             </div>
             <div style={{
               fontFamily: "var(--font-inter), 'Inter', sans-serif",
               fontSize: 'clamp(12px, 3vw, 14px)',
               color: '#555',
             }}>
-              Единоразовый доступ
+              {priceCaption}
             </div>
           </div>
           <div style={{

@@ -22,6 +22,7 @@ import toast from 'react-hot-toast';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
 import { getPhaseForDay, getPhaseLabel } from '@/lib/plan-types';
 import { clientLogger } from '@/lib/client-logger';
+import { resolvePlanPaywall, hasWinbackOfferParam } from '@/lib/paywall-product';
 
 interface PlanPageClientNewProps {
   plan28: Plan28;
@@ -576,10 +577,14 @@ export function PlanPageClientNew({
         userName={userName}
       />
 
-      {/* PaymentGate оборачивает платный контент */}
+      {/* PaymentGate оборачивает платный контент.
+          Первая покупка — 199₽; продление (план истёк) — 499₽;
+          win-back по офферу из бота (?offer=winback) — 99₽. */}
       <PaymentGate
-        price={199}
-        productCode="plan_access"
+        {...resolvePlanPaywall({
+          expired: planExpired,
+          winbackOffer: hasWinbackOfferParam(searchParams?.toString()),
+        })}
         isRetaking={isRetaking}
         onPaymentComplete={() => {
           setNeedsFirstPayment(false);

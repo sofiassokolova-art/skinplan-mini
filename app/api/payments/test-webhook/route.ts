@@ -8,7 +8,8 @@ import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 
-import { entitlementCodeForProduct, calculateValidUntil } from '@/lib/payment-helpers';
+import { entitlementCodeForProduct, calculateValidUntil, isRenewalProduct, WINBACK_OFFER_TAG } from '@/lib/payment-helpers';
+import { invalidateAllUserCache } from '@/lib/cache';
 import { isExplicitNonProd } from '@/lib/deployment-env';
 
 /**
@@ -139,7 +140,36 @@ export async function POST(request: NextRequest) {
         paymentId: payment.id,
         validUntil: validUntil.toISOString(),
       });
+
+      // Продление: сбрасываем счётчик плана и снимаем win-back тег (как в проде).
+      if (isRenewalProduct(payment.productCode)) {
+        const latestPlan = await tx.plan28.findFirst({
+          where: { userId: payment.userId },
+          orderBy: { createdAt: 'desc' },
+          select: { id: true },
+        });
+        if (latestPlan) {
+          await tx.plan28.update({
+            where: { id: latestPlan.id },
+            data: { createdAt: new Date() },
+          });
+        }
+        const userTags = await tx.user.findUnique({
+          where: { id: payment.userId },
+          select: { tags: true },
+        });
+        if (userTags?.tags?.includes(WINBACK_OFFER_TAG)) {
+          await tx.user.update({
+            where: { id: payment.userId },
+            data: { tags: { set: userTags.tags.filter((t) => t !== WINBACK_OFFER_TAG) } },
+          });
+        }
+      }
     });
+
+    if (isRenewalProduct(payment.productCode)) {
+      await invalidateAllUserCache(payment.userId).catch(() => {});
+    }
 
     return NextResponse.json({ 
       ok: true, 
