@@ -16,7 +16,8 @@ const PRODUCT_LABELS: Record<string, string> = {
   plan_access: 'Доступ к плану ухода',
   retake_topic: 'Перепрохождение темы',
   retake_full: 'Полное перепрохождение анкеты',
-  subscription_month: 'Подписка на 1 месяц',
+  subscription_month: 'Продление доступа к плану',
+  plan_renewal_discount: 'Продление доступа к плану (скидка)',
 };
 
 /** Формирует объект receipt для ЮKassa по 54-ФЗ. Нужен email или phone покупателя. */
@@ -130,13 +131,17 @@ const PRODUCTS: Record<string, { amount: number; currency: string }> = {
     currency: 'RUB',
   },
   subscription_month: {
-    amount: 49900, // 499 рублей в копейках
+    amount: 49900, // 499 рублей в копейках — стандартное продление доступа к плану
+    currency: 'RUB',
+  },
+  plan_renewal_discount: {
+    amount: 9900, // 99 рублей в копейках — win-back продление со скидкой (только по офферу из бота)
     currency: 'RUB',
   },
 };
 
 // ИСПРАВЛЕНО: Используем единую функцию из shared модуля
-import { entitlementCodeForProduct } from '@/lib/payment-helpers';
+import { entitlementCodeForProduct, WINBACK_OFFER_TAG } from '@/lib/payment-helpers';
 import { isExplicitNonProd } from '@/lib/deployment-env';
 
 export async function POST(request: NextRequest) {
@@ -196,6 +201,21 @@ export async function POST(request: NextRequest) {
       const duration = Date.now() - startTime;
       logApiRequest(method, path, 400, duration, userId);
       return ApiResponse.error(`Unknown productCode: ${productCode}`, 400);
+    }
+
+    // SECURITY: скидочное продление (99₽) доступно ТОЛЬКО пользователям, которым
+    // крон отправил win-back оффер (тег WINBACK_OFFER_TAG). Иначе любой мог бы
+    // купить продление за 99₽ вместо 499₽, подставив productCode в запросе.
+    if (productCode === 'plan_renewal_discount') {
+      const offered = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { tags: true },
+      });
+      if (!offered?.tags?.includes(WINBACK_OFFER_TAG)) {
+        const duration = Date.now() - startTime;
+        logApiRequest(method, path, 403, duration, userId);
+        return ApiResponse.error('Это предложение для вас сейчас недоступно', 403);
+      }
     }
 
     // Проверяем, нет ли уже succeeded-платежа для этого продукта (защита от повторной покупки)
