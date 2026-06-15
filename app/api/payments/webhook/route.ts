@@ -134,7 +134,8 @@ function mapProviderStatus(provider: string, providerStatus: string): string {
   return statusMap[provider]?.[providerStatus] || 'pending';
 }
 
-import { entitlementCodeForProduct, calculateValidUntil } from '@/lib/payment-helpers';
+import { entitlementCodeForProduct, calculateValidUntil, isRenewalProduct, WINBACK_OFFER_TAG } from '@/lib/payment-helpers';
+import { invalidateAllUserCache } from '@/lib/cache';
 
 export async function POST(request: NextRequest) {
   try {
@@ -342,6 +343,38 @@ export async function POST(request: NextRequest) {
           paymentId: payment.id,
           validUntil: validUntil.toISOString(),
         });
+
+        // Продление (499₽ / 99₽): сбрасываем 28-дневный счётчик последнего плана,
+        // чтобы /api/plan перестал отдавать expired=true, и снимаем win-back тег,
+        // чтобы скидочный оффер можно было предложить заново в следующем цикле.
+        if (isRenewalProduct(payment.productCode)) {
+          const latestPlan = await tx.plan28.findFirst({
+            where: { userId: payment.userId },
+            orderBy: { createdAt: 'desc' },
+            select: { id: true },
+          });
+          if (latestPlan) {
+            await tx.plan28.update({
+              where: { id: latestPlan.id },
+              data: { createdAt: new Date() },
+            });
+          }
+          const userTags = await tx.user.findUnique({
+            where: { id: payment.userId },
+            select: { tags: true },
+          });
+          if (userTags?.tags?.includes(WINBACK_OFFER_TAG)) {
+            await tx.user.update({
+              where: { id: payment.userId },
+              data: { tags: { set: userTags.tags.filter((t) => t !== WINBACK_OFFER_TAG) } },
+            });
+          }
+          logger.info('Renewal processed: plan counter reset, win-back tag cleared', {
+            userId: payment.userId,
+            paymentId: payment.id,
+            productCode: payment.productCode,
+          });
+        }
       }
 
       return true;
@@ -354,6 +387,17 @@ export async function POST(request: NextRequest) {
         providerPaymentId,
       });
       return NextResponse.json({ ok: true, processed: false, reason: 'already_succeeded' });
+    }
+
+    // Продление сбросило plan28.createdAt — выкидываем закэшированный план с
+    // устаревшим флагом expired, иначе /api/plan вернёт stale expired=true.
+    if (newStatus === 'succeeded' && isRenewalProduct(payment.productCode)) {
+      await invalidateAllUserCache(payment.userId).catch((e) => {
+        logger.warn('Failed to invalidate plan cache after renewal (non-critical)', {
+          userId: payment.userId,
+          error: e,
+        });
+      });
     }
 
     // Уведомление в Telegram: оплата прошла — открой приложение и посмотри план
