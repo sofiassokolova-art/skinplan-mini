@@ -66,7 +66,13 @@ export function buildRuleContext(
     // Вычисленные оси кожи
     inflammation: skinScores.find(s => s.axis === 'inflammation')?.value || 0,
     oiliness: skinScores.find(s => s.axis === 'oiliness')?.value || 0,
-    hydration: skinScores.find(s => s.axis === 'hydration')?.value || 0,
+    // ВАЖНО: ось 'hydration' хранит severity ОБЕЗВОЖЕННОСТИ (value = 100 - уровень
+    // увлажнения; 0 = увлажнена, 100 = глубоко обезвожена — см. skin-analysis-engine.ts).
+    // Но conditions_json правил написаны в семантике УРОВНЯ увлажнения (high=хорошо:
+    // dehydration-all hydration<=40, normal-perfect hydration>=70). Конвертируем
+    // severity -> level здесь, иначе правила инвертируются (ловят увлажнённых,
+    // пропускают сухих). Отсутствие оси -> 100 (нет данных = протокол сухости не триггерим).
+    hydration: 100 - (skinScores.find(s => s.axis === 'hydration')?.value ?? 0),
     barrier: skinScores.find(s => s.axis === 'barrier')?.value || 0,
     pigmentation: skinScores.find(s => s.axis === 'pigmentation')?.value || 0,
     photoaging: skinScores.find(s => s.axis === 'photoaging')?.value || 0,
