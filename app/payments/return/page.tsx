@@ -1,20 +1,23 @@
 // app/payments/return/page.tsx
 // Страница возврата после оплаты (редирект с ЮKassa в браузере).
 // Показываем «Вернитесь в приложение» и ссылку на бота.
-
-'use client';
-
-import { Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { MiniAppPageSkeleton } from '@/components/ui/SkeletonLoader';
+//
+// ВАЖНО: это СЕРВЕРНЫЙ компонент без 'use client'. Пост-оплатный экран должен
+// рендериться прямо в HTML и не зависеть от загрузки JS-чанков — иначе на рваном
+// РФ+VPN-канале (особенно во внешнем браузере после редиректа ЮKassa) чанк не
+// доезжает, React не монтируется, и платящий юзер видит ошибку вместо «оплата прошла».
 
 const BOT_LINK = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
   ? `https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME.replace(/^@/, '')}`
   : 'https://t.me/skiniq_bot';
 
-function ReturnContent() {
-  const searchParams = useSearchParams();
-  const success = searchParams?.get('success') === '1';
+export default async function PaymentsReturnPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ success?: string }>;
+}) {
+  const params = await searchParams;
+  const success = params?.success === '1';
 
   return (
     <div
@@ -120,13 +123,5 @@ function ReturnContent() {
         )}
       </div>
     </div>
-  );
-}
-
-export default function PaymentsReturnPage() {
-  return (
-    <Suspense fallback={<MiniAppPageSkeleton background="#F5FFFC" rows={2} showTopBar={false} />}>
-      <ReturnContent />
-    </Suspense>
   );
 }
