@@ -371,6 +371,30 @@ function inferStepIcon(name: string | undefined | null): string {
   return '/icons/clean/cleanser_true.png';
 }
 
+// Иконка-заглушка по продукту. Приоритет — у категории из БД (надёжнее, чем
+// эвристика по названию: например, «Glycolic Acid 7% Toning Solution» — это
+// категория `toner`, а по названию `acid` ошибочно ловился как treatment).
+// Имя всё равно проверяем для нюансов, которые категория не различает
+// (бальзам для губ и масло лежат в `moisturizer`).
+const CATEGORY_ICON: Record<string, string> = {
+  cleanser: '/icons/clean/cleanser_true.png',
+  toner: '/icons/clean/toner_true.png',
+  serum: '/icons/clean/serum_true.png',
+  treatment: '/icons/clean/treatment_true.png',
+  moisturizer: '/icons/clean/cream_true.png',
+  mask: '/icons/mask_green.png',
+  spf: '/icons/clean/spf_true.png',
+};
+function resolveProductIcon(category: string | null | undefined, name: string | undefined | null): string {
+  const n = (name || '').toLowerCase();
+  // Нюансы, которые коробочная категория не различает.
+  if (/balm|бальзам|для\s+губ|lip\b/.test(n)) return '/icons/clean/lipbalm_true.png';
+  if (/oil|масл/.test(n)) return '/icons/oil_green.png';
+  const byCategory = category ? CATEGORY_ICON[category.toLowerCase()] : undefined;
+  if (byCategory) return byCategory;
+  return inferStepIcon(name);
+}
+
 // Миниатюра продукта: показываем реальное фото, а если URL битый/не грузится —
 // падаем на иконку-заглушку по шагу ухода (иначе у продукта вроде клинзера
 // оставалась пустая белая плашка). Иконка лежит на лаймовом пятне (фон сзади).
@@ -385,7 +409,7 @@ function ProductThumb({ product }: { product: ProductCard }) {
       {showIcon ? (
         <img
           className="pv2-product-img-icon-img"
-          src={inferStepIcon(product.name)}
+          src={resolveProductIcon(product.category, product.name)}
           alt=""
           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
         />
@@ -418,6 +442,10 @@ function ProductsSection(props: {
       <div className="pv2-section-head">
         <div className="pv2-section-title">Средства плана</div>
       </div>
+      <div className="pv2-section-sub">
+        Мы подобрали эти средства под ваш протокол ухода. Добавьте всё в корзину
+        одним списком или замените любое средство на подходящий аналог.
+      </div>
       <div className="pv2-product-list">
         {products.map((p) => {
           const isBusy = busyId === p.id;
@@ -447,6 +475,7 @@ function ProductsSection(props: {
                 </div>
               </div>
               <div className="pv2-product-info">
+                {p.brand && <div className="pv2-product-brand">{p.brand}</div>}
                 <div className="pv2-product-name">{p.name}</div>
                 {p.shortDescription && <div className="pv2-product-desc">{p.shortDescription}</div>}
                 {p.phaseTags.length > 0 && (
@@ -951,6 +980,12 @@ function PlanV2Styles() {
         margin-top: 2px;
         line-height: 1.45;
       }
+      .pv2-section-sub {
+        font-size: 13px;
+        color: var(--ink-soft);
+        line-height: 1.5;
+        margin: -4px 0 14px;
+      }
 
       .pv2-dots { display: flex; align-items: center; gap: 6px; }
       .pv2-dot {
@@ -1165,6 +1200,14 @@ function PlanV2Styles() {
         filter: drop-shadow(0 4px 10px rgba(10,10,10,0.18));
       }
       .pv2-product-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+      .pv2-product-brand {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+        margin-bottom: 2px;
+      }
       .pv2-product-name {
         font-family: var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif;
         font-weight: 600;

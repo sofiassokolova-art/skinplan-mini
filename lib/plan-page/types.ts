@@ -70,6 +70,8 @@ export interface ProductCard {
   id: number;
   name: string;
   brand: string;
+  /** Категория продукта из БД (cleanser/toner/serum/treatment/moisturizer/mask/spf) — для выбора иконки-заглушки */
+  category: string | null;
   /** descriptionUser ?? description ?? null */
   shortDescription: string | null;
   /** Цена в рублях */
