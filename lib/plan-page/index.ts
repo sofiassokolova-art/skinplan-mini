@@ -84,6 +84,7 @@ export async function buildPlanPageContext(
         select: {
           id: true,
           name: true,
+          category: true,
           price: true,
           imageUrl: true,
           description: true,
