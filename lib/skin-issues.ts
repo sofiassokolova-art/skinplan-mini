@@ -173,12 +173,17 @@ export function calculateSkinIssues(
 
   // Добавляем проблему морщин, если есть возраст + жалоба (согласно ТЗ)
   if (hasWrinkleConcern) {
-    const isOlderAge = ageGroup.includes('40') || ageGroup.includes('50') || ageGroup.includes('45');
+    // Возрастные группы хранятся как "35_44"/"41_50" — точное сравнение подстрок
+    // ('40'/'45'/'50') не ловило "35_44". Парсим максимальный возраст по числам.
+    const maxAge = Math.max(0, ...(ageGroup.match(/\d{1,3}/g) ?? []).map((n: string) => parseInt(n, 10)));
+    const isOlderAge = maxAge >= 40 || ageGroup.includes('+');
     issues.push({
       id: 'wrinkles',
       name: 'Морщины',
       severity_score: Math.max(photoagingScore, isOlderAge ? 70 : 50),
-      severity_label: (isOlderAge && photoagingScore >= 60) ? 'плохо' : 'умеренно',
+      // Возрастная кожа с явной жалобой на морщины — это значимая проблема (а не
+      // «умеренно»): иначе она отсеивалась из keyProblems и план её игнорировал.
+      severity_label: (isOlderAge || photoagingScore >= 60) ? 'плохо' : 'умеренно',
       description: isOlderAge
         ? 'Признаки старения требуют интенсивного антивозрастного ухода'
         : 'Признаки старения требуют антивозрастного ухода',
@@ -223,9 +228,12 @@ export function calculateSkinIssues(
   const sleepHabits = answersMap.lifestyle_habits || [];
   const hasSleepIssue = Array.isArray(sleepHabits) &&
                        sleepHabits.some((h: string) => h.includes('недосып') || h.includes('мало сплю'));
-  const hasDarkCircles = answersMap.skin_concerns?.some((c: string) =>
-    c.includes('темные круги') || c.includes('dark_circles') || c.includes('круги под глазами')
-  );
+  // Лейбл опции анкеты — «Проблемы вокруг глаз (отёки, круги)», поэтому матчим
+  // по подстрокам «вокруг глаз»/«круг», а не по несуществующему «темные круги».
+  const hasDarkCircles = answersMap.skin_concerns?.some((c: string) => {
+    const l = c.toLowerCase();
+    return l.includes('вокруг глаз') || l.includes('круг') || l.includes('dark_circles') || l.includes('dark circles');
+  });
 
   if (hasSleepIssue || hasDarkCircles) {
     issues.push({

@@ -11,6 +11,7 @@ import type { ProductCard } from './types';
 interface ProductRow {
   id: number;
   name: string;
+  category: string | null;
   brand: { name: string } | null;
   price: number | null;
   imageUrl: string | null;
@@ -139,6 +140,7 @@ function buildSingleCard(args: {
   return {
     id: product.id,
     name: product.name,
+    category: product.category ?? null,
     brand: product.brand?.name ?? '',
     shortDescription,
     price: product.price ?? null,
