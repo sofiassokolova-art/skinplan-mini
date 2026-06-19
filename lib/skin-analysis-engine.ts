@@ -46,6 +46,25 @@ export interface QuestionnaireAnswers extends NormalizedQuestionnaireContext {
 }
 
 /**
+ * Переводит возраст в «интенсивность» для photoaging-оси.
+ * Терпимо к форматам: "45+", "35-44", группы профиля "35_44"/"41_50".
+ * Возвращает 10 (нет данных/молодой), 40 (25–34), 70 (35–44), 90 (45+).
+ */
+export function ageIntensity(age?: string, ageGroup?: string): number {
+  const raw = `${age ?? ''} ${ageGroup ?? ''}`;
+  const hasPlus = raw.includes('+');
+  const nums = (raw.match(/\d{1,3}/g) ?? [])
+    .map((n) => parseInt(n, 10))
+    .filter((n) => n >= 10 && n <= 120); // отсекаем «5» из кода age_5
+  const maxAge = nums.length > 0 ? Math.max(...nums) : null;
+  if (maxAge === null) return 10;
+  if (maxAge >= 45 || (hasPlus && maxAge >= 40)) return 90;
+  if (maxAge >= 35) return 70;
+  if (maxAge >= 25) return 40;
+  return 10;
+}
+
+/**
  * ИСПРАВЛЕНО (P0): Рассчитывает 6 дерматологических осей кожи
  * Принимает ТОЛЬКО NormalizedQuestionnaireContext
  * null = неизвестно (не "норма")
@@ -215,9 +234,10 @@ export function calculateSkinAxes(answers: QuestionnaireAnswers | NormalizedQues
     if (!a.age && !a.ageGroup) return null;
     
     let score = 0;
-    const age = a.age === '45+' || a.ageGroup === '45+' ? 90 : 
-                a.age === '35-44' || a.ageGroup === '35-44' ? 70 : 
-                a.age === '25-34' || a.ageGroup === '25-34' ? 40 : 10;
+    // Возраст приходит в разных форматах: "45+", "35-44", группы профиля
+    // "35_44"/"41_50", иногда сырой код опции "age_5". Парсим устойчиво по числам,
+    // чтобы возрастной сигнал не терялся (раньше точное сравнение строк давало 10).
+    const age = ageIntensity(a.age, a.ageGroup);
     score += age / 2;
     if (Array.isArray(a.concerns) && a.concerns.some((c: string) => c.includes('Морщины') || c.includes('морщины'))) score += 40;
     if (Array.isArray(a.habits) && a.habits.some((h: string) => h.includes('солнце без SPF') || h.includes('без защиты'))) score += 30;

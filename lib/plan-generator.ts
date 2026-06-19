@@ -12,6 +12,7 @@ import { logger } from '@/lib/logger';
 import type { SkinProfile } from '@/lib/skinprofile-types';
 import type { GeneratedPlan } from '@/lib/api-types';
 import type { GoalKey } from '@/lib/concern-taxonomy';
+import { deriveFocusKeys, goalsFromFocusKeys } from '@/lib/focus-keys';
 import { PLAN_WEEKS_TOTAL, PLAN_DAYS_PER_WEEK } from '@/lib/constants';
 import { getBaseStepFromStepCategory, isCleanserStep, isSPFStep } from '@/lib/plan-helpers';
 import { 
@@ -272,6 +273,19 @@ export async function generate28DayPlan(
       answers['skin_concerns_labels'] = concernLabels;
     }
 
+    // Аналогично сохраняем лейблы целей: answers.skin_goals — это коды опций
+    // ("skin_goals_1"), а downstream-логика матчит по человекочитаемым лейблам.
+    if (code === 'skin_goals' && answer.answerValues && Array.isArray(answer.answerValues)) {
+      const goalLabels: string[] = [];
+      for (const value of answer.answerValues) {
+        const option = answer.question.answerOptions?.find(opt => opt.value === value);
+        if (option?.label) {
+          goalLabels.push(option.label);
+        }
+      }
+      answers['skin_goals_labels'] = goalLabels;
+    }
+
     // ИСПРАВЛЕНО: Для medical_diagnoses также сохраняем лейблы опций
     if (code === 'medical_diagnoses' && answer.answerValues && Array.isArray(answer.answerValues)) {
       const diagnosisLabels: string[] = [];
@@ -292,6 +306,9 @@ export async function generate28DayPlan(
   const questionnaireAnswers: QuestionnaireAnswers = {
     skinType: answers.skin_type || answers.skinType || 'normal', // ИСПРАВЛЕНО: из answers, не из profile
     age: answers.age || answers.age_group || answers.ageGroup || '25-34', // ИСПРАВЛЕНО: из answers
+    // ageGroup из профиля даёт engine разбираемый возраст ("35_44"/"41_50"),
+    // тогда как answers.age — это сырой код опции ("age_5"), по которому возраст не восстановить.
+    ageGroup: profile.ageGroup || (typeof answers.ageGroup === 'string' ? answers.ageGroup : undefined),
     concerns: Array.isArray(answers.skin_concerns_labels) ? answers.skin_concerns_labels : (Array.isArray(answers.skin_concerns) ? answers.skin_concerns : []),
     diagnoses: Array.isArray(answers.medical_diagnoses_labels) ? answers.medical_diagnoses_labels : (Array.isArray(answers.medical_diagnoses) ? answers.medical_diagnoses : []),
     allergies: Array.isArray(answers.allergies) ? answers.allergies : [],
@@ -322,9 +339,21 @@ export async function generate28DayPlan(
   });
 
   // Шаг 1: Классификация профиля (улучшенная логика)
-  const goals = Array.isArray(answers.skin_goals) ? answers.skin_goals : [];
-  const concerns = Array.isArray(answers.skin_concerns) ? answers.skin_concerns : [];
-  
+  // ВАЖНО: используем ЛЕЙБЛЫ опций, а не сырые коды ("skin_goals_1"/"skin_concerns_5").
+  // Вся downstream-логика (focus, primaryFocus, фототип) матчит по русскому тексту —
+  // на кодах эти проверки молча не срабатывали, и primaryFocus у всех залипал на 'general'.
+  const goals: string[] = Array.isArray(answers.skin_goals_labels)
+    ? answers.skin_goals_labels
+    : (Array.isArray(answers.skin_goals) ? answers.skin_goals : []);
+  const concerns: string[] = Array.isArray(answers.skin_concerns_labels)
+    ? answers.skin_concerns_labels
+    : (Array.isArray(answers.skin_concerns) ? answers.skin_concerns : []);
+
+  // Сопоставляем человекочитаемые лейблы целей/беспокойств с каноническими фокусами.
+  // Логика и маппинг fold-keys → mainGoals вынесены в lib/focus-keys.ts и покрыты
+  // юнит-тестами (tests/focus-keys.test.ts).
+  const focusKeys = deriveFocusKeys([...goals, ...concerns]);
+
   const medicalMarkers = (profile.medicalMarkers as Record<string, any> | null) || {};
   // Создаем минимальный SkinProfile для проверки шагов
   const { createEmptySkinProfile } = await import('@/lib/skinprofile-types');
@@ -444,9 +473,7 @@ export async function generate28DayPlan(
       : looksDarkerPhototype ? 'III_IV' : undefined;
 
   const profileClassification: ProfileClassification = {
-    focus: goals.filter((g: string) =>
-      ['Акне и высыпания', 'Сократить видимость пор', 'Выровнять пигментацию', 'Морщины и мелкие линии'].includes(g)
-    )[0] || 'general', // Берем первую цель как основной фокус
+    focus: (['acne', 'pigmentation', 'wrinkles', 'pores'].find((k) => focusKeys.has(k))) || 'general', // основной фокус по нормализованным целям
     skinType: profile.skinType || 'normal',
     concerns: concerns,
     diagnoses: normalizedDiagnoses, // ИСПРАВЛЕНО: Используем нормализованные diagnoses
@@ -471,19 +498,20 @@ export async function generate28DayPlan(
   // Нормализуем concerns к каноническим ключам
   const normalizedConcerns = normalizeConcerns(concerns);
   
-  // Определяем primaryFocus на основе goals и normalized concerns
+  // Определяем primaryFocus на основе нормализованных фокусов (focusKeys) и concerns.
+  // Приоритет: acne > pores > сухость/обезвоженность > пигментация > морщины > барьер.
   let primaryFocus = 'general';
-  if (goals.includes('Акне и высыпания') || normalizedConcerns.includes('acne')) {
+  if (focusKeys.has('acne') || normalizedConcerns.includes('acne')) {
     primaryFocus = 'acne';
-  } else if (goals.includes('Сократить видимость пор') || normalizedConcerns.includes('pores')) {
+  } else if (focusKeys.has('pores') || normalizedConcerns.includes('pores')) {
     primaryFocus = 'pores';
-  } else if (normalizedConcerns.includes('dryness') || normalizedConcerns.includes('dehydration')) {
+  } else if (focusKeys.has('dehydration') || normalizedConcerns.includes('dryness') || normalizedConcerns.includes('dehydration')) {
     primaryFocus = 'dryness';
-  } else if (goals.includes('Выровнять пигментацию') || normalizedConcerns.includes('pigmentation')) {
+  } else if (focusKeys.has('pigmentation') || normalizedConcerns.includes('pigmentation')) {
     primaryFocus = 'pigmentation';
-  } else if (goals.includes('Морщины и мелкие линии') || normalizedConcerns.includes('wrinkles')) {
+  } else if (focusKeys.has('wrinkles') || normalizedConcerns.includes('wrinkles')) {
     primaryFocus = 'wrinkles';
-  } else if (normalizedConcerns.includes('barrier') || normalizedConcerns.includes('sensitivity')) {
+  } else if (focusKeys.has('barrier') || normalizedConcerns.includes('barrier') || normalizedConcerns.includes('sensitivity')) {
     primaryFocus = 'barrier';
   }
   
@@ -519,28 +547,26 @@ export async function generate28DayPlan(
     }
   }
   
-  // ИСПРАВЛЕНО: Также проверяем concerns для темных кругов
-  if (concerns.some((c: string) => 
-    c.toLowerCase().includes('темные круги') || 
-    c.toLowerCase().includes('dark circles') ||
-    c.toLowerCase().includes('круги под глазами')
-  )) {
-    if (!mainGoals.includes('dark_circles')) mainGoals.push('dark_circles');
-  }
-  
-  // Если keyProblems пустые, используем fallback на основе primaryFocus и concerns
+  // Если keyProblems пустые, используем fallback на основе primaryFocus
   if (mainGoals.length === 0) {
     if (primaryFocus === 'acne') mainGoals.push('acne');
     if (primaryFocus === 'pigmentation') mainGoals.push('pigmentation');
     if (primaryFocus === 'wrinkles') mainGoals.push('antiage');
-    if (concerns.includes('Барьер') || concerns.includes('Чувствительность')) {
-      mainGoals.push('barrier');
-    }
-    if (concerns.includes('Обезвоженность') || concerns.includes('Сухость')) {
-      mainGoals.push('dehydration');
-    }
+    if (primaryFocus === 'barrier') mainGoals.push('barrier');
+    if (primaryFocus === 'dryness') mainGoals.push('dehydration');
   }
-  
+
+  // Аддитивно дополняем mainGoals ЯВНЫМИ целями/беспокойствами пользователя
+  // (focusKeys из лейблов). Ничего не убираем — только добавляем недостающее.
+  // Раньше эти сигналы (морщины, поры, тёмные круги) терялись: concerns/goals
+  // матчились по сырым кодам и неверным строкам-лейблам.
+  for (const goal of goalsFromFocusKeys(focusKeys, mainGoals)) {
+    mainGoals.push(goal);
+    logger.info('Main goal injected from explicit user focus', { userId, goal });
+  }
+  // Если пользователь явно просил возрастной уход — поднимаем фокус с 'general'.
+  if (focusKeys.has('wrinkles') && primaryFocus === 'general') primaryFocus = 'wrinkles';
+
   logger.info('Main goals determined', {
     userId,
     keyProblems,

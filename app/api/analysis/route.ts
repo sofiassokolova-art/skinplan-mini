@@ -139,7 +139,12 @@ export async function GET(request: NextRequest) {
         (Array.isArray(answer.answerValues) ? answer.answerValues[0] : null);
       
       if (code === 'skin_concerns' && Array.isArray(answer.answerValues)) {
-        questionnaireAnswers.concerns = answer.answerValues as string[];
+        // Передаём лейблы опций, а не сырые коды ("skin_concerns_5"): engine
+        // матчит беспокойства по человекочитаемому тексту (например, «Морщины»).
+        questionnaireAnswers.concerns = (answer.answerValues as string[]).map((value) => {
+          const option = answer.question?.answerOptions?.find((opt: { value: string; label: string }) => opt.value === value);
+          return option?.label ?? String(value);
+        });
       } else if (code === 'diagnoses' && Array.isArray(answer.answerValues)) {
         questionnaireAnswers.diagnoses = answer.answerValues as string[];
       } else if (code === 'habits' && Array.isArray(answer.answerValues)) {
