@@ -208,7 +208,11 @@ export const CARE_PLAN_TEMPLATES: CarePlanTemplate[] = [
       routineComplexity: ['medium', 'maximal'],
     },
     morning: ['cleanser_balancing', 'toner_hydrating', 'serum_vitc', 'serum_niacinamide', 'moisturizer_balancing', 'spf_50_oily'],
-    evening: ['cleanser_balancing', 'toner_soothing', 'treatment_antiage', 'moisturizer_balancing'],
+    // serum_antiage (пептиды/бакучиол) — мягкий безретиноловый актив. Нужен потому,
+    // что treatment_antiage = ретиноиды, которые движок придерживает у retinoid-naive
+    // пользователей; без этого слота у жирной/комби-кожи с целью antiage не оставалось
+    // ни одного антивозрастного актива (см. antiage_mature, где слот уже есть).
+    evening: ['cleanser_balancing', 'toner_soothing', 'serum_antiage', 'treatment_antiage', 'moisturizer_balancing'],
     weekly: ['mask_hydrating'],
   },
   {
