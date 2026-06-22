@@ -292,7 +292,10 @@ export const STEP_CATEGORY_RULES: Record<StepCategory, StepCategoryRule> = {
     avoidDiagnoses: []
   },
   serum_antiage: {
-    skinTypesAllowed: ["dry", "normal", "combination_dry"],
+    // Пептиды/бакучиол подходят и жирной/комби-жирной коже. Без oily/combination_oily
+    // canApplyStep выбрасывал serum_antiage у этих типов, и antiage_oily-шаблон оставался
+    // без мягкого антивозрастного актива.
+    skinTypesAllowed: ["dry", "normal", "combination_dry", "combination_oily", "oily"],
     avoidIfContraFromProfile: [],
     avoidIfSensitivity: [],
     preferGoals: ["wrinkles", "general"], // maintenance → general
@@ -352,7 +355,9 @@ export const STEP_CATEGORY_RULES: Record<StepCategory, StepCategoryRule> = {
     avoidDiagnoses: ["rosacea", "atopic_dermatitis"]
   },
   treatment_antiage: {
-    skinTypesAllowed: ["dry", "normal", "combination_dry"],
+    // Ретиноиды (в т.ч. в гелевой/безмасляной форме) подходят жирной/комби-жирной коже —
+    // частота для retinoid-naive всё равно ограничивается титрацией отдельно.
+    skinTypesAllowed: ["dry", "normal", "combination_dry", "combination_oily", "oily"],
     avoidIfContraFromProfile: ["no_retinol"],
     avoidIfSensitivity: [],
     preferGoals: ["wrinkles"],
