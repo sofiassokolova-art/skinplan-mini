@@ -61,7 +61,12 @@ export function buildRuleContext(
     sensitivity_level: normalizedSensitivity || null,
     ageGroup: profile.ageGroup || null,
     age_group: profile.ageGroup || null,
-    age: profile.ageGroup || null,
+    // ВАЖНО: ключ `age` нормализуем в дефисный формат ("35_44" → "35-44"), т.к. часть
+    // правил (в т.ч. anti-age #21/#20/#54/#55) задаёт age в дефисах. Без этого
+    // возрастные правила молча не матчились, и 35–44/25–34 уходили в общий уход.
+    // `age_group`/`ageGroup` оставляем в исходном (underscore) формате для правил,
+    // которые ссылаются на них.
+    age: profile.ageGroup ? profile.ageGroup.replace(/_/g, '-') : null,
     
     // Вычисленные оси кожи
     inflammation: skinScores.find(s => s.axis === 'inflammation')?.value || 0,
