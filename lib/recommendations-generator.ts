@@ -179,22 +179,32 @@ export async function generateRecommendationsForProfile(
     });
 
     // Строим questionnaireAnswers для расчета axes
+    // ВАЖНО: оси (oiliness/pigmentation/photoaging/…) матчат concerns/habits по русским
+    // ЛЕЙБЛАМ ("Морщины", "Жирность"), а в answerValues лежат коды опций
+    // ("skin_concerns_5"). Резолвим коды→лейблы через answerOptions, иначе все
+    // concern-бонусы осей терялись и оси были «слепы» к беспокойствам.
+    const labelsOf = (answer: any): string[] => {
+      const opts = answer.question?.answerOptions ?? [];
+      const map = new Map<string, string>(opts.map((o: any) => [o.value, o.label]));
+      const vals = Array.isArray(answer.answerValues) ? answer.answerValues : [];
+      return vals.map((v: string) => map.get(v) ?? v);
+    };
     const questionnaireAnswers: any = {};
     for (const answer of userAnswers) {
       const code = answer.question?.code;
       if (!code) continue;
 
-      const value = answer.answerValue || 
+      const value = answer.answerValue ||
         (Array.isArray(answer.answerValues) ? answer.answerValues[0] : null);
-      
+
       if (code === 'skin_type' || code === 'skinType') {
         questionnaireAnswers.skinType = value;
       } else if (code === 'age' || code === 'age_group') {
         questionnaireAnswers.age = value;
       } else if (code === 'concerns' || code === 'skin_concerns') {
-        questionnaireAnswers.concerns = Array.isArray(answer.answerValues) ? answer.answerValues : [];
+        questionnaireAnswers.concerns = labelsOf(answer);
       } else if (code === 'habits') {
-        questionnaireAnswers.habits = Array.isArray(answer.answerValues) ? answer.answerValues : [];
+        questionnaireAnswers.habits = labelsOf(answer);
       } else if (code === 'sensitivity_level' || code === 'sensitivityLevel') {
         questionnaireAnswers.sensitivityLevel = value || 'low';
       } else if (code === 'acne_level' || code === 'acneLevel') {
