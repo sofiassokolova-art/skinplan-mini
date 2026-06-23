@@ -295,8 +295,13 @@ export async function generateRecommendationsForProfile(
     const stepsJson = matchedRule.stepsJson as any;
     const allProductIds: number[] = [];
 
-    // ИСПРАВЛЕНО: budgetSegment не в RuleContext, получаем из профиля или используем null
-    const budgetSegment = (profile as any).budgetSegment || null;
+    // budgetSegment: профильной колонки нет, поэтому читаем из medicalMarkers.budget
+    // (кладётся в /api/questionnaire/answers из вопроса `budget`). Тот же источник, что
+    // и RuleContext.budget — бюджет влияет и на ценовой сегмент подбора, и на матчинг.
+    const budgetSegment =
+      (profile as any).budgetSegment ||
+      ((profile as any).medicalMarkers?.budget as string | undefined) ||
+      null;
     const budgetMappings: Record<string, { label: 'бюджетный' | 'средний' | 'премиум' | 'любой'; priceSegment?: 'mass' | 'mid' | 'premium' }> = {
       budget: { label: 'бюджетный', priceSegment: 'mass' },
       budget_1: { label: 'бюджетный', priceSegment: 'mass' },
