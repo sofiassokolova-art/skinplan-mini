@@ -52,6 +52,14 @@ export interface QuestionnaireAnswers extends NormalizedQuestionnaireContext {
  */
 export function ageIntensity(age?: string, ageGroup?: string): number {
   const raw = `${age ?? ''} ${ageGroup ?? ''}`;
+  // Сырой код опции анкеты ("age_4") не парсится по числам (4 < 10 отсекается),
+  // поэтому раньше возрастной сигнал терялся → photoaging≈возраст/2 давал ~5.
+  // Маппим коды age_1..age_5 → интенсивность напрямую.
+  const codeMatch = raw.toLowerCase().match(/age_([1-5])\b/);
+  if (codeMatch) {
+    const byCode: Record<string, number> = { '1': 10, '2': 10, '3': 40, '4': 70, '5': 90 };
+    return byCode[codeMatch[1]];
+  }
   const hasPlus = raw.includes('+');
   const nums = (raw.match(/\d{1,3}/g) ?? [])
     .map((n) => parseInt(n, 10))
