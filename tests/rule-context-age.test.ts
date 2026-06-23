@@ -39,3 +39,27 @@ describe('buildRuleContext: нормализация возраста', () => {
     expect(normalizeAgeToRuleToken(null)).toBeNull();
   });
 });
+
+describe('buildRuleContext: budget/preferences/skinTone из medicalMarkers', () => {
+  const ctx = (markers: any) =>
+    buildRuleContext({ ageGroup: '35_44', medicalMarkers: markers } as any, [], 'oily', 'low', []);
+
+  it('budget из medicalMarkers оживляет правило { budget: "low" }', () => {
+    expect(ctx({ budget: 'low' }).budget).toBe('low');
+  });
+
+  it('preferences из medicalMarkers для { preferences: { hasSome: [minimalist] } }', () => {
+    expect(ctx({ preferences: ['minimalist'] }).preferences).toEqual(['minimalist']);
+  });
+
+  it('skinTone берётся из fitzpatrickType', () => {
+    expect(ctx({ fitzpatrickType: 'I_II' }).skinTone).toBe('I_II');
+  });
+
+  it('пустые маркеры → null/[] без падения', () => {
+    const c = ctx(null);
+    expect(c.budget).toBeNull();
+    expect(c.preferences).toEqual([]);
+    expect(c.skinTone).toBeNull();
+  });
+});

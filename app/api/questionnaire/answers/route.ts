@@ -824,6 +824,29 @@ export async function POST(request: NextRequest) {
         extractedData.onIsotretinoin = true;
       }
 
+      // Бюджет и режим ухода → medicalMarkers (читаются rule-context: RuleContext.budget
+      // оживляет правило "Бюджет до 3000 ₽", RuleContext.preferences — "Минимализм 3 шага").
+      // Матчим по ЛЕЙБЛУ (value автогенерится как budget_1.. и неустойчив к пере-сидингу).
+      const budgetAnswer = rawAnswers.find(a => a.questionCode === 'budget');
+      const budgetLabel = budgetAnswer?.answerOptionLabels?.[0] ?? (typeof budgetAnswer?.answerValue === 'string' ? budgetAnswer.answerValue : '');
+      if (budgetLabel) {
+        const b = budgetLabel.toLowerCase();
+        if (b.includes('бюджет') || b.includes('2 000') || b.includes('2000')) extractedData.budget = 'low';
+        else if (b.includes('средн')) extractedData.budget = 'medium';
+        else if (b.includes('премиум') || b.includes('5 000') || b.includes('5000')) extractedData.budget = 'premium';
+        else if (b.includes('без предпочтен') || b.includes('любой')) extractedData.budget = 'any';
+      }
+
+      // Режим ухода (care_steps): «Минимум (1–3 шага)» → preferences:['minimalist'].
+      const careStepsAnswer = rawAnswers.find(a => a.questionCode === 'care_steps');
+      const careStepsLabel = careStepsAnswer?.answerOptionLabels?.[0] ?? (typeof careStepsAnswer?.answerValue === 'string' ? careStepsAnswer.answerValue : '');
+      if (careStepsLabel && careStepsLabel.toLowerCase().includes('миниму')) {
+        const prevPrefs = Array.isArray((existingProfile?.medicalMarkers as any)?.preferences)
+          ? ((existingProfile!.medicalMarkers as any).preferences as string[])
+          : [];
+        extractedData.preferences = Array.from(new Set([...prevPrefs, 'minimalist']));
+      }
+
       // P1.3 follow-up: маппим ответ fitzpatrick_type на доменное значение в medicalMarkers.
       // Используем answerOptionLabels (текст ответа), а не value, потому что value автоматически
       // генерируется как fitzpatrick_type_1/2/3 — порядок неустойчив при пере-сидинге.
