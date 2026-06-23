@@ -324,14 +324,30 @@ export const RECOMMENDATION_RULES: Rule[] = [
     }, 
     heroActives: ["очищение + увлажнение + SPF"] 
   },
-  { 
-    id: "budget", 
-    name: "Бюджет до 3000 ₽/мес", 
-    priority: 88, 
-    conditions: { 
-      budget: "low" 
-    }, 
-    heroActives: ["The Ordinary", "Акрихин", "CeraVe", "аптечные аналоги"] 
+  {
+    id: "budget",
+    name: "Бюджет до 3000 ₽/мес",
+    priority: 88,
+    conditions: {
+      budget: "low"
+    },
+    heroActives: ["The Ordinary", "Акрихин", "CeraVe", "аптечные аналоги"]
+  },
+
+  // ===================================================================
+  // 11. CATCH-ALL (последний рубеж)
+  // ===================================================================
+  // ВАЖНО: пустые conditions матчат любой профиль (Object.entries({}) пуст →
+  // matches=true). Priority=0 (строго ниже всех специфичных правил, включая
+  // legacy-сид с priority 1) гарантирует, что правило выбирается только если НИ
+  // ОДНО специфичное не подошло — иначе движок отдавал no_matching_rule и
+  // генерация плана падала. Базовая безопасная рутина.
+  {
+    id: "default-basic-care",
+    name: "Базовый уход (по умолчанию)",
+    priority: 0,
+    conditions: {},
+    heroActives: ["ниацинамид", "гиалуроновая кислота", "SPF"],
   },
 ];
 

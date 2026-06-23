@@ -3,6 +3,7 @@
 // Обеспечивает единую точку маппинга полей (age_group vs ageGroup, skin_type vs skinType, etc.)
 
 import type { SkinProfile } from '@prisma/client';
+import { currentSeason } from './seasonality';
 
 export interface RuleContext {
   // Основные поля профиля
@@ -14,7 +15,15 @@ export interface RuleContext {
   ageGroup: string | null;
   age_group: string | null; // Алиас для совместимости
   age: string | null; // Алиас для совместимости
-  
+
+  // Дискретные уровни/риски (реальные колонки SkinProfile).
+  // Правила вида { acneLevel: { gte: 3 } } / { pigmentationRisk: ['medium','high'] }
+  // молча не матчились, т.к. RuleContext их не отдавал — добавлено.
+  acneLevel: number | null;
+  dehydrationLevel: number | null;
+  pigmentationRisk: string | null;
+  rosaceaRisk: string | null;
+
   // Вычисленные оси кожи
   inflammation: number;
   oiliness: number;
@@ -22,18 +31,51 @@ export interface RuleContext {
   barrier: number;
   pigmentation: number;
   photoaging: number;
-  
+
+  // Контекст окружения / предпочтений.
+  // Правила { season: 'winter' } / { skinTone: {...} } / { budget: ... } /
+  // { preferences: { hasSome: [...] } } раньше были «мёртвыми» — ключей не было.
+  season: string;
+  skinTone: string | null;
+  budget: string | null;
+  preferences: string[];
+
   // Медицинские маркеры
   diagnoses: string[]; // ИСПРАВЛЕНО: Всегда на корневом уровне для консистентности
   allergies?: string[];
   contraindications?: string[];
-  
+
   // Concerns из ответов пользователя (для правил, которые проверяют concerns: { hasSome: [...] })
   concerns?: string[];
-  
+
   // Дополнительные поля
   hasPregnancy?: boolean;
   pregnant?: boolean;
+}
+
+// Каноническая карта возрастных групп профиля (underscore) -> токен, которым
+// оперируют recommendation rules. Раньше делался слепой replace(_, -), из-за чего
+// спец-токены ломались: "55_plus"→"55-plus" ≠ правило "55+"; "under_25"→"under-25"
+// ≠ правило "under_25". А группа 45_54 не покрывалась ни одним правилом.
+// Карта приводит любые встречавшиеся варианты бакетов к токену правила.
+const AGE_GROUP_TO_RULE_TOKEN: Record<string, string> = {
+  under_25: 'under_25',
+  '18_24': 'under_25',
+  '18_25': 'under_25',
+  '25_34': '25-34',
+  '26_30': '25-34',
+  '31_40': '35-44',
+  '35_44': '35-44',
+  '41_50': '45-54',
+  '45_54': '45-54',
+  '55_plus': '55+',
+  over_55: '55+',
+};
+
+/** Нормализует ageGroup профиля к токену правил (см. AGE_GROUP_TO_RULE_TOKEN). */
+export function normalizeAgeToRuleToken(ageGroup: string | null | undefined): string | null {
+  if (!ageGroup) return null;
+  return AGE_GROUP_TO_RULE_TOKEN[ageGroup] ?? ageGroup.replace(/_/g, '-');
 }
 
 /**
@@ -48,10 +90,25 @@ export function buildRuleContext(
   concerns?: string[] // ИСПРАВЛЕНО: Добавлен параметр concerns для правил, которые проверяют concerns: { hasSome: [...] }
 ): RuleContext {
   const medicalMarkers = (profile.medicalMarkers as Record<string, any> | null) || {};
-  
+
   // ИСПРАВЛЕНО: Нормализуем diagnoses - всегда на корневом уровне
   const diagnoses = Array.isArray(medicalMarkers.diagnoses) ? medicalMarkers.diagnoses : [];
-  
+
+  // skinTone берём из fitzpatrickType (единственный собираемый прокси тона кожи).
+  // budget/preferences пока не собираются анкетой в стабильном виде — читаем из
+  // профиля/маркеров «как есть», иначе null. Плумбинг готов: как только данные
+  // появятся, соответствующие правила (freckles/minimalist/budget) оживут без
+  // правок движка.
+  const skinTone =
+    (medicalMarkers.skinTone as string | undefined) ??
+    (medicalMarkers.fitzpatrickType as string | undefined) ??
+    null;
+  const budget =
+    ((profile as any).budgetSegment as string | undefined) ??
+    (medicalMarkers.budget as string | undefined) ??
+    null;
+  const preferences = Array.isArray(medicalMarkers.preferences) ? medicalMarkers.preferences : [];
+
   return {
     // Основные поля с алиасами для совместимости
     skinType: normalizedSkinType || null,
@@ -61,13 +118,18 @@ export function buildRuleContext(
     sensitivity_level: normalizedSensitivity || null,
     ageGroup: profile.ageGroup || null,
     age_group: profile.ageGroup || null,
-    // ВАЖНО: ключ `age` нормализуем в дефисный формат ("35_44" → "35-44"), т.к. часть
-    // правил (в т.ч. anti-age #21/#20/#54/#55) задаёт age в дефисах. Без этого
-    // возрастные правила молча не матчились, и 35–44/25–34 уходили в общий уход.
-    // `age_group`/`ageGroup` оставляем в исходном (underscore) формате для правил,
-    // которые ссылаются на них.
-    age: profile.ageGroup ? profile.ageGroup.replace(/_/g, '-') : null,
-    
+    // ВАЖНО: ключ `age` нормализуем к токену правил через явную карту
+    // (см. normalizeAgeToRuleToken). Спец-токены "55+"/"under_25" и группа 45_54
+    // раньше ломались на слепом replace(_, -). `age_group`/`ageGroup` оставляем в
+    // исходном (underscore) формате для правил, которые ссылаются на них.
+    age: normalizeAgeToRuleToken(profile.ageGroup),
+
+    // Дискретные уровни/риски — реальные колонки профиля.
+    acneLevel: typeof (profile as any).acneLevel === 'number' ? (profile as any).acneLevel : null,
+    dehydrationLevel: typeof (profile as any).dehydrationLevel === 'number' ? (profile as any).dehydrationLevel : null,
+    pigmentationRisk: (profile as any).pigmentationRisk ?? null,
+    rosaceaRisk: (profile as any).rosaceaRisk ?? null,
+
     // Вычисленные оси кожи
     inflammation: skinScores.find(s => s.axis === 'inflammation')?.value || 0,
     oiliness: skinScores.find(s => s.axis === 'oiliness')?.value || 0,
@@ -81,7 +143,13 @@ export function buildRuleContext(
     barrier: skinScores.find(s => s.axis === 'barrier')?.value || 0,
     pigmentation: skinScores.find(s => s.axis === 'pigmentation')?.value || 0,
     photoaging: skinScores.find(s => s.axis === 'photoaging')?.value || 0,
-    
+
+    // Контекст окружения / предпочтений
+    season: currentSeason(),
+    skinTone,
+    budget,
+    preferences,
+
     // Медицинские маркеры - всегда на корневом уровне
     diagnoses: diagnoses,
     allergies: Array.isArray(medicalMarkers.allergies) ? medicalMarkers.allergies : undefined,
