@@ -1,9 +1,25 @@
 // scripts/seed-rules.ts
-// Скрипт для заполнения правил рекомендаций
+// ⚠️ DEPRECATED — устаревший набор из 13 правил (priority 1–15).
+// Актуальный источник правил — lib/recommendation-rules-complete-2025.ts
+// (68 протоколов, priority 80–100), сидится через scripts/seed-rules-complete.ts.
+// Этот набор:
+//   • использует ageGroup-бакеты ('18_25','26_30'), которых нет в реальных данных
+//     (профиль хранит under_25/25_34/35_44/45_54/55_plus) → возрастные условия молчат;
+//   • имена правил уникальны, поэтому повторный запуск ДОБАВЛЯЕТ дубли в БД поверх
+//     complete-2025 (низкий priority = всегда проигрывают, но засоряют таблицу).
+// Запуск заблокирован, чтобы не плодить мусор. Только осознанно: ALLOW_LEGACY_SEED=1.
 
 import { createScriptPrisma } from './lib/prisma';
 
 const prisma = createScriptPrisma();
+
+if (process.env.ALLOW_LEGACY_SEED !== '1') {
+  console.error(
+    '⛔ scripts/seed-rules.ts устарел. Используйте scripts/seed-rules-complete.ts.\n' +
+    '   Если действительно нужно — запустите с ALLOW_LEGACY_SEED=1.'
+  );
+  process.exit(1);
+}
 
 async function seedRules() {
   console.log('🌱 Seeding recommendation rules...');

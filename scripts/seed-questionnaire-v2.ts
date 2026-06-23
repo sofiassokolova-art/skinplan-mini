@@ -31,6 +31,11 @@ function createScoreJson(questionCode: string, optionLabel: string): any {
 
   // Проблемы кожи
   if (questionCode === 'skin_concerns') {
+    // ВАЖНО: постакне проверяем РАНЬШЕ 'Акне' — лейбл «Следы от акне (постакне)»
+    // содержит подстроку «Акне» и иначе ушёл бы в acne:3.
+    if (optionLabel.includes('остакне') || optionLabel.includes('Следы от акне')) {
+      return { pigmentation: 1, concerns: ['postacne_scars'] };
+    }
     if (optionLabel.includes('Акне')) {
       return { acne: 3, concerns: ['acne'] };
     }
@@ -217,6 +222,7 @@ async function seedQuestionnaireV2() {
           // 'Пигментация' / 'Чувствительность' / 'Морщины') — все ключевые слова сохранены.
           options: [
             'Акне и высыпания',
+            'Следы от акне (постакне)',
             'Жирность, блеск и расширенные поры',
             'Сухость и стянутость',
             'Пигментация и неровный тон',
