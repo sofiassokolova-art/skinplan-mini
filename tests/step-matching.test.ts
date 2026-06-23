@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { mapStepToStepCategory } from '@/lib/step-matching';
+import {
+  areStepCategoriesCompatibleForFallback,
+  mapProductToStepCategories,
+  mapStepToStepCategory,
+} from '@/lib/step-matching';
 
 describe('step matching: product.step/category -> StepCategory', () => {
   it('maps common base steps (serum/moisturizer/spf/cleanser/toner/treatment/mask) to non-empty categories', () => {
@@ -50,5 +54,42 @@ describe('step matching: product.step/category -> StepCategory', () => {
     expect(mapped).toContain('cleanser_oil');
     expect(mapped).not.toContain('cleanser_micellar');
   });
-});
 
+  it('maps acid toner as exfoliant/acid, not hydrating or soothing', () => {
+    const mapped = mapProductToStepCategories({
+      step: 'toner',
+      category: 'toner',
+      name: 'Glycolic Acid 7% Toning Solution',
+      activeIngredients: ['гликолевая кислота 7%'],
+    });
+
+    expect(mapped).toEqual(expect.arrayContaining(['toner_exfoliant', 'toner_acid', 'toner_aha']));
+    expect(mapped).not.toContain('toner_hydrating');
+    expect(mapped).not.toContain('toner_soothing');
+  });
+
+  it('maps benzoyl peroxide treatment only to BPO acne treatment', () => {
+    const mapped = mapProductToStepCategories({
+      step: 'treatment',
+      category: 'treatment',
+      name: 'Baziron AC 5%',
+      activeIngredients: ['бензоилпероксид 5%'],
+    });
+
+    expect(mapped).toEqual(['treatment_acne_bpo']);
+    expect(mapped).not.toContain('treatment_acne_azelaic');
+    expect(mapped).not.toContain('treatment_exfoliant_strong');
+  });
+
+  it('keeps gentle toner fallbacks separate from acid toner fallbacks', () => {
+    expect(areStepCategoriesCompatibleForFallback('toner_hydrating', 'toner_soothing')).toBe(true);
+    expect(areStepCategoriesCompatibleForFallback('toner_hydrating', 'toner_exfoliant')).toBe(false);
+    expect(areStepCategoriesCompatibleForFallback('toner_acid', 'toner_aha')).toBe(true);
+  });
+
+  it('keeps treatment fallbacks in the same active family', () => {
+    expect(areStepCategoriesCompatibleForFallback('treatment_acne_bpo', 'treatment_acne_bpo')).toBe(true);
+    expect(areStepCategoriesCompatibleForFallback('treatment_acne_azelaic', 'treatment_acne_bpo')).toBe(false);
+    expect(areStepCategoriesCompatibleForFallback('treatment_exfoliant_strong', 'treatment_acid')).toBe(true);
+  });
+});

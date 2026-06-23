@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { calculateSkinAxes } from '@/lib/skin-analysis-engine';
 import { buildRuleContext, normalizeAgeToRuleToken } from '@/lib/rule-context';
 
 // Регрессия на формат возраста: профиль хранит ageGroup в underscore ("35_44"),
@@ -61,5 +62,53 @@ describe('buildRuleContext: budget/preferences/skinTone из medicalMarkers', ()
     expect(c.budget).toBeNull();
     expect(c.preferences).toEqual([]);
     expect(c.skinTone).toBeNull();
+  });
+});
+
+describe('buildRuleContext: hydration semantics for recommendation rules', () => {
+  it('oily acne profile without dryness does not match low-hydration rules', () => {
+    const scores = calculateSkinAxes({
+      skinType: 'oily',
+      concerns: ['Акне и высыпания', 'Жирность, блеск и расширенные поры'],
+      acneLevel: 3,
+      sensitivityLevel: 'low',
+    });
+
+    const ctx = buildRuleContext(
+      {
+        ageGroup: '18_24',
+        acneLevel: 3,
+        dehydrationLevel: 1,
+        sensitivityLevel: 'low',
+        hasPregnancy: false,
+        medicalMarkers: null,
+      } as any,
+      scores,
+      'oily',
+      'low',
+      ['acne', 'pores']
+    );
+
+    expect(ctx.hydration).toBeGreaterThan(40);
+    expect(ctx.dehydrationLevel).toBe(1);
+  });
+
+  it('dryness concerns still match low-hydration rules', () => {
+    const scores = calculateSkinAxes({
+      skinType: 'dry',
+      concerns: ['Сухость и стянутость'],
+      sensitivityLevel: 'low',
+    });
+
+    const ctx = buildRuleContext(
+      { ageGroup: '25_34', dehydrationLevel: 4, medicalMarkers: null } as any,
+      scores,
+      'dry',
+      'low',
+      ['dehydration']
+    );
+
+    expect(ctx.hydration).toBeLessThanOrEqual(40);
+    expect(ctx.dehydrationLevel).toBe(4);
   });
 });
