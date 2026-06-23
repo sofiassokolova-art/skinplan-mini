@@ -25,7 +25,7 @@ export interface RecommendationGenerationError {
  * ИСПРАВЛЕНО: Полная поддержка операторов условий для правил рекомендаций
  * Поддерживает: gte, lte, equals, not/neq, in, hasSome, hasEvery, contains, startsWith
  */
-function matchCondition(condition: any, profileValue: any): boolean {
+export function matchCondition(condition: any, profileValue: any): boolean {
   // Если profileValue null/undefined и условие требует значение - не матчится
   if (profileValue === undefined || profileValue === null) {
     // Для числовых сравнений (gte/lte) null = не матчится
@@ -51,30 +51,34 @@ function matchCondition(condition: any, profileValue: any): boolean {
 
   // Объект условий = операторы
   if (typeof condition === 'object' && condition !== null) {
-    // Числовые сравнения
-    if ('gte' in condition) {
+    // Числовые сравнения. ВАЖНО: операторы границ комбинируются в одном объекте
+    // ({ gte: 30, lte: 65 } = диапазон 30..65). Раньше каждая ветка делала return
+    // сразу — и при наличии gte верхняя граница lte молча игнорировалась
+    // (правило ловило значения выше lte). Проверяем ВСЕ присутствующие границы
+    // через AND и возвращаемся, только когда все они учтены.
+    const hasNumericBound =
+      'gte' in condition || 'lte' in condition || 'gt' in condition || 'lt' in condition;
+    if (hasNumericBound) {
       const numValue = typeof profileValue === 'number' ? profileValue : parseFloat(profileValue);
-      const numCondition = typeof condition.gte === 'number' ? condition.gte : parseFloat(condition.gte);
-      if (isNaN(numValue) || isNaN(numCondition)) return false;
-      return numValue >= numCondition;
-    }
-    if ('lte' in condition) {
-      const numValue = typeof profileValue === 'number' ? profileValue : parseFloat(profileValue);
-      const numCondition = typeof condition.lte === 'number' ? condition.lte : parseFloat(condition.lte);
-      if (isNaN(numValue) || isNaN(numCondition)) return false;
-      return numValue <= numCondition;
-    }
-    if ('gt' in condition) {
-      const numValue = typeof profileValue === 'number' ? profileValue : parseFloat(profileValue);
-      const numCondition = typeof condition.gt === 'number' ? condition.gt : parseFloat(condition.gt);
-      if (isNaN(numValue) || isNaN(numCondition)) return false;
-      return numValue > numCondition;
-    }
-    if ('lt' in condition) {
-      const numValue = typeof profileValue === 'number' ? profileValue : parseFloat(profileValue);
-      const numCondition = typeof condition.lt === 'number' ? condition.lt : parseFloat(condition.lt);
-      if (isNaN(numValue) || isNaN(numCondition)) return false;
-      return numValue < numCondition;
+      if (isNaN(numValue)) return false;
+      const toNum = (v: any) => (typeof v === 'number' ? v : parseFloat(v));
+      if ('gte' in condition) {
+        const c = toNum(condition.gte);
+        if (isNaN(c) || numValue < c) return false;
+      }
+      if ('lte' in condition) {
+        const c = toNum(condition.lte);
+        if (isNaN(c) || numValue > c) return false;
+      }
+      if ('gt' in condition) {
+        const c = toNum(condition.gt);
+        if (isNaN(c) || numValue <= c) return false;
+      }
+      if ('lt' in condition) {
+        const c = toNum(condition.lt);
+        if (isNaN(c) || numValue >= c) return false;
+      }
+      return true;
     }
 
     // Равенство
@@ -122,6 +126,37 @@ function matchCondition(condition: any, profileValue: any): boolean {
 
   // Простое сравнение (примитив)
   return condition === profileValue;
+}
+
+// Лейблы concern-опций анкеты → доменные токены, которыми оперируют правила
+// (conditions { concerns: { hasSome: [...] } }). В answerValues лежат автокоды
+// ("skin_concerns_5"), а ruleContext.concerns строится из ЛЕЙБЛОВ — поэтому без
+// этого маппинга правила на concerns (напр. postacne-scars) молча не матчились.
+// Substring-матчинг; ВАЖЕН порядок: 'постакне'/'следы' раньше 'акне', иначе
+// "следы от акне (постакне)" уедет в acne.
+const CONCERN_LABEL_PATTERNS: Array<[RegExp, string]> = [
+  [/постакне|следы от акне|рубц/i, 'postacne_scars'],
+  [/акне|высыпан/i, 'acne'],
+  [/пигмент|неровный тон|мелазма/i, 'pigmentation'],
+  [/морщин|возрастн|старени/i, 'wrinkles'],
+  [/сухость|стянут|обезвож/i, 'dehydration'],
+  [/жирность|блеск|поры/i, 'pores'],
+  [/чувствительн|покраснени/i, 'sensitivity'],
+];
+
+export function concernLabelsToRuleTokens(labels: string[] | undefined | null): string[] {
+  if (!Array.isArray(labels)) return [];
+  const tokens = new Set<string>();
+  for (const label of labels) {
+    if (typeof label !== 'string') continue;
+    for (const [re, token] of CONCERN_LABEL_PATTERNS) {
+      if (re.test(label)) {
+        tokens.add(token);
+        break; // один лейбл = один токен (первый совпавший паттерн)
+      }
+    }
+  }
+  return Array.from(tokens);
 }
 
 /**
@@ -219,9 +254,13 @@ export async function generateRecommendationsForProfile(
     const normalizedSkinType = normalizeSkinTypeForRules(profile.skinType, { userId });
     const normalizedSensitivity = normalizeSensitivityForRules(profile.sensitivityLevel);
 
-    // Строим RuleContext
-    // ИСПРАВЛЕНО: Передаем concerns из ответов для правил, которые проверяют concerns: { hasSome: [...] }
-    const ruleContext = buildRuleContext(profile as any, skinScores, normalizedSkinType, normalizedSensitivity, questionnaireAnswers.concerns);
+    // Строим RuleContext.
+    // ВАЖНО: правилам отдаём concerns в виде доменных ТОКЕНОВ (postacne_scars/acne/…),
+    // а не русских лейблов — иначе concerns-условия не матчатся (см.
+    // concernLabelsToRuleTokens). Лейблы при этом остаются в questionnaireAnswers
+    // для скоринга осей (calculateSkinAxes выше).
+    const concernTokens = concernLabelsToRuleTokens(questionnaireAnswers.concerns);
+    const ruleContext = buildRuleContext(profile as any, skinScores, normalizedSkinType, normalizedSensitivity, concernTokens);
 
     // Ищем подходящее правило (rules уже загружены параллельно выше).
 
@@ -256,8 +295,13 @@ export async function generateRecommendationsForProfile(
     const stepsJson = matchedRule.stepsJson as any;
     const allProductIds: number[] = [];
 
-    // ИСПРАВЛЕНО: budgetSegment не в RuleContext, получаем из профиля или используем null
-    const budgetSegment = (profile as any).budgetSegment || null;
+    // budgetSegment: профильной колонки нет, поэтому читаем из medicalMarkers.budget
+    // (кладётся в /api/questionnaire/answers из вопроса `budget`). Тот же источник, что
+    // и RuleContext.budget — бюджет влияет и на ценовой сегмент подбора, и на матчинг.
+    const budgetSegment =
+      (profile as any).budgetSegment ||
+      ((profile as any).medicalMarkers?.budget as string | undefined) ||
+      null;
     const budgetMappings: Record<string, { label: 'бюджетный' | 'средний' | 'премиум' | 'любой'; priceSegment?: 'mass' | 'mid' | 'premium' }> = {
       budget: { label: 'бюджетный', priceSegment: 'mass' },
       budget_1: { label: 'бюджетный', priceSegment: 'mass' },
