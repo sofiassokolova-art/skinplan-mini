@@ -20,7 +20,7 @@ import {
   findFallbackProduct, 
   type ProductWithBrand
 } from '@/lib/product-fallback';
-import { mapStepToStepCategory } from '@/lib/step-matching';
+import { areStepCategoriesCompatibleForFallback, mapProductToStepCategories } from '@/lib/step-matching';
 import { pickProductForProfileDiversity } from '@/lib/plan-helpers';
 import type { ProfileClassification } from '@/lib/plan-generation-helpers';
 import {
@@ -1139,10 +1139,6 @@ export async function generate28DayPlan(
     }
   };
 
-  const mapProductToStepCategories = (step: string | null | undefined, category: string | null | undefined): StepCategory[] => {
-    return mapStepToStepCategory(step, category, profile.skinType);
-  };
-  
   // Логируем начальное состояние selectedProducts для диагностики
   if (userId === '643160759' || process.env.NODE_ENV === 'development') {
     logger.info('Registering products in productsByStepMap', {
@@ -1179,7 +1175,7 @@ export async function generate28DayPlan(
     };
     
     // Преобразуем старый формат step/category в StepCategory
-    const stepCategories = mapProductToStepCategories(product.step, product.category);
+    const stepCategories = mapProductToStepCategories(product, profile.skinType);
     
     // Детальное логирование для диагностики (особенно для пользователя 643160759)
     if (userId === '643160759' || process.env.NODE_ENV === 'development') {
@@ -1213,11 +1209,12 @@ export async function generate28DayPlan(
       // Раньше сыворотка могла регистрироваться под ключом 'serum' и затем
       // ошибочно удовлетворять шаг 'serum_hydrating' (даже если это serum_vitc),
       // что давало "не тот" план.
-      // Для обратной совместимости оставляем только безопасные базовые шаги,
-      // где подтипы взаимозаменяемы без сильного риска: toner и moisturizer.
+      // Для обратной совместимости оставляем только безопасный базовый шаг:
+      // moisturizer. Тонеры НЕ регистрируем под общим `toner`, потому что кислотный
+      // toner иначе может закрыть hydrating/soothing шаг.
       stepCategories.forEach(stepCategory => {
         const baseStep = getBaseStepFromStepCategory(stepCategory);
-        if (baseStep !== stepCategory && (baseStep === 'toner' || baseStep === 'moisturizer')) {
+        if (baseStep !== stepCategory && baseStep === 'moisturizer') {
           registerProductForStep(baseStep as StepCategory, productWithBrand);
           if (userId === '643160759' || process.env.NODE_ENV === 'development') {
             logger.info('Product also registered for safe base step', {
@@ -1475,6 +1472,68 @@ export async function generate28DayPlan(
     });
   };
 
+  const isCompatibleStepFallback = (
+    requestedStep: StepCategory,
+    candidateStep: StepCategory
+  ): boolean => {
+    return areStepCategoriesCompatibleForFallback(requestedStep, candidateStep);
+  };
+
+  const collectCompatibleProductsForStep = (step: StepCategory): ProductWithBrand[] => {
+    const products: ProductWithBrand[] = [];
+    for (const [mapStep, stepProducts] of productsByStepMap.entries()) {
+      if (isCompatibleStepFallback(step, mapStep as StepCategory)) {
+        products.push(...stepProducts);
+      }
+    }
+
+    return Array.from(new Map(products.map((product) => [product.id, product])).values());
+  };
+
+  const isProductCompatibleWithStep = (
+    stepCategory: StepCategory,
+    product: ProductWithBrand
+  ): boolean => {
+    return mapProductToStepCategories(product, profile.skinType).some((mappedStep) =>
+      isCompatibleStepFallback(stepCategory, mappedStep)
+    );
+  };
+
+  const findCompatibleFallbackProductForStep = async (
+    stepCategory: StepCategory
+  ): Promise<ProductWithBrand | null> => {
+    const baseStep = getBaseStepFromStepCategory(stepCategory);
+    const fallbackTargets = [stepCategory];
+
+    // For active/specialized groups we deliberately avoid broad base-step fallback:
+    // a generic acid toner must not satisfy toner_hydrating, and BPO must not satisfy
+    // azelaic/exfoliant treatment steps. Base fallback remains useful for structural
+    // steps whose subtypes are low-risk substitutes.
+    if (!['toner', 'serum', 'treatment', 'mask'].includes(baseStep)) {
+      fallbackTargets.push(baseStep as StepCategory);
+    }
+
+    for (const target of Array.from(new Set(fallbackTargets))) {
+      const fallbackProduct = await findFallbackProduct(target, profileClassification, { userId });
+      if (!fallbackProduct) continue;
+
+      if (isProductCompatibleWithStep(stepCategory, fallbackProduct)) {
+        return fallbackProduct;
+      }
+
+      logger.warn('Fallback product rejected: incompatible with requested step', {
+        stepCategory,
+        fallbackTarget: target,
+        productId: fallbackProduct.id,
+        productName: fallbackProduct.name,
+        mappedSteps: mapProductToStepCategories(fallbackProduct, profile.skinType),
+        userId,
+      });
+    }
+
+    return null;
+  };
+
   const getProductsForStep = (step: StepCategory, phase?: 'adaptation' | 'active' | 'support'): ProductWithBrand[] => {
     // Сначала пробуем найти по точному совпадению StepCategory
     const exact = productsByStepMap.get(step);
@@ -1536,19 +1595,7 @@ export async function generate28DayPlan(
       // иначе "увлажняющая" сыворотка заменяется на витамин C и план выглядит неправильным.
       const allVariants: ProductWithBrand[] = [];
       for (const [mapStep, products] of productsByStepMap.entries()) {
-        if (baseStep === 'serum' && step === 'serum_hydrating') {
-          const allowedSerumFallback = new Set<string>([
-            'serum_hydrating',
-            'serum_anti_redness',
-            'serum_niacinamide',
-          ]);
-          if (allowedSerumFallback.has(mapStep)) {
-            allVariants.push(...products);
-          }
-          continue;
-        }
-
-        if (mapStep.startsWith(baseStep + '_') || mapStep === baseStep) {
+        if (isCompatibleStepFallback(step, mapStep as StepCategory)) {
           allVariants.push(...products);
         }
       }
@@ -1836,19 +1883,20 @@ export async function generate28DayPlan(
     const existingToner = tonerSteps.some(step => getProductsForStep(step).length > 0);
     if (!existingToner) {
       logger.warn('No toner products found, searching for fallback', { userId, tonerSteps });
-      const fallbackToner = await findFallbackProduct('toner', profileClassification, { userId });
-      if (fallbackToner) {
-        for (const step of tonerSteps) {
+      for (const step of tonerSteps) {
+        const fallbackToner = await findCompatibleFallbackProductForStep(step);
+        if (fallbackToner) {
           registerProductForStep(step, fallbackToner);
+          if (!selectedProducts.some((p: any) => p.id === fallbackToner.id)) {
+            selectedProducts.push(fallbackToner as any);
+          }
+          logger.info('Fallback toner added', {
+            step,
+            productId: fallbackToner.id,
+            productName: fallbackToner.name,
+            userId
+          }, { saveToDb: true, userId });
         }
-        if (!selectedProducts.some((p: any) => p.id === fallbackToner.id)) {
-          selectedProducts.push(fallbackToner as any);
-        }
-        logger.info('Fallback toner added', { 
-          productId: fallbackToner.id, 
-          productName: fallbackToner.name,
-          userId 
-        }, { saveToDb: true, userId });
       }
     }
   }
@@ -1970,23 +2018,26 @@ export async function generate28DayPlan(
         }
       }
 
-      const fallbackSerum = await findFallbackProduct('serum', profileClassification, { userId });
-      if (fallbackSerum) {
-        // ИСПРАВЛЕНО: это не ошибка, если мы успешно нашли fallback.
-        // Логируем как info, чтобы не засорять WARN-логи в проде.
-        logger.info('No serum products found for required steps, using fallback serum', {
-          userId,
-          serumSteps,
-          productId: fallbackSerum.id,
-          productName: fallbackSerum.name,
-        }, { saveToDb: true, userId });
-        for (const step of serumSteps) {
+      let addedSerumFallback = false;
+      for (const step of serumSteps) {
+        const fallbackSerum = await findCompatibleFallbackProductForStep(step);
+        if (fallbackSerum) {
+          addedSerumFallback = true;
+          // ИСПРАВЛЕНО: это не ошибка, если мы успешно нашли fallback.
+          // Логируем как info, чтобы не засорять WARN-логи в проде.
+          logger.info('No serum products found for required step, using compatible fallback serum', {
+            userId,
+            step,
+            productId: fallbackSerum.id,
+            productName: fallbackSerum.name,
+          }, { saveToDb: true, userId });
           registerProductForStep(step, fallbackSerum);
+          if (!selectedProducts.some((p: any) => p.id === fallbackSerum.id)) {
+            selectedProducts.push(fallbackSerum as any);
+          }
         }
-        if (!selectedProducts.some((p: any) => p.id === fallbackSerum.id)) {
-          selectedProducts.push(fallbackSerum as any);
-        }
-      } else {
+      }
+      if (!addedSerumFallback) {
         // Это уже реально проблемная ситуация: ни одной сыворотки не нашли даже для fallback.
         logger.warn('No serum products found and fallback serum could not be selected', {
           userId,
@@ -2004,19 +2055,20 @@ export async function generate28DayPlan(
     const existingTreatment = treatmentSteps.some(step => getProductsForStep(step).length > 0);
     if (!existingTreatment) {
       logger.warn('No treatment products found, searching for fallback', { userId, treatmentSteps });
-      const fallbackTreatment = await findFallbackProduct('treatment', profileClassification, { userId });
-      if (fallbackTreatment) {
-        for (const step of treatmentSteps) {
+      for (const step of treatmentSteps) {
+        const fallbackTreatment = await findCompatibleFallbackProductForStep(step);
+        if (fallbackTreatment) {
           registerProductForStep(step, fallbackTreatment);
+          if (!selectedProducts.some((p: any) => p.id === fallbackTreatment.id)) {
+            selectedProducts.push(fallbackTreatment as any);
+          }
+          logger.info('Fallback treatment added', {
+            step,
+            productId: fallbackTreatment.id,
+            productName: fallbackTreatment.name,
+            userId
+          }, { saveToDb: true, userId });
         }
-        if (!selectedProducts.some((p: any) => p.id === fallbackTreatment.id)) {
-          selectedProducts.push(fallbackTreatment as any);
-        }
-        logger.info('Fallback treatment added', { 
-          productId: fallbackTreatment.id, 
-          productName: fallbackTreatment.name,
-          userId 
-        }, { saveToDb: true, userId });
       }
     }
   }
@@ -2030,20 +2082,24 @@ export async function generate28DayPlan(
     if (!existingMask) {
       // ИСПРАВЛЕНО: Изменено с WARN на INFO, так как это нормальное поведение - поиск fallback
       logger.info('No mask products found for specific steps, searching for fallback', { userId, maskSteps });
-      const fallbackMask = await findFallbackProduct('mask', profileClassification, { userId });
-      if (fallbackMask) {
-        for (const step of maskSteps) {
+      let addedMaskFallback = false;
+      for (const step of maskSteps) {
+        const fallbackMask = await findCompatibleFallbackProductForStep(step);
+        if (fallbackMask) {
+          addedMaskFallback = true;
           registerProductForStep(step, fallbackMask);
+          if (!selectedProducts.some((p: any) => p.id === fallbackMask.id)) {
+            selectedProducts.push(fallbackMask as any);
+          }
+          logger.info('Fallback mask added', {
+            step,
+            productId: fallbackMask.id,
+            productName: fallbackMask.name,
+            userId
+          }, { saveToDb: true, userId });
         }
-        if (!selectedProducts.some((p: any) => p.id === fallbackMask.id)) {
-          selectedProducts.push(fallbackMask as any);
-        }
-        logger.info('Fallback mask added', { 
-          productId: fallbackMask.id, 
-          productName: fallbackMask.name,
-          userId 
-        }, { saveToDb: true, userId });
-      } else {
+      }
+      if (!addedMaskFallback) {
         logger.warn('No fallback mask found', { userId, maskSteps });
       }
     }
@@ -2128,8 +2184,8 @@ export async function generate28DayPlan(
           }
         }
       } else {
-        // Для других шагов пробуем базовый fallback
-        const fallbackProduct = await findFallbackProduct(baseStep, profileClassification, { userId });
+        // Для других шагов пробуем совместимый fallback
+        const fallbackProduct = await findCompatibleFallbackProductForStep(missingStep);
         if (fallbackProduct) {
           registerProductForStep(missingStep, fallbackProduct);
           logger.info('Found fallback product for missing step', {
@@ -2194,16 +2250,28 @@ export async function generate28DayPlan(
               priority: (anyProduct as any).priority || 0,
               skinTypes: (anyProduct.skinTypes as string[]) || [],
               published: anyProduct.published || false,
+              activeIngredients: (anyProduct.activeIngredients as string[]) || [],
             };
-            
-            registerProductForStep(missingStep, anyProductWithBrand);
-            logger.info('Last resort fallback product found for missing step', {
-              missingStep,
-              baseStep,
-              productId: anyProduct.id,
-              productName: anyProduct.name,
-              userId,
-            }, { saveToDb: true, userId });
+
+            if (isProductCompatibleWithStep(missingStep, anyProductWithBrand)) {
+              registerProductForStep(missingStep, anyProductWithBrand);
+              logger.info('Last resort fallback product found for missing step', {
+                missingStep,
+                baseStep,
+                productId: anyProduct.id,
+                productName: anyProduct.name,
+                userId,
+              }, { saveToDb: true, userId });
+            } else {
+              logger.warn('Last resort fallback rejected: incompatible with missing step', {
+                missingStep,
+                baseStep,
+                productId: anyProduct.id,
+                productName: anyProduct.name,
+                mappedSteps: mapProductToStepCategories(anyProductWithBrand, profile.skinType),
+                userId,
+              }, { saveToDb: true, userId });
+            }
           } else {
             logger.error('CRITICAL: Could not find ANY product in DB for missing step', {
               missingStep,
@@ -2615,15 +2683,7 @@ export async function generate28DayPlan(
         
         // Если все еще нет, пробуем найти любой продукт для базового шага
         if (stepProducts.length === 0) {
-          // ИСПРАВЛЕНО: Ищем в productsByStepMap все ключи, которые начинаются с базового шага
-          for (const [mapStep, products] of productsByStepMap.entries()) {
-            const mapBaseStep = getBaseStepFromStepCategory(mapStep as StepCategory);
-            if (mapBaseStep === baseStep || mapStep.startsWith(baseStep + '_') || mapStep === baseStep) {
-              stepProducts.push(...products);
-            }
-          }
-          // Удаляем дубликаты
-          stepProducts = Array.from(new Map(stepProducts.map(p => [p.id, p])).values());
+          stepProducts = collectCompatibleProductsForStep(stepCategory);
           
           if (stepProducts.length > 0) {
             fallbackReason = `Used base step match: ${baseStep} for ${stepCategory}`;
@@ -2656,9 +2716,9 @@ export async function generate28DayPlan(
               fallbackReason,
             });
             
-            // Последняя попытка: ищем через findFallbackProduct в БД
+            // Последняя попытка: ищем совместимый fallback в БД
             try {
-              const fallbackProduct = await findFallbackProduct(baseStep, profileClassification, { userId });
+              const fallbackProduct = await findCompatibleFallbackProductForStep(stepCategory);
               if (fallbackProduct) {
                 registerProductForStep(stepCategory, fallbackProduct);
                 stepProducts = [fallbackProduct];
@@ -2895,15 +2955,7 @@ export async function generate28DayPlan(
         // Если все еще нет, пробуем найти любой продукт для базового шага
         if (stepProducts.length === 0) {
           const baseStep = getBaseStepFromStepCategory(stepCategory);
-          // ИСПРАВЛЕНО: Ищем в productsByStepMap все ключи, которые начинаются с базового шага
-          for (const [mapStep, products] of productsByStepMap.entries()) {
-            const mapBaseStep = getBaseStepFromStepCategory(mapStep as StepCategory);
-            if (mapBaseStep === baseStep || mapStep.startsWith(baseStep + '_') || mapStep === baseStep) {
-              stepProducts.push(...products);
-            }
-          }
-          // Удаляем дубликаты
-          stepProducts = Array.from(new Map(stepProducts.map(p => [p.id, p])).values());
+          stepProducts = collectCompatibleProductsForStep(stepCategory);
           
           if (stepProducts.length > 0) {
             fallbackReasonEvening = `Used base step match: ${baseStep} for ${stepCategory}`;
@@ -2936,9 +2988,9 @@ export async function generate28DayPlan(
               fallbackReason: fallbackReasonEvening,
             });
             
-            // Последняя попытка: ищем через findFallbackProduct в БД
+            // Последняя попытка: ищем совместимый fallback в БД
             try {
-              const fallbackProduct = await findFallbackProduct(baseStep, profileClassification, { userId });
+              const fallbackProduct = await findCompatibleFallbackProductForStep(stepCategory);
               if (fallbackProduct) {
                 registerProductForStep(stepCategory, fallbackProduct);
                 stepProducts = [fallbackProduct];

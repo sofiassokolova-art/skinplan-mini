@@ -8,6 +8,7 @@ import { logger } from './logger';
 import { MIN_PRODUCTS_FOR_STEP } from './constants';
 import type { Prisma } from '@prisma/client';
 import type { ProfileClassification } from './plan-generation-helpers';
+import { areStepCategoriesCompatibleForFallback, mapProductToStepCategories } from './step-matching';
 
 export interface ProductWithBrand {
   id: number;
@@ -29,6 +30,17 @@ export interface ProductWithBrand {
 }
 
 // ProfileClassification импортируется из plan-generation-helpers.ts
+
+function isFallbackProductCompatibleWithStep(
+  stepCategory: StepCategory,
+  product: ProductWithBrand,
+  profileClassification: ProfileClassification
+): boolean {
+  const mappedSteps = mapProductToStepCategories(product, profileClassification.skinType);
+  return mappedSteps.some((mappedStep) =>
+    areStepCategoriesCompatibleForFallback(stepCategory, mappedStep)
+  );
+}
 
 /**
  * Ищет fallback продукт для базового шага
@@ -425,20 +437,41 @@ export async function ensureProductForStep(
     return existingProducts[0];
   }
 
-  // Ищем fallback
+  // Ищем fallback сначала под конкретный StepCategory, а не под общий baseStep.
+  const exactFallback = await findFallbackProduct(stepCategory, profileClassification);
+  if (exactFallback && isFallbackProductCompatibleWithStep(stepCategory, exactFallback, profileClassification)) {
+    logger.info('Exact fallback product assigned', {
+      stepCategory,
+      productId: exactFallback.id,
+      productName: exactFallback.name,
+    });
+    return exactFallback;
+  }
+
   const baseStep = getBaseStepFromStepCategory(stepCategory);
   const fallback = await findFallbackProduct(baseStep, profileClassification);
 
-  if (fallback) {
+  if (fallback && isFallbackProductCompatibleWithStep(stepCategory, fallback, profileClassification)) {
     logger.info('Fallback product assigned', {
       stepCategory,
       baseStep,
       productId: fallback.id,
       productName: fallback.name,
     });
+    return fallback;
   }
 
-  return fallback;
+  if (fallback) {
+    logger.warn('Fallback product rejected: incompatible with requested step', {
+      stepCategory,
+      baseStep,
+      productId: fallback.id,
+      productName: fallback.name,
+      mappedSteps: mapProductToStepCategories(fallback, profileClassification.skinType),
+    });
+  }
+
+  return null;
 }
 
 /**
@@ -559,16 +592,34 @@ export async function ensureRequiredProducts(
       continue;
     }
 
-    // Присваиваем продукт всем категориям шага
+    // Присваиваем продукт категориям шага только при совместимости.
     for (const stepCategory of stepCategories) {
       const existing = result.get(stepCategory) || [];
       if (existing.length === 0) {
-        result.set(stepCategory, [fallbackProduct]);
+        let compatibleProduct = fallbackProduct;
+
+        if (!isFallbackProductCompatibleWithStep(stepCategory, compatibleProduct, profileClassification)) {
+          const exactFallback = await findFallbackProduct(stepCategory, profileClassification);
+          if (exactFallback && isFallbackProductCompatibleWithStep(stepCategory, exactFallback, profileClassification)) {
+            compatibleProduct = exactFallback;
+          } else {
+            logger.warn('Fallback product not assigned: incompatible with requested step', {
+              stepCategory,
+              baseStep,
+              productId: fallbackProduct.id,
+              productName: fallbackProduct.name,
+              mappedSteps: mapProductToStepCategories(fallbackProduct, profileClassification.skinType),
+            });
+            continue;
+          }
+        }
+
+        result.set(stepCategory, [compatibleProduct]);
         logger.info('Fallback product assigned to step', {
           stepCategory,
           baseStep,
-          productId: fallbackProduct.id,
-          productName: fallbackProduct.name,
+          productId: compatibleProduct.id,
+          productName: compatibleProduct.name,
         });
       }
     }
@@ -584,4 +635,3 @@ export async function ensureRequiredProducts(
 
   return result;
 }
-

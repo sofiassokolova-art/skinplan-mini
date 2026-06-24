@@ -223,3 +223,203 @@ export function mapStepToStepCategory(
   return categories;
 }
 
+export interface ProductStepMappingInput {
+  step?: string | null;
+  category?: string | null;
+  name?: string | null;
+  activeIngredients?: string[] | null;
+  concerns?: string[] | null;
+}
+
+function uniqStepCategories(categories: StepCategory[]): StepCategory[] {
+  return Array.from(new Set(categories));
+}
+
+function productSearchText(product: ProductStepMappingInput): string {
+  return [
+    product.step,
+    product.category,
+    product.name,
+    ...(product.activeIngredients || []),
+    ...(product.concerns || []),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+}
+
+function hasAny(text: string, patterns: RegExp[]): boolean {
+  return patterns.some((pattern) => pattern.test(text));
+}
+
+const AHA_PATTERNS = [/aha\b/i, /glycolic|гликолев/i, /lactic|молочн/i, /mandelic|миндальн/i];
+const BHA_PATTERNS = [/bha\b/i, /salicylic|салицил/i];
+const ACID_PATTERNS = [
+  ...AHA_PATTERNS,
+  ...BHA_PATTERNS,
+  /pha\b/i,
+  /acid|кислот/i,
+  /exfoliant|exfoliat|пилинг|peel/i,
+];
+const STRONG_EXFOLIANT_PATTERNS = [/30%|20%|peel|пилинг|strong/i];
+const BPO_PATTERNS = [/benzoyl|benzoyl[_\s-]?peroxide|bpo|бензоил/i];
+const AZELAIC_PATTERNS = [/azelaic|азелаин/i];
+const RETINOID_PATTERNS = [/retinol|retinoid|retinal|adapalene|tretinoin|ретинол|ретиноид|адапален/i];
+const HYDRATING_PATTERNS = [/hyalur|гиалурон/i, /glycerin|глицерин/i, /squalane|сквалан/i, /hydrating|увлажн/i];
+const SOOTHING_PATTERNS = [/centella|центелл/i, /panthenol|пантенол/i, /allantoin|аллантоин/i, /soothing|успока/i, /ceramide|церамид/i];
+const NIACINAMIDE_PATTERNS = [/niacinamide|ниацинамид/i];
+const VITC_PATTERNS = [/vitamin\s*c|vitamin_c|vitc|ascorb|аскорбин/i];
+const PEPTIDE_PATTERNS = [/peptide|пептид/i];
+const BRIGHTENING_PATTERNS = [/tranexamic|транексам/i, /arbutin|арбутин/i, /hydroquinone|гидрохинон/i, /brightening|осветл/i];
+const CLAY_PATTERNS = [/clay|каолин|глин/i];
+const ENZYME_PATTERNS = [/enzyme|papain|bromelain|энзим|папаин|бромелайн/i];
+const SLEEPING_MASK_PATTERNS = [/sleeping|ночн/i];
+
+/**
+ * Product-aware mapping for assigning catalogue products to plan step categories.
+ *
+ * `mapStepToStepCategory()` intentionally keeps broad legacy behaviour for old
+ * imports. This helper narrows generic catalogue rows using product metadata so
+ * active products cannot masquerade as gentle hydration/soothing steps.
+ */
+export function mapProductToStepCategories(
+  product: ProductStepMappingInput,
+  skinType?: string | null
+): StepCategory[] {
+  const fallback = mapStepToStepCategory(product.step, product.category, skinType);
+  const text = productSearchText(product);
+  const stepStr = normalizeStepString(product.step);
+  const categoryStr = normalizeStepString(product.category);
+
+  const isToner = stepStr.startsWith('toner') || categoryStr === 'toner';
+  if (isToner) {
+    if (hasAny(text, ACID_PATTERNS)) {
+      const acidSteps: StepCategory[] = ['toner_exfoliant', 'toner_acid'];
+      if (hasAny(text, AHA_PATTERNS)) acidSteps.push('toner_aha');
+      if (hasAny(text, BHA_PATTERNS)) acidSteps.push('toner_bha');
+      return uniqStepCategories(acidSteps);
+    }
+
+    if (hasAny(text, SOOTHING_PATTERNS)) {
+      return uniqStepCategories(['toner_soothing', 'toner_hydrating']);
+    }
+
+    if (hasAny(text, HYDRATING_PATTERNS) || stepStr === 'toner' || categoryStr === 'toner') {
+      return uniqStepCategories(['toner_hydrating', 'toner_soothing']);
+    }
+  }
+
+  const isTreatment = stepStr.startsWith('treatment') || categoryStr === 'treatment';
+  if (isTreatment) {
+    if (hasAny(text, BPO_PATTERNS)) return ['treatment_acne_bpo'];
+    if (hasAny(text, AZELAIC_PATTERNS)) return ['treatment_acne_azelaic'];
+    if (hasAny(text, RETINOID_PATTERNS)) return ['treatment_antiage'];
+    if (hasAny(text, BRIGHTENING_PATTERNS)) return ['treatment_pigmentation'];
+    if (hasAny(text, ACID_PATTERNS)) {
+      return uniqStepCategories([
+        hasAny(text, STRONG_EXFOLIANT_PATTERNS) ? 'treatment_exfoliant_strong' : 'treatment_exfoliant_mild',
+        'treatment_acid',
+      ]);
+    }
+
+    if (stepStr === 'treatment' || categoryStr === 'treatment') {
+      return ['treatment_acne_local'];
+    }
+  }
+
+  const isSerum = stepStr.startsWith('serum') || categoryStr === 'serum';
+  if (isSerum) {
+    if (hasAny(text, NIACINAMIDE_PATTERNS)) return ['serum_niacinamide'];
+    if (hasAny(text, VITC_PATTERNS)) return ['serum_vitc'];
+    if (hasAny(text, ACID_PATTERNS)) return ['serum_exfoliant'];
+    if (hasAny(text, PEPTIDE_PATTERNS)) return ['serum_peptide'];
+    if (hasAny(text, RETINOID_PATTERNS)) return ['serum_antiage'];
+    if (hasAny(text, BRIGHTENING_PATTERNS)) return ['serum_brightening_soft'];
+    if (hasAny(text, SOOTHING_PATTERNS)) return ['serum_anti_redness', 'serum_hydrating'];
+    if (hasAny(text, HYDRATING_PATTERNS) || stepStr === 'serum' || categoryStr === 'serum') {
+      return ['serum_hydrating'];
+    }
+  }
+
+  const isMask = stepStr.startsWith('mask') || categoryStr === 'mask';
+  if (isMask) {
+    if (hasAny(text, CLAY_PATTERNS)) return ['mask_clay'];
+    if (hasAny(text, ACID_PATTERNS)) {
+      return uniqStepCategories([
+        hasAny(text, STRONG_EXFOLIANT_PATTERNS) ? 'mask_peel' : 'mask_acid',
+        'mask_acid',
+      ]);
+    }
+    if (hasAny(text, ENZYME_PATTERNS)) return ['mask_enzyme'];
+    if (hasAny(text, SLEEPING_MASK_PATTERNS)) return ['mask_sleeping'];
+    if (hasAny(text, SOOTHING_PATTERNS)) return ['mask_soothing'];
+    if (hasAny(text, HYDRATING_PATTERNS) || stepStr === 'mask' || categoryStr === 'mask') {
+      return ['mask_hydrating'];
+    }
+  }
+
+  return fallback;
+}
+
+export function areStepCategoriesCompatibleForFallback(
+  requestedStep: StepCategory,
+  candidateStep: StepCategory
+): boolean {
+  if (requestedStep === candidateStep) return true;
+
+  const isTreatmentLike = (step: StepCategory) => step.startsWith('treatment_') || step === 'spot_treatment';
+  if (isTreatmentLike(requestedStep) && isTreatmentLike(candidateStep)) {
+    const groups: StepCategory[][] = [
+      ['treatment_acne_bpo'],
+      ['treatment_acne_azelaic'],
+      ['treatment_acne_local', 'spot_treatment'],
+      ['treatment_exfoliant_mild', 'treatment_exfoliant_strong', 'treatment_acid'],
+      ['treatment_pigmentation'],
+      ['treatment_antiage'],
+    ];
+
+    const group = groups.find((steps) => steps.includes(requestedStep));
+    return group ? group.includes(candidateStep) : false;
+  }
+
+  const requestedBase = requestedStep.split('_')[0];
+  const candidateBase = candidateStep.split('_')[0];
+  if (requestedBase !== candidateBase) return false;
+
+  if (requestedBase === 'toner') {
+    const gentleToners = new Set<StepCategory>(['toner_hydrating', 'toner_soothing']);
+    const acidToners = new Set<StepCategory>(['toner_exfoliant', 'toner_acid', 'toner_aha', 'toner_bha']);
+
+    if (gentleToners.has(requestedStep)) return gentleToners.has(candidateStep);
+    if (acidToners.has(requestedStep)) return acidToners.has(candidateStep);
+    return false;
+  }
+
+  if (requestedBase === 'serum') {
+    const groups: StepCategory[][] = [
+      ['serum_hydrating', 'serum_anti_redness', 'serum_niacinamide'],
+      ['serum_vitc'],
+      ['serum_brightening_soft'],
+      ['serum_peptide'],
+      ['serum_antiage'],
+      ['serum_exfoliant'],
+    ];
+
+    const group = groups.find((steps) => steps.includes(requestedStep));
+    return group ? group.includes(candidateStep) : false;
+  }
+
+  if (requestedBase === 'mask') {
+    const groups: StepCategory[][] = [
+      ['mask_clay'],
+      ['mask_hydrating', 'mask_soothing', 'mask_sleeping'],
+      ['mask_acid', 'mask_peel'],
+      ['mask_enzyme'],
+    ];
+
+    const group = groups.find((steps) => steps.includes(requestedStep));
+    return group ? group.includes(candidateStep) : false;
+  }
+
+  return true;
+}
