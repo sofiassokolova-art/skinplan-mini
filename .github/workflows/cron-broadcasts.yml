@@ -25,6 +25,7 @@ on:
     - cron: '17 3 * * 0'     # чистка client_logs — еженедельно, вс 03:17 UTC
     - cron: '0 10 * * *'     # win-back продления — ежедневно 10:00 UTC (13:00 МСК)
     - cron: '0 */3 * * *'    # догоняющие сообщения воронки — каждые 3 часа
+    - cron: '0 6 * * *'      # синк заказов Adv.Cake — ежедневно 06:00 UTC (09:00 МСК)
   workflow_dispatch: {}        # ручной запуск из вкладки Actions
 
 concurrency:
@@ -62,3 +63,10 @@ jobs:
           curl -fsS --max-time 90 \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "https://proskiniq.ru/api/cron/funnel-nudges"
+
+      - name: Daily Adv.Cake orders sync (Gold Apple)
+        if: github.event.schedule == '0 6 * * *' || github.event_name == 'workflow_dispatch'
+        run: |
+          curl -fsS --max-time 90 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://proskiniq.ru/api/cron/advcake-sync"
