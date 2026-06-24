@@ -17,7 +17,8 @@ import {
   Send,
   Menu,
   X,
-  TrendingUp
+  TrendingUp,
+  ShoppingBag
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdminPageSkeleton } from '@/components/ui/SkeletonLoader';
@@ -172,6 +173,7 @@ export default function AdminLayout({
     { href: '/admin/support', label: 'Поддержка', icon: MessageSquare },
     { href: '/admin/broadcasts', label: 'Рассылки', icon: Send },
     { href: '/admin/funnel', label: 'Воронка конверсии', icon: TrendingUp },
+    { href: '/admin/advcake', label: 'Заказы Adv.Cake', icon: ShoppingBag },
   ];
 
   // Условные return'ы ПОСЛЕ всех хуков
