@@ -1,0 +1,1381 @@
+[
+  {
+    "id": 460,
+    "link": "https://goldapple.ru/89810200001-hydrating-cleanser",
+    "name": "Hydrating Cleanser",
+    "status": "ok",
+    "price": 1810,
+    "in_stock": false
+  },
+  {
+    "id": 461,
+    "link": "https://goldapple.ru/19760325596-cream-to-foam-cleanser",
+    "name": "Cream-to-Foam Cleanser",
+    "status": "not_found",
+    "price": null,
+    "in_stock": null
+  },
+  {
+    "id": 462,
+    "link": "https://goldapple.ru/11117-89320500009-toleriane",
+    "name": "Toleriane Dermo Cleanser",
+    "status": "redirect",
+    "price": null,
+    "in_stock": null,
+    "redirect_to": "https://goldapple.ru/89320500009-toleriane"
+  },
+  {
+    "id": 463,
+    "link": "https://goldapple.ru/89270300016-sensibio-mild-cleansing-foaming-gel",
+    "name": "Sensibio Gel Moussant",
+    "status": "ok",
+    "price": 1707,
+    "in_stock": true
+  },
+  {
+    "id": 464,
+    "link": "https://goldapple.ru/89140300009-xemose-cleansing-soothing-oil",
+    "name": "Xémose Cleansing Soothing Oil",
+    "status": "ok",
+    "price": 1530,
+    "in_stock": true
+  },
+  {
+    "id": 465,
+    "link": "https://goldapple.ru/89190400001-lotion-nettoyante-peaux-intolerantes",
+    "name": "Tolerance Extremely Gentle Cleanser",
+    "status": "redirect",
+    "price": null,
+    "in_stock": null,
+    "redirect_to": "https://goldapple.ru/"
+  },
+  {
+    "id": 468,
+    "link": "https://goldapple.ru/19000141452-atoderm",
+    "name": "Atoderm Shower/Cleanser Gel",
+    "status": "ok",
+    "price": 2857,
+    "in_stock": true
+  },
+  {
+    "id": 469,
+    "link": "https://goldapple.ru/19000162309-dermatoclean",
+    "name": "Ultra Sensitive Cleanser",
+    "status": "ok",
+    "price": 1219,
+    "in_stock": true
+  },
+  {
+    "id": 472,
+    "link": "https://goldapple.ru/89320200010-gel-mous",
+    "name": "Effaclar Gel",
+    "status": "ok",
+    "price": 1179,
+    "in_stock": true
+  },
+  {
+    "id": 473,
+    "link": "https://goldapple.ru/89270200005-sebium-purifying-cleansing-foaming-gel",
+    "name": "Sébium Gel",
+    "status": "ok",
+    "price": 1574,
+    "in_stock": true
+  },
+  {
+    "id": 474,
+    "link": "https://goldapple.ru/89810300001-foaming-cleanser",
+    "name": "Foaming Cleanser",
+    "status": "ok",
+    "price": 1895,
+    "in_stock": false
+  },
+  {
+    "id": 475,
+    "link": "https://goldapple.ru/97560200022-low-ph-good-morning-gel-cleanser",
+    "name": "Low pH Good Morning Gel",
+    "status": "ok",
+    "price": 1083,
+    "in_stock": true
+  },
+  {
+    "id": 478,
+    "link": "https://goldapple.ru/19000193310-gel-cleanser",
+    "name": "Pore Cleansing Gel",
+    "status": "ok",
+    "price": 652,
+    "in_stock": true
+  },
+  {
+    "id": 480,
+    "link": "https://goldapple.ru/19760305999-ctrl-a-teatreement-cleansing-foam",
+    "name": "Teatreement Cleansing Foam",
+    "status": "ok",
+    "price": 1957,
+    "in_stock": false
+  },
+  {
+    "id": 482,
+    "link": "https://goldapple.ru/19000048751-salicylic-acid-daily-gentle-cleanser-mini",
+    "name": "Salicylic Acid Cleanser",
+    "status": "ok",
+    "price": 650,
+    "in_stock": true
+  },
+  {
+    "id": 487,
+    "link": "https://goldapple.ru/19000012307-tea-tree-purifine-30-cleansing-foam",
+    "name": "Tea Tree Cleansing Foam",
+    "status": "ok",
+    "price": 2723,
+    "in_stock": true
+  },
+  {
+    "id": 488,
+    "link": "https://goldapple.ru/19000420958-niacinamide",
+    "name": "Clean Pores Gel",
+    "status": "ok",
+    "price": 396,
+    "in_stock": true
+  },
+  {
+    "id": 490,
+    "link": "https://goldapple.ru/19000135262-essence-toner",
+    "name": "Essence Toner",
+    "status": "ok",
+    "price": 1361,
+    "in_stock": true
+  },
+  {
+    "id": 491,
+    "link": "https://goldapple.ru/19760321676-gokujyun-lotion",
+    "name": "Gokujyun Lotion",
+    "status": "ok",
+    "price": 1701,
+    "in_stock": false
+  },
+  {
+    "id": 493,
+    "link": "https://goldapple.ru/89320300008-uspokaivajuschij",
+    "name": "Hydrating Tonic",
+    "status": "ok",
+    "price": 1884,
+    "in_stock": true
+  },
+  {
+    "id": 494,
+    "link": "https://goldapple.ru/19000041344-sensibio",
+    "name": "Sensibio Tonic",
+    "status": "ok",
+    "price": 2308,
+    "in_stock": true
+  },
+  {
+    "id": 495,
+    "link": "https://goldapple.ru/11092113-thermal-water",
+    "name": "Thermal Water",
+    "status": "redirect",
+    "price": null,
+    "in_stock": null,
+    "redirect_to": "https://goldapple.ru/89141800009-thermal-water"
+  },
+  {
+    "id": 496,
+    "link": "https://goldapple.ru/19000137124-madagascar-centella-tone-brightening-boosting-toner",
+    "name": "Centella Toner",
+    "status": "ok",
+    "price": 2362,
+    "in_stock": true
+  },
+  {
+    "id": 502,
+    "link": "https://goldapple.ru/19000266159-hyaluronic-acid-layer-mooltox-ampoule",
+    "name": "Bio-Cell Hyaluron",
+    "status": "ok",
+    "price": 3308,
+    "in_stock": false
+  },
+  {
+    "id": 503,
+    "link": "https://goldapple.ru/19000224127-noni-hyaluronic/",
+    "name": "Hyaluron Serum",
+    "status": "ok",
+    "price": 1440,
+    "in_stock": true
+  },
+  {
+    "id": 505,
+    "link": "https://goldapple.ru/19000163786-the-niacinamide-15-serum",
+    "name": "Niacinamide 15",
+    "status": "ok",
+    "price": 2550,
+    "in_stock": true
+  },
+  {
+    "id": 509,
+    "link": "https://goldapple.ru/19000163788-the-vitamin-c-23-serum",
+    "name": "Vitamin C 23",
+    "status": "ok",
+    "price": 2750,
+    "in_stock": true
+  },
+  {
+    "id": 510,
+    "link": "https://goldapple.ru/19760303644-galactomyces-pure-vitamin-c-glow-serum",
+    "name": "Yuja Niacin",
+    "status": "ok",
+    "price": 1842,
+    "in_stock": true
+  },
+  {
+    "id": 513,
+    "link": "https://goldapple.ru/19000070278-dr-green-vitamin-ampoule",
+    "name": "Vitamin C Ampoule",
+    "status": "redirect",
+    "price": null,
+    "in_stock": null,
+    "redirect_to": "https://goldapple.ru/"
+  },
+  {
+    "id": 514,
+    "link": "https://goldapple.ru/89321500005-rosaliac-ar-intense",
+    "name": "Rosaliac AR",
+    "status": "ok",
+    "price": 2366,
+    "in_stock": false
+  },
+  {
+    "id": 515,
+    "link": "https://goldapple.ru/89140100002-roseliane",
+    "name": "Roséliane Serum",
+    "status": "ok",
+    "price": 1646,
+    "in_stock": true
+  },
+  {
+    "id": 516,
+    "link": "https://goldapple.ru/19000224711-cicapair-intensive-soothing-repair",
+    "name": "Cicapair Serum",
+    "status": "ok",
+    "price": 2695,
+    "in_stock": true
+  },
+  {
+    "id": 517,
+    "link": "https://goldapple.ru/19000112672-madagascar-centella-ampoule",
+    "name": "Ampoule Centella",
+    "status": "ok",
+    "price": 2260,
+    "in_stock": true
+  },
+  {
+    "id": 524,
+    "link": "https://goldapple.ru/19000005028-effaclar-duo",
+    "name": "Effaclar Duo(+)",
+    "status": "ok",
+    "price": 1701,
+    "in_stock": true
+  },
+  {
+    "id": 526,
+    "link": "https://goldapple.ru/19000038690-skin-chemistry",
+    "name": "Acne Spot",
+    "status": "ok",
+    "price": 327,
+    "in_stock": true
+  },
+  {
+    "id": 527,
+    "link": "https://goldapple.ru/97560200010-bha-blackhead-power-liquid",
+    "name": "BHA Blackhead Liquid",
+    "status": "ok",
+    "price": 2615,
+    "in_stock": true
+  },
+  {
+    "id": 528,
+    "link": "https://goldapple.ru/19760303642-aha-bha-pha-30-days-miracle-toner",
+    "name": "AHA-BHA-PHA Toner",
+    "status": "ok",
+    "price": 1426,
+    "in_stock": true
+  },
+  {
+    "id": 535,
+    "link": "https://goldapple.ru/19000149599-melanon-x-ampoule",
+    "name": "Mela Tox Ampoule",
+    "status": "redirect",
+    "price": null,
+    "in_stock": null,
+    "redirect_to": "https://goldapple.ru/"
+  },
+  {
+    "id": 538,
+    "link": "https://goldapple.ru/19000038692-skin-chemistry",
+    "name": "Peptide Booster",
+    "status": "ok",
+    "price": 317,
+    "in_stock": true
+  },
+  {
+    "id": 539,
+    "link": "https://goldapple.ru/89810200003-moisturising",
+    "name": "PM Facial Lotion",
+    "status": "ok",
+    "price": 2232,
+    "in_stock": false
+  },
+  {
+    "id": 540,
+    "link": "https://goldapple.ru/97560200008-oil-free-ultra-moisturizing-lotion-with-birch-sap",
+    "name": "Oil-Free Ultra Moisturizing",
+    "status": "ok",
+    "price": 2690,
+    "in_stock": true
+  },
+  {
+    "id": 541,
+    "link": "https://goldapple.ru/19000383966-hyaluron",
+    "name": "MIXITHyaluron",
+    "status": "ok",
+    "price": 551,
+    "in_stock": true
+  },
+  {
+    "id": 542,
+    "link": "https://goldapple.ru/89320200007-effaclar-mat",
+    "name": "Effaclar MAT",
+    "status": "ok",
+    "price": 2196,
+    "in_stock": true
+  },
+  {
+    "id": 543,
+    "link": "https://goldapple.ru/89270200008-sebium-mat-control-shine-control-moisturizer",
+    "name": "Sébium Mat Control",
+    "status": "ok",
+    "price": 2393,
+    "in_stock": true
+  },
+  {
+    "id": 545,
+    "link": "https://goldapple.ru/11746003-moisturising",
+    "name": "Moisturizing Cream",
+    "status": "redirect",
+    "price": null,
+    "in_stock": null,
+    "redirect_to": "https://goldapple.ru/89810100003-moisturising"
+  },
+  {
+    "id": 546,
+    "link": "https://goldapple.ru/19000126618-cicaplast-b5",
+    "name": "Cicaplast Baume B5",
+    "status": "ok",
+    "price": 1985,
+    "in_stock": true
+  },
+  {
+    "id": 547,
+    "link": "https://goldapple.ru/19000021595-bariederm",
+    "name": "Bariederm Cica",
+    "status": "ok",
+    "price": 1918,
+    "in_stock": true
+  },
+  {
+    "id": 548,
+    "link": "https://goldapple.ru/89190600004-cicalfate",
+    "name": "Cicalfate+",
+    "status": "ok",
+    "price": 290,
+    "in_stock": true
+  },
+  {
+    "id": 549,
+    "link": "https://goldapple.ru/89320500010-toleriane-sensitive",
+    "name": "Toleriane Sensitive",
+    "status": "ok",
+    "price": 1427,
+    "in_stock": true
+  },
+  {
+    "id": 550,
+    "link": "https://goldapple.ru/21070200008-cicapair-cream",
+    "name": "Cicapair Cream",
+    "status": "ok",
+    "price": 5415,
+    "in_stock": false
+  },
+  {
+    "id": 552,
+    "link": "https://goldapple.ru/89810400001-eye-repair",
+    "name": "Eye Repair Cream",
+    "status": "ok",
+    "price": 2168,
+    "in_stock": false
+  },
+  {
+    "id": 553,
+    "link": "https://goldapple.ru/89322000003-hyalu-b5",
+    "name": "Hyalu B5 Eye",
+    "status": "ok",
+    "price": 2601,
+    "in_stock": true
+  },
+  {
+    "id": 554,
+    "link": "https://goldapple.ru/10693-15370600002-creamy-eye-treatment-with-avocado",
+    "name": "Creamy Eye Avocado",
+    "status": "redirect",
+    "price": null,
+    "in_stock": null,
+    "redirect_to": "https://goldapple.ru/"
+  },
+  {
+    "id": 558,
+    "link": "https://goldapple.ru/19000076478-waterfull-essence-sun-cream-spf-50-pa",
+    "name": "Waterfull Essence SPF50",
+    "status": "ok",
+    "price": 1500,
+    "in_stock": false
+  },
+  {
+    "id": 559,
+    "link": "https://goldapple.ru/19000237061-with-mexoryl400",
+    "name": "UVMune 400 Fluid",
+    "status": "ok",
+    "price": 2167,
+    "in_stock": true
+  },
+  {
+    "id": 560,
+    "link": "https://goldapple.ru/19000137100-madagascar-centella-hyalu-cica-water-fit-sun-serum",
+    "name": "Centella SPF50",
+    "status": "ok",
+    "price": 3398,
+    "in_stock": true
+  },
+  {
+    "id": 561,
+    "link": "https://goldapple.ru/19000162322-sun-protection",
+    "name": "Oil Control SPF50+",
+    "status": "ok",
+    "price": 1517,
+    "in_stock": true
+  },
+  {
+    "id": 562,
+    "link": "https://goldapple.ru/89270800002-photoderm-akn-mat-high-protection-matifying-fluid-spf30",
+    "name": "Photoderm AKN Mat SPF30/50",
+    "status": "ok",
+    "price": 1673,
+    "in_stock": true
+  },
+  {
+    "id": 563,
+    "link": "https://goldapple.ru/19760303646-truecica-mineral-100-calming-suncream",
+    "name": "Truecica Mineral 50+",
+    "status": "ok",
+    "price": 1461,
+    "in_stock": false
+  },
+  {
+    "id": 564,
+    "link": "https://goldapple.ru/89270800003-photoderm-ar-very-high",
+    "name": "Photoderm AR SPF50+",
+    "status": "redirect",
+    "price": null,
+    "in_stock": null,
+    "redirect_to": "https://goldapple.ru/"
+  },
+  {
+    "id": 565,
+    "link": "https://goldapple.ru/89320900007-anthelios-xl",
+    "name": "Anthelios Comfort",
+    "status": "ok",
+    "price": 2425,
+    "in_stock": true
+  },
+  {
+    "id": 567,
+    "link": "https://goldapple.ru/6025100005-pure-clay-mask",
+    "name": "Pure Clay Mask",
+    "status": "redirect",
+    "price": null,
+    "in_stock": null,
+    "redirect_to": "https://goldapple.ru/"
+  },
+  {
+    "id": 568,
+    "link": "https://goldapple.ru/89320200012-effaclar",
+    "name": "Effaclar Clay Mask",
+    "status": "ok",
+    "price": 1777,
+    "in_stock": true
+  },
+  {
+    "id": 569,
+    "link": "https://goldapple.ru/19000492192-laneige-water-sleeping",
+    "name": "Sleeping Mask",
+    "status": "ok",
+    "price": 2831,
+    "in_stock": true
+  },
+  {
+    "id": 573,
+    "link": "https://goldapple.ru/19000021594-bariederm",
+    "name": "Cica Balm",
+    "status": "ok",
+    "price": 2917,
+    "in_stock": true
+  },
+  {
+    "id": 574,
+    "link": "https://goldapple.ru/19000126618-cicaplast-b5",
+    "name": "Cicaplast Baume B5",
+    "status": "ok",
+    "price": 1985,
+    "in_stock": true
+  },
+  {
+    "id": 576,
+    "link": "https://goldapple.ru/89130400004-reve-de-miel",
+    "name": "Reve de Miel Lip Balm",
+    "status": "ok",
+    "price": 1545,
+    "in_stock": false
+  },
+  {
+    "id": 577,
+    "link": "https://goldapple.ru/19000326972-lipstick-balm",
+    "name": "Lip Balm",
+    "status": "ok",
+    "price": 474,
+    "in_stock": true
+  },
+  {
+    "id": 578,
+    "link": "https://goldapple.ru/97560200044-ac-collection-acne-patch",
+    "name": "AC Collection Patches",
+    "status": "ok",
+    "price": 692,
+    "in_stock": true
+  },
+  {
+    "id": 579,
+    "link": "https://goldapple.ru/19000261090-volume-lifting-eye-patch-pro",
+    "name": "Black Peptide Patches",
+    "status": "redirect",
+    "price": null,
+    "in_stock": null,
+    "redirect_to": "https://goldapple.ru/"
+  },
+  {
+    "id": 581,
+    "link": "https://goldapple.ru/30120900013-interstellar-mask",
+    "name": "Pore Clay Mask",
+    "status": "ok",
+    "price": 1211,
+    "in_stock": false
+  },
+  {
+    "id": 582,
+    "link": "https://goldapple.ru/89321400003-nutritic-intense",
+    "name": "La Roche-Posay Nutritic Intense Riche",
+    "status": "ok",
+    "price": 3295,
+    "in_stock": true
+  },
+  {
+    "id": 583,
+    "link": "https://goldapple.ru/89321400002-nutritic",
+    "name": "La Roche-Posay Nutritic Intense",
+    "status": "ok",
+    "price": 4278,
+    "in_stock": false
+  },
+  {
+    "id": 584,
+    "link": "https://goldapple.ru/89190500004-hydrance-optimale-riche",
+    "name": "Avène Hydrance Rich",
+    "status": "ok",
+    "price": 1900,
+    "in_stock": true
+  },
+  {
+    "id": 585,
+    "link": "https://goldapple.ru/19000180226-rich-moist-soothing-cream",
+    "name": "Dear, Klairs Rich Moist Soothing Cream",
+    "status": "redirect",
+    "price": null,
+    "in_stock": null,
+    "redirect_to": "https://goldapple.ru/"
+  },
+  {
+    "id": 586,
+    "link": "https://goldapple.ru/aptechnaja-kosmetika/uhod-za-telom/uvlazhnenie-i-pitanie",
+    "name": "Bioderma Atoderm Creme",
+    "status": "needs_manual_check",
+    "price": null,
+    "in_stock": null,
+    "note": "h1=основной уход; hasPdp=false; body=На главную Навигация Поиск Избранное Авторизация Корзина главная здоровье уход для тела основной уход основной уход филь",
+    "observed_url": "https://goldapple.ru/aptechnaja-kosmetika/uhod-za-telom/uvlazhnenie-i-pitanie"
+  },
+  {
+    "id": 587,
+    "link": "https://goldapple.ru/aptechnaja-kosmetika/uhod-za-telom/uvlazhnenie-i-pitanie",
+    "name": "Avène Cold Cream",
+    "status": "needs_manual_check",
+    "price": null,
+    "in_stock": null,
+    "note": "h1=основной уход; hasPdp=false; body=На главную Навигация Поиск Избранное Авторизация Корзина главная здоровье уход для тела основной уход основной уход филь",
+    "observed_url": "https://goldapple.ru/aptechnaja-kosmetika/uhod-za-telom/uvlazhnenie-i-pitanie"
+  },
+  {
+    "id": 588,
+    "link": "https://goldapple.ru/19000230928-1025-dokdo-sleeping-pack",
+    "name": "Round Lab 1025 Dokdo Sleeping Pack",
+    "status": "ok",
+    "price": 1678,
+    "in_stock": true
+  },
+  {
+    "id": 589,
+    "link": "https://goldapple.ru/19000076483-waterfull-vegan-sleeping-pack",
+    "name": "d'Alba Waterfull Vegan Sleeping Pack",
+    "status": "ok",
+    "price": 1795,
+    "in_stock": true
+  },
+  {
+    "id": 590,
+    "link": "https://goldapple.ru/19000117391-sleeping-masque-eclat",
+    "name": "Payot Sleeping Masque Éclat",
+    "status": "ok",
+    "price": 1830,
+    "in_stock": true
+  },
+  {
+    "id": 591,
+    "link": "https://goldapple.ru/89142400004-eau-thermale",
+    "name": "Uriage Eau Thermale Sleeping Mask",
+    "status": "ok",
+    "price": 1620,
+    "in_stock": true
+  },
+  {
+    "id": 592,
+    "link": "https://goldapple.ru/19000218699-cicapair-tiger-grass-sleepair",
+    "name": "Dr.Jart+ Cicapair Tiger Grass Sleepair Intensive Mask",
+    "status": "ok",
+    "price": 1865,
+    "in_stock": false
+  },
+  {
+    "id": 593,
+    "link": "https://goldapple.ru/19000198784-bifida-biome-deep-sleeping-mask",
+    "name": "Manyo Bifida Biome Deep Sleeping Mask",
+    "status": "ok",
+    "price": 3667,
+    "in_stock": true
+  },
+  {
+    "id": 594,
+    "link": "https://goldapple.ru/89191000015-soothing-moisture-mask",
+    "name": "Avène Soothing Moisture Mask",
+    "status": "ok",
+    "price": 1769,
+    "in_stock": true
+  },
+  {
+    "id": 595,
+    "link": "https://goldapple.ru/19000001690-relief-chamomile-mask",
+    "name": "HYGGEE Relief Chamomile Mask",
+    "status": "ok",
+    "price": 1170,
+    "in_stock": false
+  },
+  {
+    "id": 596,
+    "link": "https://goldapple.ru/19000198832-herb-green-cica-pack",
+    "name": "Manyo Herb Green Cica Pack",
+    "status": "ok",
+    "price": 2840,
+    "in_stock": false
+  },
+  {
+    "id": 597,
+    "link": "https://goldapple.ru/19000230943-mugwort-calming-mask-sheet",
+    "name": "Round Lab Mugwort Calming Mask Sheet",
+    "status": "ok",
+    "price": 180,
+    "in_stock": false
+  },
+  {
+    "id": 598,
+    "link": "https://goldapple.ru/19000141647-pure-ruzhe-mask",
+    "name": "Planeta Organica PURE Soothing Mask",
+    "status": "not_found",
+    "price": null,
+    "in_stock": null
+  },
+  {
+    "id": 599,
+    "link": "https://goldapple.ru/19000031621-ninja-star-special-black-v-care-mask-sheet",
+    "name": "DARLING Ninja Star Soothing Mask",
+    "status": "ok",
+    "price": 464,
+    "in_stock": true
+  },
+  {
+    "id": 600,
+    "link": "https://goldapple.ru/19000235662-anthelios-oil-correct-spf50",
+    "name": "La Roche-Posay Anthelios Oil Correct SPF50+",
+    "status": "not_found",
+    "price": null,
+    "in_stock": null
+  },
+  {
+    "id": 601,
+    "link": "https://goldapple.ru/19000195777-sun-oil-control-face-gel-cream-dry-touch-spf50",
+    "name": "Eucerin Oil Control SPF50+",
+    "status": "not_found",
+    "price": null,
+    "in_stock": null
+  },
+  {
+    "id": 602,
+    "link": "https://goldapple.ru/19000179586-daily-sunscreen-spf50",
+    "name": "For Me by Gold Apple Daily Sunscreen SPF50",
+    "status": "not_found",
+    "price": null,
+    "in_stock": null
+  },
+  {
+    "id": 603,
+    "link": "https://goldapple.ru/19000184783-cica-regen-vegan-sun",
+    "name": "Dr.Ceuracle Cica Regen Vegan Sun",
+    "status": "not_found",
+    "price": null,
+    "in_stock": null
+  },
+  {
+    "id": 604,
+    "link": "https://goldapple.ru/19000230932-birch-juice-moisturizing-sun-cream",
+    "name": "Round Lab Birch Juice Moisturizing Sun Cream SPF50+ PA++++",
+    "status": "not_found",
+    "price": null,
+    "in_stock": null
+  },
+  {
+    "id": 605,
+    "link": "https://goldapple.ru/19000175618-anthelios-mineral-one-spf50",
+    "name": "La Roche-Posay Anthelios Mineral One SPF50+",
+    "status": "not_found",
+    "price": null,
+    "in_stock": null
+  },
+  {
+    "id": 606,
+    "link": "https://goldapple.ru/s/avene-mineral-spf50",
+    "name": "Avène Mineral Cream SPF50",
+    "status": "not_found",
+    "price": null,
+    "in_stock": null
+  },
+  {
+    "id": 607,
+    "link": "https://goldapple.ru/19000182432-sunscreen-color-spf50",
+    "name": "Kuora Sunscreen Color SPF50",
+    "status": "not_found",
+    "price": null,
+    "in_stock": null
+  },
+  {
+    "id": 608,
+    "link": "https://goldapple.ru/89320600008-vitamin-c10-serum",
+    "name": "La Roche-Posay Pure Vitamin C10 Serum",
+    "status": "redirect",
+    "price": null,
+    "in_stock": null,
+    "redirect_to": "https://goldapple.ru/"
+  },
+  {
+    "id": 609,
+    "link": "https://goldapple.ru/19000018929-professional-c-serum-10",
+    "name": "Obagi Professional-C Serum 10%",
+    "status": "ok",
+    "price": 14589,
+    "in_stock": true
+  },
+  {
+    "id": 610,
+    "link": "https://goldapple.ru/19000018930-professional-c-serum-15",
+    "name": "Obagi Professional-C Serum 15%",
+    "status": "ok",
+    "price": 13303,
+    "in_stock": true
+  },
+  {
+    "id": 611,
+    "link": "https://goldapple.ru/19000163788-the-vitamin-c-23-serum",
+    "name": "COSRX The Vitamin C 23 Serum",
+    "status": "ok",
+    "price": 2750,
+    "in_stock": true
+  },
+  {
+    "id": 612,
+    "link": "https://goldapple.ru/19000210534-vitamine-c-10",
+    "name": "Etat Pur Vitamin C 10%",
+    "status": "ok",
+    "price": 2348,
+    "in_stock": true
+  },
+  {
+    "id": 613,
+    "link": "https://goldapple.ru/19000089078-vitamin-c-10",
+    "name": "SmoRodina Vitamin C 10% CE Ferulic",
+    "status": "ok",
+    "price": 1890,
+    "in_stock": false
+  },
+  {
+    "id": 614,
+    "link": "https://goldapple.ru/19000048726-benzoyl-peroxide-2-5",
+    "name": "ART&FACT Benzoyl Peroxide 2.5% Anti-Acne Serum",
+    "status": "ok",
+    "price": 682,
+    "in_stock": false
+  },
+  {
+    "id": 615,
+    "link": "https://goldapple.ru/19000098626-anti-acne-serum",
+    "name": "ATB Lab Anti Acne Serum",
+    "status": "ok",
+    "price": 6400,
+    "in_stock": false
+  },
+  {
+    "id": 616,
+    "link": "https://goldapple.ru/19000093652-anti-blemish-solutions-all-over-clearing-treatment-oil-free",
+    "name": "Clinique Anti-Blemish Solutions All-Over Clearing Treatment",
+    "status": "ok",
+    "price": 697,
+    "in_stock": false
+  },
+  {
+    "id": 617,
+    "link": "https://goldapple.ru/19000098625-matte-skin-cream",
+    "name": "ATB Lab Matte Skin Cream",
+    "status": "ok",
+    "price": 6400,
+    "in_stock": false
+  },
+  {
+    "id": 618,
+    "link": "https://goldapple.ru/19000037253-azelaic-acid-15-zinc-pca",
+    "name": "ART&FACT Azelaic Acid 15% + Zinc PCA",
+    "status": "not_found",
+    "price": null,
+    "in_stock": null
+  },
+  {
+    "id": 619,
+    "link": "https://goldapple.ru/19000166105-azelaic-correcting-cream",
+    "name": "ARAVIA Laboratories Azelaic Correcting Cream",
+    "status": "not_found",
+    "price": null,
+    "in_stock": null
+  },
+  {
+    "id": 620,
+    "link": "https://goldapple.ru/19000344379-azelaic-acid-10-treatment-cream",
+    "name": "BioBalance Azelaic Acid 10% Treatment Cream",
+    "status": "not_found",
+    "price": null,
+    "in_stock": null
+  },
+  {
+    "id": 621,
+    "link": "https://goldapple.ru/19000108526-azelais-corrective-cream",
+    "name": "ICON SKIN Azelais Corrective Cream",
+    "status": "not_found",
+    "price": null,
+    "in_stock": null
+  },
+  {
+    "id": 622,
+    "link": "https://goldapple.ru/19000031660-bioplasma-azelaic-15-cream",
+    "name": "GIGI Bioplasma Azelaic 15% Cream",
+    "status": "not_found",
+    "price": null,
+    "in_stock": null
+  },
+  {
+    "id": 623,
+    "link": "https://goldapple.ru/19000022743-sebocorrector-cream-with-azelaic-acid",
+    "name": "Kora Sebocorrector Cream with Azelaic Acid",
+    "status": "ok",
+    "price": 660,
+    "in_stock": true
+  },
+  {
+    "id": 626,
+    "link": "https://goldapple.ru/19000237056-effaclar",
+    "name": "Effaclar Duo(+) M",
+    "status": "ok",
+    "price": 1669,
+    "in_stock": true
+  },
+  {
+    "id": 628,
+    "link": "https://goldapple.ru/89321300011-lipik-baum",
+    "name": "Lipikar Balm AP+M",
+    "status": "ok",
+    "price": 2080,
+    "in_stock": false
+  },
+  {
+    "id": 629,
+    "link": "https://goldapple.ru/89270100016-atoderm-intensive-baume-ultra-soothing-balm",
+    "name": "Atoderm Intensive Baume",
+    "status": "ok",
+    "price": 2522,
+    "in_stock": true
+  },
+  {
+    "id": 630,
+    "link": "https://goldapple.ru/19000162323-atopi-control",
+    "name": "AtopiControl Balm",
+    "status": "redirect",
+    "price": null,
+    "in_stock": null,
+    "redirect_to": "https://goldapple.ru/"
+  },
+  {
+    "id": 631,
+    "link": "https://goldapple.ru/89190600004-cicalfate",
+    "name": "Cicalfate крем",
+    "status": "ok",
+    "price": 290,
+    "in_stock": true
+  },
+  {
+    "id": 632,
+    "link": "https://goldapple.ru/19000275597-mela-b3",
+    "name": "Mela B3 сыворотка",
+    "status": "ok",
+    "price": 3381,
+    "in_stock": true
+  },
+  {
+    "id": 633,
+    "link": "https://goldapple.ru/19000162330-anti-pigment",
+    "name": "Anti-Pigment Serum",
+    "status": "ok",
+    "price": 2330,
+    "in_stock": true
+  },
+  {
+    "id": 634,
+    "link": "https://goldapple.ru/89270800003-photoderm-ar-very-high",
+    "name": "Photoderm AR крем SPF50",
+    "status": "redirect",
+    "price": null,
+    "in_stock": null,
+    "redirect_to": "https://goldapple.ru/"
+  },
+  {
+    "id": 636,
+    "link": "https://goldapple.ru/89311000001-liftactiv-supreme",
+    "name": "Liftactiv Supreme",
+    "status": "ok",
+    "price": 3131,
+    "in_stock": true
+  },
+  {
+    "id": 637,
+    "link": "https://goldapple.ru/19000162350-hyaluron-filler",
+    "name": "Hyaluron-Filler Serum",
+    "status": "ok",
+    "price": 3526,
+    "in_stock": false
+  },
+  {
+    "id": 638,
+    "link": "https://goldapple.ru/89320200010-gel-mous",
+    "name": "Effaclar Gel очищающий",
+    "status": "ok",
+    "price": 1179,
+    "in_stock": true
+  },
+  {
+    "id": 639,
+    "link": "https://goldapple.ru/89270200005-sebium-purifying-cleansing-foaming-gel",
+    "name": "Sebium Gel",
+    "status": "ok",
+    "price": 1574,
+    "in_stock": true
+  },
+  {
+    "id": 640,
+    "link": "https://goldapple.ru/89191000004-cleanance",
+    "name": "Cleanance Gel",
+    "status": "ok",
+    "price": 1073,
+    "in_stock": true
+  },
+  {
+    "id": 642,
+    "link": "https://goldapple.ru/19000040881-anthelios",
+    "name": "Anthelios SPF50",
+    "status": "ok",
+    "price": 2752,
+    "in_stock": true
+  },
+  {
+    "id": 643,
+    "link": "https://goldapple.ru/89191800010-sun",
+    "name": "Very High Protection SPF50",
+    "status": "ok",
+    "price": 1653,
+    "in_stock": true
+  },
+  {
+    "id": 644,
+    "link": "https://goldapple.ru/19000291202-sun-protect",
+    "name": "Solaire Milk SPF50",
+    "status": "ok",
+    "price": 2378,
+    "in_stock": false
+  },
+  {
+    "id": 645,
+    "link": "https://goldapple.ru/19000003671-lab-biome",
+    "name": "SPF30 (натуральное)",
+    "status": "redirect",
+    "price": null,
+    "in_stock": null,
+    "redirect_to": "https://goldapple.ru/"
+  },
+  {
+    "id": 650,
+    "link": "https://goldapple.ru/89320600007-redermic-retinol",
+    "name": "Retinol B3 Serum",
+    "status": "ok",
+    "price": 3546,
+    "in_stock": true
+  },
+  {
+    "id": 651,
+    "link": "https://goldapple.ru/19000144294-retinol-specialist",
+    "name": "Liftactiv Retinol Specialist Serum",
+    "status": "ok",
+    "price": 3679,
+    "in_stock": true
+  },
+  {
+    "id": 652,
+    "link": "https://goldapple.ru/19000324169-liposomal-retinol-0-4-squalane",
+    "name": "Retinol 0.2% in Squalane",
+    "status": "ok",
+    "price": 1171,
+    "in_stock": true
+  },
+  {
+    "id": 654,
+    "link": "https://goldapple.ru/19000163790-the-retinol-0-5-oil",
+    "name": "The Retinol 0.5 Oil",
+    "status": "ok",
+    "price": 2750,
+    "in_stock": true
+  },
+  {
+    "id": 655,
+    "link": "https://goldapple.ru/19000170048-retinol-intense-reactivating-serum",
+    "name": "Retinol Intense Reactivating Serum",
+    "status": "ok",
+    "price": 2524,
+    "in_stock": true
+  },
+  {
+    "id": 657,
+    "link": "https://goldapple.ru/24780100024-reti-age",
+    "name": "Reti Age Serum",
+    "status": "ok",
+    "price": 6952,
+    "in_stock": true
+  },
+  {
+    "id": 658,
+    "link": "https://goldapple.ru/19000430248-7-vegan-peptide",
+    "name": "Peptide 500",
+    "status": "ok",
+    "price": 2486,
+    "in_stock": true
+  },
+  {
+    "id": 659,
+    "link": "https://goldapple.ru/19000135229-6-peptide-complex-serum",
+    "name": "Multi-Peptide + HA Serum",
+    "status": "ok",
+    "price": 1241,
+    "in_stock": true
+  },
+  {
+    "id": 660,
+    "link": "https://goldapple.ru/19000075393-smoothing-serum",
+    "name": "Matrixyl 10% + HA",
+    "status": "ok",
+    "price": 220,
+    "in_stock": false
+  },
+  {
+    "id": 661,
+    "link": "https://goldapple.ru/19000166627-peptide-serum",
+    "name": "Pro-Collagen Multi-Peptide Booster",
+    "status": "ok",
+    "price": 1136,
+    "in_stock": true
+  },
+  {
+    "id": 662,
+    "link": "https://goldapple.ru/24780100051-c-vit",
+    "name": "C-Vit Liposomal Serum",
+    "status": "ok",
+    "price": 5797,
+    "in_stock": true
+  },
+  {
+    "id": 664,
+    "link": "https://goldapple.ru/19000060265-liftactiv-supreme",
+    "name": "Liftactiv Supreme Vitamin C Serum",
+    "status": "ok",
+    "price": 3269,
+    "in_stock": true
+  },
+  {
+    "id": 665,
+    "link": "https://goldapple.ru/89270300021-sensibio-h2o",
+    "name": "Sensibio H2O",
+    "status": "ok",
+    "price": 2723,
+    "in_stock": true
+  },
+  {
+    "id": 666,
+    "link": "https://goldapple.ru/19760335447-micellar-water-ultra",
+    "name": "Micellar Water Ultra",
+    "status": "ok",
+    "price": 2934,
+    "in_stock": false
+  },
+  {
+    "id": 667,
+    "link": "https://goldapple.ru/6030400045-skin-naturals",
+    "name": "Micellar Cleansing Water",
+    "status": "ok",
+    "price": 355,
+    "in_stock": true
+  },
+  {
+    "id": 668,
+    "link": "https://goldapple.ru/89190400015-lotion-micellaire",
+    "name": "Micellar Lotion",
+    "status": "ok",
+    "price": 801,
+    "in_stock": false
+  },
+  {
+    "id": 669,
+    "link": "https://goldapple.ru/89141800015-thermal-micellar-water-removes-make-up-sensitive-skin",
+    "name": "Thermal Micellar Water",
+    "status": "ok",
+    "price": 1290,
+    "in_stock": true
+  },
+  {
+    "id": 670,
+    "link": "https://goldapple.ru/89310500016-purete-thermale",
+    "name": "Purete Thermale Micellar Water",
+    "status": "ok",
+    "price": 1903,
+    "in_stock": true
+  },
+  {
+    "id": 671,
+    "link": "https://goldapple.ru/19000230922-1025-dokdo-toner",
+    "name": "Round Lab 1025 Dokdo Toner",
+    "status": "ok",
+    "price": 771,
+    "in_stock": true
+  },
+  {
+    "id": 672,
+    "link": "https://goldapple.ru/19000180243-supple-preparation-facial-toner",
+    "name": "Dear, Klairs Supple Preparation Facial Toner",
+    "status": "ok",
+    "price": 1155,
+    "in_stock": true
+  },
+  {
+    "id": 673,
+    "link": "https://goldapple.ru/19000198799-bifida-cica-herb-toner",
+    "name": "Ma:nyo Bifida Cica Herb Toner",
+    "status": "ok",
+    "price": 1528,
+    "in_stock": true
+  },
+  {
+    "id": 674,
+    "link": "https://goldapple.ru/9490200023-aha-bha-daily-clean-toner",
+    "name": "Mizon AHA & BHA Daily Clean Toner",
+    "status": "ok",
+    "price": 1918,
+    "in_stock": true
+  },
+  {
+    "id": 675,
+    "link": "https://goldapple.ru/19000150165-mist-toner",
+    "name": "Pyunkang Yul Mist Toner",
+    "status": "ok",
+    "price": 881,
+    "in_stock": true
+  },
+  {
+    "id": 676,
+    "link": "https://goldapple.ru/19000402079-advanced-snail-mucin-mask",
+    "name": "COSRX Advanced Snail Hydrogel Mask",
+    "status": "ok",
+    "price": 2025,
+    "in_stock": true
+  },
+  {
+    "id": 677,
+    "link": "https://goldapple.ru/97560200038-hydrogel-very-simple-pack",
+    "name": "COSRX Hydrogel Very Simple Pack",
+    "status": "ok",
+    "price": 1881,
+    "in_stock": false
+  },
+  {
+    "id": 678,
+    "link": "https://goldapple.ru/19760306245-skin-fuel-glowing-hydrogel",
+    "name": "DARLING Skin Fuel Soothing Hydrogel Mask",
+    "status": "ok",
+    "price": 252,
+    "in_stock": true
+  },
+  {
+    "id": 679,
+    "link": "https://goldapple.ru/97560200033-ultimate-nourishing-rice-overnight-spa-mask",
+    "name": "COSRX Ultimate Nourishing Rice Overnight Spa Mask",
+    "status": "ok",
+    "price": 2265,
+    "in_stock": true
+  },
+  {
+    "id": 680,
+    "link": "https://goldapple.ru/19000180230-freshly-juiced-vitamin-e-mask",
+    "name": "Dear, Klairs Freshly Juiced Vitamin E Mask",
+    "status": "ok",
+    "price": 769,
+    "in_stock": true
+  },
+  {
+    "id": 681,
+    "link": "https://goldapple.ru/19760303641-aha-bha-pha-30-days-miracle-serum",
+    "name": "Some By Mi AHA-BHA-PHA 30 Days Miracle Serum",
+    "status": "ok",
+    "price": 1618,
+    "in_stock": true
+  },
+  {
+    "id": 682,
+    "link": "https://goldapple.ru/97560200004-aha-7-whitehead-power-liquid",
+    "name": "COSRX AHA 7 Whitehead Power Liquid",
+    "status": "ok",
+    "price": 1102,
+    "in_stock": true
+  },
+  {
+    "id": 683,
+    "link": "https://goldapple.ru/9490100063-aha-8-peeling-serum",
+    "name": "Mizon AHA 8% Peeling Serum",
+    "status": "not_found",
+    "price": null,
+    "in_stock": null
+  },
+  {
+    "id": 684,
+    "link": "https://goldapple.ru/24780100019-azelac",
+    "name": "Sesderma Azelac RU крем-гель депигментирующий",
+    "status": "ok",
+    "price": 5660,
+    "in_stock": true
+  },
+  {
+    "id": 685,
+    "link": "https://goldapple.ru/19000089083-azelaic-acid",
+    "name": "SmoRodina Azelaic Acid сыворотка",
+    "status": "ok",
+    "price": 1928,
+    "in_stock": false
+  },
+  {
+    "id": 686,
+    "link": "https://goldapple.ru/19000224129-niacinamide-txa",
+    "name": "For Me Niacinamide TXA сыворотка",
+    "status": "ok",
+    "price": 1440,
+    "in_stock": true
+  },
+  {
+    "id": 687,
+    "link": "https://goldapple.ru/19000225147-glow-serum-propolis-niacinamide",
+    "name": "For Me Glow Serum Propolis + Niacinamide",
+    "status": "ok",
+    "price": 1389,
+    "in_stock": true
+  },
+  {
+    "id": 688,
+    "link": "https://goldapple.ru/19000039298-niacinamide-10-zinc-1-sebum-regulating-anti-acne",
+    "name": "ART & FACT Niacinamide 10% + Zinc 1%",
+    "status": "ok",
+    "price": 477,
+    "in_stock": true
+  },
+  {
+    "id": 689,
+    "link": "https://goldapple.ru/19000113907-vitamin-c-brightening-serum",
+    "name": "SKIN&LAB Vitamin C Brightening Serum",
+    "status": "ok",
+    "price": 2103,
+    "in_stock": false
+  },
+  {
+    "id": 690,
+    "link": "https://goldapple.ru/19000299524-niacinamide-10-txa-4",
+    "name": "ANUA Niacinamide 10% + TXA 4% Serum",
+    "status": "ok",
+    "price": 2296,
+    "in_stock": false
+  },
+  {
+    "id": 691,
+    "link": "https://goldapple.ru/19000137120-madagascar-centella-tone-brightening-capsule-ampoule",
+    "name": "SKIN1004 Madagascar Centella Tone Brightening Capsule Ampoule",
+    "status": "ok",
+    "price": 2724,
+    "in_stock": true
+  },
+  {
+    "id": 693,
+    "link": "https://goldapple.ru/19000003094-azelac",
+    "name": "Sesderma Azelac RU липосомальная сыворотка",
+    "status": "ok",
+    "price": 5728,
+    "in_stock": true
+  }
+]
