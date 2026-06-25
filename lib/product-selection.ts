@@ -112,63 +112,46 @@ export async function getProductsForStep(
     // Fallback будет использован позже, если продуктов недостаточно
   }
 
-  // ИСПРАВЛЕНО: Применяем фильтрацию по типу кожи всегда, если указан profileClassification
-  // Если в шаге правила указаны skin_types - используем их, иначе используем тип кожи пользователя
-  if (!isSPF) {
-    let skinTypesToFilter: string[] = [];
-    
-    if (step.skin_types && step.skin_types.length > 0) {
-      // Используем типы кожи из шага правила
-      skinTypesToFilter = step.skin_types;
-    } else if (profileClassification?.skinType) {
-      // ИСПРАВЛЕНО: Если в шаге не указаны типы кожи, используем тип кожи пользователя
-      // Это гарантирует, что продукты будут соответствовать типу кожи пользователя
-      skinTypesToFilter = [profileClassification.skinType];
+  // Фильтрация по типу кожи. Строим условие ОДИН раз и переиспользуем его
+  // и в строгом запросе, и в fallback (см. ниже). SPF универсален — для него
+  // фильтр по типу кожи не добавляем.
+  // Если в шаге правила указаны skin_types — используем их, иначе тип кожи пользователя.
+  const skinTypeCondition: { OR: any[] } | null = (() => {
+    if (isSPF) return null;
+    const skinTypesToFilter =
+      step.skin_types && step.skin_types.length > 0
+        ? step.skin_types
+        : profileClassification?.skinType
+          ? [profileClassification.skinType]
+          : [];
+    if (skinTypesToFilter.length === 0) return null;
+
+    const normalizedSkinTypes = new Set<string>();
+    for (const skinType of skinTypesToFilter) {
+      normalizedSkinTypes.add(skinType);
+      if (skinType === 'combo') { normalizedSkinTypes.add('combination_dry'); normalizedSkinTypes.add('combination_oily'); }
+      if (skinType === 'dry') normalizedSkinTypes.add('combination_dry');
+      if (skinType === 'oily') normalizedSkinTypes.add('combination_oily');
+      if (skinType === 'combination_dry') normalizedSkinTypes.add('dry');
+      if (skinType === 'combination_oily') normalizedSkinTypes.add('oily');
     }
-    
-    if (skinTypesToFilter.length > 0) {
-      const normalizedSkinTypes: string[] = [];
-      
-      for (const skinType of skinTypesToFilter) {
-        normalizedSkinTypes.push(skinType);
-        // Если ищем 'combo', также ищем варианты
-        if (skinType === 'combo') {
-          normalizedSkinTypes.push('combination_dry');
-          normalizedSkinTypes.push('combination_oily');
-        }
-        // Если ищем 'dry', также ищем 'combination_dry'
-        if (skinType === 'dry') {
-          normalizedSkinTypes.push('combination_dry');
-        }
-        // Если ищем 'oily', также ищем 'combination_oily'
-        if (skinType === 'oily') {
-          normalizedSkinTypes.push('combination_oily');
-        }
-        // ИСПРАВЛЕНО: Если ищем 'combination_dry', также ищем 'dry'
-        if (skinType === 'combination_dry') {
-          normalizedSkinTypes.push('dry');
-        }
-        // ИСПРАВЛЕНО: Если ищем 'combination_oily', также ищем 'oily'
-        if (skinType === 'combination_oily') {
-          normalizedSkinTypes.push('oily');
-        }
-      }
-      
-      // ИСПРАВЛЕНО: Используем OR для поддержки продуктов без указанных типов кожи (fallback)
-      // но приоритет отдаем продуктам с подходящими типами кожи
-      if (where.AND) {
-        where.AND = Array.isArray(where.AND) ? [...where.AND] : [where.AND];
-      } else {
-        where.AND = [];
-      }
-      
-      where.AND.push({
-        OR: [
-          { skinTypes: { hasSome: normalizedSkinTypes } },
-          { skinTypes: { isEmpty: true } }, // Продукты без указанных типов кожи (fallback)
-        ],
-      });
-    }
+
+    // OR с isEmpty: продукты без разметки типов кожи остаются мягким fallback,
+    // но средства для ЧУЖОГО типа кожи (напр. dry-маска для oily) отсекаются.
+    return {
+      OR: [
+        { skinTypes: { hasSome: [...normalizedSkinTypes] } },
+        { skinTypes: { isEmpty: true } },
+      ],
+    };
+  })();
+
+  if (skinTypeCondition) {
+    where.AND = Array.isArray(where.AND)
+      ? [...where.AND, skinTypeCondition]
+      : where.AND
+        ? [where.AND, skinTypeCondition]
+        : [skinTypeCondition];
   }
 
   // Concerns: если указаны, ищем по ним, но не блокируем, если не найдено
@@ -336,7 +319,13 @@ export async function getProductsForStep(
     }
     fallbackWhere.OR = fallbackConditions;
 
-    // Убираем фильтры по skinTypes и concerns для fallback
+    // ВАЖНО: фильтр по ТИПУ КОЖИ сохраняем и в fallback (concerns по-прежнему смягчаем).
+    // Раньше fallback сбрасывал и тип кожи → жирному пользователю просачивалась
+    // маска/средство для СУХОЙ кожи. Лучше вернуть пустой шаг, чем чужой тип.
+    if (skinTypeCondition) {
+      fallbackWhere.AND = [skinTypeCondition];
+    }
+
     const fallbackProducts = await prisma.product.findMany({
       where: fallbackWhere,
       include: {
