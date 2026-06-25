@@ -10,6 +10,7 @@ import { useCart, useRemoveFromCart } from '@/hooks/useCart';
 import { useAddToWishlist, useRemoveFromWishlist, useWishlist } from '@/hooks/useWishlist';
 import type { CartResponse } from '@/lib/api-types';
 import { TabLoadingShell } from '@/components/TabLoadingShell';
+import { withAffiliate, isGoldapple, affiliateRel, AFFILIATE_ERID, AFFILIATE_DISCLOSURE } from '@/lib/affiliate';
 import toast from 'react-hot-toast';
 
 export const dynamic = 'force-dynamic';
@@ -38,28 +39,8 @@ function getStore(p: CartItem['product']): { url: string; name: string } | null 
   return null;
 }
 
-// Партнёрская ссылка Goldapple (CPA-редирект go.redav.online).
-// erid LdtCKFJmG относится к рекламодателю ООО «Екатеринбург Яблоко» (goldapple.ru),
-// поэтому через редирект пропускаем ТОЛЬКО goldapple-ссылки. Остальные магазины
-// (Яндекс Маркет и т.п.) ведём напрямую — на них этот erid не распространяется.
-const AFFILIATE_ERID = 'LdtCKFJmG';
-const AFFILIATE_ADVERTISER = 'ООО «ЕКАТЕРИНБУРГ ЯБЛОКО», ИНН 6670381056';
-const AFFILIATE_REDIRECT = `https://go.redav.online/afa94ea7d115fbb0?erid=${AFFILIATE_ERID}&m=2&dl=`;
-const AFFILIATE_DISCLOSURE = `Реклама. ${AFFILIATE_ADVERTISER}, erid: ${AFFILIATE_ERID}`;
-
-function isGoldapple(url: string): boolean {
-  try {
-    return new URL(url).hostname.replace(/^www\./, '').endsWith('goldapple.ru');
-  } catch {
-    return false;
-  }
-}
-
-// Возвращает финальный href и флаг «рекламная ссылка» (для маркировки / rel="sponsored").
-function withAffiliate(url: string): { href: string; sponsored: boolean } {
-  if (isGoldapple(url)) return { href: AFFILIATE_REDIRECT + url, sponsored: true };
-  return { href: url, sponsored: false };
-}
+// Партнёрская логика Goldapple вынесена в lib/affiliate.ts (единый источник правды
+// для корзины и избранного: redav-редирект, erid, маркировка ФЗ-38).
 
 function CartPageContent() {
   const router = useRouter();
@@ -224,7 +205,7 @@ function CartPageContent() {
                             className="crd-cta"
                             href={affiliate.href}
                             target="_blank"
-                            rel={affiliate.sponsored ? 'sponsored nofollow noopener noreferrer' : 'noopener noreferrer'}
+                            rel={affiliateRel(affiliate.sponsored)}
                           >
                             В магазин
                           </a>
