@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 // ИСПРАВЛЕНО (P0): Убран неиспользуемый импорт getCachedPlan (кэш-проверка удалена)
 import {
-  INFO_SCREENS,
   getInitialInfoScreens,
   getInfoScreenAfterQuestion,
   walkInfoScreenChain,
@@ -44,15 +43,49 @@ export async function GET(request: NextRequest) {
     // ИСПРАВЛЕНО (P0): user.count() вместо findMany для производительности
     const totalUsers = await prisma.user.count();
 
-    // ИСПРАВЛЕНО (P0): startedQuiz фильтруется по activeQuestionnaire.id
-    // Раньше считались ответы на любую анкету/версию/тест
+    // ИСПРАВЛЕНО: startedQuiz должен включать пользователей, которые открыли
+    // анкету и дошли хотя бы до первого экрана, даже если они отвалились до
+    // первого вопроса. Раньше брались только user_answers, поэтому ранние
+    // отвалившиеся исчезали из знаменателя, а первые экраны выглядели как 100%.
     const usersWithAnswers = activeQuestionnaire
       ? await prisma.userAnswer.groupBy({
           by: ['userId'],
           where: { questionnaireId: activeQuestionnaire.id },
         })
       : [];
-    const startedSet = new Set(usersWithAnswers.map((u) => u.userId));
+
+    let progressRows: Array<{
+      userId: string;
+      questionIndex: number;
+      infoScreenIndex: number;
+    }> = [];
+
+    if (activeQuestionnaire) {
+      try {
+        progressRows = await prisma.questionnaireProgress.findMany({
+          where: { questionnaireId: activeQuestionnaire.id },
+          select: {
+            userId: true,
+            questionIndex: true,
+            infoScreenIndex: true,
+          },
+        });
+      } catch (progressErr: any) {
+        // Старые окружения могли жить без questionnaire_progress. В этом случае
+        // оставляем прежний fallback по ответам, чтобы весь роут не падал.
+        if (
+          progressErr?.code !== 'P2021' &&
+          !progressErr?.message?.includes('does not exist')
+        ) {
+          throw progressErr;
+        }
+      }
+    }
+
+    const startedSet = new Set<string>([
+      ...usersWithAnswers.map((u) => u.userId),
+      ...progressRows.map((row) => row.userId),
+    ]);
 
     // ИСПРАВЛЕНО (#1): Воронка строится как ВЛОЖЕННЫЕ подмножества, чтобы каждый
     // следующий этап был подмножеством предыдущего (конверсия не может быть > 100%).
@@ -222,62 +255,110 @@ export async function GET(request: NextRequest) {
         }
       });
 
-      // «Дошёл до экрана N» = пользователь ответил на вопрос N ИЛИ на любой более
-      // поздний по порядку приложения. Это делает воронку монотонно невозрастающей.
-      // Раньше считали число ответивших именно на этот вопрос (_count по questionId) —
-      // но условные/необязательные экраны (беременность, список исключаемых
-      // ингредиентов) собирают меньше ответов, а следующий обязательный — снова
-      // больше, из-за чего «дошедшие» скакали вверх-вниз (конверсия > 100%).
-      const orderIndexByQuestionId = new Map<number, number>(
-        questionsInAppOrder.map((q: { id: number }, idx: number) => [q.id, idx])
-      );
-      const questionCount = questionsInAppOrder.length;
+      // «Дошёл до экрана N» = самый дальний экран пользователя >= N. Источники:
+      // 1) questionnaire_progress для тех, кто отвалился до первого ответа;
+      // 2) user_answers для восстановленного/завершённого пути;
+      // 3) завершённая анкета/план как гарантия достижения финального экрана.
+      const screenIndexByQuestionId = new Map<number, number>();
+      const lastInfoScreenIndexByQuestionId = new Map<number, number>();
+      for (let i = 0; i < allScreens.length; i++) {
+        const screen = allScreens[i];
+        if (screen.type === 'question' && screen.questionId) {
+          screenIndexByQuestionId.set(screen.questionId, i);
+        }
+        if (screen.triggerQuestionId != null) {
+          lastInfoScreenIndexByQuestionId.set(screen.triggerQuestionId, i);
+        }
+      }
 
-      // Тянем только пары (userId, questionId) активной анкеты — две колонки, легко.
+      const screenIndexByQuestionOrder = questionsInAppOrder.map(
+        (q: { id: number }) => screenIndexByQuestionId.get(q.id)
+      );
+
+      // Тянем только пары (userId, questionId) активной анкеты.
       const answerRows = await prisma.userAnswer.findMany({
         where: { questionnaireId: activeQuestionnaireWithQuestions.id },
         select: { userId: true, questionId: true },
       });
 
-      // Для каждого пользователя — индекс самого дальнего отвеченного вопроса.
-      const furthestByUser = new Map<string, number>();
-      for (const row of answerRows) {
-        const idx = orderIndexByQuestionId.get(row.questionId);
-        if (idx === undefined) continue;
-        const prev = furthestByUser.get(row.userId);
-        if (prev === undefined || idx > prev) furthestByUser.set(row.userId, idx);
+      // Для каждого пользователя — индекс самого дальнего достигнутого экрана.
+      const furthestScreenByUser = new Map<string, number>();
+      const usersWithPreciseScreenProgress = new Set<string>();
+      const setFurthestScreen = (userId: string, screenIndex: number | undefined) => {
+        if (screenIndex === undefined || Number.isNaN(screenIndex)) return;
+        const clamped = Math.max(0, Math.min(screenIndex, allScreens.length - 1));
+        const prev = furthestScreenByUser.get(userId);
+        if (prev === undefined || clamped > prev) {
+          furthestScreenByUser.set(userId, clamped);
+        }
+      };
+
+      for (const row of progressRows) {
+        if (row.questionIndex <= 0 && row.infoScreenIndex < initialInfoScreens.length) {
+          setFurthestScreen(row.userId, row.infoScreenIndex);
+          continue;
+        }
+
+        // Новые клиенты сохраняют infoScreenIndex как абсолютный индекс экрана
+        // всей анкеты. Значение === initialInfoScreens.length оставляем
+        // совместимым со старым форматом: «начальные экраны пройдены».
+        if (
+          row.infoScreenIndex > initialInfoScreens.length &&
+          row.infoScreenIndex < allScreens.length
+        ) {
+          usersWithPreciseScreenProgress.add(row.userId);
+          setFurthestScreen(row.userId, row.infoScreenIndex);
+          continue;
+        }
+
+        const safeQuestionIndex = Math.min(
+          Math.max(0, row.questionIndex),
+          questionsInAppOrder.length - 1
+        );
+        const questionScreenIndex =
+          screenIndexByQuestionOrder[safeQuestionIndex];
+        setFurthestScreen(row.userId, questionScreenIndex);
       }
 
-      // reachedAt[p] = сколько пользователей дошли до вопроса с индексом p
-      // (их «самый дальний» индекс >= p). Считаем суффиксной суммой.
-      const reachedAt = new Array<number>(questionCount).fill(0);
-      const atFurthest = new Array<number>(questionCount).fill(0);
-      for (const idx of furthestByUser.values()) atFurthest[idx]++;
+      for (const row of answerRows) {
+        const questionScreenIndex = screenIndexByQuestionId.get(row.questionId);
+        const followingInfoScreenIndex = lastInfoScreenIndexByQuestionId.get(row.questionId);
+        setFurthestScreen(
+          row.userId,
+          usersWithPreciseScreenProgress.has(row.userId)
+            ? questionScreenIndex
+            : (followingInfoScreenIndex ?? questionScreenIndex)
+        );
+      }
+
+      for (const userId of completedSet) {
+        setFurthestScreen(userId, allScreens.length - 1);
+      }
+      for (const userId of planSet) {
+        setFurthestScreen(userId, allScreens.length - 1);
+      }
+
+      // Если пользователь попал в стартовую когорту только по факту ответа/профиля,
+      // но его конкретную позицию не удалось восстановить, считаем, что он дошёл
+      // хотя бы до первого экрана.
+      for (const userId of startedSet) {
+        setFurthestScreen(userId, 0);
+      }
+
+      // reachedAt[p] = сколько пользователей дошли до экрана p.
+      const reachedAt = new Array<number>(allScreens.length).fill(0);
+      const atFurthest = new Array<number>(allScreens.length).fill(0);
+      for (const idx of furthestScreenByUser.values()) atFurthest[idx]++;
       let runningReached = 0;
-      for (let p = questionCount - 1; p >= 0; p--) {
+      for (let p = allScreens.length - 1; p >= 0; p--) {
         runningReached += atFurthest[p];
         reachedAt[p] = runningReached;
       }
 
-      const reachedByQuestion = new Map<number, number>(
-        questionsInAppOrder.map((q: { id: number }, idx: number) => [q.id, reachedAt[idx]])
-      );
-
       // Для каждого экрана считаем, сколько пользователей до него дошли (в том же порядке, что и в приложении)
       for (let i = 0; i < allScreens.length; i++) {
         const screen = allScreens[i];
-        let reachedCount = 0;
-
-        if (screen.type === 'question' && screen.questionId) {
-          reachedCount = reachedByQuestion.get(screen.questionId) || 0;
-        } else if (screen.type === 'info') {
-          if (screen.triggerQuestionId != null) {
-            reachedCount = reachedByQuestion.get(screen.triggerQuestionId) || 0;
-          } else {
-            // Начальные инфо-экраны: все, кто начал активную анкету
-            reachedCount = startedQuiz;
-          }
-        }
+        const reachedCount = reachedAt[i] || 0;
 
         screenConversions.push({
           screenNumber: i + 1,
@@ -338,4 +419,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
