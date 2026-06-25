@@ -10,7 +10,7 @@ import { api } from '@/lib/api';
 import { clientLogger } from '@/lib/client-logger';
 import { PaymentGate } from '@/components/PaymentGate';
 import { getBaseStepFromStepCategory } from '@/lib/plan-helpers';
-import { AppLoader } from '@/components/AppLoader';
+import { TabLoadingShell } from '@/components/TabLoadingShell';
 import { HomeEmptyState } from '@/components/HomeEmptyState';
 import { getStepMeta, STEP_ICONS } from '@/lib/routine-step-meta';
 import { getClientUserScope } from '@/lib/client-user-scope';
@@ -49,6 +49,13 @@ const ICONS: Record<string, string> = {
   oil: '/icons/oil_green.png',
   mask: '/icons/mask_green.png',
 };
+
+const HOME_BACKGROUND =
+  'radial-gradient(72% 32% at 0% 0%, rgba(255,224,188,0.7) 0%, transparent 62%),' +
+  'radial-gradient(50% 22% at 100% 18%, rgba(213,254,97,0.42) 0%, transparent 70%),' +
+  'radial-gradient(64% 26% at 100% 55%, rgba(220,210,196,0.55) 0%, transparent 65%),' +
+  'radial-gradient(78% 32% at 10% 92%, rgba(213,254,97,0.46) 0%, transparent 62%),' +
+  'var(--canvas)';
 
 // ФИКС #17: персистентность отмеченных шагов рутины между переключениями страниц.
 // Раньше toggleItem обновлял только локальный стейт; при уходе на /plan и обратно
@@ -652,7 +659,7 @@ export default function HomePage() {
   );
 
   if (!mounted || loading) {
-    return renderWithPaymentGate(<AppLoader fullScreen variant="light" />);
+    return renderWithPaymentGate(<TabLoadingShell title="Уход на сегодня" background={HOME_BACKGROUND} />);
   }
 
   // Получаем текущие элементы в зависимости от вкладки

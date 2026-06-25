@@ -75,6 +75,8 @@ export default async function RootLayout({
   const headersList = await headers();
   const pathname = (headersList as any).get?.('x-pathname') ?? '';
   const isAdminRoute = pathname.startsWith('/admin');
+  const isStandaloneHtmlRoute = pathname === '/payments/return' || pathname.startsWith('/payments/return/');
+  const shouldUseMiniAppShell = !isAdminRoute && !isStandaloneHtmlRoute;
 
   return (
     <html 
@@ -89,7 +91,7 @@ export default async function RootLayout({
             в кеше браузера → onload стреляет сразу → ready() намного раньше.
             БЕЗ crossOrigin: динамический <script> ниже создаётся без
             crossOrigin → match → preload реально переиспользуется. */}
-        {!isAdminRoute && (
+        {shouldUseMiniAppShell && (
           <link
             rel="preload"
             href="https://telegram.org/js/telegram-web-app.js"
@@ -103,7 +105,7 @@ export default async function RootLayout({
             с bootstrap-чанками за канал пользователя.
             Иконки списка оптимизированы (64×64 PNG вместо 880×880 JPEG-as-PNG)
             — экономия ~258KB (с 277KB до 19KB суммарно). */}
-        {!isAdminRoute && (
+        {shouldUseMiniAppShell && (
           <>
             <link rel="preload" href="/onboarding/welcome.jpg" as="image" fetchPriority="high" />
             <link rel="preload" href="/icons/detailed_3_64.png" as="image" />
@@ -113,7 +115,7 @@ export default async function RootLayout({
         )}
         {/* Загружаем SDK до React: Telegram system loader должен закрыться,
             даже если загрузка чанков приложения задержалась. */}
-        {!isAdminRoute && (
+        {shouldUseMiniAppShell && (
           <script
             dangerouslySetInnerHTML={{ __html: `(function(){
   if (typeof window === 'undefined') return;
@@ -264,7 +266,7 @@ export default async function RootLayout({
           />
         )}
         {/* DEV-режим: мок Telegram WebApp для локального браузера (не на /admin) */}
-        {isDev && !isAdminRoute && (
+        {isDev && shouldUseMiniAppShell && (
           <Script
             id="telegram-dev-mock"
             strategy="afterInteractive"
@@ -343,24 +345,26 @@ export default async function RootLayout({
         }}
       >
         {/* Контейнер для кнопки «Назад» — первый ребёнок body, блок 80×80 в углу */}
-        <div
-          id="back-button-fixed-container"
-          aria-hidden="true"
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: 80,
-            height: 80,
-            background: 'transparent',
-            pointerEvents: 'none',
-            zIndex: 99999,
-          }}
-        />
+        {shouldUseMiniAppShell && (
+          <div
+            id="back-button-fixed-container"
+            aria-hidden="true"
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              width: 80,
+              height: 80,
+              background: 'transparent',
+              pointerEvents: 'none',
+              zIndex: 99999,
+            }}
+          />
+        )}
         {/* Лоадер при открытии — показываем ВСЕГДА (кроме /admin).
             React удалит его при монтировании через useRemoveRootLoading().
             Не зависим от process.env.VERCEL — Vercel build cache может не подставлять его. */}
-        {!isAdminRoute && (
+        {shouldUseMiniAppShell && (
           <div
             id="root-loading"
             suppressHydrationWarning
@@ -402,7 +406,7 @@ export default async function RootLayout({
         {/* При ошибке загрузки чанков или таймауте — показываем кнопку «Обновить».
             Только для miniapp: на /admin React mount не выставляет __skiniq_mounted,
             поэтому watchdog давал ложный тост. */}
-        {!isAdminRoute && (
+        {shouldUseMiniAppShell && (
           <>
             <div id="loading-timeout-fallback" style={{ display: 'none' }} />
             <script
@@ -494,15 +498,19 @@ export default async function RootLayout({
         </noscript>
         {/* Обёртка для React DevTools и селекторов: в App Router нет #__next по умолчанию */}
         <div id="__next">
-          <div id="back-button-portal-root" />
-          <ErrorBoundary>
-            <GlobalErrorHandler />
-            <WebVitalsTracker />
-            <ServiceWorker />
-            {children}
-            <Toaster />
-            <Analytics />
-          </ErrorBoundary>
+          {shouldUseMiniAppShell && <div id="back-button-portal-root" />}
+          {isStandaloneHtmlRoute ? (
+            children
+          ) : (
+            <ErrorBoundary>
+              <GlobalErrorHandler />
+              <WebVitalsTracker />
+              <ServiceWorker />
+              {children}
+              <Toaster />
+              <Analytics />
+            </ErrorBoundary>
+          )}
         </div>
       </body>
     </html>

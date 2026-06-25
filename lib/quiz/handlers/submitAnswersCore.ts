@@ -51,6 +51,26 @@ function isNetworkError(e: any): boolean {
   );
 }
 
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getRateLimitRetryMs(e: any): number | null {
+  if (e?.status !== 429) return null;
+
+  const retryAfterSeconds = Number(e?.retryAfter);
+  if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+    return Math.min(retryAfterSeconds * 1000 + 250, 15_000);
+  }
+
+  return 3_000;
+}
+
+function getProcessingRetryMs(retryAfterMs: number | undefined, poll: number): number {
+  const base = Math.max(retryAfterMs ?? 1000, 2000);
+  return Math.min(base * Math.min(poll, 5), 10_000);
+}
+
 /**
  * Отправка ответов с постоянным clientSubmissionId.
  * Сервер атомарно захватывает submission до создания профиля: если первый запрос
@@ -68,8 +88,10 @@ export async function requestSubmitWithRetry(args: {
   const { questionnaireId, answers, clientSubmissionId } = args;
 
   const MAX_NETWORK_ATTEMPTS = 3;
+  const MAX_RATE_LIMIT_ATTEMPTS = 8;
   const MAX_PROCESSING_POLLS = 20;
   let networkAttempts = 0;
+  let rateLimitAttempts = 0;
   let processingPolls = 0;
 
   while (true) {
@@ -86,17 +108,28 @@ export async function requestSubmitWithRetry(args: {
           throw new Error('Профиль ещё создаётся. Подождите несколько секунд и попробуйте снова.');
         }
 
-        const retryAfterMs = response.retryAfterMs ?? 1000;
+        const retryAfterMs = getProcessingRetryMs(response.retryAfterMs, processingPolls);
         clientLogger.log('⏳ submitAnswers уже обрабатывается сервером, ждём результат', {
           processingPolls,
           retryAfterMs,
         });
-        await new Promise((resolve) => setTimeout(resolve, retryAfterMs));
+        await wait(retryAfterMs);
         continue;
       }
 
       return response;
     } catch (e: any) {
+      const rateLimitRetryMs = getRateLimitRetryMs(e);
+      if (rateLimitRetryMs !== null && rateLimitAttempts < MAX_RATE_LIMIT_ATTEMPTS) {
+        rateLimitAttempts += 1;
+        clientLogger.warn('⚠️ submitAnswers получил rate limit, ждём Retry-After', {
+          rateLimitAttempts,
+          retryAfterMs: rateLimitRetryMs,
+        });
+        await wait(rateLimitRetryMs);
+        continue;
+      }
+
       networkAttempts += 1;
       const retriable = isNetworkError(e) && networkAttempts < MAX_NETWORK_ATTEMPTS;
       if (!retriable) throw e;
@@ -105,7 +138,7 @@ export async function requestSubmitWithRetry(args: {
         message: e?.message,
         name: e?.name,
       });
-      await new Promise((r) => setTimeout(r, networkAttempts * 700));
+      await wait(networkAttempts * 700);
     }
   }
 }
