@@ -75,12 +75,16 @@ export async function POST(request: NextRequest) {
       where.tags = { has: 'bought_spf' }; // Или другой тег для покупок
     }
 
-    // Исключить беременных
+    // Исключить беременных.
+    // ВАЖНО: добавляем условие к существующему фильтру skinProfiles (тип кожи/проблемы),
+    // а не перезаписываем его — иначе превью-счётчик расходится с реальной рассылкой
+    // (send делает именно AND, см. broadcast/send/route.ts).
     if (filters.excludePregnant) {
+      const existingCondition = where.skinProfiles?.some;
       where.skinProfiles = {
-        some: {
-          hasPregnancy: false,
-        },
+        some: existingCondition
+          ? { AND: [existingCondition, { hasPregnancy: false }] }
+          : { hasPregnancy: false },
       };
     }
 
