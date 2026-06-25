@@ -45,3 +45,6 @@ skills-lock.json
 *.backup*
 # OpenNext build output
 .open-next/
+
+# не трекать симлинк node_modules (паттерн с / матчит только директории)
+node_modules
