@@ -128,10 +128,7 @@ function CartPageContent() {
         .cart-rd .crd-title{margin:0;font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.6px;color:#0A0A0A;}
         .cart-rd .crd-clear{border:0;background:transparent;color:#6B7280;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:-0.1px;}
         .cart-rd .crd-list{display:flex;flex-direction:column;gap:10px;}
-        .cart-rd .crd-item{position:relative;display:grid;grid-template-columns:76px minmax(0,1fr);gap:14px;padding:12px;border:1px solid rgba(255,255,255,0.7);border-radius:22px;background:rgba(255,255,255,0.62);backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);box-shadow:0 8px 22px rgba(0,0,0,0.04);overflow:hidden;}
-        .cart-rd .crd-thumb{width:76px;height:100%;min-height:96px;display:grid;place-items:center;}
-        .cart-rd .crd-thumb img{max-width:64px;max-height:88px;object-fit:contain;filter:drop-shadow(0 6px 8px rgba(0,0,0,0.1));}
-        .cart-rd .crd-thumb-empty{width:64px;height:88px;border-radius:18px;background:rgba(255,255,255,0.52);border:1px solid rgba(255,255,255,0.74);}
+        .cart-rd .crd-item{position:relative;padding:12px;border:1px solid rgba(255,255,255,0.7);border-radius:22px;background:rgba(255,255,255,0.62);backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);box-shadow:0 8px 22px rgba(0,0,0,0.04);overflow:hidden;}
         .cart-rd .crd-del{position:absolute;top:10px;right:10px;z-index:3;min-height:28px;border:0;border-radius:999px;background:rgba(10,10,10,0.06);color:#6B7280;padding:0 9px;font-family:var(--font-inter),sans-serif;font-size:10.5px;font-weight:700;letter-spacing:-0.1px;display:grid;place-items:center;cursor:pointer;}
         .cart-rd .crd-del:active{transform:scale(0.96);}
         .cart-rd .crd-body{min-width:0;display:flex;flex-direction:column;gap:6px;padding-right:62px;}
@@ -184,13 +181,6 @@ function CartPageContent() {
                   <button className="crd-del" aria-label="Удалить" onClick={() => handleRemove(item.product.id)}>
                     Убрать
                   </button>
-                  <div className="crd-thumb">
-                    {item.product.imageUrl ? (
-                      <img src={item.product.imageUrl} alt="" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                    ) : (
-                      <div className="crd-thumb-empty" aria-hidden />
-                    )}
-                  </div>
                   <div className="crd-body">
                     <div className="crd-brand">{item.product.brand?.name || 'Unknown'}</div>
                     <div className="crd-name">{item.product.name}</div>
