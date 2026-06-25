@@ -54,7 +54,7 @@ function renderMessage(template: string, user: any, profile: any): string {
   }
   
   // {link} - можно добавить ссылку на продукт или промо
-  message = message.replace(/{link}/g, 'https://t.me/skiniq_bot');
+  message = message.replace(/{link}/g, 'https://t.me/skiniq_app_bot');
   
   return message;
 }
