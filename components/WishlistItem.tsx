@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import { useCart, useAddToCart, useRemoveFromCart } from '@/hooks/useCart';
 import FeedbackModal from './FeedbackModal';
 import { ButtonSkeleton } from '@/components/ui/SkeletonLoader';
+import { withAffiliate, affiliateRel, AFFILIATE_ERID } from '@/lib/affiliate';
 import toast from 'react-hot-toast';
 
 interface Product {
@@ -109,6 +110,9 @@ export default function WishlistItem({ item, onRemove }: WishlistItemProps) {
 
   const marketLinks = item.product.marketLinks as any || {};
   const hasLinks = marketLinks.ozon || marketLinks.wildberries || marketLinks.apteka || item.product.link;
+  // Прямая ссылка на магазин (когда нет маркетплейс-ссылок) — оборачиваем в партнёрский
+  // редирект Goldapple (erid) через общий lib/affiliate. sponsored=true → нужна маркировка ФЗ-38.
+  const directBuy = item.product.link ? withAffiliate(item.product.link) : null;
 
   return (
     <>
@@ -288,11 +292,11 @@ export default function WishlistItem({ item, onRemove }: WishlistItemProps) {
                     Аптека
                   </a>
                 )}
-                {item.product.link && !marketLinks.ozon && !marketLinks.wildberries && !marketLinks.apteka && (
+                {directBuy && !marketLinks.ozon && !marketLinks.wildberries && !marketLinks.apteka && (
                   <a
-                    href={item.product.link}
+                    href={directBuy.href}
                     target="_blank"
-                    rel="noopener noreferrer"
+                    rel={affiliateRel(directBuy.sponsored)}
                     style={{
                       flex: 1,
                       backgroundColor: '#0A5F59',
@@ -309,7 +313,13 @@ export default function WishlistItem({ item, onRemove }: WishlistItemProps) {
                   </a>
                 )}
               </div>
-            ) : (
+            ) : null}
+            {directBuy?.sponsored && !marketLinks.ozon && !marketLinks.wildberries && !marketLinks.apteka && (
+              <div style={{ marginTop: '-8px', marginBottom: '12px', fontSize: '10px', lineHeight: 1.4, color: '#9CA3AF', userSelect: 'text' }}>
+                Реклама · erid: {AFFILIATE_ERID}
+              </div>
+            )}
+            {!hasLinks && (
               // ИСПРАВЛЕНО: Показываем информативное сообщение, если ссылок нет
               <div
                 style={{
