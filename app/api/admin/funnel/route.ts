@@ -222,20 +222,45 @@ export async function GET(request: NextRequest) {
         }
       });
 
-      // ИСПРАВЛЕНО (перф): сколько уникальных пользователей дошли до каждого вопроса.
-      // Благодаря @@unique([userId, questionnaireId, questionId]) одна строка =
-      // один пользователь, поэтому _count строк по questionId = число дошедших.
-      // Раньше тянули в память ВСЕ ответы анкеты (findMany) и строили карты в JS —
-      // на больших данных это валило роут по таймауту, и график не отображался.
-      const reachedGroups = await prisma.userAnswer.groupBy({
-        by: ['questionId'],
-        where: {
-          questionnaireId: activeQuestionnaireWithQuestions.id,
-        },
-        _count: { userId: true },
+      // «Дошёл до экрана N» = пользователь ответил на вопрос N ИЛИ на любой более
+      // поздний по порядку приложения. Это делает воронку монотонно невозрастающей.
+      // Раньше считали число ответивших именно на этот вопрос (_count по questionId) —
+      // но условные/необязательные экраны (беременность, список исключаемых
+      // ингредиентов) собирают меньше ответов, а следующий обязательный — снова
+      // больше, из-за чего «дошедшие» скакали вверх-вниз (конверсия > 100%).
+      const orderIndexByQuestionId = new Map<number, number>(
+        questionsInAppOrder.map((q: { id: number }, idx: number) => [q.id, idx])
+      );
+      const questionCount = questionsInAppOrder.length;
+
+      // Тянем только пары (userId, questionId) активной анкеты — две колонки, легко.
+      const answerRows = await prisma.userAnswer.findMany({
+        where: { questionnaireId: activeQuestionnaireWithQuestions.id },
+        select: { userId: true, questionId: true },
       });
+
+      // Для каждого пользователя — индекс самого дальнего отвеченного вопроса.
+      const furthestByUser = new Map<string, number>();
+      for (const row of answerRows) {
+        const idx = orderIndexByQuestionId.get(row.questionId);
+        if (idx === undefined) continue;
+        const prev = furthestByUser.get(row.userId);
+        if (prev === undefined || idx > prev) furthestByUser.set(row.userId, idx);
+      }
+
+      // reachedAt[p] = сколько пользователей дошли до вопроса с индексом p
+      // (их «самый дальний» индекс >= p). Считаем суффиксной суммой.
+      const reachedAt = new Array<number>(questionCount).fill(0);
+      const atFurthest = new Array<number>(questionCount).fill(0);
+      for (const idx of furthestByUser.values()) atFurthest[idx]++;
+      let runningReached = 0;
+      for (let p = questionCount - 1; p >= 0; p--) {
+        runningReached += atFurthest[p];
+        reachedAt[p] = runningReached;
+      }
+
       const reachedByQuestion = new Map<number, number>(
-        reachedGroups.map((g) => [g.questionId, g._count.userId])
+        questionsInAppOrder.map((q: { id: number }, idx: number) => [q.id, reachedAt[idx]])
       );
 
       // Для каждого экрана считаем, сколько пользователей до него дошли (в том же порядке, что и в приложении)
