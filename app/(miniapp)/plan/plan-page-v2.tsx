@@ -11,6 +11,7 @@ import { clientLogger } from '@/lib/client-logger';
 import { invalidatePlanWarmCache } from '@/lib/plan-warm-cache';
 import toast from 'react-hot-toast';
 import { PaymentGate } from '@/components/PaymentGate';
+import { ReplaceProductModal } from '@/components/ReplaceProductModal';
 import { resolvePlanPaywall, hasWinbackOfferParam } from '@/lib/paywall-product';
 import { useAddManyToCart, useAddToCart, useRemoveFromCart } from '@/hooks/useCart';
 import type {
@@ -38,6 +39,10 @@ export function PlanPageV2() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionState, setActionState] = useState<ProductActionState>({ busyId: null });
+  // Замена продукта: какой продукт сейчас открыт в модалке подбора аналогов.
+  const [replaceTarget, setReplaceTarget] = useState<ProductCard | null>(null);
+  // Фидбек по плану можно отправить только один раз (см. handleFeedback).
+  const [feedbackSent, setFeedbackSent] = useState(false);
   const addToCartMutation = useAddToCart();
   const addManyToCartMutation = useAddManyToCart();
   const removeFromCartMutation = useRemoveFromCart();
@@ -59,6 +64,26 @@ export function PlanPageV2() {
       } catch (err) {
         if (!cancelled) {
           clientLogger.warn('PlanPageV2: could not load retaking status', err);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Узнаём, оставлял ли пользователь уже отзыв о плане — тогда форму не показываем.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = (await api.getLastPlanFeedback()) as { lastFeedback?: unknown } | null;
+        if (!cancelled && res?.lastFeedback) {
+          setFeedbackSent(true);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          clientLogger.warn('PlanPageV2: could not load last feedback', err);
         }
       }
     })();
@@ -157,19 +182,22 @@ export function PlanPageV2() {
   }, [actionState.busyId, addManyToCartMutation, loadContext]);
 
   const handleReplaceClick = useCallback((product: ProductCard) => {
-    // Открываем подбор аналогов в существующем UI-flow.
-    // Маршрут /products/alternatives/:id используется в проекте.
-    router.push(`/products/alternatives/${product.id}`);
-  }, [router]);
+    // Открываем модалку подбора аналогов (ReplaceProductModal сам тянет
+    // живые альтернативы из /api/products/alternatives и применяет замену).
+    setReplaceTarget(product);
+  }, []);
 
   const handleFeedback = useCallback(async (isPositive: boolean) => {
+    // Отзыв можно отправить только один раз.
+    if (feedbackSent) return;
     try {
       await api.submitFeedback(isPositive, isPositive ? [] : ['plan_does_not_fit']);
+      setFeedbackSent(true);
       toast.success(isPositive ? 'Спасибо за фидбек!' : 'Передадим в команду');
     } catch (err: any) {
       toast.error(err?.message || 'Не удалось отправить фидбек');
     }
-  }, []);
+  }, [feedbackSent]);
 
   if (loading) {
     return <PlanV2LoadingShell />;
@@ -287,10 +315,31 @@ export function PlanPageV2() {
         />
 
         {/* 9. Feedback */}
-        <FeedbackSection onSubmit={handleFeedback} />
+        <FeedbackSection onSubmit={handleFeedback} submitted={feedbackSent} />
 
         <div style={{ height: 100 }} />
       </PaymentGate>
+
+      <ReplaceProductModal
+        isOpen={replaceTarget !== null}
+        product={
+          replaceTarget
+            ? {
+                id: replaceTarget.id,
+                name: replaceTarget.name,
+                brand: { name: replaceTarget.brand },
+                price: replaceTarget.price,
+                imageUrl: replaceTarget.imageUrl,
+              }
+            : null
+        }
+        onClose={() => setReplaceTarget(null)}
+        onReplace={() => {
+          setReplaceTarget(null);
+          // Перечитываем контекст, чтобы в списке появилась замена.
+          void loadContext({ keepStaleOnError: true });
+        }}
+      />
     </div>
   );
 }
@@ -375,9 +424,6 @@ function PhasesSection({ phases }: { phases: PhaseUI[] }) {
           <div className={`pv2-timeline-item ${p.state === 'current' ? 'pv2-current' : ''}`} key={p.phase}>
             <div className="pv2-timeline-marker" />
             <div className={`glass-card-md pv2-phase-card ${p.state === 'current' ? 'pv2-phase-current' : ''}`}>
-              <div className="pv2-phase-arrow" aria-hidden>
-                <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-              </div>
               <div className="pv2-phase-label">Фаза {orderOfPhase(p)}</div>
               <div className="pv2-phase-name">{p.phaseLabel}</div>
               <div className="pv2-phase-days">{p.daysLabel}</div>
@@ -535,13 +581,14 @@ function ProductsSection(props: {
                     <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                   </button>
                   <button
-                    className="pv2-icon-btn"
+                    type="button"
+                    className="pv2-replace-btn"
                     onClick={() => onReplace(p)}
-                    disabled={isBusy || p.replacementsCount === 0}
-                    aria-label="Заменить"
-                    title={p.replacementsCount > 0 ? `Заменить (${p.replacementsCount} аналогов)` : 'Нет аналогов'}
+                    disabled={isBusy}
+                    title="Подобрать аналог"
                   >
                     <svg viewBox="0 0 24 24" aria-hidden><path d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2"/><path d="M21 4v6h-6M3 20v-6h6"/></svg>
+                    <span>Заменить</span>
                   </button>
                 </div>
               </div>
@@ -599,7 +646,17 @@ function ExpertNotesCard({ notes, onRetakeQuiz }: { notes: ExpertNote[]; onRetak
   );
 }
 
-function FeedbackSection({ onSubmit }: { onSubmit: (positive: boolean) => void }) {
+function FeedbackSection({ onSubmit, submitted }: { onSubmit: (positive: boolean) => void; submitted: boolean }) {
+  if (submitted) {
+    return (
+      <div className="glass-card-lg pv2-section">
+        <div className="pv2-section-head">
+          <div className="pv2-section-title">Спасибо за отзыв!</div>
+        </div>
+        <div className="pv2-feedback-thanks">Ваш ответ учтён — он помогает нам улучшать рекомендации.</div>
+      </div>
+    );
+  }
   return (
     <div className="glass-card-lg pv2-section">
       <div className="pv2-section-head">
@@ -986,29 +1043,6 @@ function PlanV2Styles() {
         background: linear-gradient(135deg, rgba(213,254,97,0.7) 0%, rgba(213,254,97,0.45) 100%);
         border-color: rgba(213,254,97,0.55);
       }
-      .pv2-phase-arrow {
-        position: absolute;
-        top: 16px;
-        right: 16px;
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: rgba(255,255,255,0.75);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255,255,255,0.8);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .pv2-phase-arrow svg {
-        width: 14px;
-        height: 14px;
-        stroke: var(--ink);
-        fill: none;
-        stroke-width: 2;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-      }
       .pv2-phase-label {
         font-size: 11px;
         font-weight: 600;
@@ -1052,8 +1086,41 @@ function PlanV2Styles() {
       }
       .pv2-product-icon-actions {
         display: flex;
+        flex-direction: column;
+        align-items: center;
         gap: 8px;
+        width: 92px;
+      }
+      .pv2-replace-btn {
+        width: 100%;
+        height: 32px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.7);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255,255,255,0.8);
+        display: flex;
+        align-items: center;
         justify-content: center;
+        gap: 5px;
+        cursor: pointer;
+        padding: 0 10px;
+        font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--ink);
+        transition: transform .14s ease, background .14s ease;
+      }
+      .pv2-replace-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+      .pv2-replace-btn:active:not(:disabled) { transform: scale(0.96); }
+      .pv2-replace-btn svg {
+        width: 14px;
+        height: 14px;
+        stroke: var(--ink);
+        fill: none;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        flex-shrink: 0;
       }
       .pv2-product-img {
         position: relative;
@@ -1286,6 +1353,11 @@ function PlanV2Styles() {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 12px;
+      }
+      .pv2-feedback-thanks {
+        font-size: 14px;
+        line-height: 1.45;
+        color: var(--ink-soft);
       }
       .pv2-feedback-card {
         padding: 20px 18px;
