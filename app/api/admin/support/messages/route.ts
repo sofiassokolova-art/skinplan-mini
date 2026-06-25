@@ -20,10 +20,13 @@ export async function GET(request: NextRequest) {
 
     // ИСПРАВЛЕНО (P0): Добавлен лимит сообщений для производительности
     // Без лимита через месяц будет 500+ сообщений × polling каждые 2 сек = огромная нагрузка
-    const messages = await prisma.supportMessage.findMany({
+    // ИСПРАВЛЕНО: берём именно ПОСЛЕДНИЕ 50 (desc + take), иначе asc+take отдавал
+    // самые СТАРЫЕ 50 и админ не видел свежих сообщений в длинном чате.
+    // Затем разворачиваем обратно в хронологический порядок для отображения.
+    const recentMessages = await prisma.supportMessage.findMany({
       where: { chatId },
-      orderBy: { createdAt: 'asc' },
-      take: 50, // ИСПРАВЛЕНО (P0): Лимит сообщений (последние 50)
+      orderBy: { createdAt: 'desc' },
+      take: 50,
       select: {
         // ИСПРАВЛЕНО (P1): Только нужные поля для снижения payload
         id: true,
@@ -32,6 +35,7 @@ export async function GET(request: NextRequest) {
         createdAt: true,
       },
     });
+    const messages = recentMessages.reverse();
 
     // ИСПРАВЛЕНО (P0): Сбрасываем unread при открытии чата админом
     // Это критично - иначе unread остаётся > 0 даже после прочтения
