@@ -1,0 +1,1036 @@
+[
+  {
+    "slot": "eye_cream_basic",
+    "step": "eye_cream_basic",
+    "category": "eye_cream",
+    "brand": "Vichy",
+    "name": "Mineral 89",
+    "link": "https://goldapple.ru/89312300003-vichy-mineral-89",
+    "price": 1960,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "dry",
+      "normal",
+      "sensitive"
+    ],
+    "concerns": [
+      "dehydration",
+      "dryness",
+      "anti_age"
+    ],
+    "active_ingredients": [
+      "гиалуроновая кислота",
+      "кофеин"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "eye_cream_basic",
+    "step": "eye_cream_basic",
+    "category": "eye_cream",
+    "brand": "PFC CosmeticS",
+    "name": "Formen Eye Zone",
+    "link": "https://goldapple.ru/19000229388-formen-eye-zone",
+    "price": 573,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "dry",
+      "normal",
+      "sensitive"
+    ],
+    "concerns": [
+      "dehydration",
+      "dryness",
+      "anti_age"
+    ],
+    "active_ingredients": [
+      "гиалуроновая кислота",
+      "пантенол"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "eye_cream_basic",
+    "step": "eye_cream_basic",
+    "category": "eye_cream",
+    "brand": "MENOMOSO",
+    "name": "Peptide",
+    "link": "https://goldapple.ru/19000291947-peptide-forever-s-peptidami-i-kollagenom",
+    "price": 935,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "dry",
+      "normal",
+      "sensitive"
+    ],
+    "concerns": [
+      "dehydration",
+      "dryness",
+      "anti_age"
+    ],
+    "active_ingredients": [
+      "гиалуроновая кислота",
+      "пантенол"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "eye_cream_basic",
+    "step": "eye_cream_basic",
+    "category": "eye_cream",
+    "brand": "Mixit",
+    "name": "The One",
+    "link": "https://goldapple.ru/19000453606-the-one",
+    "price": 389,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "dry",
+      "normal",
+      "sensitive"
+    ],
+    "concerns": [
+      "dehydration",
+      "dryness",
+      "anti_age"
+    ],
+    "active_ingredients": [
+      "пептиды",
+      "пантенол"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "lip_care",
+    "step": "lip_care",
+    "category": "lip_care",
+    "brand": "La Roche-Posay",
+    "name": "Cicaplast Levres",
+    "link": "https://goldapple.ru/89321100003-cicaplast-levre-b5",
+    "price": 713,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "dry",
+      "normal",
+      "sensitive",
+      "very_dry"
+    ],
+    "concerns": [
+      "dryness",
+      "barrier",
+      "sensitivity"
+    ],
+    "active_ingredients": [
+      "пантенол",
+      "масло ши"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "lip_care",
+    "step": "lip_care",
+    "category": "lip_care",
+    "brand": "Uriage",
+    "name": "Bariederm Cica-lеvre Baume rеparateur",
+    "link": "https://goldapple.ru/89140900004-bariederm-cica-levre-baume-reparateur",
+    "price": 739,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "dry",
+      "normal",
+      "sensitive",
+      "very_dry"
+    ],
+    "concerns": [
+      "dryness",
+      "barrier",
+      "sensitivity"
+    ],
+    "active_ingredients": [
+      "поли-2p",
+      "фитосквалан"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "lip_care",
+    "step": "lip_care",
+    "category": "lip_care",
+    "brand": "Bioderma",
+    "name": "Atoderm Restorative Lip Balm",
+    "link": "https://goldapple.ru/89270100009-atoderm-restorative-lip-balm",
+    "price": 986,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "dry",
+      "normal",
+      "sensitive",
+      "very_dry"
+    ],
+    "concerns": [
+      "dryness",
+      "barrier",
+      "sensitivity"
+    ],
+    "active_ingredients": [
+      "масло ши",
+      "витамин E"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "lip_care",
+    "step": "lip_care",
+    "category": "lip_care",
+    "brand": "La Roche-Posay",
+    "name": "NUTRITIC LEVRES",
+    "link": "https://goldapple.ru/89321400001-nutritic-levre-stick",
+    "price": 1099,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "dry",
+      "normal",
+      "sensitive",
+      "very_dry"
+    ],
+    "concerns": [
+      "dryness",
+      "barrier",
+      "sensitivity"
+    ],
+    "active_ingredients": [
+      "масло ши",
+      "керамиды"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "mask_clay",
+    "step": "mask_clay",
+    "category": "mask",
+    "brand": "Mixit",
+    "name": "Blue Clay",
+    "link": "https://goldapple.ru/19000465576-blue-clay",
+    "price": 404,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo"
+    ],
+    "concerns": [
+      "oiliness",
+      "pores",
+      "texture"
+    ],
+    "active_ingredients": [
+      "голубая глина"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "mask_clay",
+    "step": "mask_clay",
+    "category": "mask",
+    "brand": "Innisfree",
+    "name": "Super Volcanic Pore Clay Mask",
+    "link": "https://goldapple.ru/19000201732-super-volcanic-pore-clay-mask",
+    "price": 1185,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo"
+    ],
+    "concerns": [
+      "oiliness",
+      "pores",
+      "texture"
+    ],
+    "active_ingredients": [
+      "вулканическая глина"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "mask_clay",
+    "step": "mask_clay",
+    "category": "mask",
+    "brand": "ART&FACT",
+    "name": "Kaolin11,5% + Niacin2%",
+    "link": "https://goldapple.ru/19000039350-kaolin11-5-niacin2-pore-cleansing-antibacterial",
+    "price": 551,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo"
+    ],
+    "concerns": [
+      "oiliness",
+      "pores",
+      "texture"
+    ],
+    "active_ingredients": [
+      "каолин",
+      "ниацинамид"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "mask_clay",
+    "step": "mask_clay",
+    "category": "mask",
+    "brand": "Round Lab",
+    "name": "1025 dokdo mud pack",
+    "link": "https://goldapple.ru/19000230930-1025-dokdo-mud-pack",
+    "price": 1552,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo"
+    ],
+    "concerns": [
+      "oiliness",
+      "pores",
+      "texture"
+    ],
+    "active_ingredients": [
+      "морская грязь",
+      "минералы"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "moisturizer_soothing",
+    "step": "moisturizer_soothing",
+    "category": "moisturizer",
+    "brand": "Bioderma",
+    "name": "Sensibio Defensive",
+    "link": "https://goldapple.ru/19000080115-defensive",
+    "price": 1687,
+    "in_stock": true,
+    "skin_types": [
+      "dry",
+      "normal",
+      "combo",
+      "sensitive"
+    ],
+    "concerns": [
+      "redness",
+      "sensitivity",
+      "barrier",
+      "dryness"
+    ],
+    "active_ingredients": [
+      "карнозин",
+      "витамин E"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "moisturizer_soothing",
+    "step": "moisturizer_soothing",
+    "category": "moisturizer",
+    "brand": "Dr.Jart+",
+    "name": "Cicapair Intensive Soothing Repair",
+    "link": "https://goldapple.ru/19000224704-cicapair-intensive-soothing-repair",
+    "price": 3595,
+    "in_stock": true,
+    "skin_types": [
+      "dry",
+      "normal",
+      "combo",
+      "sensitive"
+    ],
+    "concerns": [
+      "redness",
+      "sensitivity",
+      "barrier",
+      "dryness"
+    ],
+    "active_ingredients": [
+      "центелла",
+      "аллантоин"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "moisturizer_soothing",
+    "step": "moisturizer_soothing",
+    "category": "moisturizer",
+    "brand": "Topicrem",
+    "name": "Cica+",
+    "link": "https://goldapple.ru/89120100011-cica-sootfing-cream",
+    "price": 822,
+    "in_stock": true,
+    "skin_types": [
+      "dry",
+      "normal",
+      "combo",
+      "sensitive"
+    ],
+    "concerns": [
+      "redness",
+      "sensitivity",
+      "barrier",
+      "dryness"
+    ],
+    "active_ingredients": [
+      "пантенол",
+      "цинк"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "moisturizer_soothing",
+    "step": "moisturizer_soothing",
+    "category": "moisturizer",
+    "brand": "Bioderma",
+    "name": "Cicabio",
+    "link": "https://goldapple.ru/19000284548-cicabio",
+    "price": 1074,
+    "in_stock": true,
+    "skin_types": [
+      "dry",
+      "normal",
+      "combo",
+      "sensitive"
+    ],
+    "concerns": [
+      "redness",
+      "sensitivity",
+      "barrier",
+      "dryness"
+    ],
+    "active_ingredients": [
+      "ресвератрол",
+      "медь",
+      "цинк"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "serum_brightening_soft",
+    "step": "serum_brightening_soft",
+    "category": "serum",
+    "brand": "Sesderma",
+    "name": "C-VIT",
+    "link": "https://goldapple.ru/24780100004-c-vit",
+    "price": 4978,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "dry",
+      "normal"
+    ],
+    "concerns": [
+      "dullness",
+      "pigmentation",
+      "post_acne"
+    ],
+    "active_ingredients": [
+      "витамин C"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "serum_brightening_soft",
+    "step": "serum_brightening_soft",
+    "category": "serum",
+    "brand": "Mixit",
+    "name": "Energy",
+    "link": "https://goldapple.ru/19000038694-skin-chemistry",
+    "price": 349,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "dry",
+      "normal"
+    ],
+    "concerns": [
+      "dullness",
+      "pigmentation",
+      "post_acne"
+    ],
+    "active_ingredients": [
+      "витамин C"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "serum_brightening_soft",
+    "step": "serum_brightening_soft",
+    "category": "serum",
+    "brand": "Bioderma",
+    "name": "PIGMENTBIO",
+    "link": "https://goldapple.ru/19000143500-pigmentbio",
+    "price": 2676,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "dry",
+      "normal"
+    ],
+    "concerns": [
+      "dullness",
+      "pigmentation",
+      "post_acne"
+    ],
+    "active_ingredients": [
+      "витамин C",
+      "глабридин"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "serum_brightening_soft",
+    "step": "serum_brightening_soft",
+    "category": "serum",
+    "brand": "Vichy",
+    "name": "LIFTACTIV PIGMENT SPECIALIST B3",
+    "link": "https://goldapple.ru/19000060266-liftactiv-specialist",
+    "price": 3679,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "dry",
+      "normal"
+    ],
+    "concerns": [
+      "dullness",
+      "pigmentation",
+      "post_acne"
+    ],
+    "active_ingredients": [
+      "ниацинамид",
+      "гликолевая кислота"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "serum_hydrating",
+    "step": "serum_hydrating",
+    "category": "serum",
+    "brand": "Bioderma",
+    "name": "Hydrabio Moisturising Concentrate",
+    "link": "https://goldapple.ru/89270500003-hydrabio-moisturising-concentrate",
+    "price": 3156,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "dry",
+      "normal",
+      "sensitive"
+    ],
+    "concerns": [
+      "dehydration",
+      "dryness",
+      "barrier"
+    ],
+    "active_ingredients": [
+      "гиалуроновая кислота",
+      "ниацинамид"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "serum_hydrating",
+    "step": "serum_hydrating",
+    "category": "serum",
+    "brand": "Mizon",
+    "name": "HYALURONIC ACID 100",
+    "link": "https://goldapple.ru/9490100017-hyaluronic-acid-100",
+    "price": 1990,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "dry",
+      "normal",
+      "sensitive"
+    ],
+    "concerns": [
+      "dehydration",
+      "dryness",
+      "barrier"
+    ],
+    "active_ingredients": [
+      "гиалуроновая кислота"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "serum_hydrating",
+    "step": "serum_hydrating",
+    "category": "serum",
+    "brand": "ARAVIA Laboratories",
+    "name": "Hyaluronic Active Serum",
+    "link": "https://goldapple.ru/19000028587-hyaluronic-active-serum",
+    "price": 601,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "dry",
+      "normal",
+      "sensitive"
+    ],
+    "concerns": [
+      "dehydration",
+      "dryness",
+      "barrier"
+    ],
+    "active_ingredients": [
+      "гиалуроновая кислота"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "serum_hydrating",
+    "step": "serum_hydrating",
+    "category": "serum",
+    "brand": "ICON SKIN",
+    "name": "Feel the moist Booster Serum",
+    "link": "https://goldapple.ru/19000125157-feel-the-moist-booster-serum",
+    "price": 1247,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "dry",
+      "normal",
+      "sensitive"
+    ],
+    "concerns": [
+      "dehydration",
+      "dryness",
+      "barrier"
+    ],
+    "active_ingredients": [
+      "гиалуроновая кислота",
+      "бетаин"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "spot_treatment",
+    "step": "spot_treatment",
+    "category": "treatment",
+    "brand": "COSRX",
+    "name": "Acne Pimple Master Patch",
+    "link": "https://goldapple.ru/97560200023-acne-pimple-master-patch",
+    "price": 475,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "normal"
+    ],
+    "concerns": [
+      "acne",
+      "inflammation"
+    ],
+    "active_ingredients": [
+      "гидроколлоид"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "spot_treatment",
+    "step": "spot_treatment",
+    "category": "treatment",
+    "brand": "COSRX",
+    "name": "Clear Fit Master Patch",
+    "link": "https://goldapple.ru/97560200026-clear-fit-master-patch",
+    "price": 465,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "normal"
+    ],
+    "concerns": [
+      "acne",
+      "inflammation"
+    ],
+    "active_ingredients": [
+      "гидроколлоид"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "spot_treatment",
+    "step": "spot_treatment",
+    "category": "treatment",
+    "brand": "Some By Mi",
+    "name": "AHA-BHA-PHA 14 Days Super Miracle Spot All Kill Cream",
+    "link": "https://goldapple.ru/19760307488-aha-bha-pha-14-days-super-miracle-spot-all-kill-cream-30ml",
+    "price": 1653,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "normal"
+    ],
+    "concerns": [
+      "acne",
+      "inflammation"
+    ],
+    "active_ingredients": [
+      "AHA-кислоты",
+      "BHA",
+      "PHA"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "spot_treatment",
+    "step": "spot_treatment",
+    "category": "treatment",
+    "brand": "Uriage",
+    "name": "HYSEAC SOS ASSECHANT",
+    "link": "https://goldapple.ru/19000365728-hyseac-sos-assechant",
+    "price": 1092,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "normal"
+    ],
+    "concerns": [
+      "acne",
+      "inflammation"
+    ],
+    "active_ingredients": [
+      "цинк",
+      "салициловая кислота"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "treatment_acne_azelaic",
+    "step": "treatment_acne_azelaic",
+    "category": "treatment",
+    "brand": "ARAVIA Laboratories",
+    "name": "Azelaic Correcting",
+    "link": "https://goldapple.ru/19760311242-azelaic-correcting-cream",
+    "price": 539,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "normal",
+      "sensitive"
+    ],
+    "concerns": [
+      "acne",
+      "redness",
+      "post_acne",
+      "pigmentation",
+      "inflammation"
+    ],
+    "active_ingredients": [
+      "азелаиновая кислота"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "treatment_acne_azelaic",
+    "step": "treatment_acne_azelaic",
+    "category": "treatment",
+    "brand": "ART&FACT",
+    "name": "Azelaic acid 15%",
+    "link": "https://goldapple.ru/19000039348-azelaic-acid-15-lightening-age-spots-anti-acne-effect-anti-inflammatory-effect",
+    "price": 796,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "normal",
+      "sensitive"
+    ],
+    "concerns": [
+      "acne",
+      "redness",
+      "post_acne",
+      "pigmentation",
+      "inflammation"
+    ],
+    "active_ingredients": [
+      "азелаиновая кислота 15%"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "treatment_acne_azelaic",
+    "step": "treatment_acne_azelaic",
+    "category": "treatment",
+    "brand": "GIGI",
+    "name": "Bioplasma NSA-5 Azelaic Cream 15%",
+    "link": "https://goldapple.ru/19000213394-bioplasma-nsa-5-azelaic-cream-15",
+    "price": 6070,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "normal",
+      "sensitive"
+    ],
+    "concerns": [
+      "acne",
+      "redness",
+      "post_acne",
+      "pigmentation",
+      "inflammation"
+    ],
+    "active_ingredients": [
+      "азелаиновая кислота 15%"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "treatment_acne_azelaic",
+    "step": "treatment_acne_azelaic",
+    "category": "treatment",
+    "brand": "ICON SKIN",
+    "name": "Azelaiс Corrective",
+    "link": "https://goldapple.ru/19000208622-azelais-corrective",
+    "price": 2241,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "normal",
+      "sensitive"
+    ],
+    "concerns": [
+      "acne",
+      "redness",
+      "post_acne",
+      "pigmentation",
+      "inflammation"
+    ],
+    "active_ingredients": [
+      "азелаиновая кислота"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "treatment",
+    "step": "treatment",
+    "category": "treatment",
+    "brand": "Kora",
+    "name": "Anti-acne fluid serum with azelaic acid",
+    "link": "https://goldapple.ru/19000022746-anti-acne-fluid-serum-with-azelaic-acid",
+    "price": 793,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "normal",
+      "sensitive"
+    ],
+    "concerns": [
+      "acne",
+      "post_acne",
+      "inflammation",
+      "redness"
+    ],
+    "active_ingredients": [
+      "азелаиновая кислота"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "treatment",
+    "step": "treatment",
+    "category": "treatment",
+    "brand": "ART&FACT",
+    "name": "Azelaic acid 10% + Niacinamide 2%",
+    "link": "https://goldapple.ru/19000039328-azelaic-acid-10-niacinamide-2-anti-acne-brightening",
+    "price": 761,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "normal",
+      "sensitive"
+    ],
+    "concerns": [
+      "acne",
+      "post_acne",
+      "inflammation",
+      "redness"
+    ],
+    "active_ingredients": [
+      "азелаиновая кислота 10%",
+      "ниацинамид"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "treatment",
+    "step": "treatment",
+    "category": "treatment",
+    "brand": "ANUA",
+    "name": "ANUA AZELAIC",
+    "link": "https://goldapple.ru/19000393085-anua-azelaic",
+    "price": 3928,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "normal",
+      "sensitive"
+    ],
+    "concerns": [
+      "acne",
+      "post_acne",
+      "inflammation",
+      "redness"
+    ],
+    "active_ingredients": [
+      "азелаиновая кислота",
+      "центелла"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "treatment",
+    "step": "treatment",
+    "category": "treatment",
+    "brand": "TRUE ALCHEMY",
+    "name": "Cream Suspension Azelaic Acid 11,1%",
+    "link": "https://goldapple.ru/19000043193-cream-suspension-azelaic-acid-11-1",
+    "price": 1116,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo",
+      "normal",
+      "sensitive"
+    ],
+    "concerns": [
+      "acne",
+      "post_acne",
+      "inflammation",
+      "redness"
+    ],
+    "active_ingredients": [
+      "азелаиновая кислота 11,1%"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "treatment_acne_bpo",
+    "step": "treatment_acne_bpo",
+    "category": "treatment",
+    "brand": "Galderma",
+    "name": "Базирон АС гель для наружного применения 5% 40г",
+    "link": "https://market.yandex.ru/card/baziron-as-gel-dnar-prim/103543593557?do-waremd5=diiWP602G7ihPQENPVhGJQ&ogV=-12",
+    "price": 1272,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo"
+    ],
+    "concerns": [
+      "acne",
+      "inflammation",
+      "oiliness"
+    ],
+    "active_ingredients": [
+      "бензоила пероксид 5%"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "treatment_acne_bpo",
+    "step": "treatment_acne_bpo",
+    "category": "treatment",
+    "brand": "Galderma",
+    "name": "Базирон АС гель туба 2,5% 40 г, средство лечения угревой сыпи",
+    "link": "https://market.yandex.ru/card/baziron-as-gel-dnar-prim/5010899613?do-waremd5=oSnas59nIgqpn6L86k3C6g&ogV=-12",
+    "price": 1305,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo"
+    ],
+    "concerns": [
+      "acne",
+      "inflammation",
+      "oiliness"
+    ],
+    "active_ingredients": [
+      "бензоила пероксид 2,5%"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "treatment_acne_bpo",
+    "step": "treatment_acne_bpo",
+    "category": "treatment",
+    "brand": "Galderma",
+    "name": "Эффезел гель для наружного применения 30г",
+    "link": "https://market.yandex.ru/card/effezel-gel-dnar-prim/103543580246?do-waremd5=MVADw4Iz0EeUEC0BS7gMhg&ogV=-12",
+    "price": 2857,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo"
+    ],
+    "concerns": [
+      "acne",
+      "inflammation"
+    ],
+    "active_ingredients": [
+      "адапален",
+      "бензоила пероксид"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "treatment_acne_bpo",
+    "step": "treatment_acne_bpo",
+    "category": "treatment",
+    "brand": "ELEGANT COSMED",
+    "name": "Гель от прыщей и угрей, акне и черных точек перолайт-а с бензоил пероксидом и адапаленом, 30 гр",
+    "link": "https://market.yandex.ru/card/perolite-gel-ot-pryshchey-i-ugrey-akne-i-chernykh-tochek-perolayt-a-s-benzoil-peroksidom-i-adapalenom/102053056445?do-waremd5=6n7szpupujEXbkF2E4Ez-A&ogV=-12",
+    "price": 1482,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo"
+    ],
+    "concerns": [
+      "acne",
+      "inflammation",
+      "pores",
+      "texture"
+    ],
+    "active_ingredients": [
+      "бензоила пероксид",
+      "адапален"
+    ],
+    "verification": "ok"
+  }
+]
