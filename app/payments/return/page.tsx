@@ -7,9 +7,12 @@
 // РФ+VPN-канале (особенно во внешнем браузере после редиректа ЮKassa) чанк не
 // доезжает, React не монтируется, и платящий юзер видит ошибку вместо «оплата прошла».
 
+// ВАЖНО: фолбэк = РЕАЛЬНЫЙ бот мини-аппа (@skiniq_app_bot). Раньше тут стоял
+// несуществующий `skiniq_bot` — если NEXT_PUBLIC_TELEGRAM_BOT_USERNAME не задан
+// в окружении, платящего юзера после оплаты выкидывало в чужой/левый бот.
 const BOT_LINK = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
   ? `https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME.replace(/^@/, '')}`
-  : 'https://t.me/skiniq_bot';
+  : 'https://t.me/skiniq_app_bot';
 
 export default async function PaymentsReturnPage({
   searchParams,

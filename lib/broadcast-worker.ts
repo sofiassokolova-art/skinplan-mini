@@ -52,7 +52,7 @@ function renderMessage(template: string, user: any, profile: any): string {
     message = message.replace(/{concern}/g, 'не указано');
   }
 
-  message = message.replace(/{link}/g, 'https://t.me/skiniq_bot');
+  message = message.replace(/{link}/g, 'https://t.me/skiniq_app_bot');
 
   return message;
 }
