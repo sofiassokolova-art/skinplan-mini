@@ -1,0 +1,48 @@
+[
+  {
+    "slot": "treatment_acne_bpo",
+    "step": "treatment_acne_bpo",
+    "category": "treatment",
+    "brand": "PanOxyl",
+    "name": "Мыло для лечения угревой сыпи Acne Cleansing Bar мыло с бензоилперекисью10% от акне, 113 гр.",
+    "link": "https://market.yandex.ru/card/panoxyl-mylo-dlya-lecheniya-ugrevoy-sypi-acne-cleansing-bar-mylo-s-benzoilperekisyu10-ot-akne-113-gr/5055240521?do-waremd5=_L52sNydZKV5NknTA7Xdog&ogV=-12",
+    "price": 352,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo"
+    ],
+    "concerns": [
+      "acne",
+      "pores",
+      "oiliness"
+    ],
+    "active_ingredients": [
+      "бензоилпероксид 10%"
+    ],
+    "verification": "ok"
+  },
+  {
+    "slot": "treatment_acne_bpo",
+    "step": "treatment_acne_bpo",
+    "category": "treatment",
+    "brand": "ELEGANT COSMED",
+    "name": "Антибактериальное мыло Перолайтс бензоил пероксидом от запаха пота, 75 гр",
+    "link": "https://market.yandex.ru/card/antibakterialnoye-mylo-perolayt-s-benzoil-peroksidom-ot-zapakha-pota-75-gr/103471742490?do-waremd5=OCrOMreqvn1NrOgc4CQWPw&ogV=-12",
+    "price": 1149,
+    "in_stock": true,
+    "skin_types": [
+      "oily",
+      "combo"
+    ],
+    "concerns": [
+      "acne",
+      "oiliness",
+      "inflammation"
+    ],
+    "active_ingredients": [
+      "бензоилпероксид"
+    ],
+    "verification": "ok"
+  }
+]
