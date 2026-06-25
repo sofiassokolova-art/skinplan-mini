@@ -12,6 +12,7 @@ import { invalidatePlanWarmCache } from '@/lib/plan-warm-cache';
 import toast from 'react-hot-toast';
 import { PaymentGate } from '@/components/PaymentGate';
 import { resolvePlanPaywall, hasWinbackOfferParam } from '@/lib/paywall-product';
+import { useAddManyToCart, useAddToCart, useRemoveFromCart } from '@/hooks/useCart';
 import type {
   PlanPageContext,
   ProductCard,
@@ -25,6 +26,11 @@ interface ProductActionState {
   busyId: number | null;
 }
 
+interface LoadContextOptions {
+  showLoader?: boolean;
+  keepStaleOnError?: boolean;
+}
+
 export function PlanPageV2() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -32,6 +38,9 @@ export function PlanPageV2() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionState, setActionState] = useState<ProductActionState>({ busyId: null });
+  const addToCartMutation = useAddToCart();
+  const addManyToCartMutation = useAddManyToCart();
+  const removeFromCartMutation = useRemoveFromCart();
   // Перепрохождение анкеты: меняет тексты в PaymentGate (как в plan-client-new)
   const [isRetaking, setIsRetaking] = useState(false);
 
@@ -58,9 +67,12 @@ export function PlanPageV2() {
     };
   }, []);
 
-  const loadContext = useCallback(async () => {
+  const loadContext = useCallback(async (options: LoadContextOptions = {}) => {
+    const showLoader = options.showLoader ?? true;
     try {
-      setLoading(true);
+      if (showLoader) {
+        setLoading(true);
+      }
       setError(null);
       const res = await api.getPlanPageContext();
       if (res.state === 'no_plan' || !res.context) {
@@ -70,9 +82,14 @@ export function PlanPageV2() {
       setContext(res.context);
     } catch (err: any) {
       clientLogger.error('Failed to load plan page context', err);
+      if (options.keepStaleOnError) {
+        return;
+      }
       setError('Не удалось загрузить план. Попробуйте ещё раз.');
     } finally {
-      setLoading(false);
+      if (showLoader) {
+        setLoading(false);
+      }
     }
   }, [router]);
 
@@ -91,7 +108,7 @@ export function PlanPageV2() {
         await api.addToWishlist(product.id);
         toast.success('Добавлено в избранное');
       }
-      await loadContext();
+      await loadContext({ showLoader: false, keepStaleOnError: true });
     } catch (err: any) {
       toast.error(err?.message || 'Не удалось обновить избранное');
     } finally {
@@ -100,23 +117,44 @@ export function PlanPageV2() {
   }, [actionState.busyId, loadContext]);
 
   const handleToggleCart = useCallback(async (product: ProductCard) => {
-    if (actionState.busyId === product.id) return;
+    if (actionState.busyId === product.id || addManyToCartMutation.isPending) return;
     setActionState({ busyId: product.id });
     try {
       if (product.state.inCart) {
-        await api.removeFromCart(product.id);
+        await removeFromCartMutation.mutateAsync(product.id);
         toast.success('Убрано из корзины');
       } else {
-        await api.addToCart(product.id);
+        await addToCartMutation.mutateAsync({ productId: product.id, quantity: 1 });
         toast.success('В корзине');
       }
-      await loadContext();
+      await loadContext({ showLoader: false, keepStaleOnError: true });
     } catch (err: any) {
       toast.error(err?.message || 'Не удалось обновить корзину');
     } finally {
       setActionState({ busyId: null });
     }
-  }, [actionState.busyId, loadContext]);
+  }, [actionState.busyId, addManyToCartMutation.isPending, addToCartMutation, removeFromCartMutation, loadContext]);
+
+  const handleAddAllToCart = useCallback(async (products: ProductCard[]) => {
+    if (actionState.busyId !== null || addManyToCartMutation.isPending) return;
+
+    const productIds = products
+      .filter((product) => !product.state.inCart)
+      .map((product) => product.id);
+
+    if (productIds.length === 0) {
+      toast.success('Все средства уже в корзине');
+      return;
+    }
+
+    try {
+      await addManyToCartMutation.mutateAsync(productIds);
+      toast.success(`Добавлено в корзину: ${productIds.length}`);
+      await loadContext({ showLoader: false, keepStaleOnError: true });
+    } catch (err: any) {
+      toast.error(err?.message || 'Не удалось добавить все средства');
+    }
+  }, [actionState.busyId, addManyToCartMutation, loadContext]);
 
   const handleReplaceClick = useCallback((product: ProductCard) => {
     // Открываем подбор аналогов в существующем UI-flow.
@@ -134,14 +172,14 @@ export function PlanPageV2() {
   }, []);
 
   if (loading) {
-    return <PlanV2Skeleton />;
+    return <PlanV2LoadingShell />;
   }
 
   if (error || !context) {
     return (
       <div className="pv2-error app-bottom-nav-clearance">
         <p>{error ?? 'План не найден'}</p>
-        <button className="btn-primary" onClick={loadContext}>Обновить</button>
+        <button className="btn-primary" onClick={() => void loadContext()}>Обновить</button>
         <style jsx>{`
           .pv2-error {
             min-height: 100svh;
@@ -232,9 +270,11 @@ export function PlanPageV2() {
         <ProductsSection
           products={context.products}
           busyId={actionState.busyId}
+          bulkAdding={addManyToCartMutation.isPending}
           onReplace={handleReplaceClick}
           onToggleWishlist={handleToggleWishlist}
           onToggleCart={handleToggleCart}
+          onAddAllToCart={handleAddAllToCart}
         />
 
         {/* 8. Expert notes */}
@@ -256,6 +296,15 @@ export function PlanPageV2() {
 }
 
 // ─── Sub-components ───────────────────────────────────────────────
+
+function PlanV2LoadingShell() {
+  return (
+    <div className="pv2-root pv2-loading-root">
+      <PlanV2Styles />
+      <div style={{ minHeight: '100svh' }} />
+    </div>
+  );
+}
 
 function ScoreCard({ score, label, description, onHintClick }: { score: number; label: string; description: string; onHintClick?: () => void }) {
   return (
@@ -430,12 +479,17 @@ function ProductThumb({ product }: { product: ProductCard }) {
 function ProductsSection(props: {
   products: ProductCard[];
   busyId: number | null;
+  bulkAdding: boolean;
   onReplace: (p: ProductCard) => void;
   onToggleWishlist: (p: ProductCard) => void;
   onToggleCart: (p: ProductCard) => void;
+  onAddAllToCart: (products: ProductCard[]) => void;
 }) {
-  const { products, busyId, onReplace, onToggleWishlist, onToggleCart } = props;
+  const { products, busyId, bulkAdding, onReplace, onToggleWishlist, onToggleCart, onAddAllToCart } = props;
   if (products.length === 0) return null;
+
+  const productsToAddCount = products.filter((product) => !product.state.inCart).length;
+  const allProductsInCart = productsToAddCount === 0;
 
   return (
     <div className="glass-card-lg pv2-section">
@@ -446,9 +500,26 @@ function ProductsSection(props: {
         Мы подобрали эти средства под ваш протокол ухода. Добавьте всё в корзину
         одним списком или замените любое средство на подходящий аналог.
       </div>
+      <button
+        type="button"
+        className={`pv2-add-all-cta ${allProductsInCart ? 'pv2-add-all-done' : ''}`}
+        onClick={() => onAddAllToCart(products)}
+        disabled={bulkAdding || allProductsInCart}
+      >
+        <svg viewBox="0 0 24 24" aria-hidden>
+          <path d="M5.5 8h13l-1.2 10.2a2 2 0 0 1-2 1.8H8.7a2 2 0 0 1-2-1.8Z" />
+          <path d="M8.5 8V6a3.5 3.5 0 0 1 7 0v2" />
+          {!allProductsInCart && <path d="M12 11v5M9.5 13.5h5" />}
+        </svg>
+        {bulkAdding
+          ? 'Добавляем...'
+          : allProductsInCart
+            ? 'Все в корзине'
+            : `Добавить все в корзину${productsToAddCount < products.length ? ` (${productsToAddCount})` : ''}`}
+      </button>
       <div className="pv2-product-list">
         {products.map((p) => {
-          const isBusy = busyId === p.id;
+          const isBusy = busyId === p.id || bulkAdding;
           return (
             <div className="glass-card-sm pv2-product-card" key={p.id}>
               {/* Левая колонка: иконка/фото + под ней действия (лайк, заменить) */}
@@ -552,223 +623,6 @@ function FeedbackSection({ onSubmit }: { onSubmit: (positive: boolean) => void }
   );
 }
 
-// ─── Skeleton ────────────────────────────────────────────────────
-// Повторяет реальную сетку страницы: heading + 2 mini-card + score +
-// карусель профиля + фазы + продукты + expert-notes + feedback.
-// Включён общий shimmer-эффект, чтобы пользователь сразу видел структуру.
-function PlanV2Skeleton() {
-  return (
-    <div className="pv2-root pv2-skeleton-root">
-      <PlanV2Styles />
-      <PlanV2SkeletonStyles />
-
-      {/* Topbar */}
-      <div className="pv2-topbar">
-        <div className="pv2-skel-bar" style={{ width: 72, height: 16 }} />
-      </div>
-
-      {/* Personal heading */}
-      <div style={{ margin: '8px 4px 22px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div className="pv2-skel-bar" style={{ width: '80%', height: 22 }} />
-        <div className="pv2-skel-bar" style={{ width: '55%', height: 22 }} />
-      </div>
-
-      {/* Two mini cards */}
-      <div className="pv2-double-row">
-        <div className="glass-card-md pv2-mini-card pv2-skel-block" style={{ height: 110 }}>
-          <div className="pv2-skel-bar" style={{ width: 80, height: 10, marginBottom: 8 }} />
-          <div className="pv2-skel-bar" style={{ width: '60%', height: 18, marginBottom: 12 }} />
-          <div className="pv2-skel-bar" style={{ width: '40%', height: 10 }} />
-        </div>
-        <div className="glass-card-md pv2-mini-card pv2-mini-dark pv2-skel-block" style={{ height: 110 }}>
-          <div className="pv2-skel-bar pv2-skel-bar-on-dark" style={{ width: 80, height: 10, marginBottom: 8 }} />
-          <div className="pv2-skel-bar pv2-skel-bar-on-dark" style={{ width: '70%', height: 18, marginBottom: 12 }} />
-          <div className="pv2-skel-bar pv2-skel-bar-on-dark" style={{ width: '50%', height: 10 }} />
-        </div>
-      </div>
-
-      {/* Score */}
-      <div className="glass-card-lg pv2-score-card pv2-skel-block">
-        <div className="pv2-score-top">
-          <div style={{ flex: 1 }}>
-            <div className="pv2-skel-bar" style={{ width: 80, height: 10, marginBottom: 10 }} />
-            <div className="pv2-skel-bar" style={{ width: 120, height: 42 }} />
-          </div>
-          <div className="pv2-skel-circle" style={{ width: 92, height: 92 }} />
-        </div>
-        <div style={{ paddingLeft: 14, borderLeft: '3px solid #E5E5E5', marginBottom: 18 }}>
-          <div className="pv2-skel-bar" style={{ width: '95%', height: 12, marginBottom: 6 }} />
-          <div className="pv2-skel-bar" style={{ width: '85%', height: 12, marginBottom: 6 }} />
-          <div className="pv2-skel-bar" style={{ width: '70%', height: 12 }} />
-        </div>
-        <div className="pv2-skel-bar" style={{ width: '100%', height: 44, borderRadius: 18 }} />
-      </div>
-
-      {/* Profile carousel */}
-      <div className="pv2-section pv2-profile-section pv2-skel-block">
-        <div className="pv2-section-head">
-          <div className="pv2-skel-bar" style={{ width: 120, height: 18 }} />
-          <div style={{ display: 'flex', gap: 6 }}>
-            <div className="pv2-skel-bar" style={{ width: 22, height: 6, borderRadius: 3 }} />
-            <div className="pv2-skel-bar" style={{ width: 6, height: 6, borderRadius: 999 }} />
-            <div className="pv2-skel-bar" style={{ width: 6, height: 6, borderRadius: 999 }} />
-            <div className="pv2-skel-bar" style={{ width: 6, height: 6, borderRadius: 999 }} />
-          </div>
-        </div>
-        <div className="pv2-profile-carousel">
-          {[0, 1, 2].map((idx) => (
-            <div className="glass-card-md pv2-profile-card" key={idx}>
-              <div className="pv2-skel-bar" style={{ width: 60, height: 10, marginBottom: 6 }} />
-              <div className="pv2-skel-bar" style={{ width: '70%', height: 16, marginBottom: 14 }} />
-              <div className="pv2-skel-bar" style={{ width: '100%', height: 10, marginBottom: 5 }} />
-              <div className="pv2-skel-bar" style={{ width: '90%', height: 10, marginBottom: 5 }} />
-              <div className="pv2-skel-bar" style={{ width: '60%', height: 10 }} />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Phases */}
-      <div className="glass-card-lg pv2-section pv2-skel-block">
-        <div className="pv2-section-head pv2-section-head-align-start">
-          <div style={{ flex: 1 }}>
-            <div className="pv2-skel-bar" style={{ width: 100, height: 18, marginBottom: 6 }} />
-            <div className="pv2-skel-bar" style={{ width: '70%', height: 11 }} />
-          </div>
-          <div className="pv2-skel-bar" style={{ width: 56, height: 36, borderRadius: 999 }} />
-        </div>
-        <div className="pv2-timeline">
-          {[0, 1, 2].map((idx) => (
-            <div className="pv2-timeline-item" key={idx}>
-              <div className="pv2-timeline-marker" />
-              <div className="glass-card-md pv2-phase-card">
-                <div className="pv2-skel-bar" style={{ width: 50, height: 10, marginBottom: 8 }} />
-                <div className="pv2-skel-bar" style={{ width: 120, height: 16, marginBottom: 6 }} />
-                <div className="pv2-skel-bar" style={{ width: 70, height: 11, marginBottom: 14 }} />
-                <div className="pv2-skel-bar" style={{ width: '100%', height: 11, marginBottom: 5 }} />
-                <div className="pv2-skel-bar" style={{ width: '85%', height: 11 }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Products */}
-      <div className="glass-card-lg pv2-section pv2-skel-block">
-        <div className="pv2-section-head">
-          <div className="pv2-skel-bar" style={{ width: 140, height: 18 }} />
-        </div>
-        <div className="pv2-product-list">
-          {[0, 1].map((idx) => (
-            <div className="glass-card-sm pv2-product-card" key={idx}>
-              <div className="pv2-skel-bar" style={{ width: 92, height: 92, borderRadius: 16, flexShrink: 0 }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="pv2-skel-bar" style={{ width: '70%', height: 14, marginBottom: 4 }} />
-                <div className="pv2-skel-bar" style={{ width: '90%', height: 12, marginBottom: 10 }} />
-                <div className="pv2-skel-bar" style={{ width: 80, height: 20, borderRadius: 999, marginBottom: 10 }} />
-                <div className="pv2-skel-bar" style={{ width: 60, height: 14, marginBottom: 14 }} />
-                <div style={{ display: 'flex', gap: 8, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.5)' }}>
-                  <div className="pv2-skel-bar" style={{ width: 36, height: 36, borderRadius: 999 }} />
-                  <div className="pv2-skel-bar" style={{ width: 36, height: 36, borderRadius: 999 }} />
-                  <div style={{ flex: 1 }} />
-                  <div className="pv2-skel-bar" style={{ width: 124, height: 36, borderRadius: 999 }} />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Expert notes (dark) */}
-      <div className="pv2-expert-card pv2-skel-block">
-        <div className="pv2-skel-bar pv2-skel-bar-on-dark" style={{ width: 130, height: 10, marginBottom: 10 }} />
-        <div className="pv2-skel-bar pv2-skel-bar-on-dark" style={{ width: 200, height: 20, marginBottom: 20 }} />
-        {[0, 1].map((idx) => (
-          <div key={idx} style={{
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: 22,
-            padding: '18px 20px',
-            marginBottom: 10,
-          }}>
-            <div className="pv2-skel-bar pv2-skel-bar-on-dark" style={{ width: '70%', height: 14, marginBottom: 10 }} />
-            <div className="pv2-skel-bar pv2-skel-bar-on-dark" style={{ width: '100%', height: 12, marginBottom: 6 }} />
-            <div className="pv2-skel-bar pv2-skel-bar-on-dark" style={{ width: '80%', height: 12 }} />
-          </div>
-        ))}
-      </div>
-
-      {/* Feedback */}
-      <div className="glass-card-lg pv2-section pv2-skel-block">
-        <div className="pv2-section-head">
-          <div className="pv2-skel-bar" style={{ width: 200, height: 18 }} />
-        </div>
-        <div className="pv2-feedback-grid">
-          <div className="glass-card-sm pv2-feedback-card pv2-skel-block">
-            <div className="pv2-skel-circle" style={{ width: 44, height: 44 }} />
-            <div className="pv2-skel-bar" style={{ width: 100, height: 14 }} />
-          </div>
-          <div className="glass-card-sm pv2-feedback-card pv2-skel-block">
-            <div className="pv2-skel-circle" style={{ width: 44, height: 44 }} />
-            <div className="pv2-skel-bar" style={{ width: 90, height: 14 }} />
-          </div>
-        </div>
-      </div>
-
-      <div style={{ height: 100 }} />
-    </div>
-  );
-}
-
-function PlanV2SkeletonStyles() {
-  return (
-    <style jsx global>{`
-      @keyframes pv2-skel-shimmer {
-        0%   { background-position: -300px 0; }
-        100% { background-position: 300px 0; }
-      }
-      .pv2-skel-bar,
-      .pv2-skel-circle {
-        background: linear-gradient(
-          90deg,
-          rgba(0,0,0,0.04) 0%,
-          rgba(0,0,0,0.10) 50%,
-          rgba(0,0,0,0.04) 100%
-        );
-        background-size: 300px 100%;
-        animation: pv2-skel-shimmer 1.4s linear infinite;
-        border-radius: 6px;
-      }
-      .pv2-skel-bar-on-dark {
-        background: linear-gradient(
-          90deg,
-          rgba(255,255,255,0.04) 0%,
-          rgba(255,255,255,0.12) 50%,
-          rgba(255,255,255,0.04) 100%
-        );
-        background-size: 300px 100%;
-      }
-      .pv2-skel-circle {
-        border-radius: 50%;
-      }
-      .pv2-skel-block {
-        /* Подавляем тяжёлые hover/interaction-эффекты под скелетоном */
-        pointer-events: none;
-      }
-      .pv2-skeleton-root .pv2-mini-dark .pv2-skel-bar {
-        /* Внутри тёмной мини-карточки бары — светлые */
-        background: linear-gradient(
-          90deg,
-          rgba(255,255,255,0.04) 0%,
-          rgba(255,255,255,0.12) 50%,
-          rgba(255,255,255,0.04) 100%
-        );
-        background-size: 300px 100%;
-      }
-    `}</style>
-  );
-}
-
 // ─── Styles ───────────────────────────────────────────────────────
 function PlanV2Styles() {
   return (
@@ -781,6 +635,7 @@ function PlanV2Styles() {
         font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
         color: var(--ink);
         position: relative;
+        isolation: isolate;
       }
       /* Фон — на фиксированном псевдо-слое (viewport-anchored). Раньше использовался
          background-attachment:fixed, но он не закрашивает весь документ в Telegram
@@ -790,7 +645,7 @@ function PlanV2Styles() {
         content: "";
         position: fixed;
         inset: 0;
-        z-index: -1;
+        z-index: 0;
         pointer-events: none;
         background:
           radial-gradient(72% 32% at 0% 0%, rgba(255,224,188,0.7) 0%, transparent 62%),
@@ -798,6 +653,10 @@ function PlanV2Styles() {
           radial-gradient(64% 26% at 100% 55%, rgba(220,210,196,0.55) 0%, transparent 65%),
           radial-gradient(78% 32% at 10% 92%, rgba(213,254,97,0.46) 0%, transparent 62%),
           var(--canvas);
+      }
+      .pv2-root > * {
+        position: relative;
+        z-index: 1;
       }
       /* Зеркало #19: подложка html/body тоже беж, чтобы overscroll не светил белым. */
       html, body { background-color: var(--canvas); }
@@ -985,6 +844,49 @@ function PlanV2Styles() {
         color: var(--ink-soft);
         line-height: 1.5;
         margin: -4px 0 14px;
+      }
+      .pv2-add-all-cta {
+        width: 100%;
+        min-height: 48px;
+        margin: 0 0 14px;
+        border: 0;
+        border-radius: 999px;
+        background: var(--accent);
+        color: var(--ink);
+        font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        cursor: pointer;
+        box-shadow: 0 10px 22px rgba(var(--accent-rgb),0.28);
+        transition: transform .14s ease, box-shadow .14s ease, opacity .14s ease;
+      }
+      .pv2-add-all-cta svg {
+        width: 18px;
+        height: 18px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.7;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        flex-shrink: 0;
+      }
+      .pv2-add-all-cta:active:not(:disabled) {
+        transform: scale(0.985);
+        box-shadow: 0 5px 12px rgba(var(--accent-rgb),0.22);
+      }
+      .pv2-add-all-cta:disabled {
+        cursor: not-allowed;
+        opacity: 0.72;
+      }
+      .pv2-add-all-cta.pv2-add-all-done {
+        background: var(--ink);
+        color: var(--accent);
+        box-shadow: none;
       }
 
       .pv2-dots { display: flex; align-items: center; gap: 6px; }

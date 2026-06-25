@@ -9,39 +9,53 @@ export function Toaster() {
   return (
     <HotToaster
       position="top-center"
+      gutter={8}
+      containerStyle={{
+        top: 'calc(env(safe-area-inset-top, 0px) + 12px)',
+        left: 12,
+        right: 12,
+      }}
       toastOptions={{
-        duration: 4000,
+        duration: 2600,
+        className: 'skiniq-toast',
         style: {
-          background: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(10px)',
-          color: '#0A5F59',
-          borderRadius: '12px',
-          padding: '16px',
-          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
-          border: '1px solid rgba(10, 95, 89, 0.1)',
+          width: 'calc(100vw - 32px)',
+          maxWidth: '388px',
+          minHeight: '52px',
+          background: 'rgba(10, 10, 10, 0.9)',
+          backdropFilter: 'blur(18px) saturate(160%)',
+          WebkitBackdropFilter: 'blur(18px) saturate(160%)',
+          color: '#FFFFFF',
+          borderRadius: '22px',
+          padding: '14px 16px',
+          boxShadow: '0 18px 42px rgba(10, 10, 10, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
+          border: '1px solid rgba(213, 254, 97, 0.24)',
           fontSize: '14px',
-          fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-          maxWidth: '400px',
+          fontWeight: 700,
+          lineHeight: 1.25,
+          letterSpacing: '-0.1px',
+          fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
         },
         success: {
           iconTheme: {
-            primary: '#0A5F59',
-            secondary: '#fff',
+            primary: '#D5FE61',
+            secondary: '#0A0A0A',
           },
         },
         error: {
+          duration: 3600,
           style: {
-            background: 'rgba(254, 226, 226, 0.95)',
-            color: '#991B1B',
-            border: '1px solid #FCA5A5',
+            background: 'rgba(10, 10, 10, 0.92)',
+            color: '#FFFFFF',
+            border: '1px solid rgba(255, 119, 119, 0.38)',
+            boxShadow: '0 18px 42px rgba(10, 10, 10, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
           },
           iconTheme: {
-            primary: '#DC2626',
-            secondary: '#fff',
+            primary: '#FF7777',
+            secondary: '#0A0A0A',
           },
         },
       }}
     />
   );
 }
-

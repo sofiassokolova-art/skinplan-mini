@@ -3,11 +3,13 @@
 
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCart, useRemoveFromCart } from '@/hooks/useCart';
+import { useAddToWishlist, useRemoveFromWishlist, useWishlist } from '@/hooks/useWishlist';
 import type { CartResponse } from '@/lib/api-types';
-import { MiniAppPageSkeleton } from '@/components/ui/SkeletonLoader';
+import { TabLoadingShell } from '@/components/TabLoadingShell';
 import toast from 'react-hot-toast';
 
 export const dynamic = 'force-dynamic';
@@ -31,14 +33,42 @@ function getStore(p: CartItem['product']): { url: string; name: string } | null 
   if (m.ozon) return { url: m.ozon, name: 'Ozon' };
   if (m.wildberries) return { url: m.wildberries, name: 'Wildberries' };
   if (m.apteka) return { url: m.apteka, name: 'Аптека' };
+  if (m.ym) return { url: m.ym, name: 'Яндекс Маркет' };
   if (p.link) return { url: p.link, name: 'Магазин' };
   return null;
+}
+
+// Партнёрская ссылка Goldapple (CPA-редирект go.redav.online).
+// erid LdtCKFJmG относится к рекламодателю ООО «Екатеринбург Яблоко» (goldapple.ru),
+// поэтому через редирект пропускаем ТОЛЬКО goldapple-ссылки. Остальные магазины
+// (Яндекс Маркет и т.п.) ведём напрямую — на них этот erid не распространяется.
+const AFFILIATE_ERID = 'LdtCKFJmG';
+const AFFILIATE_ADVERTISER = 'ООО «ЕКАТЕРИНБУРГ ЯБЛОКО», ИНН 6670381056';
+const AFFILIATE_REDIRECT = `https://go.redav.online/afa94ea7d115fbb0?erid=${AFFILIATE_ERID}&m=2&dl=`;
+const AFFILIATE_DISCLOSURE = `Реклама. ${AFFILIATE_ADVERTISER}, erid: ${AFFILIATE_ERID}`;
+
+function isGoldapple(url: string): boolean {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '').endsWith('goldapple.ru');
+  } catch {
+    return false;
+  }
+}
+
+// Возвращает финальный href и флаг «рекламная ссылка» (для маркировки / rel="sponsored").
+function withAffiliate(url: string): { href: string; sponsored: boolean } {
+  if (isGoldapple(url)) return { href: AFFILIATE_REDIRECT + url, sponsored: true };
+  return { href: url, sponsored: false };
 }
 
 function CartPageContent() {
   const router = useRouter();
   const { data: cartData, isLoading: loading } = useCart();
+  const { data: wishlistData } = useWishlist();
   const removeFromCart = useRemoveFromCart();
+  const addToWishlist = useAddToWishlist();
+  const removeFromWishlist = useRemoveFromWishlist();
+  const [wishlistBusyId, setWishlistBusyId] = useState<number | null>(null);
 
   const cartItems: CartItem[] = (cartData?.items || []).map((item: CartResponse['items'][0]) => ({
     id: item.id,
@@ -65,7 +95,35 @@ function CartPageContent() {
     }
   };
 
-  const firstStore = cartItems.map((i) => getStore(i.product)).find(Boolean) || null;
+  const wishlistProductIds = new Set<number>(
+    (wishlistData?.items || [])
+      .map((item: any) => item.product?.id ?? item.productId)
+      .filter((id: unknown): id is number => typeof id === 'number')
+  );
+
+  const handleToggleWishlist = async (productId: number) => {
+    if (wishlistBusyId === productId) return;
+    setWishlistBusyId(productId);
+    try {
+      if (wishlistProductIds.has(productId)) {
+        await removeFromWishlist.mutateAsync(productId);
+        toast.success('Убрано из избранного');
+      } else {
+        await addToWishlist.mutateAsync(productId);
+        toast.success('Добавлено в избранное');
+      }
+    } catch {
+      toast.error('Не удалось обновить избранное');
+    } finally {
+      setWishlistBusyId(null);
+    }
+  };
+
+  // Маркировку ФЗ-38 показываем только если в корзине есть рекламная (goldapple) ссылка.
+  const hasSponsored = cartItems.some((i) => {
+    const s = getStore(i.product);
+    return !!s && isGoldapple(s.url);
+  });
 
   const bg =
     'radial-gradient(70% 30% at 0% 0%, rgba(213,254,97,0.55) 0%, transparent 65%),' +
@@ -75,11 +133,11 @@ function CartPageContent() {
     '#F4F2EE';
 
   if (loading) {
-    return <MiniAppPageSkeleton background={bg} rows={4} />;
+    return <TabLoadingShell title="Корзина" background={bg} />;
   }
 
   return (
-    <div className="cart-rd" style={{ minHeight: '100vh', background: bg, backgroundAttachment: 'fixed', padding: '8px 20px', paddingBottom: cartItems.length > 0 ? '210px' : '120px' }}>
+    <div className="cart-rd" style={{ minHeight: '100vh', background: bg, backgroundAttachment: 'fixed', padding: '8px 20px 120px' }}>
       <style>{`
         .cart-rd .crd-topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 0 14px;}
         .cart-rd .crd-logo{font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:18px;font-weight:700;letter-spacing:-0.4px;color:#0A0A0A;}
@@ -92,24 +150,28 @@ function CartPageContent() {
         .cart-rd .crd-item{position:relative;display:grid;grid-template-columns:76px minmax(0,1fr);gap:14px;padding:12px;border:1px solid rgba(255,255,255,0.7);border-radius:22px;background:rgba(255,255,255,0.62);backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);box-shadow:0 8px 22px rgba(0,0,0,0.04);overflow:hidden;}
         .cart-rd .crd-thumb{width:76px;height:100%;min-height:96px;display:grid;place-items:center;}
         .cart-rd .crd-thumb img{max-width:64px;max-height:88px;object-fit:contain;filter:drop-shadow(0 6px 8px rgba(0,0,0,0.1));}
-        .cart-rd .crd-del{position:absolute;top:10px;right:10px;z-index:3;width:28px;height:28px;border:0;border-radius:50%;background:rgba(10,10,10,0.06);color:#0A0A0A;display:grid;place-items:center;cursor:pointer;}
-        .cart-rd .crd-del:active{transform:scale(0.9);}
-        .cart-rd .crd-body{min-width:0;display:flex;flex-direction:column;gap:6px;padding-right:24px;}
+        .cart-rd .crd-thumb-empty{width:64px;height:88px;border-radius:18px;background:rgba(255,255,255,0.52);border:1px solid rgba(255,255,255,0.74);}
+        .cart-rd .crd-del{position:absolute;top:10px;right:10px;z-index:3;min-height:28px;border:0;border-radius:999px;background:rgba(10,10,10,0.06);color:#6B7280;padding:0 9px;font-family:var(--font-inter),sans-serif;font-size:10.5px;font-weight:700;letter-spacing:-0.1px;display:grid;place-items:center;cursor:pointer;}
+        .cart-rd .crd-del:active{transform:scale(0.96);}
+        .cart-rd .crd-body{min-width:0;display:flex;flex-direction:column;gap:6px;padding-right:62px;}
         .cart-rd .crd-brand{font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#6B7280;}
         .cart-rd .crd-name{font-size:14px;font-weight:700;line-height:1.22;letter-spacing:-0.15px;color:#0A0A0A;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
         .cart-rd .crd-meta{display:flex;align-items:center;gap:8px;}
         .cart-rd .crd-qty{font-size:11px;color:#9CA3AF;}
         .cart-rd .crd-store{font-size:10.5px;font-weight:600;color:#6B7280;}
-        .cart-rd .crd-store::before{content:"\\2197 ";color:#9CA3AF;}
-        .cart-rd .crd-cta{width:100%;height:44px;border:0;border-radius:0;background:#D5FE61;color:#000;font-family:var(--font-inter),sans-serif;font-weight:400;font-size:13px;text-transform:uppercase;letter-spacing:0.02em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;transition:transform .15s;}
-        .cart-rd .crd-cta:active{transform:scale(0.98);}
+        .cart-rd .crd-actions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:2px;}
+        .cart-rd .crd-cta{width:100%;height:44px;border:0;border-radius:999px;background:#D5FE61;color:#000;font-family:var(--font-inter),sans-serif;font-weight:700;font-size:14px;letter-spacing:0;cursor:pointer;display:flex;align-items:center;justify-content:center;text-decoration:none;box-shadow:0 8px 18px rgba(213,254,97,0.26);transition:transform .14s ease,box-shadow .14s ease;}
+        .cart-rd .crd-cta:active{transform:scale(0.985);box-shadow:0 4px 10px rgba(213,254,97,0.22);}
+        .cart-rd .crd-fav-cta{width:100%;height:40px;border:1px solid rgba(10,10,10,0.1);border-radius:999px;background:rgba(255,255,255,0.72);color:#0A0A0A;font-family:var(--font-inter),sans-serif;font-weight:700;font-size:13px;letter-spacing:0;cursor:pointer;transition:transform .14s ease,background .14s ease,border-color .14s ease;}
+        .cart-rd .crd-fav-cta:active:not(:disabled){transform:scale(0.985);}
+        .cart-rd .crd-fav-cta:disabled{opacity:0.62;cursor:not-allowed;}
+        .cart-rd .crd-fav-cta.in{background:#0A0A0A;color:#D5FE61;border-color:#0A0A0A;}
         .cart-rd .crd-empty{text-align:center;padding:60px 20px;background:rgba(255,255,255,0.62);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.7);border-radius:24px;margin-top:24px;}
         .cart-rd .crd-empty-cta{display:inline-block;background:#0A0A0A;color:#fff;padding:14px 32px;border-radius:999px;text-decoration:none;font-family:var(--font-inter),sans-serif;font-size:15px;font-weight:600;letter-spacing:-0.1px;box-shadow:0 10px 24px rgba(10,10,10,0.18);transition:transform .14s ease;}
         .cart-rd .crd-empty-cta:active{transform:scale(0.98);}
-        .cart-rd .crd-checkout{position:fixed;left:0;right:0;bottom:96px;padding:0 20px;z-index:900;display:flex;justify-content:center;}
-        .cart-rd .crd-checkout-inner{width:100%;max-width:420px;}
-        .cart-rd .crd-checkout-btn{width:100%;height:52px;border:0;border-radius:0;background:#0A0A0A;color:#fff;font-family:var(--font-inter),sans-serif;font-weight:400;font-size:15px;text-transform:uppercase;letter-spacing:0.02em;cursor:pointer;}
-        .cart-rd .crd-checkout-btn:active{transform:scale(0.99);}
+        .cart-rd .crd-ad-mark{margin:-2px 0 0;font-size:10px;line-height:1.35;color:#6B7280;letter-spacing:0;text-align:center;user-select:text;}
+        .cart-rd .crd-ad-mark strong{font-weight:800;color:#0A0A0A;}
+        .cart-rd .crd-erid{margin:16px 0 4px;padding:10px 12px;border-radius:16px;background:rgba(255,255,255,0.58);border:1px solid rgba(10,10,10,0.06);font-size:10px;line-height:1.45;color:#6B7280;letter-spacing:0;text-align:center;user-select:text;}
       `}</style>
 
       <div className="crd-topbar">
@@ -133,16 +195,19 @@ function CartPageContent() {
           <div className="crd-list">
             {cartItems.map((item) => {
               const store = getStore(item.product);
+              const affiliate = store ? withAffiliate(store.url) : null;
+              const inWishlist = wishlistProductIds.has(item.product.id);
+              const wishlistBusy = wishlistBusyId === item.product.id;
               return (
                 <div className="crd-item" key={item.id}>
                   <button className="crd-del" aria-label="Удалить" onClick={() => handleRemove(item.product.id)}>
-                    <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                    Убрать
                   </button>
                   <div className="crd-thumb">
                     {item.product.imageUrl ? (
                       <img src={item.product.imageUrl} alt="" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                     ) : (
-                      <div style={{ fontSize: '28px' }}>🧴</div>
+                      <div className="crd-thumb-empty" aria-hidden />
                     )}
                   </div>
                   <div className="crd-body">
@@ -152,37 +217,42 @@ function CartPageContent() {
                       {item.quantity > 1 && <span className="crd-qty">× {item.quantity}</span>}
                     </div>
                     {store && <div className="crd-store">{store.name}</div>}
-                    {store ? (
-                      <a className="crd-cta" href={store.url} target="_blank" rel="noopener noreferrer">
-                        В магазин
-                        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-                      </a>
-                    ) : (
-                      <div style={{ fontSize: '11px', color: '#9CA3AF' }}>Ссылка не найдена</div>
-                    )}
+                    <div className="crd-actions">
+                      {store && affiliate ? (
+                        <>
+                          <a
+                            className="crd-cta"
+                            href={affiliate.href}
+                            target="_blank"
+                            rel={affiliate.sponsored ? 'sponsored nofollow noopener noreferrer' : 'noopener noreferrer'}
+                          >
+                            В магазин
+                          </a>
+                          {affiliate.sponsored && (
+                            <div className="crd-ad-mark">Реклама · <strong>erid: {AFFILIATE_ERID}</strong></div>
+                          )}
+                        </>
+                      ) : (
+                        <div style={{ fontSize: '11px', color: '#9CA3AF' }}>Ссылка не найдена</div>
+                      )}
+                      <button
+                        type="button"
+                        className={`crd-fav-cta ${inWishlist ? 'in' : ''}`}
+                        disabled={wishlistBusy}
+                        onClick={() => handleToggleWishlist(item.product.id)}
+                      >
+                        {wishlistBusy ? 'Обновляем...' : inWishlist ? 'В избранном' : 'В избранное'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
             })}
           </div>
 
-          <div className="crd-checkout">
-            <div className="crd-checkout-inner">
-              {firstStore && (
-                <button
-                  className="crd-checkout-btn"
-                  onClick={() => {
-                    cartItems.forEach((item) => {
-                      const s = getStore(item.product);
-                      if (s) window.open(s.url, '_blank');
-                    });
-                  }}
-                >
-                  Купить всё ({cartItems.length})
-                </button>
-              )}
-            </div>
-          </div>
+          {hasSponsored && (
+            <div className="crd-erid">{AFFILIATE_DISCLOSURE}</div>
+          )}
         </>
       )}
     </div>

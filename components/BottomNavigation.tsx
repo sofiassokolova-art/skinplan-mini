@@ -3,12 +3,12 @@
 
 'use client';
 
-import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useCart } from '@/hooks/useCart';
 
 export default function BottomNavigation() {
-  const router = useRouter();
   const pathname = usePathname();
   const [scrollY, setScrollY] = useState(0);
 
@@ -73,12 +73,18 @@ export default function BottomNavigation() {
         const fill = active ? 'rgba(213,254,97,0.14)' : 'none';
         const isCartTab = item.path === '/cart-new';
         return (
-          <button
+          <Link
             key={item.path}
-            onClick={() => {
-              router.push(item.path);
+            href={item.path}
+            prefetch
+            onClick={(event) => {
+              if (active) {
+                event.preventDefault();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }
               if (navigator.vibrate) navigator.vibrate(10);
             }}
+            aria-current={active ? 'page' : undefined}
             aria-label={item.icon}
             style={{
               position: 'relative',
@@ -88,6 +94,7 @@ export default function BottomNavigation() {
               borderRadius: '16px',
               background: 'transparent',
               color,
+              textDecoration: 'none',
               display: 'grid',
               placeItems: 'center',
               cursor: 'pointer',
@@ -152,7 +159,7 @@ export default function BottomNavigation() {
                 {cartCount > 9 ? '9+' : cartCount}
               </span>
             )}
-          </button>
+          </Link>
         );
       })}
     </nav>
