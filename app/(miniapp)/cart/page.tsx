@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { useWishlist, useRemoveFromWishlist } from '@/hooks/useWishlist';
 import { useCart, useAddToCart } from '@/hooks/useCart';
 import type { WishlistResponse } from '@/lib/api-types';
-import { MiniAppPageSkeleton } from '@/components/ui/SkeletonLoader';
+import { TabLoadingShell } from '@/components/TabLoadingShell';
 import toast from 'react-hot-toast';
 
 interface WishlistItemData {
@@ -82,7 +82,7 @@ export default function FavoritesPage() {
     '#F4F2EE';
 
   if (loading) {
-    return <MiniAppPageSkeleton background={bg} rows={4} />;
+    return <TabLoadingShell title="Избранное" background={bg} />;
   }
 
   return (

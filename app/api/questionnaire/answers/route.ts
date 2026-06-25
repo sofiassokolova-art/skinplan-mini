@@ -614,13 +614,6 @@ export async function POST(request: NextRequest) {
                 answerValue: answer.answerValue !== undefined ? answer.answerValue : null,
                 answerValues: answer.answerValues !== undefined ? (answer.answerValues as any) : null,
               },
-              include: {
-                question: {
-                  include: {
-                    answerOptions: true,
-                  },
-                },
-              },
             });
 
           logger.debug('Answer upserted', {
@@ -640,22 +633,6 @@ export async function POST(request: NextRequest) {
         savedQuestionIds: savedAnswers.map(a => a.questionId),
       });
 
-      // ИСПРАВЛЕНО: Сохраняем имя пользователя из ответа на вопрос USER_NAME
-      const nameAnswer = (savedAnswers as any[]).find(a => a.question?.code === 'USER_NAME');
-      if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
-        const userName = String(nameAnswer.answerValue).trim();
-        // ВАЖНО: ограничиваем select, чтобы не падать при рассинхроне схемы БД
-        await tx.user.update({
-          where: { id: userId! },
-          data: { firstName: userName },
-          select: { id: true },
-        });
-        logger.info('User name saved', {
-          userId,
-          firstName: userName,
-        });
-      }
-
       // Загружаем полные данные для расчета профиля
       const fullAnswers = await tx.userAnswer.findMany({
         where: {
@@ -670,6 +647,24 @@ export async function POST(request: NextRequest) {
           },
         },
       });
+
+      // ИСПРАВЛЕНО: Сохраняем имя пользователя из ответа на вопрос USER_NAME.
+      // Используем уже загруженные fullAnswers, чтобы не тащить question+options
+      // на каждый upsert внутри транзакции.
+      const nameAnswer = (fullAnswers as any[]).find(a => a.question?.code === 'USER_NAME');
+      if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
+        const userName = String(nameAnswer.answerValue).trim();
+        // ВАЖНО: ограничиваем select, чтобы не падать при рассинхроне схемы БД
+        await tx.user.update({
+          where: { id: userId! },
+          data: { firstName: userName },
+          select: { id: true },
+        });
+        logger.info('User name saved', {
+          userId,
+          firstName: userName,
+        });
+      }
 
       // Рассчитываем профиль кожи
       // ВАЖНО: Логируем перед вызовом createSkinProfile для диагностики
@@ -1355,35 +1350,31 @@ export async function POST(request: NextRequest) {
     const duration = Date.now() - startTime;
     logApiRequest(method, path, 200, duration, userId || undefined);
 
-    // КРИТИЧНО: Проверяем, что профиль реально виден в БД после создания
-    // Используем тот же prisma instance для проверки
-    // Это поможет диагностировать проблему "разные БД"
-    const profileAfterCreate = await prisma.skinProfile.findUnique({
-      where: { id: profile.id },
-      select: { id: true, userId: true, version: true },
-    });
-    
-    // Логируем fingerprint БД для сравнения с другими роутами (повторно после создания профиля)
-    const fingerprintAfterCreate = await logDbFingerprint('/api/questionnaire/answers');
-    
-    console.warn('🔍 [QUESTIONNAIRE/ANSWERS] Profile verification after create:', JSON.stringify({
-      createdProfileId: profile.id,
-      foundInDb: !!profileAfterCreate,
-      profileAfterCreate: profileAfterCreate,
-      userId,
-      fingerprint: fingerprintAfterCreate ? {
-        db: fingerprintAfterCreate.db,
-        schema: fingerprintAfterCreate.schema,
-        user: fingerprintAfterCreate.user,
-        host: fingerprintAfterCreate.host,
-        port: fingerprintAfterCreate.port,
-      } : null,
-      databaseUrl: process.env.DATABASE_URL ? {
-        host: process.env.DATABASE_URL.match(/@([^:]+)/)?.[1],
-        db: process.env.DATABASE_URL.match(/\/([^?]+)/)?.[1],
-        prefix: process.env.DATABASE_URL.substring(0, 50) + '...',
-      } : null,
-    }, null, 2));
+    let profileFoundAfterCreate: boolean | undefined;
+    if (process.env.DEBUG_DB_FINGERPRINT === 'true') {
+      // Тяжёлая проверка нужна только при явной диагностике рассинхрона БД.
+      const profileAfterCreate = await prisma.skinProfile.findUnique({
+        where: { id: profile.id },
+        select: { id: true, userId: true, version: true },
+      });
+      profileFoundAfterCreate = !!profileAfterCreate;
+
+      const fingerprintAfterCreate = await logDbFingerprint('/api/questionnaire/answers');
+
+      console.warn('🔍 [QUESTIONNAIRE/ANSWERS] Profile verification after create:', JSON.stringify({
+        createdProfileId: profile.id,
+        foundInDb: profileFoundAfterCreate,
+        profileAfterCreate,
+        userId,
+        fingerprint: fingerprintAfterCreate ? {
+          db: fingerprintAfterCreate.db,
+          schema: fingerprintAfterCreate.schema,
+          user: fingerprintAfterCreate.user,
+          host: fingerprintAfterCreate.host,
+          port: fingerprintAfterCreate.port,
+        } : null,
+      }, null, 2));
+    }
     
     logger.info('✅ Answers submitted and profile created successfully', {
       userId,
@@ -1391,7 +1382,7 @@ export async function POST(request: NextRequest) {
       profileVersion: profile.version,
       answersCount: savedAnswers.length,
       duration,
-      profileFoundAfterCreate: !!profileAfterCreate,
+      ...(profileFoundAfterCreate !== undefined ? { profileFoundAfterCreate } : {}),
     });
 
     // ИСПРАВЛЕНО: Генерация плана — единый источник — страница /plan при state=generating.

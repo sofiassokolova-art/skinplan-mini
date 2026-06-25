@@ -4,10 +4,11 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { usePaywallVisibility } from '@/providers/PaywallVisibilityContext';
 import { DEV_TELEGRAM } from '@/lib/config/timeouts';
-import { AppLoader } from '@/components/AppLoader';
+import { TabLoadingShell } from '@/components/TabLoadingShell';
 import { invalidatePlanWarmCache } from '@/lib/plan-warm-cache';
 import { api } from '@/lib/api';
 import { REQUIRED_CONSENTS } from '@/lib/legal/consent';
@@ -597,17 +598,10 @@ export function PaymentGate({
     return <>{children}</>;
   }
 
-  // Ждём первой проверки entitlements — показываем полноэкранный лоадер
+  // Ждём первой проверки entitlements без skeleton/fullscreen overlay:
+  // при переключении табов навигация должна оставаться стабильной.
   if (!checkedOnce) {
-    return (
-      <AppLoader
-        fullScreen
-        variant="dark"
-        zIndex={1000}
-        message="Проверяем доступ..."
-        subMessage={initDataReady ? 'Почти готово' : 'Открываем Telegram Mini App'}
-      />
-    );
+    return <TabLoadingShell background="var(--canvas)" />;
   }
 
   const displayPrice =
@@ -875,13 +869,13 @@ export function PaymentGate({
               lineHeight: 1.5,
             }}>
               Я даю согласие на обработку персональных данных в соответствии с{' '}
-              <a href="/terms" target="_blank" style={{ color: '#000', textDecoration: 'underline' }}>
+              <Link href="/terms" style={{ color: '#000', textDecoration: 'underline' }}>
                 пользовательским соглашением
-              </a>
+              </Link>
               {' '}и{' '}
-              <a href="/privacy" target="_blank" style={{ color: '#000', textDecoration: 'underline' }}>
+              <Link href="/privacy" style={{ color: '#000', textDecoration: 'underline' }}>
                 политикой конфиденциальности
-              </a>
+              </Link>
             </span>
           </label>
 

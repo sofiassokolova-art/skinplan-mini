@@ -5,32 +5,56 @@
 
 'use client';
 
+import { useRouter } from 'next/navigation';
+import { X } from 'lucide-react';
+
 const TITLE_FONT =
   "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif";
 const BODY_FONT =
   "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
 
 export default function PrivacyPage() {
+  const router = useRouter();
+
+  const handleClose = () => {
+    if (typeof window !== 'undefined') {
+      if (window.history.length > 1) {
+        router.back();
+        return;
+      }
+
+      if (window.opener && !window.opener.closed) {
+        window.close();
+        return;
+      }
+    }
+
+    router.replace('/profile');
+  };
+
   return (
     <div
       className="animate-fade-in pv-rd"
       style={{
         minHeight: '100vh',
-        padding: '8px 20px',
-        paddingBottom: 'var(--bottom-nav-clearance)',
+        padding: 'calc(env(safe-area-inset-top, 0px) + 72px) 20px calc(env(safe-area-inset-bottom, 0px) + 28px)',
         fontFamily: BODY_FONT,
         color: 'var(--ink)',
       }}
     >
       <style>{`
         html, body { background-color: var(--canvas); }
-        .pv-rd{position:relative;}
-        .pv-rd::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:
+        .pv-rd{position:relative;isolation:isolate;}
+        .pv-rd::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:
           radial-gradient(72% 32% at 0% 0%, rgba(255,224,188,0.7) 0%, transparent 62%),
           radial-gradient(50% 22% at 100% 18%, rgba(213,254,97,0.42) 0%, transparent 70%),
           radial-gradient(64% 26% at 100% 55%, rgba(220,210,196,0.55) 0%, transparent 65%),
           radial-gradient(78% 32% at 10% 92%, rgba(213,254,97,0.46) 0%, transparent 62%),
           var(--canvas);}
+        .pv-rd::after{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:rgba(10,10,10,0.34);backdrop-filter:blur(8px) saturate(82%);-webkit-backdrop-filter:blur(8px) saturate(82%);}
+        .pv-rd > *{position:relative;z-index:1;}
+        .pv-rd .pv-close{position:fixed;top:calc(env(safe-area-inset-top, 0px) + 14px);right:16px;z-index:4;width:44px;height:44px;border:1px solid rgba(255,255,255,0.16);border-radius:999px;background:rgba(10,10,10,0.74);color:#fff;display:grid;place-items:center;box-shadow:0 14px 32px rgba(10,10,10,0.24),inset 0 1px 0 rgba(255,255,255,0.12);backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);cursor:pointer;}
+        .pv-rd .pv-close:active{transform:scale(0.94);}
         .pv-rd .pv-title{font-family:${TITLE_FONT};font-size:22px;font-weight:700;line-height:1.2;letter-spacing:-0.5px;color:var(--ink);margin:6px 0 6px;}
         .pv-rd .pv-sub{font-size:13px;font-weight:500;color:var(--ink-soft);margin:0 0 18px;}
         .pv-rd .pv-body{font-size:14px;line-height:1.7;color:var(--ink);}
@@ -42,6 +66,10 @@ export default function PrivacyPage() {
         .pv-rd .pv-body li{margin-bottom:4px;}
         .pv-rd .pv-body a{color:var(--ink);text-decoration:underline;font-weight:600;}
       `}</style>
+
+      <button type="button" className="pv-close" aria-label="Закрыть" onClick={handleClose}>
+        <X size={22} strokeWidth={2.2} aria-hidden />
+      </button>
 
       <h1 className="pv-title">Политика конфиденциальности</h1>
       <p className="pv-sub">Обработка персональных данных в приложении SkinIQ</p>
