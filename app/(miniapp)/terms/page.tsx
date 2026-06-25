@@ -3,19 +3,40 @@
 
 'use client';
 
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { X } from 'lucide-react';
+
 const TITLE_FONT =
   "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif";
 const BODY_FONT =
   "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
 
 export default function TermsPage() {
+  const router = useRouter();
+
+  const handleClose = () => {
+    if (typeof window !== 'undefined') {
+      if (window.history.length > 1) {
+        router.back();
+        return;
+      }
+
+      if (window.opener && !window.opener.closed) {
+        window.close();
+        return;
+      }
+    }
+
+    router.replace('/profile');
+  };
+
   return (
     <div
       className="animate-fade-in tr-rd"
       style={{
         minHeight: '100vh',
-        padding: '8px 20px',
-        paddingBottom: 'var(--bottom-nav-clearance)',
+        padding: 'calc(env(safe-area-inset-top, 0px) + 72px) 20px calc(env(safe-area-inset-bottom, 0px) + 28px)',
         fontFamily: BODY_FONT,
         color: 'var(--ink)',
       }}
@@ -24,13 +45,17 @@ export default function TermsPage() {
         html, body { background-color: var(--canvas); }
         /* Фон — фиксированный псевдо-слой с градиентными пятнами, тот же рецепт,
            что на /home и /profile (background-attachment:fixed не работает в Telegram iOS WebView). */
-        .tr-rd{position:relative;}
-        .tr-rd::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:
+        .tr-rd{position:relative;isolation:isolate;}
+        .tr-rd::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:
           radial-gradient(72% 32% at 0% 0%, rgba(255,224,188,0.7) 0%, transparent 62%),
           radial-gradient(50% 22% at 100% 18%, rgba(213,254,97,0.42) 0%, transparent 70%),
           radial-gradient(64% 26% at 100% 55%, rgba(220,210,196,0.55) 0%, transparent 65%),
           radial-gradient(78% 32% at 10% 92%, rgba(213,254,97,0.46) 0%, transparent 62%),
           var(--canvas);}
+        .tr-rd::after{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:rgba(10,10,10,0.34);backdrop-filter:blur(8px) saturate(82%);-webkit-backdrop-filter:blur(8px) saturate(82%);}
+        .tr-rd > *{position:relative;z-index:1;}
+        .tr-rd .tr-close{position:fixed;top:calc(env(safe-area-inset-top, 0px) + 14px);right:16px;z-index:4;width:44px;height:44px;border:1px solid rgba(255,255,255,0.16);border-radius:999px;background:rgba(10,10,10,0.74);color:#fff;display:grid;place-items:center;box-shadow:0 14px 32px rgba(10,10,10,0.24),inset 0 1px 0 rgba(255,255,255,0.12);backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);cursor:pointer;}
+        .tr-rd .tr-close:active{transform:scale(0.94);}
         .tr-rd .tr-title{font-family:${TITLE_FONT};font-size:22px;font-weight:700;line-height:1.2;letter-spacing:-0.5px;color:var(--ink);margin:6px 0 6px;}
         .tr-rd .tr-sub{font-size:13px;font-weight:500;color:var(--ink-soft);margin:0 0 18px;}
         .tr-rd .tr-body{font-size:14px;line-height:1.7;color:var(--ink);}
@@ -41,6 +66,10 @@ export default function TermsPage() {
         .tr-rd .tr-body ul{margin:0 0 12px;padding-left:20px;}
         .tr-rd .tr-body li{margin-bottom:4px;}
       `}</style>
+
+      <button type="button" className="tr-close" aria-label="Закрыть" onClick={handleClose}>
+        <X size={22} strokeWidth={2.2} aria-hidden />
+      </button>
 
       <h1 className="tr-title">Пользовательские соглашения</h1>
       <p className="tr-sub">Условия использования приложения SkinIQ</p>
@@ -88,7 +117,7 @@ export default function TermsPage() {
               Разработчик не передаёт персональные данные третьим лицам без согласия пользователя,
               за исключением лиц, привлекаемых для оказания сервиса. Порядок обработки, цели, сроки
               хранения и ваши права описаны в{' '}
-              <a href="/privacy" target="_blank" style={{ color: 'inherit', textDecoration: 'underline', fontWeight: 600 }}>Политике конфиденциальности</a>.
+              <Link href="/privacy" style={{ color: 'inherit', textDecoration: 'underline', fontWeight: 600 }}>Политике конфиденциальности</Link>.
             </p>
           </section>
 
