@@ -342,8 +342,16 @@ export async function generateRecommendationsForProfile(
         allProductIds.push(...products.map((p: any) => p.id));
       }
     } else if (stepsJson && typeof stepsJson === 'object') {
-      for (const stepConfig of Object.values(stepsJson)) {
-        const products = await getProductsForStep(stepConfig as any, normalizedBudget?.priceSegment, profileClassification);
+      for (const [stepName, stepConfig] of Object.entries(stepsJson)) {
+        const cfg = (stepConfig || {}) as any;
+        // Выбор продуктов идёт по step.category. Если правило задало шаг без category
+        // (как serum-шаг в правиле «Лето»), берём имя шага как категорию — иначе шаг
+        // не привязан к категории и нужный продукт (напр. сыворотка) терялся.
+        const resolved =
+          Array.isArray(cfg.category) && cfg.category.length > 0
+            ? cfg
+            : { ...cfg, category: [stepName] };
+        const products = await getProductsForStep(resolved, normalizedBudget?.priceSegment, profileClassification);
         allProductIds.push(...products.map((p: any) => p.id));
       }
     } else {
