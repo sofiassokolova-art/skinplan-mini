@@ -12,6 +12,7 @@ import { PaymentGate } from '@/components/PaymentGate';
 import { getBaseStepFromStepCategory } from '@/lib/plan-helpers';
 import { TabLoadingShell } from '@/components/TabLoadingShell';
 import { HomeEmptyState } from '@/components/HomeEmptyState';
+import { ProfileAvatarButton } from '@/components/ProfileAvatarButton';
 import { getStepMeta, STEP_ICONS } from '@/lib/routine-step-meta';
 import { getClientUserScope } from '@/lib/client-user-scope';
 import { resolvePlanPaywall, hasWinbackOfferParam } from '@/lib/paywall-product';
@@ -691,6 +692,21 @@ export default function HomePage() {
   const completedCount = routineItems.filter((item) => item.done).length;
   const totalCount = routineItems.length;
   const currentStepIndex = routineItems.findIndex(item => !item.done);
+  const morningCompletedCount = morningItems.filter((item) => item.done).length;
+  const eveningCompletedCount = eveningItems.filter((item) => item.done).length;
+  const dayCompletedCount = morningCompletedCount + eveningCompletedCount;
+  const dayTotalCount = morningItems.length + eveningItems.length;
+  const dayPct = dayTotalCount > 0 ? Math.round((dayCompletedCount / dayTotalCount) * 100) : 0;
+  const routinePct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+  const routineLabel = tab === 'AM' ? 'Утренний уход' : 'Вечерний уход';
+  const routineSubText =
+    totalCount === 0
+      ? 'Нет шагов на это время'
+      : completedCount === totalCount
+        ? `${routineLabel} завершён`
+        : `Осталось ${totalCount - completedCount} ${
+            totalCount - completedCount === 1 ? 'шаг' : totalCount - completedCount < 5 ? 'шага' : 'шагов'
+          }`;
 
   // ИСПРАВЛЕНО: План - это платный продукт, поэтому PaymentGate показывается ВСЕГДА
   // PaymentGate сам проверит статус оплаты через localStorage и БД
@@ -710,15 +726,16 @@ export default function HomePage() {
            background-attachment:fixed — последний не красит весь документ в
            Telegram iOS WebView, из-за чего при листании появлялась пустая/белая
            область. Теперь градиент гарантированно покрывает весь экран. */
-        .home-rd{position:relative;}
-        .home-rd::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:
+        .home-rd{position:relative;isolation:isolate;}
+        .home-rd::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:
           radial-gradient(72% 32% at 0% 0%, rgba(255,224,188,0.7) 0%, transparent 62%),
           radial-gradient(50% 22% at 100% 18%, rgba(213,254,97,0.42) 0%, transparent 70%),
           radial-gradient(64% 26% at 100% 55%, rgba(220,210,196,0.55) 0%, transparent 65%),
           radial-gradient(78% 32% at 10% 92%, rgba(213,254,97,0.46) 0%, transparent 62%),
           var(--canvas);}
+        .home-rd > *{position:relative;z-index:1;}
         .home-rd .hr-topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 20px 14px;}
-        .home-rd .hr-logo{font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:18px;font-weight:700;letter-spacing:-0.4px;color:var(--ink);}
+        .home-rd .hr-logo{font-family:var(--font-inter),-apple-system,BlinkMacSystemFont,sans-serif;font-size:18px;font-weight:500;letter-spacing:0;color:var(--ink);text-transform:lowercase;}
         .home-rd .hr-avatar{position:relative;width:40px;height:40px;border:0;padding:0;border-radius:50%;background:linear-gradient(135deg,#2A2A2A,var(--ink));color:var(--accent);display:grid;place-items:center;cursor:pointer;box-shadow:0 0 0 2px rgba(255,255,255,0.9),0 6px 18px rgba(10,10,10,0.18);font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;font-weight:600;}
         .home-rd .hr-avatar::after{content:"";position:absolute;bottom:1px;right:1px;width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--canvas);}
         .home-rd .hr-heading{padding:0 20px 14px;}
@@ -737,6 +754,14 @@ export default function HomePage() {
         .home-rd .hr-tab{flex:1;min-height:44px;border:0;border-radius:10px;background:transparent;color:var(--ink-soft);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:500;transition:all .18s ease;}
         .home-rd .hr-tab.active{background:rgba(255,255,255,0.92);color:var(--ink);box-shadow:0 4px 14px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.9);font-weight:600;}
         .home-rd .hr-tab svg{width:17px;height:17px;}
+        .home-rd .hr-routine-card{display:flex;align-items:center;gap:12px;margin:0 20px 16px;padding:13px 14px;border-radius:22px;border:1px solid rgba(255,255,255,0.74);background:rgba(255,255,255,0.66);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 12px 30px rgba(56,48,36,0.07);}
+        .home-rd .hr-routine-icon{width:42px;height:42px;flex-shrink:0;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--ink);box-shadow:0 8px 18px rgba(213,254,97,0.3);}
+        .home-rd .hr-routine-icon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+        .home-rd .hr-routine-copy{flex:1;min-width:0;}
+        .home-rd .hr-routine-label{font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-soft);}
+        .home-rd .hr-routine-value{margin-top:3px;font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:16px;font-weight:700;letter-spacing:-0.35px;color:var(--ink);}
+        .home-rd .hr-routine-sub{margin-top:2px;font-size:12px;font-weight:500;color:var(--ink-soft);}
+        .home-rd .hr-routine-pct{width:48px;height:48px;flex-shrink:0;display:grid;place-items:center;border-radius:50%;background:rgba(10,10,10,0.06);font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:12px;font-weight:700;color:var(--ink);}
         .home-rd .hr-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 23px 10px;}
         .home-rd .hr-section-title{font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:16px;font-weight:600;letter-spacing:-0.3px;color:var(--ink);}
         .home-rd .hr-section-note{color:var(--ink-soft);font-size:11px;font-weight:500;}
@@ -766,10 +791,8 @@ export default function HomePage() {
       `}</style>
       {/* Topbar */}
       <div className="hr-topbar">
-        <div className="hr-logo">SkinIQ</div>
-        <button className="hr-avatar" aria-label="Профиль" onClick={() => router.push('/profile')}>
-          {(userName?.[0] || 'S').toUpperCase()}
-        </button>
+        <div className="hr-logo">skiniq</div>
+        <ProfileAvatarButton className="hr-avatar" />
       </div>
 
       {/* Heading */}
@@ -787,26 +810,24 @@ export default function HomePage() {
       </div>
 
       {/* Dark progress card */}
-      {totalCount > 0 && (() => {
-        const remaining = totalCount - completedCount;
-        const ratio = totalCount > 0 ? completedCount / totalCount : 0;
-        const pct = Math.round(ratio * 100);
+      {dayTotalCount > 0 && (() => {
+        const dayRemaining = dayTotalCount - dayCompletedCount;
         const subText =
-          remaining === 0
+          dayRemaining === 0
             ? 'Уход на сегодня завершён'
-            : `Осталось ${remaining} ${remaining === 1 ? 'шаг' : remaining < 5 ? 'шага' : 'шагов'}`;
+            : `Утро ${morningCompletedCount}/${morningItems.length} · вечер ${eveningCompletedCount}/${eveningItems.length}`;
         return (
-          <section className="hr-progress-card" aria-label="Прогресс ухода">
+          <section className="hr-progress-card" aria-label="Прогресс ухода на сегодня">
             <div className="hr-progress-head">
               <div>
-                <div className="hr-eyebrow">{tab === 'AM' ? 'Утренний уход' : 'Вечерний уход'}</div>
-                <div className="hr-progress-value">{completedCount} из {totalCount} шагов</div>
+                <div className="hr-eyebrow">Уход на сегодня</div>
+                <div className="hr-progress-value">{dayCompletedCount} из {dayTotalCount} шагов</div>
                 <div className="hr-progress-sub">{subText}</div>
               </div>
-              <div className="hr-progress-badge">{pct}%</div>
+              <div className="hr-progress-badge">{dayPct}%</div>
             </div>
             <div className="hr-track">
-              <div className="hr-fill" style={{ width: `${Math.max(4, pct)}%` }} />
+              <div className="hr-fill" style={{ width: `${Math.max(4, dayPct)}%` }} />
             </div>
           </section>
         );
@@ -837,6 +858,29 @@ export default function HomePage() {
           Вечер
         </button>
       </div>
+
+      {totalCount > 0 && (
+        <section className="hr-routine-card" aria-label={routineLabel}>
+          <div className="hr-routine-icon" aria-hidden>
+            {tab === 'AM' ? (
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="4" />
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
+              </svg>
+            )}
+          </div>
+          <div className="hr-routine-copy">
+            <div className="hr-routine-label">{routineLabel}</div>
+            <div className="hr-routine-value">{completedCount} из {totalCount} шагов</div>
+            <div className="hr-routine-sub">{routineSubText}</div>
+          </div>
+          <div className="hr-routine-pct">{routinePct}%</div>
+        </section>
+      )}
 
       {/* Featured (current) step */}
       {(() => {

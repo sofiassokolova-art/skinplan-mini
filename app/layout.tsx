@@ -59,7 +59,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'SkinIQ - Умный уход за кожей',
+  title: 'skiniq - Умный уход за кожей',
   description: 'Персонализированный план ухода за кожей на основе анкеты',
   icons: { icon: '/icons/icon_sparkles.svg', apple: '/icons/icon_sparkles.svg' },
 };
@@ -491,7 +491,17 @@ export default async function RootLayout({
             textAlign: 'center',
           }}>
             <div>
-              <p style={{ fontSize: 18, marginBottom: 8 }}>SkinIQ</p>
+              <p
+                style={{
+                  fontFamily:
+                    "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontSize: 18,
+                  fontWeight: 500,
+                  marginBottom: 8,
+                }}
+              >
+                skiniq
+              </p>
               <p style={{ fontSize: 14, opacity: 0.9 }}>Включите JavaScript или обновите страницу.</p>
             </div>
           </div>
