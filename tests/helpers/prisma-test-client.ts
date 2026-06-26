@@ -35,3 +35,20 @@ export function createPrismaTestClient(databaseUrl = process.env.DATABASE_URL) {
     log: ['error'],
   });
 }
+
+export async function isPrismaTestDatabaseAvailable(prisma: PrismaClient): Promise<boolean> {
+  if (!process.env.DATABASE_URL) {
+    return false;
+  }
+
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return true;
+  } catch (error) {
+    const code = typeof error === 'object' && error !== null && 'code' in error
+      ? String((error as { code?: unknown }).code)
+      : 'unknown';
+    console.warn(`⚠️ Test database unavailable (${code}), skipping database integration tests`);
+    return false;
+  }
+}

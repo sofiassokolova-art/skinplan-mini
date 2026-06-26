@@ -5,9 +5,9 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { GET as getCurrentProfile } from '@/app/api/profile/current/route';
-import { createPrismaTestClient } from '@/tests/helpers/prisma-test-client';
+import { createPrismaTestClient, isPrismaTestDatabaseAvailable } from '@/tests/helpers/prisma-test-client';
 
-const hasDatabase = !!process.env.DATABASE_URL;
+let hasDatabase = !!process.env.DATABASE_URL;
 const prismaTest = createPrismaTestClient();
 
 const testUserId = 'test-user-api-profile-current';
@@ -51,6 +51,10 @@ vi.mock('@/lib/auth/telegram-auth', async () => {
 });
 
 describe('GET /api/profile/current', () => {
+  beforeAll(async () => {
+    hasDatabase = await isPrismaTestDatabaseAvailable(prismaTest);
+  });
+
   beforeEach(async () => {
     if (!hasDatabase) return;
     
