@@ -8,6 +8,7 @@ import { calculateSkinAxes, getDermatologistRecommendations } from './skin-analy
 import { buildRuleContext } from './rule-context';
 import { normalizeSkinTypeForRules, normalizeSensitivityForRules } from './skin-type-normalizer';
 import { getProductsForStep } from './product-selection';
+import { deriveFocusKeys, FOCUS_TO_GOAL } from './focus-keys';
 import type { ProfileClassification } from './plan-generation-helpers';
 
 export interface RecommendationGenerationResult {
@@ -238,6 +239,9 @@ export async function generateRecommendationsForProfile(
         questionnaireAnswers.age = value;
       } else if (code === 'concerns' || code === 'skin_concerns') {
         questionnaireAnswers.concerns = labelsOf(answer);
+      } else if (code === 'skin_goals' || code === 'goals') {
+        // Цели пользователя (морщины/поры/…) — отдельный сигнал от concerns.
+        questionnaireAnswers.goals = labelsOf(answer);
       } else if (code === 'habits') {
         questionnaireAnswers.habits = labelsOf(answer);
       } else if (code === 'sensitivity_level' || code === 'sensitivityLevel') {
@@ -260,7 +264,17 @@ export async function generateRecommendationsForProfile(
     // concernLabelsToRuleTokens). Лейблы при этом остаются в questionnaireAnswers
     // для скоринга осей (calculateSkinAxes выше).
     const concernTokens = concernLabelsToRuleTokens(questionnaireAnswers.concerns);
-    const ruleContext = buildRuleContext(profile as any, skinScores, normalizedSkinType, normalizedSensitivity, concernTokens);
+    // Цели → GoalKey-токены через те же терпимые матчеры лейблов, что и в плане
+    // (deriveFocusKeys + FOCUS_TO_GOAL). Даёт правилам сигнал antiage/pores/… из
+    // skin_goals, которого движок раньше не видел.
+    const goalTokens = Array.from(
+      new Set(
+        Array.from(deriveFocusKeys(Array.isArray(questionnaireAnswers.goals) ? questionnaireAnswers.goals : []))
+          .map((focus) => FOCUS_TO_GOAL[focus])
+          .filter((g): g is NonNullable<typeof g> => Boolean(g))
+      )
+    );
+    const ruleContext = buildRuleContext(profile as any, skinScores, normalizedSkinType, normalizedSensitivity, concernTokens, goalTokens);
 
     // Ищем подходящее правило (rules уже загружены параллельно выше).
 
@@ -375,24 +389,80 @@ export async function generateRecommendationsForProfile(
     const hasStep = (step: string) =>
       ruleStepKeys.includes(step) || ruleStepKeys.some((k) => k.startsWith(step + '_'));
 
+    // Показания к treatment-шагу. Лечебный актив навязываем только при акне/жирности-
+    // порах/пигментации/постакне/антиэйдже. Иначе не добавляем «лечение» (раньше шаг
+    // добавлялся всем, и юзер без показаний получал, напр., азелаин от акне).
+    // signal-токены (concerns+goals+уровни) маппим в вокабуляр concerns у продуктов,
+    // чтобы подбор взял релевантный treatment, а не первый по приоритету.
+    const TREATMENT_SIGNALS = new Set([
+      'acne', 'blackheads', 'pores', 'oiliness', 'pigmentation', 'postacne_scars',
+      'antiage', 'wrinkles', 'texture', 'dullness',
+    ]);
+    const SIGNAL_TO_PRODUCT_CONCERN: Record<string, string> = {
+      acne: 'acne', blackheads: 'acne', pores: 'oiliness', oiliness: 'oiliness',
+      pigmentation: 'pigmentation', postacne_scars: 'postacne_scars',
+      antiage: 'photoaging', wrinkles: 'photoaging', texture: 'photoaging', dullness: 'dullness',
+    };
+    const treatmentSignals = [
+      ...(((ruleContext as any).concerns as string[]) || []),
+      ...(((ruleContext as any).goals as string[]) || []),
+    ].filter((token) => TREATMENT_SIGNALS.has(token));
+    if (((ruleContext as any).acneLevel ?? 0) > 0 && !treatmentSignals.includes('acne')) {
+      treatmentSignals.push('acne');
+    }
+    if (['medium', 'high'].includes(String((ruleContext as any).pigmentationRisk)) && !treatmentSignals.includes('pigmentation')) {
+      treatmentSignals.push('pigmentation');
+    }
+    const treatmentConcerns = Array.from(
+      new Set(treatmentSignals.map((s) => SIGNAL_TO_PRODUCT_CONCERN[s]).filter(Boolean))
+    );
+    const treatmentIndicated = treatmentConcerns.length > 0;
+
     for (const stepGroup of requiredStepGroups) {
       if (hasStep(stepGroup)) continue;
+      // Гейт: treatment добавляем только при показаниях и направляем подбор по ним.
+      if (stepGroup === 'treatment' && !treatmentIndicated) {
+        logger.info('Treatment step skipped: no indication', { userId, profileId, ruleId: matchedRule.id });
+        continue;
+      }
+      const stepSpec =
+        stepGroup === 'treatment'
+          ? { category: ['treatment'], concerns: treatmentConcerns, max_items: 1 }
+          : { category: [stepGroup], max_items: 1 };
       const fallbackProducts = await getProductsForStep(
-        { category: [stepGroup], max_items: 1 },
+        stepSpec,
         normalizedBudget?.priceSegment,
         profileClassification
       );
-      if (fallbackProducts.length > 0) {
-        allProductIds.push((fallbackProducts[0] as any).id);
-        logger.info('Session supplemented with required step', {
-          step: stepGroup,
-          productId: (fallbackProducts[0] as any).id,
-          productName: (fallbackProducts[0] as any).name,
-          userId,
-          profileId,
-          ruleId: matchedRule.id,
-        });
+      if (fallbackProducts.length === 0) continue;
+      const chosen = fallbackProducts[0] as any;
+
+      // Для treatment добавляем ТОЛЬКО реально релевантный продукт: его concerns
+      // должны пересекаться с показаниями. Иначе на antiage-показание подбор
+      // отдавал бы acne-hero (Baziron) — навязанное «лечение акне». Нет релевантного
+      // — лучше не добавлять treatment совсем (serum/рутина закрывают профилактику).
+      if (stepGroup === 'treatment') {
+        const productConcerns = Array.isArray(chosen?.concerns)
+          ? chosen.concerns.map((c: string) => String(c).toLowerCase())
+          : [];
+        const relevant = treatmentConcerns.some((c) => productConcerns.includes(c));
+        if (!relevant) {
+          logger.info('Treatment step skipped: no concern-relevant product', {
+            userId, profileId, ruleId: matchedRule.id, candidate: chosen?.id, treatmentConcerns,
+          });
+          continue;
+        }
       }
+
+      allProductIds.push(chosen.id);
+      logger.info('Session supplemented with required step', {
+        step: stepGroup,
+        productId: chosen.id,
+        productName: chosen.name,
+        userId,
+        profileId,
+        ruleId: matchedRule.id,
+      });
     }
 
     // ИСПРАВЛЕНО: Убираем дубли продуктов и стабилизируем порядок
