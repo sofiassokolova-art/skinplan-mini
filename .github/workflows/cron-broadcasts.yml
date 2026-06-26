@@ -19,6 +19,8 @@
 # и ДОЛЖЕН совпадать с секретом prod-воркера (wrangler secret put CRON_SECRET --env production).
 name: Cron — broadcasts & log cleanup (prod)
 
+permissions: {}
+
 on:
   schedule:
     - cron: '*/30 * * * *'   # отложенные рассылки — каждые 30 минут
