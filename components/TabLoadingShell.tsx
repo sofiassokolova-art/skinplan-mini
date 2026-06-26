@@ -32,14 +32,15 @@ export function TabLoadingShell({
       >
         <div
           style={{
-            fontFamily: "var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif",
+            fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
             fontSize: '18px',
-            fontWeight: 700,
-            letterSpacing: '-0.4px',
+            fontWeight: 500,
+            letterSpacing: '0',
             color: 'var(--ink)',
+            textTransform: 'lowercase',
           }}
         >
-          SkinIQ
+          skiniq
         </div>
       </div>
 

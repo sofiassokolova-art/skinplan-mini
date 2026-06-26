@@ -1,5 +1,5 @@
 // components/quiz/screens/PersonalAnalysisScreen.tsx
-// Экран «Экспертный анализ от SkinIQ» — статичный (position: fixed, без скролла),
+// Экран «Экспертный анализ от skiniq» — статичный (position: fixed, без скролла),
 // фон — одна из back-картинок анкеты без цветных оверлеев.
 // Hero: 92% социального пруфа. Ниже — стеклянная карточка
 // «Что входит в программу» с тремя пунктами (Диагностика / Подбор средств /
@@ -59,7 +59,7 @@ function PersonalAnalysisScreenComponent({
 }: PersonalAnalysisScreenProps) {
   const shouldShowBackButton =
     currentInfoScreenIndex > 0 && screen.id !== 'welcome' && !!onBack;
-  const backgroundImage = '/back6.jpg'; // текстура крема — «Экспертный анализ от SkinIQ»
+  const backgroundImage = '/back6.jpg'; // текстура крема — «Экспертный анализ от skiniq»
   const handleBackWithScroll = () => {
     const scrollTop =
       window.pageYOffset ||
@@ -143,7 +143,7 @@ function PersonalAnalysisScreenComponent({
           >
             Экспертный анализ
             <br />
-            от SkinIQ
+            от skiniq
           </h1>
 
           {/* HERO: 92% социальный пруф */}
@@ -177,7 +177,7 @@ function PersonalAnalysisScreenComponent({
                 borderRadius: '999px',
               }}
             >
-              по данным SkinIQ
+              по данным skiniq
             </div>
             <div
               style={{

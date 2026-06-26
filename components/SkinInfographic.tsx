@@ -1,5 +1,5 @@
 // components/SkinInfographic.tsx
-// Профессиональная инфографика кожи SkinIQ 2025
+// Профессиональная инфографика кожи skiniq 2025
 // Методология: Curology, Agency, Typology, Prose, Luvly, Drunk Elephant Skin School
 
 'use client';
@@ -80,7 +80,7 @@ export function SkinInfographic({
 
   const skinTypeColor = getSkinTypeColor(globalSkinType);
 
-  // Расчет SkinIQ Score
+  // Расчет skiniq score
   const calculateSkinIQScore = () => {
     const hydration = hydrationPercent;
     const acne = acneScore * 10; // 0-100
@@ -101,7 +101,7 @@ export function SkinInfographic({
 
   const skinIQScore = calculateSkinIQScore();
 
-  // Цвет для SkinIQ Score
+  // Цвет для skiniq score
   const getScoreColor = (score: number) => {
     if (score >= 90) return { bg: '#065F46', text: '#10B981', border: '#FCD34D', label: 'Идеал' };
     if (score >= 75) return { bg: '#D1FAE5', text: '#059669', border: '#10B981', label: 'Хорошая кожа' };
@@ -194,7 +194,7 @@ export function SkinInfographic({
         </div>
       </div>
 
-      {/* SkinIQ Score - большая цифра в центре */}
+      {/* skiniq score - большая цифра в центре */}
       <div 
         className="rounded-2xl p-6 mb-6 text-center border-2 relative overflow-hidden"
         style={{ 
@@ -210,7 +210,7 @@ export function SkinInfographic({
           </div>
         )}
         <div className="relative z-10">
-          <div className="text-sm text-[#475467] mb-2">SkinIQ Score</div>
+          <div className="text-sm text-[#475467] mb-2">skiniq score</div>
           <div 
             className="text-6xl font-bold mb-2"
             style={{ color: scoreColor.text }}

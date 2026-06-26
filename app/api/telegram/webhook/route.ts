@@ -246,7 +246,7 @@ export async function POST(request: NextRequest) {
 Хорошего вечера/выходных!`;
                 } else {
                   // Рабочее время
-                  autoReplyText = `Привет! Это поддержка SkinIQ
+                  autoReplyText = `Привет! Это поддержка skiniq
 
 Сейчас мы онлайн и скоро ответим
 
@@ -326,10 +326,10 @@ export async function POST(request: NextRequest) {
       console.log(`🤖 Bot Token configured: ${!!TELEGRAM_BOT_TOKEN}`);
       console.log(`🔑 Bot Token length: ${TELEGRAM_BOT_TOKEN?.length || 0}`);
 
-      const welcomeText = `Добро пожаловать в <b>SkinIQ</b> — ваш помощник в уходе за кожей!
-Что умеет <b>SkinIQ</b>:
+      const welcomeText = `Добро пожаловать в <b>skiniq</b> — ваш помощник в уходе за кожей!
+Что умеет <b>skiniq</b>:
 • Дает личные советы по уходу
-• Предлагает план ухода на 12 недель каждый день
+• Помогает отследить прогресс
 • Дает советы от врачей-дерматологов
 
 🎁 Начните уже сегодня!
@@ -342,7 +342,7 @@ export async function POST(request: NextRequest) {
         inline_keyboard: [
           [
             {
-              text: 'SkinIQ',
+              text: 'skiniq',
               web_app: { url: MINI_APP_URL },
             },
           ],
@@ -369,9 +369,9 @@ export async function POST(request: NextRequest) {
         
         // Fallback: то же приветствие, но с кнопкой открытия Mini App (без ссылки в тексте)
         try {
-          const fallbackText = `Добро пожаловать в <b>SkinIQ</b> — ваш помощник в уходе за кожей!\n\nЧто умеет <b>SkinIQ</b>:\n• Дает личные советы по уходу\n• Предлагает план ухода на 12 недель каждый день\n• Дает советы от врачей-дерматологов\n\n🎁 Начните уже сегодня!\n\nЗаполнение анкеты займет всего 5 минут. В результате вы получите специальный план ухода, который подходит именно вашей коже.\n\nНажмите на кнопку ниже, чтобы открыть приложение:`;
+          const fallbackText = `Добро пожаловать в <b>skiniq</b> — ваш помощник в уходе за кожей!\n\nЧто умеет <b>skiniq</b>:\n• Дает личные советы по уходу\n• Помогает отследить прогресс\n• Дает советы от врачей-дерматологов\n\n🎁 Начните уже сегодня!\n\nЗаполнение анкеты займет всего 5 минут. В результате вы получите специальный план ухода, который подходит именно вашей коже.\n\nНажмите на кнопку ниже, чтобы открыть приложение:`;
           const fallbackMarkup = {
-            inline_keyboard: [[{ text: 'SkinIQ', web_app: { url: MINI_APP_URL } }]],
+            inline_keyboard: [[{ text: 'skiniq', web_app: { url: MINI_APP_URL } }]],
           };
           await sendMessage(chatId, fallbackText, fallbackMarkup, userId || undefined);
           console.log(`✅ Fallback message with button sent successfully`);
@@ -639,7 +639,7 @@ export async function POST(request: NextRequest) {
         username: update.message.from.username,
         languageCode: update.message.from.language_code,
       });
-      const helpText = `📖 <b>Помощь по SkinIQ</b>
+      const helpText = `📖 <b>Помощь по skiniq</b>
 
 <b>Команды:</b>
 /start - Начать работу с ботом
@@ -649,7 +649,7 @@ export async function POST(request: NextRequest) {
 /logs - Показать ваши логи и данные
 
 <b>Что дальше?</b>
-Нажмите на кнопку "Открыть SkinIQ" в сообщении /start, чтобы открыть мини-приложение и начать пользоваться всеми возможностями SkinIQ!`;
+Нажмите на кнопку "Открыть skiniq" в сообщении /start, чтобы открыть мини-приложение и начать пользоваться всеми возможностями skiniq!`;
 
       try {
         await sendMessage(chatId, helpText, undefined, userId || undefined);
@@ -826,4 +826,3 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({ message: 'Telegram webhook endpoint. Use ?action=check or ?action=set-webhook' });
 }
-
