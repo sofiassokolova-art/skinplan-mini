@@ -17,6 +17,13 @@ function priceSegment(price: number | null): string | null {
   return 'premium';
 }
 
+function concernsForRow(row: Row): string[] {
+  if (row.step === 'treatment_antiage' || row.step === 'serum_antiage') {
+    return Array.from(new Set([...row.concerns, 'photoaging']));
+  }
+  return row.concerns;
+}
+
 function slugify(input: string): string {
   return input.toLowerCase().replace(/[^a-z0-9а-я]+/g, '-').replace(/^-+|-+$/g, '').substring(0, 60);
 }
@@ -85,7 +92,7 @@ async function main() {
       priceSegment: priceSegment(r.price),
       volume: r.volume,
       skinTypes: ALL_SKIN,
-      concerns: r.concerns,
+      concerns: concernsForRow(r),
       activeIngredients: r.actives,
       descriptionUser: r.desc,
       link: r.url,
