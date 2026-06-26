@@ -5,7 +5,7 @@
 import { prisma } from '@/lib/db';
 import { logger } from './logger';
 import { calculateSkinAxes, getDermatologistRecommendations } from './skin-analysis-engine';
-import { buildRuleContext } from './rule-context';
+import { buildRuleContext, type RuleContext } from './rule-context';
 import { normalizeSkinTypeForRules, normalizeSensitivityForRules } from './skin-type-normalizer';
 import { getProductsForStep } from './product-selection';
 import { deriveFocusKeys, FOCUS_TO_GOAL } from './focus-keys';
@@ -158,6 +158,111 @@ export function concernLabelsToRuleTokens(labels: string[] | undefined | null): 
     }
   }
   return Array.from(tokens);
+}
+
+const TREATMENT_SIGNAL_TO_PRODUCT_CONCERNS: Record<string, string[]> = {
+  acne: ['acne'],
+  blackheads: ['acne'],
+  pores: ['oiliness', 'pores'],
+  oiliness: ['oiliness', 'pores'],
+  pigmentation: ['pigmentation'],
+  postacne_scars: ['postacne_scars'],
+  // В правилах/осях antiage часто приходит как photoaging, а каталог anti-age
+  // активов исторически размечен через wrinkles. Держим оба словаря валидными.
+  antiage: ['wrinkles', 'photoaging', 'antiage'],
+  wrinkles: ['wrinkles', 'photoaging', 'antiage'],
+  texture: ['texture'],
+  dullness: ['dullness'],
+};
+
+export function treatmentSignalsToProductConcerns(signals: string[]): string[] {
+  const concerns = new Set<string>();
+  for (const signal of signals) {
+    for (const concern of TREATMENT_SIGNAL_TO_PRODUCT_CONCERNS[signal] || []) {
+      concerns.add(concern);
+    }
+  }
+  return Array.from(concerns);
+}
+
+const YOUNG_PREVENTION_AGES = new Set(['under_25', '25-34']);
+
+function hasToken(values: unknown, tokens: string[]): boolean {
+  const arr = Array.isArray(values) ? values : [];
+  return arr.some((value) => tokens.includes(String(value)));
+}
+
+function numberValue(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+function isAge35Plus(age: unknown): boolean {
+  return ['35-44', '45-54', '55+'].includes(String(age || ''));
+}
+
+/**
+ * Клинический гейт для автодобавления treatment-шагов.
+ *
+ * Goals сами по себе часто означают профилактический запрос ("хочу меньше поры",
+ * "antiage заранее"). Для лечебного актива нужны более явные показания:
+ * acneLevel/воспаление, риск пигментации, высокий photoaging или concern, а не
+ * только желание пользователя. Иначе молодая жирная кожа с профилактической целью
+ * получала ретиноид/BHA/BPO поверх мягкой рутины.
+ */
+export function deriveTreatmentSignalsForRuleContext(ruleContext: Partial<RuleContext>): string[] {
+  const signals: string[] = [];
+  const push = (token: string) => {
+    if (!signals.includes(token)) signals.push(token);
+  };
+
+  const concerns = ruleContext.concerns || [];
+  const goals = ruleContext.goals || [];
+  const diagnoses = ruleContext.diagnoses || [];
+  const age = ruleContext.age;
+  const sensitivity = String(ruleContext.sensitivity_level || ruleContext.sensitivityLevel || '');
+  const rosaceaRisk = String(ruleContext.rosaceaRisk || '');
+  const isReactiveSkin =
+    ['high', 'very_high'].includes(sensitivity) ||
+    ['medium', 'high', 'critical'].includes(rosaceaRisk) ||
+    hasToken(diagnoses, ['rosacea', 'atopic_dermatitis']);
+
+  const hasAcneSignal =
+    hasToken(concerns, ['acne', 'blackheads']) ||
+    hasToken(diagnoses, ['acne']) ||
+    numberValue(ruleContext.acneLevel) > 0 ||
+    numberValue(ruleContext.inflammation) >= 60;
+  if (hasAcneSignal) push('acne');
+
+  const hasPigmentationSignal =
+    hasToken(concerns, ['pigmentation', 'postacne_scars']) ||
+    hasToken(diagnoses, ['melasma']) ||
+    ['medium', 'high'].includes(String(ruleContext.pigmentationRisk || '')) ||
+    numberValue(ruleContext.pigmentation) >= 50;
+  if (hasPigmentationSignal) {
+    push(hasToken(concerns, ['postacne_scars']) ? 'postacne_scars' : 'pigmentation');
+  }
+
+  const hasPoreIndication = hasToken(concerns, ['pores', 'oiliness', 'blackheads']);
+  if (hasPoreIndication && !isReactiveSkin) push('pores');
+
+  const hasAntiageConcern = hasToken(concerns, ['wrinkles', 'antiage']);
+  const hasObjectivePhotoaging = numberValue(ruleContext.photoaging) >= 60;
+  const hasAntiageIndication =
+    hasAntiageConcern ||
+    hasObjectivePhotoaging ||
+    (hasToken(goals, ['antiage']) && (isAge35Plus(age) || numberValue(ruleContext.photoaging) >= 40));
+  const isYoungAge = YOUNG_PREVENTION_AGES.has(String(age || ''));
+  if (hasAntiageIndication && (!isYoungAge || hasObjectivePhotoaging)) push('antiage');
+  if (hasAntiageConcern && isYoungAge) push('wrinkles');
+
+  if (hasToken(concerns, ['texture'])) push('texture');
+  if (hasToken(concerns, ['dullness'])) push('dullness');
+
+  return signals;
+}
+
+export function deriveTreatmentConcernsForRuleContext(ruleContext: Partial<RuleContext>): string[] {
+  return treatmentSignalsToProductConcerns(deriveTreatmentSignalsForRuleContext(ruleContext));
 }
 
 /**
@@ -394,28 +499,7 @@ export async function generateRecommendationsForProfile(
     // добавлялся всем, и юзер без показаний получал, напр., азелаин от акне).
     // signal-токены (concerns+goals+уровни) маппим в вокабуляр concerns у продуктов,
     // чтобы подбор взял релевантный treatment, а не первый по приоритету.
-    const TREATMENT_SIGNALS = new Set([
-      'acne', 'blackheads', 'pores', 'oiliness', 'pigmentation', 'postacne_scars',
-      'antiage', 'wrinkles', 'texture', 'dullness',
-    ]);
-    const SIGNAL_TO_PRODUCT_CONCERN: Record<string, string> = {
-      acne: 'acne', blackheads: 'acne', pores: 'oiliness', oiliness: 'oiliness',
-      pigmentation: 'pigmentation', postacne_scars: 'postacne_scars',
-      antiage: 'photoaging', wrinkles: 'photoaging', texture: 'photoaging', dullness: 'dullness',
-    };
-    const treatmentSignals = [
-      ...(((ruleContext as any).concerns as string[]) || []),
-      ...(((ruleContext as any).goals as string[]) || []),
-    ].filter((token) => TREATMENT_SIGNALS.has(token));
-    if (((ruleContext as any).acneLevel ?? 0) > 0 && !treatmentSignals.includes('acne')) {
-      treatmentSignals.push('acne');
-    }
-    if (['medium', 'high'].includes(String((ruleContext as any).pigmentationRisk)) && !treatmentSignals.includes('pigmentation')) {
-      treatmentSignals.push('pigmentation');
-    }
-    const treatmentConcerns = Array.from(
-      new Set(treatmentSignals.map((s) => SIGNAL_TO_PRODUCT_CONCERN[s]).filter(Boolean))
-    );
+    const treatmentConcerns = deriveTreatmentConcernsForRuleContext(ruleContext);
     const treatmentIndicated = treatmentConcerns.length > 0;
 
     for (const stepGroup of requiredStepGroups) {
@@ -435,23 +519,26 @@ export async function generateRecommendationsForProfile(
         profileClassification
       );
       if (fallbackProducts.length === 0) continue;
-      const chosen = fallbackProducts[0] as any;
+      let chosen = fallbackProducts[0] as any;
 
       // Для treatment добавляем ТОЛЬКО реально релевантный продукт: его concerns
       // должны пересекаться с показаниями. Иначе на antiage-показание подбор
       // отдавал бы acne-hero (Baziron) — навязанное «лечение акне». Нет релевантного
       // — лучше не добавлять treatment совсем (serum/рутина закрывают профилактику).
       if (stepGroup === 'treatment') {
-        const productConcerns = Array.isArray(chosen?.concerns)
-          ? chosen.concerns.map((c: string) => String(c).toLowerCase())
-          : [];
-        const relevant = treatmentConcerns.some((c) => productConcerns.includes(c));
-        if (!relevant) {
+        const relevantProduct = fallbackProducts.find((product: any) => {
+          const productConcerns = Array.isArray(product?.concerns)
+            ? product.concerns.map((c: string) => String(c).toLowerCase())
+            : [];
+          return treatmentConcerns.some((c) => productConcerns.includes(c));
+        });
+        if (!relevantProduct) {
           logger.info('Treatment step skipped: no concern-relevant product', {
             userId, profileId, ruleId: matchedRule.id, candidate: chosen?.id, treatmentConcerns,
           });
           continue;
         }
+        chosen = relevantProduct as any;
       }
 
       allProductIds.push(chosen.id);
