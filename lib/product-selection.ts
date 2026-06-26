@@ -386,13 +386,24 @@ export async function getProductsForStep(
     }
   }
 
-  // Сортируем в памяти по приоритету и isHero
+  // Сортируем в памяти. ВАЖНО: если шаг задал concerns — продукты, реально
+  // совпадающие по concern, идут ВЫШЕ isHero. Иначе «геройский» товар не по теме
+  // (напр. acne-BPO в antiage-шаге) перебивал мягкое concern-направление и в набор
+  // попадало нерелевантное «лечение». Совпадения нет у всех — порядок прежний.
+  const wantedConcerns = (step.concerns || []).map((c) => c.toLowerCase());
+  const concernScore = (p: any): number => {
+    if (wantedConcerns.length === 0) return 0;
+    const pc = Array.isArray(p.concerns) ? p.concerns.map((c: string) => String(c).toLowerCase()) : [];
+    return pc.some((c: string) => wantedConcerns.includes(c)) ? 1 : 0;
+  };
   const sorted = products.sort((a: any, b: any) => {
+    const cs = concernScore(b) - concernScore(a);
+    if (cs !== 0) return cs;
     if (a.isHero !== b.isHero) return b.isHero ? 1 : -1;
     if (a.priority !== b.priority) return b.priority - a.priority;
     return b.createdAt.getTime() - a.createdAt.getTime();
   });
-  
+
   return sorted.slice(0, step.max_items || 3);
 }
 
