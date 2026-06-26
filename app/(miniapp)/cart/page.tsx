@@ -3,12 +3,12 @@
 
 'use client';
 
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useWishlist, useRemoveFromWishlist } from '@/hooks/useWishlist';
 import { useCart, useAddToCart } from '@/hooks/useCart';
 import type { WishlistResponse } from '@/lib/api-types';
 import { TabLoadingShell } from '@/components/TabLoadingShell';
+import { ProfileAvatarButton } from '@/components/ProfileAvatarButton';
 import toast from 'react-hot-toast';
 
 interface WishlistItemData {
@@ -26,7 +26,6 @@ interface WishlistItemData {
 }
 
 export default function FavoritesPage() {
-  const router = useRouter();
   const { data: wishlistData, isLoading: loading } = useWishlist();
   const removeMutation = useRemoveFromWishlist();
   const { data: cartData } = useCart();
@@ -111,7 +110,7 @@ export default function FavoritesPage() {
 
       <div className="fv-topbar">
         <div className="fv-logo">SkinIQ</div>
-        <button className="fv-avatar" aria-label="Профиль" onClick={() => router.push('/profile')}>С</button>
+        <ProfileAvatarButton className="fv-avatar" />
       </div>
 
       <h1 className="fv-title">Избранное</h1>

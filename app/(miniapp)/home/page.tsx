@@ -12,6 +12,7 @@ import { PaymentGate } from '@/components/PaymentGate';
 import { getBaseStepFromStepCategory } from '@/lib/plan-helpers';
 import { TabLoadingShell } from '@/components/TabLoadingShell';
 import { HomeEmptyState } from '@/components/HomeEmptyState';
+import { ProfileAvatarButton } from '@/components/ProfileAvatarButton';
 import { getStepMeta, STEP_ICONS } from '@/lib/routine-step-meta';
 import { getClientUserScope } from '@/lib/client-user-scope';
 import { resolvePlanPaywall, hasWinbackOfferParam } from '@/lib/paywall-product';
@@ -767,9 +768,7 @@ export default function HomePage() {
       {/* Topbar */}
       <div className="hr-topbar">
         <div className="hr-logo">SkinIQ</div>
-        <button className="hr-avatar" aria-label="Профиль" onClick={() => router.push('/profile')}>
-          {(userName?.[0] || 'S').toUpperCase()}
-        </button>
+        <ProfileAvatarButton className="hr-avatar" />
       </div>
 
       {/* Heading */}

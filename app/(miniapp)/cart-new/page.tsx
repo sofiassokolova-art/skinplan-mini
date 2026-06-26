@@ -4,12 +4,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCart, useRemoveFromCart } from '@/hooks/useCart';
 import { useAddToWishlist, useRemoveFromWishlist, useWishlist } from '@/hooks/useWishlist';
 import type { CartResponse } from '@/lib/api-types';
 import { TabLoadingShell } from '@/components/TabLoadingShell';
+import { ProfileAvatarButton } from '@/components/ProfileAvatarButton';
 import { withAffiliate, isGoldapple, affiliateRel, AFFILIATE_ERID, AFFILIATE_DISCLOSURE } from '@/lib/affiliate';
 import toast from 'react-hot-toast';
 
@@ -43,7 +43,6 @@ function getStore(p: CartItem['product']): { url: string; name: string } | null 
 // для корзины и избранного: redav-редирект, erid, маркировка ФЗ-38).
 
 function CartPageContent() {
-  const router = useRouter();
   const { data: cartData, isLoading: loading } = useCart();
   const { data: wishlistData } = useWishlist();
   const removeFromCart = useRemoveFromCart();
@@ -154,7 +153,7 @@ function CartPageContent() {
 
       <div className="crd-topbar">
         <div className="crd-logo">SkinIQ</div>
-        <button className="crd-avatar" aria-label="Профиль" onClick={() => router.push('/profile')}>С</button>
+        <ProfileAvatarButton className="crd-avatar" />
       </div>
 
       <div className="crd-header">
