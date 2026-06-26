@@ -239,7 +239,7 @@ export interface WishlistResponse {
       id: number;
       name: string;
       brand: { id?: number; name: string };
-      // price is intentionally omitted: client must never see product price (policy: prices may differ from store)
+      priceFrom?: number | null;
       imageUrl: string | null;
       description?: string;
       link?: string | null;
@@ -259,7 +259,7 @@ export interface CartResponse {
       id: number;
       name: string;
       brand: { id?: number; name: string };
-      // price is intentionally omitted: client must never see product price (policy: prices may differ from store)
+      priceFrom?: number | null;
       imageUrl: string | null;
       description?: string;
       link?: string | null;
