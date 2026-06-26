@@ -102,12 +102,62 @@ export default function RootPage() {
       });
     };
 
+    const planLooksPresent = (plan: unknown): boolean => {
+      if (!plan || typeof plan !== 'object') return false;
+
+      const candidate = plan as {
+        plan28?: { days?: unknown[] };
+        weeks?: unknown[];
+        phases?: unknown[];
+        currentDay?: unknown;
+      };
+
+      return Boolean(
+        candidate.plan28?.days?.length ||
+          candidate.weeks?.length ||
+          candidate.phases?.length ||
+          candidate.currentDay
+      );
+    };
+
+    const checkPlanBeforeQuiz = async (source: string): Promise<boolean> => {
+      try {
+        const plan = await Promise.race([
+          api.getPlan(),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 3500)),
+        ]);
+
+        const hasPlan = planLooksPresent(plan);
+        if (!hasPlan) return false;
+
+        clientLogger.warn(
+          `⚠️ Root page: ${source} did not confirm plan_progress, but /api/plan has a plan → /home`
+        );
+
+        try {
+          const { setHasPlanProgress } = await import('@/lib/user-preferences');
+          await setHasPlanProgress(true);
+        } catch (error) {
+          clientLogger.warn('⚠️ Не удалось восстановить hasPlanProgress (некритично):', error);
+        }
+
+        return true;
+      } catch (error) {
+        clientLogger.warn('⚠️ Root plan fallback check failed:', error);
+        return false;
+      }
+    };
+
     // 3) Авторизация (не блокирующая) + проверка hasPlanProgress
     const maxWait = ROOT_LOAD_TIMEOUTS.ROOT_PAGE_MAX_WAIT;
     const timeoutId = setTimeout(() => {
       if (redirectInProgressRef.current) return;
-      clientLogger.warn('⚠️ Root page: max wait reached, redirecting to /quiz');
-      safeReplace('/quiz');
+      clientLogger.warn('⚠️ Root page: max wait reached, checking /api/plan before /quiz');
+      void (async () => {
+        const hasPlan = await checkPlanBeforeQuiz('max wait');
+        if (redirectInProgressRef.current) return;
+        safeReplace(hasPlan ? '/home' : '/quiz');
+      })();
     }, maxWait);
 
     const checkAndRedirect = async () => {
@@ -141,9 +191,11 @@ export default function RootPage() {
       if (redirectInProgressRef.current) return;
 
       if (!telegramReady) {
-        clientLogger.log('Telegram WebApp не доступен, перенаправляем на /quiz');
+        clientLogger.log('Telegram WebApp не доступен, проверяем /api/plan перед /quiz');
+        const hasPlan = await checkPlanBeforeQuiz('telegram wait');
         clearTimeout(timeoutId);
-        safeReplace('/quiz');
+        if (redirectInProgressRef.current) return;
+        safeReplace(hasPlan ? '/home' : '/quiz');
         return;
       }
 
@@ -166,7 +218,15 @@ export default function RootPage() {
       clearTimeout(timeoutId);
 
       if (!hasPlanProgress) {
-        clientLogger.log('ℹ️ No plan_progress → /quiz');
+        const hasPlan = await checkPlanBeforeQuiz('hasPlanProgress');
+        if (redirectInProgressRef.current) return;
+        if (hasPlan) {
+          clientLogger.log('ℹ️ Plan exists despite missing plan_progress → /home');
+          safeReplace('/home');
+          return;
+        }
+
+        clientLogger.log('ℹ️ No plan_progress and no plan → /quiz');
         safeReplace('/quiz');
         return;
       }

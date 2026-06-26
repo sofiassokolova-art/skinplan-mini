@@ -105,7 +105,7 @@ export default async function PaymentsReturnPage({
                 lineHeight: 1.5,
               }}
             >
-              Откройте приложение SkinIQ в Telegram, чтобы продолжить.
+              Откройте приложение skiniq в Telegram, чтобы продолжить.
             </p>
             <a
               href={BOT_LINK}

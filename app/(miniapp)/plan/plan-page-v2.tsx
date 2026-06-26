@@ -235,7 +235,7 @@ export function PlanPageV2() {
 
       {/* 1. Topbar */}
       <div className="pv2-topbar">
-        <div className="pv2-logo">SkinIQ</div>
+        <div className="pv2-logo">skiniq</div>
       </div>
 
       {/* 2. Personal heading */}
@@ -274,7 +274,7 @@ export function PlanPageV2() {
             </div>
           </div>
           <div className="glass-card-md pv2-mini-card pv2-mini-dark">
-            <div className="pv2-mini-label">SkinIQ streak</div>
+            <div className="pv2-mini-label">skiniq streak</div>
             <div className="pv2-mini-value">{context.streak.label}</div>
             <div className="pv2-mini-sub">Отмечен ежедневный уход</div>
           </div>
@@ -462,7 +462,7 @@ function inferStepIcon(name: string | undefined | null): string {
   if (/retinol|ретинол|aha|bha|acid|кислот|пилинг|peel/.test(n)) return '/icons/clean/treatment_true.png';
   if (/serum|сыворотк|essence|эссенц/.test(n)) return '/icons/clean/serum_true.png';
   if (/toner|тоник|тонер|mist/.test(n)) return '/icons/clean/toner_true.png';
-  if (/cream|крем|moistur|емолл|moisturi/.test(n)) return '/icons/clean/cream_true.png';
+  if (/effaclar\s+mat|cream|крем|moistur|емолл|moisturi|\bmat\b|baume|cicaplast|toleriane/.test(n)) return '/icons/clean/cream_true.png';
   return '/icons/clean/cleanser_true.png';
 }
 
@@ -477,6 +477,8 @@ const CATEGORY_ICON: Record<string, string> = {
   serum: '/icons/clean/serum_true.png',
   treatment: '/icons/clean/treatment_true.png',
   moisturizer: '/icons/clean/cream_true.png',
+  cream: '/icons/clean/cream_true.png',
+  eye_cream: '/icons/clean/cream_true.png',
   mask: '/icons/mask_green.png',
   spf: '/icons/clean/spf_true.png',
 };
@@ -495,18 +497,30 @@ function resolveProductIcon(category: string | null | undefined, name: string | 
 // оставалась пустая белая плашка). Иконка лежит на лаймовом пятне (фон сзади).
 function ProductThumb({ product }: { product: ProductCard }) {
   const [failed, setFailed] = useState(false);
+  const [iconFailed, setIconFailed] = useState(false);
   // Сбрасываем флаг ошибки, если URL картинки сменился (например, после замены
   // продукта) — иначе однажды «упавшая» миниатюра навсегда залипала на иконке.
-  useEffect(() => { setFailed(false); }, [product.imageUrl]);
+  useEffect(() => {
+    setFailed(false);
+    setIconFailed(false);
+  }, [product.imageUrl, product.category, product.name]);
   const showIcon = !product.imageUrl || failed;
   return (
     <div className={`pv2-product-img ${showIcon ? 'pv2-product-img-icon' : ''}`}>
-      {showIcon ? (
+      {showIcon && iconFailed ? (
+        <span className="pv2-product-img-fallback" aria-hidden="true">
+          <svg viewBox="0 0 64 64">
+            <path d="M23 17h18l2 8H21l2-8Z" />
+            <path d="M18 25h28l3 27H15l3-27Z" />
+            <path d="M22 35h20" />
+          </svg>
+        </span>
+      ) : showIcon ? (
         <img
           className="pv2-product-img-icon-img"
           src={resolveProductIcon(product.category, product.name)}
           alt=""
-          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          onError={() => setIconFailed(true)}
         />
       ) : (
         <img
@@ -568,48 +582,47 @@ function ProductsSection(props: {
           const isBusy = busyId === p.id || bulkAdding;
           return (
             <div className="glass-card-sm pv2-product-card" key={p.id}>
-              {/* Левая колонка: иконка/фото + под ней действия (лайк, заменить) */}
-              <div className="pv2-product-media">
-                <ProductThumb product={p} />
-                <div className="pv2-product-icon-actions">
-                  <button
-                    className={`pv2-icon-btn pv2-icon-heart ${p.state.inWishlist ? 'pv2-icon-active' : ''}`}
-                    onClick={() => onToggleWishlist(p)}
-                    disabled={isBusy}
-                    aria-label={p.state.inWishlist ? 'Убрать из избранного' : 'В избранное'}
-                  >
-                    <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                  </button>
-                  <button
-                    type="button"
-                    className="pv2-replace-btn"
-                    onClick={() => onReplace(p)}
-                    disabled={isBusy}
-                    title="Подобрать аналог"
-                  >
-                    <svg viewBox="0 0 24 24" aria-hidden><path d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2"/><path d="M21 4v6h-6M3 20v-6h6"/></svg>
-                    <span>Заменить</span>
-                  </button>
+              <div className="pv2-product-main">
+                <div className="pv2-product-media">
+                  <ProductThumb product={p} />
+                </div>
+                <div className="pv2-product-info">
+                  {p.brand && <div className="pv2-product-brand">{p.brand}</div>}
+                  <div className="pv2-product-name">{p.name}</div>
+                  {p.shortDescription && <div className="pv2-product-desc">{p.shortDescription}</div>}
+                  {p.phaseTags.length > 0 && (
+                    <div className="pv2-product-tags">
+                      {p.phaseTags.map((t) => <span className="pv2-product-tag" key={t}>{t}</span>)}
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="pv2-product-info">
-                {p.brand && <div className="pv2-product-brand">{p.brand}</div>}
-                <div className="pv2-product-name">{p.name}</div>
-                {p.shortDescription && <div className="pv2-product-desc">{p.shortDescription}</div>}
-                {p.phaseTags.length > 0 && (
-                  <div className="pv2-product-tags">
-                    {p.phaseTags.map((t) => <span className="pv2-product-tag" key={t}>{t}</span>)}
-                  </div>
-                )}
-                <div className="pv2-product-actions">
-                  <button
-                    className={`pv2-cart-cta ${p.state.inCart ? 'pv2-in-cart' : ''}`}
-                    onClick={() => onToggleCart(p)}
-                    disabled={isBusy}
-                  >
-                    {p.state.inCart ? 'В корзине' : 'В корзину'}
-                  </button>
-                </div>
+              <div className="pv2-product-actions">
+                <button
+                  className={`pv2-icon-btn pv2-icon-heart ${p.state.inWishlist ? 'pv2-icon-active' : ''}`}
+                  onClick={() => onToggleWishlist(p)}
+                  disabled={isBusy}
+                  aria-label={p.state.inWishlist ? 'Убрать из избранного' : 'В избранное'}
+                >
+                  <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                </button>
+                <button
+                  type="button"
+                  className="pv2-replace-btn"
+                  onClick={() => onReplace(p)}
+                  disabled={isBusy}
+                  title="Подобрать аналог"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden><path d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2"/><path d="M21 4v6h-6M3 20v-6h6"/></svg>
+                  <span>Заменить</span>
+                </button>
+                <button
+                  className={`pv2-cart-cta ${p.state.inCart ? 'pv2-in-cart' : ''}`}
+                  onClick={() => onToggleCart(p)}
+                  disabled={isBusy}
+                >
+                  {p.state.inCart ? 'В корзине' : 'В корзину'}
+                </button>
               </div>
             </div>
           );
@@ -622,7 +635,7 @@ function ProductsSection(props: {
 function ExpertNotesCard({ notes, onRetakeQuiz }: { notes: ExpertNote[]; onRetakeQuiz: () => void }) {
   return (
     <div className="pv2-expert-card">
-      <div className="pv2-expert-eyebrow">SkinIQ expert notes</div>
+      <div className="pv2-expert-eyebrow">skiniq expert notes</div>
       <div className="pv2-expert-title">Советы дерматолога</div>
       <div className="pv2-expert-list">
         {notes.map((n) => (
@@ -725,10 +738,11 @@ function PlanV2Styles() {
         justify-content: space-between;
       }
       .pv2-logo {
-        font-family: var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif;
+        font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
         font-size: 18px;
-        font-weight: 700;
-        letter-spacing: -0.4px;
+        font-weight: 500;
+        letter-spacing: 0;
+        text-transform: lowercase;
       }
 
       .pv2-personal-heading {
@@ -1062,38 +1076,40 @@ function PlanV2Styles() {
       .pv2-phase-text { font-size: 13px; color: #475467; line-height: 1.5; margin-bottom: 14px; }
       .pv2-phase-tags { display: flex; flex-wrap: wrap; gap: 6px; }
       .pv2-phase-tag {
-        background: rgba(255,255,255,0.6);
-        border: 1px solid rgba(255,255,255,0.7);
+        background: rgba(10,10,10,0.065);
+        border: 1px solid rgba(10,10,10,0.11);
         border-radius: 999px;
         padding: 5px 12px;
         font-size: 12px;
-        color: #475467;
+        font-weight: 650;
+        color: var(--ink);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.42);
+      }
+      .pv2-phase-current .pv2-phase-tag {
+        background: rgba(255,255,255,0.72);
+        border-color: rgba(10,10,10,0.12);
       }
 
       .pv2-product-list { display: flex; flex-direction: column; gap: 12px; }
       .pv2-product-card {
         padding: 16px;
         display: flex;
-        gap: 14px;
+        flex-direction: column;
+        gap: 12px;
       }
-      /* Левая колонка: фото/иконка, а под ней кнопки лайк + заменить */
+      .pv2-product-main {
+        display: flex;
+        gap: 14px;
+        min-width: 0;
+      }
       .pv2-product-media {
         display: flex;
-        flex-direction: column;
         align-items: center;
-        gap: 10px;
         flex-shrink: 0;
-      }
-      .pv2-product-icon-actions {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-        width: 92px;
       }
       .pv2-replace-btn {
         width: 100%;
-        height: 32px;
+        height: 40px;
         border-radius: 999px;
         background: rgba(255,255,255,0.7);
         backdrop-filter: blur(12px);
@@ -1103,10 +1119,10 @@ function PlanV2Styles() {
         justify-content: center;
         gap: 5px;
         cursor: pointer;
-        padding: 0 10px;
+        padding: 0 12px;
         font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
         font-size: 12px;
-        font-weight: 700;
+        font-weight: 800;
         color: var(--ink);
         transition: transform .14s ease, background .14s ease;
       }
@@ -1144,15 +1160,19 @@ function PlanV2Styles() {
          Это даёт визуальную опору для PNG-иконок (маска/крем/etc), у которых
          бывает белый или прозрачный фон — без glow иконка «висит в воздухе». */
       .pv2-product-img-icon {
-        background: radial-gradient(60% 60% at 50% 55%, rgba(var(--accent-rgb),0.85) 0%, rgba(var(--accent-rgb),0.45) 45%, rgba(255,255,255,0.5) 75%, rgba(255,255,255,0.7) 100%);
+        background: transparent;
+        border-color: transparent;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        overflow: visible;
       }
       .pv2-product-img-icon::before {
         content: "";
         position: absolute;
-        inset: -6px;
+        inset: 8px;
         border-radius: 50%;
-        background: radial-gradient(circle, rgba(var(--accent-rgb),0.55) 0%, transparent 60%);
-        filter: blur(8px);
+        background: radial-gradient(circle, rgba(var(--accent-rgb),0.62) 0%, rgba(var(--accent-rgb),0.35) 42%, rgba(var(--accent-rgb),0) 72%);
+        filter: blur(14px);
         z-index: 0;
         pointer-events: none;
       }
@@ -1166,7 +1186,31 @@ function PlanV2Styles() {
         height: 78%;
         margin: 11% auto 0;
         object-fit: contain;
-        filter: drop-shadow(0 4px 10px rgba(10,10,10,0.18));
+        filter:
+          drop-shadow(0 5px 12px rgba(10,10,10,0.24))
+          drop-shadow(0 0 1px rgba(10,10,10,0.24));
+      }
+      .pv2-product-img-fallback {
+        position: relative;
+        z-index: 1;
+        width: 62%;
+        height: 62%;
+        margin: 19% auto 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 20px;
+        background: rgba(255,255,255,0.54);
+        box-shadow: 0 6px 18px rgba(10,10,10,0.08);
+      }
+      .pv2-product-img-fallback svg {
+        width: 70%;
+        height: 70%;
+        fill: rgba(255,255,255,0.72);
+        stroke: rgba(10,10,10,0.62);
+        stroke-width: 3;
+        stroke-linecap: round;
+        stroke-linejoin: round;
       }
       .pv2-product-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
       .pv2-product-brand {
@@ -1196,15 +1240,15 @@ function PlanV2Styles() {
         color: #FFFFFF;
       }
       .pv2-product-actions {
-        display: flex;
+        display: grid;
+        grid-template-columns: 40px minmax(104px, 0.72fr) minmax(122px, 1fr);
+        gap: 8px;
         align-items: center;
-        justify-content: flex-end;
-        margin-top: auto;
-        padding-top: 14px;
+        margin-top: 0;
       }
       .pv2-icon-btn {
-        width: 36px;
-        height: 36px;
+        width: 40px;
+        height: 40px;
         border-radius: 50%;
         background: rgba(255,255,255,0.7);
         backdrop-filter: blur(12px);
@@ -1239,12 +1283,14 @@ function PlanV2Styles() {
         color: var(--ink);
         border: none;
         border-radius: 999px;
-        padding: 10px 22px;
+        width: 100%;
+        height: 40px;
+        padding: 0 16px;
         font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
-        font-weight: 600;
+        font-weight: 800;
         font-size: 14px;
         cursor: pointer;
-        min-width: 124px;
+        min-width: 0;
       }
       .pv2-cart-cta:disabled { opacity: 0.6; cursor: not-allowed; }
       .pv2-cart-cta.pv2-in-cart { background: var(--ink); color: var(--accent); }

@@ -72,7 +72,7 @@ export default function PrivacyPage() {
       </button>
 
       <h1 className="pv-title">Политика конфиденциальности</h1>
-      <p className="pv-sub">Обработка персональных данных в приложении SkinIQ</p>
+      <p className="pv-sub">Обработка персональных данных в приложении skiniq</p>
 
       <div className="glass-card-lg">
         <div className="pv-body">
