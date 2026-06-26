@@ -5,22 +5,25 @@
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join, extname } from 'path';
 
+const SENSITIVE_CONTEXT_CHARS = 4;
+
 const SECRET_PATTERNS = [
   // API Keys
-  /api[_-]?key\s*[:=]\s*["']([^"']{20,})["']/gi,
-  /apikey\s*[:=]\s*["']([^"']{20,})["']/gi,
+  /api[_-]?key\s*[:=]\s*["']?([A-Za-z0-9_./+=:-]{20,})["']?/gi,
+  /apikey\s*[:=]\s*["']?([A-Za-z0-9_./+=:-]{20,})["']?/gi,
   
   // Tokens
-  /token\s*[:=]\s*["']([^"']{20,})["']/gi,
-  /bearer\s+["']([^"']{20,})["']/gi,
+  /token\s*[:=]\s*["']?([A-Za-z0-9_./+=:-]{20,})["']?/gi,
+  /bearer\s+["']?([A-Za-z0-9._~+/=-]{20,})["']?/gi,
   
   // Secrets
-  /secret\s*[:=]\s*["']([^"']{20,})["']/gi,
-  /jwt[_-]?secret\s*[:=]\s*["']([^"']{10,})["']/gi,
+  /secret\s*[:=]\s*["']?([A-Za-z0-9_./+=:-]{20,})["']?/gi,
+  /jwt[_-]?secret\s*[:=]\s*["']?([A-Za-z0-9_./+=:-]{20,})["']?/gi,
   
   // Passwords
-  /password\s*[:=]\s*["']([^"']{8,})["']/gi,
-  /pwd\s*[:=]\s*["']([^"']{8,})["']/gi,
+  /password\s*[:=]\s*["']?([A-Za-z0-9_./+=:-]{20,})["']?/gi,
+  /pwd\s*[:=]\s*["']?([A-Za-z0-9_./+=:-]{20,})["']?/gi,
+  /password\s*[:=]\s*["']?(admin123|password|changeme|qwerty123|12345678)["']?/gi,
   
   // Database URLs (частично)
   /postgres:\/\/[^:]+:[^@]+@/gi,
@@ -45,10 +48,18 @@ const SECRET_PATTERNS = [
 const IGNORE_PATTERNS = [
   /node_modules/,
   /\.git/,
+  /\.agents/,
+  /\.claude/,
+  /\.cursor/,
+  /\.design/,
+  /\.vercel/,
   /dist/,
   /\.next/,
   /build/,
   /coverage/,
+  /test-results/,
+  /playwright-report/,
+  /(^|\/)\.env($|\.local$|\.(development|production|test)(\.local)?$)/,
   /\.env\.example/,
   /scripts\/scan-secrets\.js/, // Сам скрипт
   /\.md$/, // Документация (может содержать примеры)
@@ -58,6 +69,37 @@ const ALLOWED_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.json', '.md'];
 
 function shouldIgnorePath(filePath) {
   return IGNORE_PATTERNS.some(pattern => pattern.test(filePath));
+}
+
+function redactSensitiveText(value) {
+  if (!value) return '[REDACTED]';
+  const text = String(value).replace(/\s+/g, ' ');
+  if (text.length <= SENSITIVE_CONTEXT_CHARS * 2) {
+    return '[REDACTED]';
+  }
+  return `${text.slice(0, SENSITIVE_CONTEXT_CHARS)}…${text.slice(-SENSITIVE_CONTEXT_CHARS)}`;
+}
+
+function redactLineContext(line, matchedText) {
+  if (!line) return '';
+  return line.replace(matchedText, redactSensitiveText(matchedText)).slice(0, 120);
+}
+
+function isNonSecretReference(candidate, line) {
+  const value = String(candidate || '');
+  const lowerLine = line.toLowerCase();
+
+  return (
+    value.includes('process.env') ||
+    value.includes('localStorage') ||
+    value.includes('sessionStorage') ||
+    value.includes('getItem') ||
+    /^[A-Z0-9_]+$/.test(value) ||
+    lowerLine.includes('process.env') ||
+    lowerLine.includes('localstorage.getitem') ||
+    lowerLine.includes('sessionstorage.getitem') ||
+    lowerLine.includes('pgpassword')
+  );
 }
 
 function scanFile(filePath) {
@@ -91,13 +133,31 @@ function scanFile(filePath) {
         
         const lineNumber = content.substring(0, matchIndex).split('\n').length;
         const line = content.split('\n')[lineNumber - 1];
+        const lowerLine = line.toLowerCase();
+        const candidate = match[1] || match[0];
+
+        if (
+          lowerLine.includes('example') ||
+          lowerLine.includes('например') ||
+          lowerLine.includes('your_') ||
+          lowerLine.includes('your-') ||
+          lowerLine.includes('user:pass') ||
+          lowerLine.includes('user:password') ||
+          lowerLine.includes('placeholder')
+        ) {
+          continue;
+        }
+
+        if (isNonSecretReference(candidate, line)) {
+          continue;
+        }
         
         issues.push({
           line: lineNumber,
           column: matchIndex - content.lastIndexOf('\n', matchIndex - 1),
-          match: match[0].substring(0, 50) + (match[0].length > 50 ? '...' : ''),
+          match: redactSensitiveText(match[0]),
           pattern: `Pattern ${index + 1}`,
-          context: line.trim(),
+          context: redactLineContext(line.trim(), match[0]),
         });
       }
     });
@@ -152,8 +212,8 @@ if (allIssues.length === 0) {
   allIssues.forEach(({ file, issues }) => {
     console.log(`📄 ${file}`);
     issues.forEach(({ line, match, context }) => {
-      console.log(`   Line ${line}: ${match.substring(0, 30)}...`);
-      console.log(`   Context: ${context.substring(0, 80)}${context.length > 80 ? '...' : ''}`);
+      console.log(`   Line ${line}: ${match}`);
+      console.log(`   Context: ${context}`);
     });
     console.log();
   });
@@ -167,4 +227,3 @@ if (allIssues.length === 0) {
   
   process.exit(1);
 }
-

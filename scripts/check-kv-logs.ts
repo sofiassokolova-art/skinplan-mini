@@ -135,17 +135,17 @@ async function checkKVLogs() {
           console.error('❌ Ошибка подключения к Upstash Redis:', directErr);
           console.error('   Используйте переменные окружения:');
           console.error('   KV_REST_API_URL=https://super-bat-14283.upstash.io');
-          console.error('   KV_REST_API_TOKEN=ATfLAAIncDJjYTk0YjA4MGY4ZDI0ZmYyOWI2OTg1MDA3OTAyZDY3NXAyMTQyODM');
+          console.error('   KV_REST_API_TOKEN=<your-upstash-token>');
           process.exit(1);
         }
       } else {
         console.error('❌ Upstash Redis не настроен');
         console.error('   Установите переменные окружения:');
         console.error('   KV_REST_API_URL=https://super-bat-14283.upstash.io');
-        console.error('   KV_REST_API_TOKEN=ATfLAAIncDJjYTk0YjA4MGY4ZDI0ZmYyOWI2OTg1MDA3OTAyZDY3NXAyMTQyODM');
+        console.error('   KV_REST_API_TOKEN=<your-upstash-token>');
         console.error('\n   Или:');
         console.error('   UPSTASH_REDIS_REST_URL=https://super-bat-14283.upstash.io');
-        console.error('   UPSTASH_REDIS_REST_TOKEN=ATfLAAIncDJjYTk0YjA4MGY4ZDI0ZmYyOWI2OTg1MDA3OTAyZDY3NXAyMTQyODM');
+        console.error('   UPSTASH_REDIS_REST_TOKEN=<your-upstash-token>');
         process.exit(1);
       }
     } catch (err: any) {
