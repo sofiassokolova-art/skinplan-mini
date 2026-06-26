@@ -47,10 +47,10 @@ export function getInitialInfoScreens(): InfoScreen[] {
 }
 
 export const INFO_SCREENS: InfoScreen[] = [
-  // 1) Подбери уход для своей кожи со SkinIQ - начальный экран
+  // 1) Подбери уход для своей кожи со skiniq - начальный экран
   {
     id: 'welcome',
-    title: 'Подбери уход для своей кожи со SkinIQ',
+    title: 'Подбери уход для своей кожи со skiniq',
     image: '/onboarding/welcome.jpg',
     ctaText: 'Продолжить',
   },
@@ -63,11 +63,11 @@ export const INFO_SCREENS: InfoScreen[] = [
     ctaText: 'Продолжить',
   },
   
-  // 3) SkinIQ — ваш персональный анализ кожи
+  // 3) skiniq — ваш персональный анализ кожи
   {
     id: 'personal_analysis',
-    title: 'SkinIQ — ваш персональный анализ кожи',
-    subtitle: '92% пользователей SkinIQ отмечают улучшение состояния кожи за 1 месяц',
+    title: 'skiniq — ваш персональный анализ кожи',
+    subtitle: '92% пользователей skiniq отмечают улучшение состояния кожи за 1 месяц',
     ctaText: 'Продолжить',
   },
   
@@ -81,7 +81,7 @@ export const INFO_SCREENS: InfoScreen[] = [
   // 6) Отзывы с горизонтальным скроллом
   {
     id: 'testimonials',
-    title: 'Тысячи пользователей уже получили результат со SkinIQ',
+    title: 'Тысячи пользователей уже получили результат со skiniq',
     subtitle: 'Персональный уход\nпод ваши цели и особенности',
     type: 'testimonials',
     showAfterQuestionCode: 'skin_goals', // После вопроса о целях
@@ -132,12 +132,12 @@ export const INFO_SCREENS: InfoScreen[] = [
     ctaText: 'Продолжить',
   },
 
-  // SkinIQ делает уход за кожей простым и понятным
+  // skiniq делает уход за кожей простым и понятным
   // ПЕРЕАНКОРИРОВАН: раньше срабатывал после вопроса seasonal_changes —
   // теперь идёт в цепочке после skin_preview, чтобы preview шёл первым.
   {
     id: 'simple_care',
-    title: 'SkinIQ делает уход за кожей простым и понятным',
+    title: 'skiniq делает уход за кожей простым и понятным',
     image: getQuizInfoBackgroundImage('simple_care'),
     type: 'comparison',
     content: {
@@ -150,7 +150,7 @@ export const INFO_SCREENS: InfoScreen[] = [
         ],
       },
       right: {
-        title: 'Со SkinIQ',
+        title: 'Со skiniq',
         items: [
           'Персональные рекомендации для вашего типа кожи',
           'Сканируйте и отслеживайте прогресс легко',
@@ -170,13 +170,13 @@ export const INFO_SCREENS: InfoScreen[] = [
   // 17) Аллергические реакции - вопрос в БД (allergies)
   // 18) Исключить ингредиенты (можно пропустить) - вопрос в БД (avoid_ingredients)
   
-  // SkinIQ заботится о вашем здоровье — trust-экран после блока медицинских вопросов.
+  // skiniq заботится о вашем здоровье — trust-экран после блока медицинских вопросов.
   // ПЕРЕАНКОРИРОВАН: было после avoid_ingredients (который теперь conditional и может быть
   // пропущен gate-вопросом has_avoid_ingredients). Теперь анкорится на has_avoid_ingredients —
   // экран показывается одинаково для всех пользователей вне зависимости от пути.
   {
     id: 'health_trust',
-    title: 'SkinIQ заботится\nо вашем здоровье',
+    title: 'skiniq заботится\nо вашем здоровье',
     image: '/back8.jpg',
     showAfterQuestionCode: 'has_avoid_ingredients',
     ctaText: 'Продолжить',
@@ -199,7 +199,7 @@ export const INFO_SCREENS: InfoScreen[] = [
   // (makeup_frequency → care_type → care_steps → budget).
   {
     id: 'ai_comparison',
-    title: 'Больше никакой путаницы — AI SkinIQ подберёт уход быстро и точно',
+    title: 'Больше никакой путаницы — AI skiniq подберёт уход быстро и точно',
     content: {
       traditionalItems: [
         'Часы поиска советов в интернете',
@@ -226,7 +226,7 @@ export const INFO_SCREENS: InfoScreen[] = [
   // Финальный продающий экран перед закрывающей последовательностью.
   {
     id: 'no_mistakes',
-    title: 'Ваш SkinIQ-план почти готов',
+    title: 'Ваш skiniq-план почти готов',
     showAfterQuestionCode: 'budget',
     ctaText: 'Завершить анализ',
   },

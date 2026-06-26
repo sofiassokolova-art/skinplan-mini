@@ -267,7 +267,7 @@ export function QuizInfoScreen({
     );
   }
 
-  // Экран "SkinIQ — ваш персональный анализ кожи"
+  // Экран "skiniq — ваш персональный анализ кожи"
   if (isPersonalAnalysisScreen) {
     return (
       <PersonalAnalysisScreen
@@ -533,7 +533,7 @@ export function QuizInfoScreen({
           padding: 0,
           margin: 0,
           minHeight: '100vh',
-          background: `linear-gradient(rgba(244,242,238,0.45), rgba(244,242,238,0.65)), url(${skinPreviewBackgroundImage}) center / cover no-repeat fixed, var(--canvas)`,
+          background: `url(${skinPreviewBackgroundImage}) center / cover no-repeat fixed, var(--canvas)`,
           position: 'relative',
           width: '100%',
         }}>
@@ -829,7 +829,7 @@ export function QuizInfoScreen({
               fontWeight: 700, fontSize: 'clamp(20px, 6vw, 28px)', lineHeight: '1.25',
               color: '#000000', margin: '0 0 clamp(32px, 10vw, 52px) 0',
             }}>
-              SkinIQ делает уход за&nbsp;кожей{' '}
+              skiniq делает уход за&nbsp;кожей{' '}
               <span
                 style={{
                   background: 'linear-gradient(180deg, transparent 60%, var(--accent) 60%)',
@@ -857,7 +857,7 @@ export function QuizInfoScreen({
     );
   }
 
-  // Экран "SkinIQ заботится о вашем здоровье" (health_trust)
+  // Экран "skiniq заботится о вашем здоровье" (health_trust)
   if (screen.id === 'health_trust') {
     const cards = [
       {
@@ -910,7 +910,7 @@ export function QuizInfoScreen({
               fontWeight: 700, fontSize: 'clamp(20px, 6vw, 28px)', lineHeight: '1.25',
               color: '#000000', margin: '0', maxWidth: 'min(340px, 92%)',
             }}>
-              SkinIQ заботится
+              skiniq заботится
               <br />
               о вашем{' '}
               <span style={{

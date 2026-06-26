@@ -3,12 +3,12 @@
 
 'use client';
 
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useWishlist, useRemoveFromWishlist } from '@/hooks/useWishlist';
 import { useCart, useAddToCart } from '@/hooks/useCart';
 import type { WishlistResponse } from '@/lib/api-types';
 import { TabLoadingShell } from '@/components/TabLoadingShell';
+import { ProfileAvatarButton } from '@/components/ProfileAvatarButton';
 import toast from 'react-hot-toast';
 
 interface WishlistItemData {
@@ -26,7 +26,6 @@ interface WishlistItemData {
 }
 
 export default function FavoritesPage() {
-  const router = useRouter();
   const { data: wishlistData, isLoading: loading } = useWishlist();
   const removeMutation = useRemoveFromWishlist();
   const { data: cartData } = useCart();
@@ -89,7 +88,7 @@ export default function FavoritesPage() {
     <div className="fav-rd" style={{ minHeight: '100vh', background: bg, backgroundAttachment: 'fixed', padding: '8px 20px 120px' }}>
       <style>{`
         .fav-rd .fv-topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 0 14px;}
-        .fav-rd .fv-logo{font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:18px;font-weight:700;letter-spacing:-0.4px;color:#0A0A0A;}
+        .fav-rd .fv-logo{font-family:var(--font-inter),-apple-system,BlinkMacSystemFont,sans-serif;font-size:18px;font-weight:500;letter-spacing:0;color:#0A0A0A;text-transform:lowercase;}
         .fav-rd .fv-avatar{position:relative;width:40px;height:40px;border:0;padding:0;border-radius:50%;background:linear-gradient(135deg,#2A2A2A,#0A0A0A);color:#D5FE61;display:grid;place-items:center;cursor:pointer;box-shadow:0 0 0 2px rgba(255,255,255,0.9),0 6px 18px rgba(10,10,10,0.18);font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:14px;font-weight:700;}
         .fav-rd .fv-avatar::after{content:"";position:absolute;bottom:1px;right:1px;width:10px;height:10px;border-radius:50%;background:#D5FE61;border:2px solid #F4F2EE;}
         .fav-rd .fv-title{margin:6px 2px 18px;font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.6px;color:#0A0A0A;}
@@ -110,8 +109,8 @@ export default function FavoritesPage() {
       `}</style>
 
       <div className="fv-topbar">
-        <div className="fv-logo">SkinIQ</div>
-        <button className="fv-avatar" aria-label="Профиль" onClick={() => router.push('/profile')}>С</button>
+        <div className="fv-logo">skiniq</div>
+        <ProfileAvatarButton className="fv-avatar" />
       </div>
 
       <h1 className="fv-title">Избранное</h1>

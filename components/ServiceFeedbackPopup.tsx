@@ -1,5 +1,5 @@
 // components/ServiceFeedbackPopup.tsx
-// Сервисный попап для отзыва о SkinIQ.
+// Сервисный попап для отзыва о skiniq.
 // Логика показа: до первого ответа («Нравится» / отправленный комментарий) — после
 // ответа не показывается никогда. Закрытие крестиком = «не сейчас»: ставит кулдаун
 // FEEDBACK_COOLDOWN_DAYS, попап вернётся через неделю.
@@ -142,7 +142,7 @@ export function ServiceFeedbackPopup() {
   if (!isVisible) return null;
 
   return (
-    <div className="sf-pop" role="dialog" aria-modal="false" aria-label="Расскажите, как вам SkinIQ">
+    <div className="sf-pop" role="dialog" aria-modal="false" aria-label="Расскажите, как вам skiniq">
       <style>{`
         @keyframes sf-rise {
           from { opacity: 0; transform: translate(-50%, 12px); }
@@ -255,8 +255,8 @@ export function ServiceFeedbackPopup() {
 
         {stage === 'ask' && (
           <>
-            <div className="sf-eyebrow">SkinIQ feedback</div>
-            <h3 className="sf-title">Расскажите, как вам SkinIQ?</h3>
+            <div className="sf-eyebrow">skiniq feedback</div>
+            <h3 className="sf-title">Расскажите, как вам skiniq?</h3>
             <p className="sf-sub">Ваше мнение поможет нам подбирать уход точнее</p>
             <div className="sf-actions">
               <button
@@ -285,7 +285,7 @@ export function ServiceFeedbackPopup() {
 
         {stage === 'comment' && (
           <>
-            <div className="sf-eyebrow">SkinIQ feedback</div>
+            <div className="sf-eyebrow">skiniq feedback</div>
             <h3 className="sf-title">Что можно улучшить?</h3>
             <p className="sf-sub">Любая деталь — продукты, рутина, интерфейс</p>
             <textarea
