@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { matchCondition, concernLabelsToRuleTokens } from '@/lib/recommendations-generator';
+import { matchCondition, concernLabelsToRuleTokens, treatmentSignalsToProductConcerns } from '@/lib/recommendations-generator';
 
 // Регрессия: { gte, lte } в одном объекте — это ДИАПАЗОН. Раньше ветка gte делала
 // return сразу, и верхняя граница lte молча игнорировалась (правило ловило значения
@@ -83,5 +83,23 @@ describe('concernLabelsToRuleTokens: лейблы анкеты → токены 
     expect(concernLabelsToRuleTokens(['Проблемы вокруг глаз (отёки, круги)'])).toEqual([]);
     expect(concernLabelsToRuleTokens(null)).toEqual([]);
     expect(concernLabelsToRuleTokens([])).toEqual([]);
+  });
+});
+
+describe('treatmentSignalsToProductConcerns', () => {
+  it('antiage/wrinkles ищут и photoaging, и wrinkles-разметку каталога', () => {
+    expect(treatmentSignalsToProductConcerns(['antiage', 'wrinkles'])).toEqual([
+      'wrinkles',
+      'photoaging',
+      'antiage',
+    ]);
+  });
+
+  it('сохраняет релевантность для acne/pores без дублей', () => {
+    expect(treatmentSignalsToProductConcerns(['pores', 'oiliness', 'acne'])).toEqual([
+      'oiliness',
+      'pores',
+      'acne',
+    ]);
   });
 });

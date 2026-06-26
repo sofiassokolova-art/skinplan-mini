@@ -160,6 +160,29 @@ export function concernLabelsToRuleTokens(labels: string[] | undefined | null): 
   return Array.from(tokens);
 }
 
+const TREATMENT_SIGNAL_TO_PRODUCT_CONCERNS: Record<string, string[]> = {
+  acne: ['acne'],
+  blackheads: ['acne'],
+  pores: ['oiliness', 'pores'],
+  oiliness: ['oiliness', 'pores'],
+  pigmentation: ['pigmentation'],
+  postacne_scars: ['postacne_scars'],
+  antiage: ['wrinkles', 'photoaging', 'antiage'],
+  wrinkles: ['wrinkles', 'photoaging', 'antiage'],
+  texture: ['texture'],
+  dullness: ['dullness'],
+};
+
+export function treatmentSignalsToProductConcerns(signals: string[]): string[] {
+  const concerns = new Set<string>();
+  for (const signal of signals) {
+    for (const concern of TREATMENT_SIGNAL_TO_PRODUCT_CONCERNS[signal] || []) {
+      concerns.add(concern);
+    }
+  }
+  return Array.from(concerns);
+}
+
 /**
  * Генерирует RecommendationSession для профиля
  * ИСПРАВЛЕНО: Идемпотентная функция - можно вызывать несколько раз
@@ -398,11 +421,6 @@ export async function generateRecommendationsForProfile(
       'acne', 'blackheads', 'pores', 'oiliness', 'pigmentation', 'postacne_scars',
       'antiage', 'wrinkles', 'texture', 'dullness',
     ]);
-    const SIGNAL_TO_PRODUCT_CONCERN: Record<string, string> = {
-      acne: 'acne', blackheads: 'acne', pores: 'oiliness', oiliness: 'oiliness',
-      pigmentation: 'pigmentation', postacne_scars: 'postacne_scars',
-      antiage: 'photoaging', wrinkles: 'photoaging', texture: 'photoaging', dullness: 'dullness',
-    };
     const treatmentSignals = [
       ...(((ruleContext as any).concerns as string[]) || []),
       ...(((ruleContext as any).goals as string[]) || []),
@@ -413,9 +431,7 @@ export async function generateRecommendationsForProfile(
     if (['medium', 'high'].includes(String((ruleContext as any).pigmentationRisk)) && !treatmentSignals.includes('pigmentation')) {
       treatmentSignals.push('pigmentation');
     }
-    const treatmentConcerns = Array.from(
-      new Set(treatmentSignals.map((s) => SIGNAL_TO_PRODUCT_CONCERN[s]).filter(Boolean))
-    );
+    const treatmentConcerns = treatmentSignalsToProductConcerns(treatmentSignals);
     const treatmentIndicated = treatmentConcerns.length > 0;
 
     for (const stepGroup of requiredStepGroups) {
