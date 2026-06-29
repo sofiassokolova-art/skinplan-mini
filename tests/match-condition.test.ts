@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { matchCondition, concernLabelsToRuleTokens } from '@/lib/recommendations-generator';
+import {
+  matchCondition,
+  concernLabelsToRuleTokens,
+  treatmentSignalsToProductConcerns,
+  deriveTreatmentSignalsForRuleContext,
+  deriveTreatmentConcernsForRuleContext,
+} from '@/lib/recommendations-generator';
 
 // Регрессия: { gte, lte } в одном объекте — это ДИАПАЗОН. Раньше ветка gte делала
 // return сразу, и верхняя граница lte молча игнорировалась (правило ловило значения
@@ -83,5 +89,112 @@ describe('concernLabelsToRuleTokens: лейблы анкеты → токены 
     expect(concernLabelsToRuleTokens(['Проблемы вокруг глаз (отёки, круги)'])).toEqual([]);
     expect(concernLabelsToRuleTokens(null)).toEqual([]);
     expect(concernLabelsToRuleTokens([])).toEqual([]);
+  });
+});
+
+describe('treatmentSignalsToProductConcerns', () => {
+  it('antiage/wrinkles ищут и photoaging, и wrinkles-разметку каталога', () => {
+    expect(treatmentSignalsToProductConcerns(['antiage', 'wrinkles'])).toEqual([
+      'wrinkles',
+      'photoaging',
+      'antiage',
+    ]);
+  });
+
+  it('сохраняет релевантность для acne/pores без дублей', () => {
+    expect(treatmentSignalsToProductConcerns(['pores', 'oiliness', 'acne'])).toEqual([
+      'oiliness',
+      'pores',
+      'acne',
+    ]);
+  });
+});
+
+describe('deriveTreatmentSignalsForRuleContext', () => {
+  it('не добавляет treatment для молодой жирной профилактики antiage/pores по goals', () => {
+    const context = {
+      skin_type: 'oily',
+      age: '25-34',
+      goals: ['antiage', 'pores'],
+      concerns: [],
+      oiliness: 90,
+      photoaging: 15,
+      acneLevel: 0,
+      pigmentationRisk: 'low',
+    } as any;
+
+    expect(deriveTreatmentSignalsForRuleContext(context)).toEqual([]);
+    expect(deriveTreatmentConcernsForRuleContext(context)).toEqual([]);
+  });
+
+  it('оставляет treatment при объективном акне, даже если возраст молодой', () => {
+    expect(deriveTreatmentSignalsForRuleContext({
+      age: 'under_25',
+      goals: ['pores'],
+      concerns: [],
+      acneLevel: 2,
+      inflammation: 35,
+    } as any)).toEqual(['acne']);
+  });
+
+  it('pores-goal сам по себе не становится treatment даже при жирной коже', () => {
+    expect(deriveTreatmentSignalsForRuleContext({
+      age: '25-34',
+      goals: ['pores'],
+      concerns: [],
+      oiliness: 80,
+      sensitivity_level: 'low',
+    } as any)).toEqual([]);
+  });
+
+  it('pores-concern становится treatment только без реактивности', () => {
+    expect(deriveTreatmentSignalsForRuleContext({
+      age: '25-34',
+      goals: [],
+      concerns: ['pores'],
+      sensitivity_level: 'low',
+    } as any)).toEqual(['pores']);
+
+    expect(deriveTreatmentSignalsForRuleContext({
+      age: '25-34',
+      goals: [],
+      concerns: ['pores'],
+      oiliness: 80,
+      sensitivity_level: 'high',
+    } as any)).toEqual([]);
+  });
+
+  it('antiage-goal у 35+ и высокий photoaging дают antiage-treatment', () => {
+    expect(deriveTreatmentSignalsForRuleContext({
+      age: '35-44',
+      goals: ['antiage'],
+      concerns: [],
+      photoaging: 30,
+    } as any)).toEqual(['antiage']);
+
+    expect(deriveTreatmentSignalsForRuleContext({
+      age: '25-34',
+      goals: ['antiage'],
+      concerns: [],
+      photoaging: 65,
+    } as any)).toEqual(['antiage']);
+  });
+
+  it('пигментация по risk/score остается показанием к treatment', () => {
+    expect(deriveTreatmentSignalsForRuleContext({
+      age: '25-34',
+      goals: [],
+      concerns: [],
+      pigmentationRisk: 'medium',
+      pigmentation: 10,
+    } as any)).toEqual(['pigmentation']);
+
+    expect(deriveTreatmentSignalsForRuleContext({
+      age: '25-34',
+      goals: [],
+      concerns: [],
+      pigmentationRisk: 'low',
+      pigmentation: 55,
+    } as any)).toEqual(['pigmentation']);
   });
 });
