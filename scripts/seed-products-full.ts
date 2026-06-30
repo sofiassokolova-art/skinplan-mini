@@ -46,7 +46,7 @@ const products = [
     skinTypes: ['oily', 'combo'],
     concerns: ['acne', 'pigmentation'],
     activeIngredients: ['азелаиновая кислота 15%'],
-    avoidIf: [],
+    avoidIf: ['high_sensitivity'],
     isHero: true,
     priority: 95,
     descriptionUser: 'Гель для лечения акне и постакне с азелаиновой кислотой',
@@ -587,4 +587,3 @@ seedProducts()
   .finally(async () => {
     await prisma.$disconnect();
   });
-

@@ -49,6 +49,20 @@ function serializeProfile(profile: any) {
   };
 }
 
+function normalizeDiagnosisLabel(label: string): string | null {
+  const normalizedLabel = label.toLowerCase();
+  if (normalizedLabel.includes('нет')) return null;
+  if (normalizedLabel.includes('акне') || normalizedLabel.includes('acne')) return 'acne';
+  if (normalizedLabel.includes('розацеа') || normalizedLabel.includes('rosacea')) return 'rosacea';
+  if (normalizedLabel.includes('себор') || normalizedLabel.includes('seborr')) return 'seborrheic_dermatitis';
+  if (normalizedLabel.includes('атоп') || normalizedLabel.includes('atopic')) return 'atopic_dermatitis';
+  if (normalizedLabel.includes('мелаз') || normalizedLabel.includes('melasma')) return 'melasma';
+  if (normalizedLabel.includes('пигментац') || normalizedLabel.includes('pigmentation')) return 'melasma';
+  if (normalizedLabel.includes('экзема') || normalizedLabel.includes('eczema')) return 'eczema';
+  if (normalizedLabel.includes('псориаз') || normalizedLabel.includes('psoriasis')) return 'psoriasis';
+  return label;
+}
+
 // ИСПРАВЛЕНО: Добавлен GET метод для получения ответов пользователя
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -753,31 +767,35 @@ export async function POST(request: NextRequest) {
       
       // ИСПРАВЛЕНО: Извлекаем diagnoses через маппинг value -> label -> доменный enum
       // Используем answerOptionLabels из rawAnswers (уже маппленные), а не сырые answerValues
-      const diagnosesAnswer = rawAnswers.find(a => a.questionCode === 'diagnoses' || a.questionCode === 'DIAGNOSES');
+      const diagnosesAnswer = rawAnswers.find(a =>
+        a.questionCode === 'medical_diagnoses' ||
+        a.questionCode === 'MEDICAL_DIAGNOSES' ||
+        a.questionCode === 'diagnoses' ||
+        a.questionCode === 'DIAGNOSES'
+      );
       
       const extractedData: any = {};
+      if (Array.isArray(profileFromRules.diagnoses) && profileFromRules.diagnoses.length > 0) {
+        extractedData.diagnoses = Array.from(new Set(profileFromRules.diagnoses));
+      }
       // ИСПРАВЛЕНО: Используем answerOptionLabels (labels) вместо answerValues (сырые values)
       // Это гарантирует, что diagnoses будут доменными значениями (acne, rosacea и т.п.), а не "diagnoses_3"
-      if (diagnosesAnswer && diagnosesAnswer.answerOptionLabels && Array.isArray(diagnosesAnswer.answerOptionLabels)) {
+      if (!extractedData.diagnoses && diagnosesAnswer && diagnosesAnswer.answerOptionLabels && Array.isArray(diagnosesAnswer.answerOptionLabels)) {
         // Маппим labels на доменные значения через правила
         // Если label совпадает с доменным значением - используем как есть, иначе нормализуем
-        extractedData.diagnoses = diagnosesAnswer.answerOptionLabels.map((label: string) => {
-          // Нормализуем label к доменному значению (например, "Акне" -> "acne")
-          const normalizedLabel = label.toLowerCase();
-          if (normalizedLabel.includes('акне') || normalizedLabel.includes('acne')) return 'acne';
-          if (normalizedLabel.includes('розацеа') || normalizedLabel.includes('rosacea')) return 'rosacea';
-          if (normalizedLabel.includes('экзема') || normalizedLabel.includes('eczema')) return 'eczema';
-          if (normalizedLabel.includes('псориаз') || normalizedLabel.includes('psoriasis')) return 'psoriasis';
-          // Если не распознали - возвращаем label как есть (может быть уже доменным значением)
-          return label;
-        });
+        extractedData.diagnoses = diagnosesAnswer.answerOptionLabels
+          .map((label: string) => normalizeDiagnosisLabel(label))
+          .filter((diagnosis): diagnosis is string => Boolean(diagnosis));
       } else if (diagnosesAnswer && Array.isArray(diagnosesAnswer.answerValues)) {
         // Fallback: если answerOptionLabels нет, используем answerValues, но с предупреждением
         logger.warn('Using raw answerValues for diagnoses (answerOptionLabels not available)', {
           userId,
           questionId: diagnosesAnswer.questionId,
         });
-        extractedData.diagnoses = diagnosesAnswer.answerValues;
+        extractedData.diagnoses = diagnosesAnswer.answerValues
+          .filter((value): value is string => typeof value === 'string')
+          .map((value: string) => normalizeDiagnosisLabel(value))
+          .filter((diagnosis): diagnosis is string => Boolean(diagnosis));
       }
       // ИСПРАВЛЕНО: Используем mainGoals из buildSkinProfileFromAnswers вместо concernsAnswer
       if (profileFromRules.mainGoals && Array.isArray(profileFromRules.mainGoals) && profileFromRules.mainGoals.length > 0) {

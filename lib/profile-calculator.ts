@@ -5,7 +5,7 @@ import { Prisma } from '@prisma/client';
 import { normalizeSkinTypeForRules, type SkinTypeKey } from './skin-type-normalizer';
 
 interface AnswerScore {
-  [key: string]: number | string | boolean;
+  [key: string]: number | string | boolean | string[];
 }
 
 interface AggregatedScores {
@@ -16,6 +16,126 @@ interface AggregatedScores {
   rosacea?: number;
   pigmentation?: number;
   [key: string]: number | string | boolean | undefined;
+}
+
+const EMPTY_SCORE_KEYS = 0;
+
+function hasScoreValues(scoreJson: Prisma.JsonValue | null): scoreJson is Prisma.JsonObject {
+  return !!scoreJson &&
+    typeof scoreJson === 'object' &&
+    !Array.isArray(scoreJson) &&
+    Object.keys(scoreJson).length > EMPTY_SCORE_KEYS;
+}
+
+/**
+ * Fallback scoring for legacy/current DB rows where answer_options.score_json is {}.
+ * Keep this in sync with questionnaire seed scripts; scoreJson remains the source of
+ * truth, but medical/sensitivity signals must not disappear if the DB was seeded before
+ * those fields were populated.
+ */
+export function inferAnswerScore(questionCode: string, optionLabel: string): AnswerScore {
+  const code = questionCode.toLowerCase();
+  const label = optionLabel.toLowerCase();
+
+  if (code === 'skin_type') {
+    if ((label.includes('тип 1') || label.includes('сухая')) && !label.includes('комбинированная')) {
+      return { oiliness: 0, dehydration: 5 };
+    }
+    if (label.includes('тип 2') || label.includes('комбинированная (сухая)')) {
+      return { oiliness: 2, dehydration: 3 };
+    }
+    if ((label.includes('тип 3') || label.includes('нормальная')) && !label.includes('жирная')) {
+      return { oiliness: 1, dehydration: 1 };
+    }
+    if (label.includes('комбинированная (жирная)') || label.includes('тип 4')) {
+      return { oiliness: 3, dehydration: 1 };
+    }
+    if (label.includes('жирная') || label.includes('тип 5')) {
+      return { oiliness: 5, dehydration: 0 };
+    }
+  }
+
+  if (code === 'skin_concerns' || code === 'current_concerns') {
+    if (label.includes('постакне') || label.includes('следы от акне')) {
+      return { pigmentation: 1, concerns: ['postacne_scars'] };
+    }
+    if (label.includes('акне') || label.includes('высыпан')) {
+      return { acne: 3, concerns: ['acne'] };
+    }
+    if (label.includes('жирность') || label.includes('блеск') || label.includes('пор')) {
+      return { oiliness: 2 };
+    }
+    if (label.includes('сухость') || label.includes('стянутость')) {
+      return { dehydration: 3 };
+    }
+    if (label.includes('пигментац') || label.includes('неровный тон')) {
+      return { pigmentation: 2, pigmentationRisk: 'medium' };
+    }
+    if (label.includes('чувствительн') || label.includes('покраснен')) {
+      return { sensitivity: 3 };
+    }
+    if (label.includes('розацеа')) {
+      return { rosacea: 2, rosaceaRisk: 'medium' };
+    }
+    if (label.includes('морщин') || label.includes('возраст')) {
+      return { aging: 2 };
+    }
+  }
+
+  if (code === 'skin_sensitivity' || code === 'sensitivity') {
+    if (label.includes('практически никогда') || label === 'нет' || label.includes('устойчивая')) {
+      return { sensitivity: 0 };
+    }
+    if (label.includes('легк') || label.includes('низк')) {
+      return { sensitivity: 1 };
+    }
+    if (label.includes('заметн') || label.includes('средн') || label.includes('дискомфорт')) {
+      return { sensitivity: 2 };
+    }
+    if (label.includes('сильн') || label.includes('стойк') || label.includes('высок')) {
+      return { sensitivity: 4, rosacea: 2 };
+    }
+  }
+
+  if (code === 'medical_diagnoses' || code === 'diagnoses') {
+    if (label === 'нет' || label.includes('нет')) {
+      return {};
+    }
+    if (label.includes('розацеа') || label.includes('rosacea')) {
+      return { rosacea: 3, sensitivity: 4 };
+    }
+    if (label.includes('атоп') || label.includes('atopic')) {
+      return { sensitivity: 4, dehydration: 3 };
+    }
+    if (label.includes('себор') || label.includes('seborr')) {
+      return { sensitivity: 4, oiliness: 1 };
+    }
+    if (label.includes('акне') || label.includes('acne')) {
+      return { acne: 3 };
+    }
+    if (label.includes('мелазм') || label.includes('melasma') || label.includes('пигментац')) {
+      return { pigmentation: 3, pigmentationRisk: 'high' };
+    }
+  }
+
+  if (code === 'age') {
+    if (label.includes('до 18')) return { age_group: '18_25' };
+    if (label.includes('18–24') || label.includes('18-24')) return { age_group: '18_25' };
+    if (label.includes('25–34') || label.includes('25-34')) return { age_group: '26_30' };
+    if (label.includes('35–44') || label.includes('35-44')) return { age_group: '31_40' };
+    if (label.includes('45+')) return { age_group: '41_50' };
+  }
+
+  if (code === 'pregnancy_breastfeeding' || code === 'pregnancy_status' || code === 'pregnancy') {
+    if (label.includes('беремен') || label.includes('корм')) {
+      return { has_pregnancy: true };
+    }
+    if (label.includes('нет')) {
+      return { has_pregnancy: false };
+    }
+  }
+
+  return {};
 }
 
 /**
@@ -112,6 +232,7 @@ export function createSkinProfile(
       code: string;
       answerOptions: Array<{
         value: string;
+        label?: string;
         scoreJson: Prisma.JsonValue | null;
       }>;
     };
@@ -140,15 +261,25 @@ export function createSkinProfile(
     if (answer.answerValue) {
       // Single choice
       const option = question.answerOptions.find(opt => opt.value === answer.answerValue);
-      if (option?.scoreJson) {
-        answerScores.push(option.scoreJson as AnswerScore);
+      if (option) {
+        const score = hasScoreValues(option.scoreJson)
+          ? option.scoreJson as AnswerScore
+          : inferAnswerScore(question.code, option.label || option.value);
+        if (Object.keys(score).length > 0) {
+          answerScores.push(score);
+        }
       }
     } else if (Array.isArray(answer.answerValues) && answer.answerValues.length > 0) {
       // Multi-choice: обрабатываем ВСЕ выбранные опции
       for (const optionValue of answer.answerValues) {
         const option = question.answerOptions.find(opt => opt.value === optionValue);
-        if (option?.scoreJson) {
-          answerScores.push(option.scoreJson as AnswerScore);
+        if (option) {
+          const score = hasScoreValues(option.scoreJson)
+            ? option.scoreJson as AnswerScore
+            : inferAnswerScore(question.code, option.label || option.value);
+          if (Object.keys(score).length > 0) {
+            answerScores.push(score);
+          }
         }
       }
     }

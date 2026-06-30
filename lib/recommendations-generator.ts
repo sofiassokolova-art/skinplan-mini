@@ -330,6 +330,18 @@ export async function generateRecommendationsForProfile(
       const vals = Array.isArray(answer.answerValues) ? answer.answerValues : [];
       return vals.map((v: string) => map.get(v) ?? v);
     };
+    const labelOfSingle = (answer: any): string | null => {
+      if (!answer.answerValue) return null;
+      const opts = answer.question?.answerOptions ?? [];
+      const option = opts.find((o: any) => o.value === answer.answerValue);
+      return option?.label ?? answer.answerValue;
+    };
+    const normalizeSensitivityAnswer = (raw: string | null): string => {
+      const value = String(raw || '').toLowerCase();
+      if (value.includes('сильн') || value.includes('стойк') || value.includes('high') || value.endsWith('_4')) return 'high';
+      if (value.includes('заметн') || value.includes('средн') || value.includes('medium') || value.endsWith('_3')) return 'medium';
+      return 'low';
+    };
     const questionnaireAnswers: any = {};
     for (const answer of userAnswers) {
       const code = answer.question?.code;
@@ -349,8 +361,10 @@ export async function generateRecommendationsForProfile(
         questionnaireAnswers.goals = labelsOf(answer);
       } else if (code === 'habits') {
         questionnaireAnswers.habits = labelsOf(answer);
-      } else if (code === 'sensitivity_level' || code === 'sensitivityLevel') {
-        questionnaireAnswers.sensitivityLevel = value || 'low';
+      } else if (code === 'diagnoses' || code === 'medical_diagnoses') {
+        questionnaireAnswers.diagnoses = labelsOf(answer);
+      } else if (code === 'skin_sensitivity' || code === 'sensitivity_level' || code === 'sensitivityLevel') {
+        questionnaireAnswers.sensitivityLevel = normalizeSensitivityAnswer(labelOfSingle(answer) || value || 'low');
       } else if (code === 'acne_level' || code === 'acneLevel') {
         questionnaireAnswers.acneLevel = typeof value === 'number' ? value : (parseInt(value as string) || 0);
       }
