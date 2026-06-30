@@ -364,7 +364,7 @@ export async function generateRecommendationsForProfile(
       } else if (code === 'diagnoses' || code === 'medical_diagnoses') {
         questionnaireAnswers.diagnoses = labelsOf(answer);
       } else if (code === 'skin_sensitivity' || code === 'sensitivity_level' || code === 'sensitivityLevel') {
-        questionnaireAnswers.sensitivityLevel = normalizeSensitivityAnswer(labelOfSingle(answer) || value || 'low');
+        questionnaireAnswers.sensitivityLevel = normalizeSensitivityAnswer(labelOfSingle(answer) || (typeof value === 'string' ? value : null) || 'low');
       } else if (code === 'acne_level' || code === 'acneLevel') {
         questionnaireAnswers.acneLevel = typeof value === 'number' ? value : (parseInt(value as string) || 0);
       }

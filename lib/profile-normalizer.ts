@@ -34,9 +34,9 @@ function normalizeDiagnoses(diagnoses: string[] | string | null | undefined): st
   const normalized: string[] = [];
 
   for (const diagnosis of diagnosisArray) {
-    const normalizedToken = normalizeDiagnosisToken(diagnosis);
-    if (normalizedToken && !normalized.includes(normalizedToken)) {
-      normalized.push(normalizedToken);
+    const mappedDiagnosis = normalizeDiagnosisToken(diagnosis);
+    if (mappedDiagnosis && !normalized.includes(mappedDiagnosis)) {
+      normalized.push(mappedDiagnosis);
     }
   }
 
