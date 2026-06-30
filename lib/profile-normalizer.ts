@@ -9,13 +9,39 @@ import {
   normalizeSensitivity, 
   normalizeAgeGroup,
   normalizeConcerns,
-  normalizeConcern,
   normalizeIngredients,
 } from './domain-normalizers';
-import { normalizeConcernKey } from './concern-taxonomy';
 import type { SkinTypeKey } from './skin-type-normalizer';
-import type { ConcernKey } from './concern-taxonomy';
 import type { IngredientKey } from './ingredient-normalizer';
+
+function normalizeDiagnosisToken(diagnosis: string): string | null {
+  const normalized = diagnosis.toLowerCase().trim();
+  if (!normalized || normalized === 'none' || normalized === 'нет') return null;
+  if (normalized.includes('acne') || normalized.includes('акне')) return 'acne';
+  if (normalized.includes('rosacea') || normalized.includes('розацеа')) return 'rosacea';
+  if (normalized.includes('seborr') || normalized.includes('себор')) return 'seborrheic_dermatitis';
+  if (normalized.includes('atopic') || normalized.includes('атоп')) return 'atopic_dermatitis';
+  if (normalized.includes('melasma') || normalized.includes('мелазм')) return 'melasma';
+  if (normalized.includes('pigment') || normalized.includes('пигментац')) return 'melasma';
+  if (normalized.includes('eczema') || normalized.includes('экзема')) return 'eczema';
+  if (normalized.includes('psoriasis') || normalized.includes('псориаз')) return 'psoriasis';
+  return diagnosis;
+}
+
+function normalizeDiagnoses(diagnoses: string[] | string | null | undefined): string[] {
+  if (!diagnoses) return [];
+  const diagnosisArray = Array.isArray(diagnoses) ? diagnoses : [diagnoses];
+  const normalized: string[] = [];
+
+  for (const diagnosis of diagnosisArray) {
+    const normalizedToken = normalizeDiagnosisToken(diagnosis);
+    if (normalizedToken && !normalized.includes(normalizedToken)) {
+      normalized.push(normalizedToken);
+    }
+  }
+
+  return normalized;
+}
 
 /**
  * ИСПРАВЛЕНО: Нормализует данные профиля после анкеты
@@ -70,9 +96,9 @@ export function normalizeProfileData(rawProfile: {
     normalized.secondaryGoals = rawProfile.secondaryGoals as any;
   }
 
-  // ИСПРАВЛЕНО: Нормализуем diagnoses к ConcernKey[]
+  // ИСПРАВЛЕНО: Нормализуем diagnoses к медицинским токенам, не к concerns
   if (rawProfile.diagnoses) {
-    normalized.diagnoses = normalizeConcerns(rawProfile.diagnoses);
+    normalized.diagnoses = normalizeDiagnoses(rawProfile.diagnoses);
   }
 
   // ИСПРАВЛЕНО: Нормализуем contraindications к ConcernKey[]
@@ -107,7 +133,7 @@ export function normalizeMedicalMarkers(rawMarkers: {
   secondaryGoals?: string[] | null;
   [key: string]: any;
 }): {
-  diagnoses?: ConcernKey[];
+  diagnoses?: string[];
   allergies?: IngredientKey[];
   mainGoals?: string[];
   secondaryGoals?: string[];
@@ -115,9 +141,9 @@ export function normalizeMedicalMarkers(rawMarkers: {
 } {
   const normalized: any = {};
 
-  // ИСПРАВЛЕНО: Нормализуем diagnoses к ConcernKey[]
+  // ИСПРАВЛЕНО: Нормализуем diagnoses к медицинским токенам, не к concerns
   if (rawMarkers.diagnoses) {
-    normalized.diagnoses = normalizeConcerns(rawMarkers.diagnoses);
+    normalized.diagnoses = normalizeDiagnoses(rawMarkers.diagnoses);
   }
 
   // ИСПРАВЛЕНО: Нормализуем allergies к IngredientKey[]
@@ -142,4 +168,3 @@ export function normalizeMedicalMarkers(rawMarkers: {
 
   return normalized;
 }
-

@@ -181,6 +181,37 @@
       ]
     },
     {
+      "id": 11,
+      "key": "skin_sensitivity",
+      "type": "single_choice",
+      "options": [
+        {
+          "label": "Практически никогда, кожа устойчивая",
+          "actions": [
+            { "op": "setIfNull", "path": "sensitivity", "value": "low" }
+          ]
+        },
+        {
+          "label": "Легкое покраснение, которое быстро проходит",
+          "actions": [
+            { "op": "setIfNull", "path": "sensitivity", "value": "low" }
+          ]
+        },
+        {
+          "label": "Заметное покраснение и дискомфорт, который может сохраняться",
+          "actions": [
+            { "op": "setIfNull", "path": "sensitivity", "value": "medium" }
+          ]
+        },
+        {
+          "label": "Сильное и стойкое покраснение, возможны диагнозы (розацеа, дерматит)",
+          "actions": [
+            { "op": "set", "path": "sensitivity", "value": "high" }
+          ]
+        }
+      ]
+    },
+    {
       "id": 12,
       "key": "seasonality",
       "type": "single_choice",
@@ -446,6 +477,24 @@
           ]
         },
         {
+          "label": "Спиронолактон / антиандрогенная терапия",
+          "actions": [
+            { "op": "addToArray", "path": "currentOralMeds", "value": "spironolactone" }
+          ]
+        },
+        {
+          "label": "Оральные контрацептивы или другая гормональная терапия",
+          "actions": [
+            { "op": "addToArray", "path": "currentOralMeds", "value": "hormonal" }
+          ]
+        },
+        {
+          "label": "Тиреоидные препараты (L-тироксин, Эутирокс и аналоги)",
+          "actions": [
+            { "op": "addToArray", "path": "currentOralMeds", "value": "thyroid_hormone" }
+          ]
+        },
+        {
           "label": "Гормональные препараты (Спиронолактон, оральные контрацептивы)",
           "actions": [
             { "op": "addToArray", "path": "currentOralMeds", "value": "hormonal" }
@@ -628,4 +677,3 @@
     }
   ]
 }
-

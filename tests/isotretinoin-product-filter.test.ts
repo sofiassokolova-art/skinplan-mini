@@ -11,7 +11,7 @@ import { determineProtocol, DERMATOLOGY_PROTOCOLS } from '@/lib/dermatology-prot
 import type { ProductWithBrand } from '@/lib/product-fallback';
 import type { ProfileClassification } from '@/lib/plan-generation-helpers';
 
-function product(overrides: Partial<ProductWithBrand> & { id: number; name: string }): ProductWithBrand {
+function product(overrides: Partial<ProductWithBrand> & { id: number; name: string; avoidIf?: string[] }): ProductWithBrand {
   return {
     id: overrides.id,
     name: overrides.name,
@@ -124,6 +124,22 @@ describe('P0.1: пациент на изотретиноине — продук�
       profileClassification: { ...baseProfile, onIsotretinoin: true },
       strictness: 'soft',
     });
+    const ids = results.map(r => r.product.id);
+    expect(ids).not.toContain(1);
+    expect(ids).toContain(2);
+  });
+
+  it('high_sensitivity в avoidIf жёстко отсекает продукт при high/very_high sensitivity', async () => {
+    const products = [
+      product({ id: 1, name: 'Sebium Gel', activeIngredients: ['zinc'], avoidIf: ['high_sensitivity'] }),
+      product({ id: 2, name: 'Sensibio Gel', activeIngredients: ['glycerin'] }),
+    ];
+
+    const results = await filterProducts(products, {
+      profileClassification: { ...baseProfile, sensitivityLevel: 'high' },
+      strictness: 'soft',
+    });
+
     const ids = results.map(r => r.product.id);
     expect(ids).not.toContain(1);
     expect(ids).toContain(2);

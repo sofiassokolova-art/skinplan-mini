@@ -41,6 +41,8 @@ export function StepCard({
 }: StepCardProps) {
   const stepDesc = getStepDescription(step.stepCategory, skinIssues);
   const icon = getStepCategoryIcon(step.stepCategory);
+  const stepName = step.manualLabel || stepDesc.name;
+  const stepSubtitle = step.instruction || stepDesc.subtitle;
 
   if (!product) {
     return (
@@ -55,14 +57,14 @@ export function StepCard({
             <img src={icon} alt="" width={28} height={28} style={{ objectFit: 'contain', flexShrink: 0 }} />
           )}
           <div style={{ fontSize: '14px', fontWeight: '600', color: '#6B7280' }}>
-            {stepDesc.name}
+            {stepName}
           </div>
         </div>
         <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px', fontStyle: 'italic' }}>
-          {stepDesc.subtitle}
+          {stepSubtitle}
         </div>
         <div style={{ fontSize: '12px', color: '#9CA3AF' }}>
-          Продукт не найден
+          {step.instruction ? 'Без средства' : 'Продукт не найден'}
         </div>
       </div>
     );
@@ -110,11 +112,11 @@ export function StepCard({
             <img src={icon} alt="" width={28} height={28} style={{ objectFit: 'contain', flexShrink: 0 }} />
           )}
           <div style={{ fontSize: '14px', fontWeight: '600', color: '#0A5F59' }}>
-            {stepDesc.name}
+            {stepName}
           </div>
         </div>
         <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '6px', fontStyle: 'italic' }}>
-          {stepDesc.subtitle}
+          {stepSubtitle}
         </div>
         {/* Теги шага */}
         {showTags && stepDesc.tags.length > 0 && (
@@ -270,4 +272,3 @@ export function StepCard({
     </div>
   );
 }
-

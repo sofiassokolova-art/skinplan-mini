@@ -442,7 +442,14 @@ export async function generate28DayPlan(
   const retinoidUsageRaw = String(answers.retinoid_usage ?? '').toLowerCase().trim();
   let retinoidExperience: 'naive' | 'experienced';
   if (retinoidReactionRaw) {
-    if (retinoidReactionRaw.includes('без реакции') || retinoidReactionRaw.includes('лёгкое шелушение') || retinoidReactionRaw.includes('легкое шелушение')) {
+    if (
+      retinoidReactionRaw.includes('без реакции') ||
+      retinoidReactionRaw.includes('лёгкое шелушение') ||
+      retinoidReactionRaw.includes('легкое шелушение') ||
+      retinoidReactionRaw.includes('конкретное средство') ||
+      retinoidReactionRaw.includes('конкретный продукт') ||
+      retinoidReactionRaw.includes('другие ретиноиды')
+    ) {
       retinoidExperience = 'experienced';
     } else {
       // «сильное раздражение / жжение / краснота» или «никогда не использовал» → строгий старт
@@ -2505,6 +2512,15 @@ export async function generate28DayPlan(
     warnings.push(`⚠️ Учитываются аллергии: ${profileClassification.allergies.join(', ')}`);
   }
 
+  const hasRosaceaDiagnosisForWaterCleanse = normalizedDiagnoses.some((diagnosis) => {
+    const value = String(diagnosis || '').toLowerCase();
+    return value.includes('rosacea') || value.includes('розацеа');
+  });
+  const shouldUseMorningWaterCleanse =
+    ['high', 'very_high'].includes(String(profile.sensitivityLevel || '').toLowerCase()) ||
+    ['medium', 'high', 'critical'].includes(String(profile.rosaceaRisk || '').toLowerCase()) ||
+    hasRosaceaDiagnosisForWaterCleanse;
+
   // Преобразуем план в новый формат Plan28
   // ИСПРАВЛЕНО: plan28Days уже объявлен выше, используем существующий
   const weeklySteps = carePlanTemplate.weekly || [];
@@ -2583,6 +2599,17 @@ export async function generate28DayPlan(
     const morningSteps: DayStep[] = [];
     for (const stepCategory of morningStepsTemplate) {
       const baseStep = getBaseStepFromStepCategory(stepCategory);
+
+      if (shouldUseMorningWaterCleanse && isCleanserStep(stepCategory)) {
+        morningSteps.push({
+          stepCategory,
+          productId: null,
+          alternatives: [],
+          manualLabel: 'Умывание тёплой водой',
+          instruction: 'Утром без очищающего средства: умойтесь тёплой водой и промокните кожу полотенцем.',
+        });
+        continue;
+      }
 
       // P0.1: Титрация — пропускаем активный шаг в дни, когда актив не должен применяться
       // согласно протоколу (постепенное введение ретинола/кислот/витамина C).
