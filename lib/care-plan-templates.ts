@@ -88,7 +88,12 @@ export const CARE_PLAN_TEMPLATES: CarePlanTemplate[] = [
     conditions: {
       routineComplexity: ['minimal'],
     },
-    morning: ['cleanser_gentle', 'spf_50_face'],
+    // Минимум, но медицински полный: очищение + увлажнение + SPF — это базовый
+    // утренний минимум для ЛЮБОГО типа кожи (3 шага, укладывается в «1–3 шага»).
+    // Раньше утро было cleanser+SPF без крема → для сухой/чувствительной кожи это
+    // воспроизводило жалобу «утром только SPF без крема». moisturizer_light для
+    // сухой кожи апгрейдится до moisturizer_barrier в adjustTemplateSteps.
+    morning: ['cleanser_gentle', 'moisturizer_light', 'spf_50_face'],
     evening: ['cleanser_gentle', 'moisturizer_light'],
   },
   {
