@@ -30,6 +30,24 @@ export interface ProductFilterContext {
   strictness?: FilterStrictness;
 }
 
+function getHardSensitivityAvoidReason(
+  avoidIf: string[],
+  sensitivityLevel: string | null | undefined,
+  normalizeSensitivityForRules: (value: string | null | undefined) => 'low' | 'medium' | 'high' | 'very_high' | null
+): string | null {
+  const normalizedSensitivity = normalizeSensitivityForRules(sensitivityLevel);
+  if (!normalizedSensitivity) return null;
+
+  if (
+    avoidIf.includes('high_sensitivity') &&
+    (normalizedSensitivity === 'high' || normalizedSensitivity === 'very_high')
+  ) {
+    return 'Противопоказан при высокой чувствительности';
+  }
+
+  return null;
+}
+
 /**
  * Единый фильтр продуктов
  * ИСПРАВЛЕНО: Объединяет всю логику фильтрации из разных мест
@@ -165,6 +183,15 @@ export async function filterProducts(
       }
       
       // 4.2. Проверка чувствительности
+      const hardSensitivityReason = getHardSensitivityAvoidReason(
+        avoidIf,
+        profileClassification.sensitivityLevel,
+        normalizeSensitivityForRules
+      );
+      if (hardSensitivityReason) {
+        return false;
+      }
+
       // ИСПРАВЛЕНО: Проверяем very_high_sensitivity из avoidIf
       if (avoidIf.includes('very_high_sensitivity')) {
         const normalizedSensitivity = normalizeSensitivityForRules(profileClassification.sensitivityLevel);
@@ -436,6 +463,16 @@ export async function filterProductsWithReasons(
       }
       
       // 4.2. Проверка чувствительности
+      const hardSensitivityReason = getHardSensitivityAvoidReason(
+        avoidIf,
+        profileClassification.sensitivityLevel,
+        normalizeSensitivityForRules
+      );
+      if (hardSensitivityReason) {
+        allowed = false;
+        reasons.push(hardSensitivityReason);
+      }
+
       // ИСПРАВЛЕНО: Проверяем very_high_sensitivity из avoidIf
       if (avoidIf.includes('very_high_sensitivity')) {
         const normalizedSensitivity = normalizeSensitivityForRules(profileClassification.sensitivityLevel);
@@ -661,4 +698,3 @@ export async function filterProductsBasic(
     .filter(r => r.allowed)
     .map(r => r.product);
 }
-

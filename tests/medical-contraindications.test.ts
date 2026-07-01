@@ -16,14 +16,22 @@ import { createEmptySkinProfile, type SkinProfile } from '@/lib/skinprofile-type
 const LABELS = {
   isotretinoin: 'Изотретиноин (Аккутан, Роаккутан и аналоги)',
   oralAntibiotics: 'Антибиотики (Доксициклин, Миноциклин, Эритромицин и др.)',
-  hormonal: 'Гормональные препараты (Спиронолактон, оральные контрацептивы)',
+  spironolactone: 'Спиронолактон / антиандрогенная терапия',
+  hormonal: 'Оральные контрацептивы или другая гормональная терапия',
+  thyroid: 'Тиреоидные препараты (L-тироксин, Эутирокс и аналоги)',
+  legacyHormonal: 'Гормональные препараты (Спиронолактон, оральные контрацептивы)',
   topicalRetinoids: 'Ретиноиды наружные (Адапален — Дифферин, Адаклин; Изотретиноин — Изотрекс)',
   benzoylPeroxide: 'Бензоилпероксид (Базирон АС, Эффезел)',
   corticosteroids: 'Кортикостероидные кремы/мази (Гидрокортизон, Адвантан, Локоид)',
   azelaic: 'Азелаиновая кислота (Skinoren, Азелик, Finacea)',
+  rosacea: 'Розацеа',
+  strongSensitivity: 'Сильное и стойкое покраснение, возможны диагнозы (розацеа, дерматит)',
 } as const;
 
-function answer(questionCode: 'prescription_topical' | 'oral_medications', labels: string[]) {
+function answer(
+  questionCode: 'prescription_topical' | 'oral_medications' | 'medical_diagnoses' | 'skin_sensitivity',
+  labels: string[]
+) {
   // questionId не критичен — rules engine падает обратно на codeToKeyMap[questionCode].
   // 22 = topical_rx, 23 = oral_meds; даём -1, чтобы доказать что lookup идёт по коду.
   return {
@@ -46,6 +54,23 @@ function profileWithContras(contraindications: string[], overrides: Partial<Skin
 }
 
 describe('medical contraindications: questionnaire → SkinProfile', () => {
+  it('маппит questionCode medical_diagnoses → правило diagnoses', () => {
+    const profile = buildSkinProfileFromAnswers([
+      answer('medical_diagnoses', [LABELS.rosacea]),
+    ]);
+
+    expect(profile.diagnoses).toContain('rosacea');
+    expect(profile.sensitivity).toBe('high');
+  });
+
+  it('маппит questionCode skin_sensitivity → sensitivity high', () => {
+    const profile = buildSkinProfileFromAnswers([
+      answer('skin_sensitivity', [LABELS.strongSensitivity]),
+    ]);
+
+    expect(profile.sensitivity).toBe('high');
+  });
+
   it('маппит questionCode prescription_topical → правило topical_rx (codeToKeyMap)', () => {
     // Если codeToKeyMap не содержит prescription_topical, contraindications останутся пустыми
     // и тест упадёт — это регрессия, которую мы и хотим поймать.
@@ -115,6 +140,24 @@ describe('medical contraindications: questionnaire → SkinProfile', () => {
     // Антибиотики не добавляют contraindications — фотозащита поднимается через
     // отдельный photosensitivity-флаг в medicalMarkers (см. app/api/questionnaire/answers/route.ts).
     expect(profile.contraindications).not.toContain('no_retinol');
+  });
+
+  it('спиронолактон хранится как antiandrogen/spironolactone, а не как hormonal', () => {
+    const profile = buildSkinProfileFromAnswers([
+      answer('oral_medications', [LABELS.spironolactone]),
+    ]);
+
+    expect(profile.currentOralMeds).toContain('spironolactone');
+    expect(profile.currentOralMeds).not.toContain('hormonal');
+  });
+
+  it('тиреоидные препараты сохраняются отдельным флагом', () => {
+    const profile = buildSkinProfileFromAnswers([
+      answer('oral_medications', [LABELS.thyroid]),
+    ]);
+
+    expect(profile.currentOralMeds).toContain('thyroid_hormone');
+    expect(profile.contraindications).toHaveLength(0);
   });
 
   it('азелаиновая кислота не добавляет contraindications (безопасна как первая линия)', () => {

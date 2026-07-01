@@ -597,7 +597,11 @@ export async function GET(request: NextRequest) {
         questionnaireId: answersQuestionnaireId, // ИСПРАВЛЕНО: активная анкета (fallback: profile.version)
       },
       include: {
-        question: true,
+        question: {
+          include: {
+            answerOptions: true,
+          },
+        },
       },
     });
 
@@ -616,6 +620,24 @@ export async function GET(request: NextRequest) {
 
     // ИСПРАВЛЕНО: Извлекаем все необходимые данные из ответов для правильного вычисления scores
     // НЕ используем данные из profile, только из answers
+    const labelsOf = (answer: any): string[] => {
+      const opts = answer.question?.answerOptions ?? [];
+      const map = new Map<string, string>(opts.map((o: any) => [o.value, o.label]));
+      const vals = Array.isArray(answer.answerValues) ? answer.answerValues : [];
+      return vals.map((v: string) => map.get(v) ?? v);
+    };
+    const labelOfSingle = (answer: any): string | null => {
+      if (!answer.answerValue) return null;
+      const option = answer.question?.answerOptions?.find((opt: any) => opt.value === answer.answerValue);
+      return option?.label ?? answer.answerValue;
+    };
+    const normalizeSensitivityAnswer = (raw: string | null): string => {
+      const sensitivityValue = String(raw || '').toLowerCase();
+      if (sensitivityValue.includes('сильн') || sensitivityValue.includes('стойк') || sensitivityValue.includes('high') || sensitivityValue.endsWith('_4')) return 'high';
+      if (sensitivityValue.includes('заметн') || sensitivityValue.includes('средн') || sensitivityValue.includes('medium') || sensitivityValue.endsWith('_3')) return 'medium';
+      return 'low';
+    };
+
     for (const answer of answersForScores) {
       const code = answer.question?.code || '';
       const value = answer.answerValue || 
@@ -626,9 +648,9 @@ export async function GET(request: NextRequest) {
       } else if (code === 'age' || code === 'age_group' || code === 'ageGroup') {
         questionnaireAnswers.age = (value as string) || '25-34';
       } else if (code === 'skin_concerns' && Array.isArray(answer.answerValues)) {
-        questionnaireAnswers.concerns = answer.answerValues as string[];
-      } else if (code === 'diagnoses' && Array.isArray(answer.answerValues)) {
-        questionnaireAnswers.diagnoses = answer.answerValues as string[];
+        questionnaireAnswers.concerns = labelsOf(answer);
+      } else if ((code === 'diagnoses' || code === 'medical_diagnoses') && Array.isArray(answer.answerValues)) {
+        questionnaireAnswers.diagnoses = labelsOf(answer);
       } else if (code === 'allergies' && Array.isArray(answer.answerValues)) {
         questionnaireAnswers.allergies = answer.answerValues as string[];
       } else if (code === 'habits' && Array.isArray(answer.answerValues)) {
@@ -641,8 +663,8 @@ export async function GET(request: NextRequest) {
         questionnaireAnswers.spfFrequency = value as string;
       } else if (code === 'sun_exposure' || code === 'sunExposure') {
         questionnaireAnswers.sunExposure = value as string;
-      } else if (code === 'sensitivity_level' || code === 'sensitivityLevel') {
-        questionnaireAnswers.sensitivityLevel = (value as string) || 'low';
+      } else if (code === 'skin_sensitivity' || code === 'sensitivity_level' || code === 'sensitivityLevel') {
+        questionnaireAnswers.sensitivityLevel = normalizeSensitivityAnswer(labelOfSingle(answer) || (value as string) || 'low');
       } else if (code === 'acne_level' || code === 'acneLevel') {
         questionnaireAnswers.acneLevel = typeof value === 'number' ? value : (parseInt(value as string) || 0);
       } else if (code === 'pregnant' || code === 'has_pregnancy' || code === 'pregnancy_breastfeeding') {

@@ -3,96 +3,13 @@
 // Все вопросы с правильными кодами для связи с инфо-экранами
 
 import { createScriptPrisma } from './lib/prisma';
+import { inferAnswerScore } from '../lib/profile-calculator';
 
 const prisma = createScriptPrisma();
 
 // Функция для создания scoreJson на основе вопроса и ответа
 function createScoreJson(questionCode: string, optionLabel: string): any {
-  const scores: any = {};
-
-  // Тип кожи
-  if (questionCode === 'skin_type') {
-    if (optionLabel.includes('Тип 1') || optionLabel.includes('Сухая')) {
-      return { oiliness: 0, dehydration: 5 };
-    }
-    if (optionLabel.includes('Тип 2') || optionLabel.includes('Комбинированная (сухая)')) {
-      return { oiliness: 2, dehydration: 3 };
-    }
-    if (optionLabel.includes('Тип 3') && optionLabel.includes('Нормальная')) {
-      return { oiliness: 1, dehydration: 1 };
-    }
-    if (optionLabel.includes('Тип 3') && optionLabel.includes('Комбинированная (жирная)')) {
-      return { oiliness: 3, dehydration: 1 };
-    }
-    if (optionLabel.includes('Тип 4') || optionLabel.includes('Жирная')) {
-      return { oiliness: 5, dehydration: 0 };
-    }
-  }
-
-  // Проблемы кожи
-  if (questionCode === 'skin_concerns') {
-    // ВАЖНО: постакне проверяем РАНЬШЕ 'Акне' — лейбл «Следы от акне (постакне)»
-    // содержит подстроку «Акне» и иначе ушёл бы в acne:3.
-    if (optionLabel.includes('остакне') || optionLabel.includes('Следы от акне')) {
-      return { pigmentation: 1, concerns: ['postacne_scars'] };
-    }
-    if (optionLabel.includes('Акне')) {
-      return { acne: 3, concerns: ['acne'] };
-    }
-    if (optionLabel.includes('Жирность')) {
-      return { oiliness: 2 };
-    }
-    if (optionLabel.includes('Сухость')) {
-      return { dehydration: 3 };
-    }
-    if (optionLabel.includes('Пигментация')) {
-      return { pigmentation: 2, pigmentationRisk: 'medium' };
-    }
-    if (optionLabel.includes('Чувствительность')) {
-      return { sensitivity: 3 };
-    }
-    if (optionLabel.includes('Розацеа')) {
-      return { rosacea: 2, rosaceaRisk: 'medium' };
-    }
-    if (optionLabel.includes('Морщины')) {
-      return { aging: 2 };
-    }
-  }
-
-  // Возраст
-  if (questionCode === 'age') {
-    if (optionLabel.includes('До 18')) return { age_group: '18_25' };
-    if (optionLabel.includes('18–24')) return { age_group: '18_25' };
-    if (optionLabel.includes('25–34')) return { age_group: '26_30' };
-    if (optionLabel.includes('35–44')) return { age_group: '31_40' };
-    if (optionLabel.includes('45+')) return { age_group: '41_50' };
-  }
-
-  // Беременность
-  if (questionCode === 'pregnancy_breastfeeding') {
-    if (optionLabel.includes('беременна') || optionLabel.includes('кормлю')) {
-      return { has_pregnancy: true };
-    }
-    return { has_pregnancy: false };
-  }
-
-  // Чувствительность
-  if (questionCode === 'skin_sensitivity') {
-    if (optionLabel.includes('Нет') || optionLabel === 'Нет') {
-      return { sensitivity: 0 };
-    }
-    if (optionLabel.includes('Низкий')) {
-      return { sensitivity: 1 };
-    }
-    if (optionLabel.includes('Средний')) {
-      return { sensitivity: 2 };
-    }
-    if (optionLabel.includes('Высокий')) {
-      return { sensitivity: 3 };
-    }
-  }
-
-  return {};
+  return inferAnswerScore(questionCode, optionLabel);
 }
 
 async function seedQuestionnaireV2() {
@@ -367,6 +284,7 @@ async function seedQuestionnaireV2() {
         // План использует это поле для определения retinoidExperience (см. lib/plan-generator.ts):
         //   "Без раздражения"  → experienced (стандартный titration)
         //   "Раздражение/жжение" → naive (самый строгий cap частоты)
+        //   "Реакция на конкретный продукт" → experienced (не режем все ретиноиды)
         //   "Никогда не использовал(а)" → naive (cap, plus подсказка про patch-test)
         // Вопрос необязательный, чтобы не ронять конверсию: если пропущен, fallback идёт по
         // retinoid_usage (Да → experienced, иначе → naive).
@@ -379,6 +297,7 @@ async function seedQuestionnaireV2() {
           options: [
             'Без реакции, кожа спокойно перенесла',
             'Лёгкое шелушение или сухость — прошли быстро',
+            'Сильная реакция была на конкретное средство, другие ретиноиды переносились нормально',
             'Сильное раздражение, жжение, краснота',
             'Никогда не использовал(а)',
           ],
@@ -400,15 +319,17 @@ async function seedQuestionnaireV2() {
         },
         {
           code: 'oral_medications',
-          text: 'Принимаете ли вы пероральные препараты?',
+          text: 'Принимаете ли вы сейчас пероральные препараты?',
           type: 'multi_choice',
           position: 4,
           isRequired: false,
           options: [
             'Изотретиноин (Аккутан, Роаккутан и аналоги)',
             'Антибиотики (Доксициклин, Миноциклин, Эритромицин и др.)',
-            'Гормональные препараты (Спиронолактон, оральные контрацептивы)',
-            'Нет, не принимал(а)',
+            'Спиронолактон / антиандрогенная терапия',
+            'Оральные контрацептивы или другая гормональная терапия',
+            'Тиреоидные препараты (L-тироксин, Эутирокс и аналоги)',
+            'Нет, не принимаю',
           ],
         },
       ],
@@ -564,4 +485,3 @@ seedQuestionnaireV2()
   .finally(async () => {
     await prisma.$disconnect();
   });
-
