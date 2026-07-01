@@ -641,8 +641,33 @@ export async function generate28DayPlan(
   // ИСПРАВЛЕНО: Используем finalMainGoals и проверяем 'antiage' (а не 'wrinkles'), так как primaryFocus='wrinkles' маппится в 'antiage'
   const hasWrinklesGoal = finalMainGoals.includes('antiage') || finalMainGoals.includes('wrinkles');
   
+  // При розацеа/высокой чувствительности (в т.ч. периоральный дерматит) убираем
+  // раздражающие активные шаги: ретиноиды, BPO, кислоты, эксфолианты. Барьер сначала
+  // стабилизируют мягким уходом, активы вводит врач позже. Из-за «широкого» маппинга
+  // generic-treatment продукта (ретинол мог попасть в acne/azelaic-слот) снимаем ВСЕ
+  // treatment_*-шаги, а также кислотные тонеры/сыворотки/маски.
+  const suppressIrritantActives =
+    ['medium', 'high', 'critical'].includes(String(profile.rosaceaRisk || '').toLowerCase()) ||
+    ['high', 'very_high'].includes(String(profile.sensitivityLevel || '').toLowerCase());
+
+  const isIrritantActiveStep = (step: StepCategory): boolean => {
+    const s = String(step);
+    if (s.startsWith('treatment_')) return true;
+    if (s.startsWith('toner_') && /(exfoliant|acid|aha|bha|pha)/.test(s)) return true;
+    if (s === 'serum_exfoliant') return true;
+    return ['mask_acid', 'mask_peel', 'mask_enzyme', 'mask_clay'].includes(s);
+  };
+
   const adjustTemplateSteps = (steps: StepCategory[]): StepCategory[] => {
     return steps.flatMap((step) => {
+      // Розацеа/высокая чувствительность — снимаем раздражающие активы целиком.
+      if (suppressIrritantActives && isIrritantActiveStep(step)) {
+        logger.info('Suppressing irritant active step for rosacea/high-sensitivity', {
+          userId, step, rosaceaRisk: profile.rosaceaRisk, sensitivityLevel: profile.sensitivityLevel,
+        });
+        return [];
+      }
+
       // УСИЛЕНО default_balanced: treatment_antiage заменяем на лечение по mainGoals
       if (step === 'treatment_antiage' && !hasWrinklesGoal) {
         // Приоритет: acne > pigmentation > pores > barrier/dehydration (без активного лечения)
