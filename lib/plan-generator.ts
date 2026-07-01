@@ -582,12 +582,28 @@ export async function generate28DayPlan(
     concerns,
   });
 
-  // Определяем сложность рутины для CarePlanTemplate
+  // Определяем сложность рутины для CarePlanTemplate.
+  // ВАЖНО: answers.care_steps приходит КОДОМ опции (care_steps_1..4), а не русским
+  // лейблом. Раньше проверялось только .includes('миним'/'максим') → код «care_steps_1»
+  // никогда не матчился, и выбор пользователя «Минимум (1–3 шага)» молча игнорировался
+  // (рутина всегда оставалась 'medium'). Поддерживаем и коды, и лейблы.
   let routineComplexity: CarePlanProfileInput['routineComplexity'] = 'medium';
-  if (typeof profileClassification.stepsPreference === 'string') {
-    if (profileClassification.stepsPreference.toLowerCase().includes('миним')) {
+  {
+    const rawSteps = Array.isArray(profileClassification.stepsPreference)
+      ? profileClassification.stepsPreference[0]
+      : profileClassification.stepsPreference;
+    const stepsStr = (rawSteps ?? '').toString().toLowerCase();
+    const stepsCodeMap: Record<string, CarePlanProfileInput['routineComplexity']> = {
+      care_steps_1: 'minimal',
+      care_steps_2: 'medium',
+      care_steps_3: 'maximal',
+      care_steps_4: 'medium', // «Не знаю» → дефолт
+    };
+    if (stepsCodeMap[stepsStr]) {
+      routineComplexity = stepsCodeMap[stepsStr];
+    } else if (stepsStr.includes('миним')) {
       routineComplexity = 'minimal';
-    } else if (profileClassification.stepsPreference.toLowerCase().includes('максим')) {
+    } else if (stepsStr.includes('максим')) {
       routineComplexity = 'maximal';
     }
   }
@@ -973,6 +989,7 @@ export async function generate28DayPlan(
         step: product.step || '',
         category: product.category || null,
         price: product.price ?? null,
+        priceSegment: product.priceSegment ?? null,
         imageUrl: product.imageUrl || null,
         isHero: product.isHero ?? false,
         priority: product.priority ?? 0,
@@ -1202,6 +1219,7 @@ export async function generate28DayPlan(
       step: product.step || '',
       category: product.category,
       price: product.price,
+      priceSegment: (product as any).priceSegment ?? null,
       imageUrl: product.imageUrl,
       isHero: product.isHero || false,
       priority: product.priority || 0,
@@ -1340,7 +1358,45 @@ export async function generate28DayPlan(
       });
     }
   });
-  
+
+  // P1c: Budget-preferred подбор. План фильтрует продукты в 'soft'-режиме, где фильтр
+  // бюджета (unified-product-filter) НЕ исключает дорогие товары — иначе шаг мог бы
+  // остаться пустым. А финальный выбор продукта (pickProductForProfileDiversity) берёт
+  // псевдослучайный индекс по всему списку — простой reorder бы не сработал. Поэтому,
+  // если для шага есть товары В ПРЕДЕЛАХ бюджета — оставляем в выборе только их. Если в
+  // бюджете ничего нет — оставляем полный список (шаг не пустеет). Раньше пользователь
+  // «до 2000₽» стабильно получал premium.
+  {
+    const allowedSegments: Record<string, Set<string>> = {
+      'бюджетный': new Set(['mass']),
+      'средний': new Set(['mass', 'mid']),
+      'премиум': new Set(['mass', 'mid', 'premium']),
+      'любой': new Set(['mass', 'mid', 'premium']),
+    };
+    const allowed = allowedSegments[profileClassification.budget || 'любой'];
+    if (allowed && allowed.size < 3) {
+      const segmentOf = (p: ProductWithBrand): string | null => {
+        if (p.priceSegment) return p.priceSegment;
+        if (typeof p.price === 'number') return p.price < 2000 ? 'mass' : p.price < 5000 ? 'mid' : 'premium';
+        return null;
+      };
+      for (const [stepCategory, products] of productsByStepMap.entries()) {
+        if (products.length <= 1) continue;
+        const inBudget = products.filter((p) => {
+          const seg = segmentOf(p);
+          return seg !== null && allowed.has(seg);
+        });
+        if (inBudget.length > 0 && inBudget.length < products.length) {
+          productsByStepMap.set(stepCategory, inBudget);
+          logger.info('Budget-preferred filter applied to step', {
+            userId, stepCategory, budget: profileClassification.budget,
+            before: products.length, after: inBudget.length,
+          });
+        }
+      }
+    }
+  }
+
   // Логируем итоговое состояние productsByStepMap после регистрации
   if (userId === '643160759' || process.env.NODE_ENV === 'development') {
     const stepSummary = Array.from(productsByStepMap.entries()).map(([step, products]) => ({
