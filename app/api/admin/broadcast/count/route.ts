@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { verifyAdminBoolean } from '@/lib/admin-auth';
+import { buildSkinTypeProfileCondition } from '@/lib/admin-broadcast-filters';
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,11 +28,13 @@ export async function POST(request: NextRequest) {
       const skinProfileConditions: any[] = [];
       
       if (filters.skinTypes && filters.skinTypes.length > 0) {
-        skinProfileConditions.push({
-          skinType: { in: filters.skinTypes },
-        });
+        // combo → combination_dry/oily, sensitive → sensitivityLevel (см. helper)
+        const skinTypeCondition = buildSkinTypeProfileCondition(filters.skinTypes);
+        if (skinTypeCondition) {
+          skinProfileConditions.push(skinTypeCondition);
+        }
       }
-      
+
       if (filters.concerns && filters.concerns.length > 0) {
         // Фильтруем по notes (упрощенная фильтрация)
         skinProfileConditions.push({
