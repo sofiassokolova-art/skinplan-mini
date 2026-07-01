@@ -116,7 +116,7 @@ export function normalizeSkinTypeForRules(
  * Нормализует уровень чувствительности из БД в формат, используемый в правилах
  * 
  * В БД используется: "low", "medium", "high"
- * В правилах (avoidIfContra): "very_high_sensitivity"
+ * В правилах (avoidIfContra): "high_sensitivity", "very_high_sensitivity"
  * В SkinProfile типе: "low" | "medium" | "high" | "very_high"
  * 
  * @param sensitivityLevel - Уровень чувствительности из БД
@@ -150,6 +150,11 @@ export function matchesSensitivityContraindication(
   contraindication: string
 ): boolean {
   if (!sensitivityLevel) return false;
+
+  if (contraindication === 'high_sensitivity') {
+    const normalized = normalizeSensitivityForRules(sensitivityLevel);
+    return normalized === 'high' || normalized === 'very_high';
+  }
 
   // Проверяем "very_high_sensitivity"
   if (contraindication === 'very_high_sensitivity') {

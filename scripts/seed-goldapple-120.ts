@@ -184,7 +184,7 @@ async function main() {
 
     { name: "Photoderm Spot SPF50", brandSlug: 'bioderma', price: 1400, volume: "40 мл", step: "spf", skinTypes: ["oily", "dry", "combo", "sensitive", "normal"], concerns: ["pigmentation"], activeIngredients: ["ниацинамид"], avoidIf: [], priority: 97, link: "https://goldapple.ru/photoderm-spot" },
 
-    { name: "Sebium Global", brandSlug: 'bioderma', price: 1650, volume: "30 мл", step: "treatment", skinTypes: ["oily"], concerns: ["acne"], activeIngredients: ["салициловая кислота"], avoidIf: [], priority: 96, link: "https://goldapple.ru/sebium-global" },
+    { name: "Sebium Global", brandSlug: 'bioderma', price: 1650, volume: "30 мл", step: "treatment", skinTypes: ["oily"], concerns: ["acne"], activeIngredients: ["салициловая кислота"], avoidIf: ["high_sensitivity"], priority: 96, link: "https://goldapple.ru/sebium-global" },
 
     { name: "Cicabio Creme", brandSlug: 'bioderma', price: 1490, volume: "75 мл", step: "moisturizer", skinTypes: ["sensitive"], concerns: ["barrier"], activeIngredients: ["центелла"], avoidIf: [], priority: 98, link: "https://goldapple.ru/cicabio" },
 
@@ -194,7 +194,7 @@ async function main() {
 
     { name: "Photoderm Max Aquafluide SPF50+", brandSlug: 'bioderma', price: 1700, volume: "40 мл", step: "spf", skinTypes: ["oily"], concerns: ["photoaging"], activeIngredients: ["SPF50+"], avoidIf: [], priority: 99, link: "https://goldapple.ru/photoderm-max" },
 
-    { name: "Sebium Pore Refiner", brandSlug: 'bioderma', price: 1550, volume: "30 мл", step: "treatment", skinTypes: ["oily"], concerns: ["pores"], activeIngredients: ["глюконат цинка"], avoidIf: [], priority: 95, link: "https://goldapple.ru/sebium-pore" },
+    { name: "Sebium Pore Refiner", brandSlug: 'bioderma', price: 1550, volume: "30 мл", step: "treatment", skinTypes: ["oily"], concerns: ["pores"], activeIngredients: ["глюконат цинка"], avoidIf: ["high_sensitivity"], priority: 95, link: "https://goldapple.ru/sebium-pore" },
 
     { name: "Atoderm Ultra-Nourishing Cream", brandSlug: 'bioderma', price: 1490, volume: "500 мл", step: "moisturizer", skinTypes: ["dry"], concerns: ["barrier"], activeIngredients: ["липиды"], avoidIf: [], priority: 98, link: "https://goldapple.ru/atoderm-ultra" },
 
@@ -365,4 +365,3 @@ main()
   })
 
   .finally(async () => await prisma.$disconnect());
-

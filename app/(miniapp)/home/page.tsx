@@ -303,14 +303,30 @@ export default function HomePage() {
           const items: RoutineItem[] = [];
           steps.forEach((step, idx) => {
             const productId = Number(step.productId);
-            if (!productId) return;
-            const product = getProduct(productId);
-            if (!product) return;
-
             const baseStep = getBaseStepFromStepCategory(step.stepCategory);
-
             const meta = getStepMeta(baseStep, time);
             if (!meta) return;
+
+            // Шаг без продукта, но с ручной инструкцией (напр. утреннее умывание тёплой
+            // водой для чувствительной/розацеа-кожи). Раньше такие шаги молча выпадали
+            // из дневной рутины (productId === null), и юзер не видел инструкцию.
+            if (!productId) {
+              if (step.manualLabel || step.instruction) {
+                items.push({
+                  id: `${time}-${baseStep}-${idx}-manual`,
+                  ...meta,
+                  subtitle: step.manualLabel || meta.title,
+                  howto: step.instruction
+                    ? { steps: [step.instruction], volume: '', tip: '' }
+                    : meta.howto,
+                  done: false,
+                });
+              }
+              return;
+            }
+
+            const product = getProduct(productId);
+            if (!product) return;
 
             items.push({
               id: `${time}-${baseStep}-${idx}-${productId}`,
@@ -453,9 +469,27 @@ export default function HomePage() {
         items.push({ id, ...meta, ...overrides, subtitle, done: false });
       };
       
+      // Утреннее умывание только тёплой водой для чувствительной/розацеа-кожи:
+      // дерматологи рекомендуют пропускать ПАВ-очищение утром. Розацеа/атопик после
+      // фикса риск-сигналов поднимают sensitivityLevel до high, поэтому ориентируемся
+      // на него (profile_summary уже приходит в ответе рекомендаций).
+      const morningWaterOnlyCleanse = ['high', 'very_high'].includes(
+        String(data?.profile_summary?.sensitivityLevel || '').toLowerCase()
+      );
+
       // УТРЕННЯЯ РУТИНА
       if (data?.steps?.cleanser) {
-        addRoutineItem(morning, 'morning-cleanser', 'cleanser', 'AM', data.steps.cleanser[0]?.name || 'Очищающее средство');
+        if (morningWaterOnlyCleanse) {
+          addRoutineItem(morning, 'morning-cleanser', 'cleanser', 'AM', 'Умывание тёплой водой', {
+            howto: {
+              steps: ['Умойтесь тёплой (не горячей) водой', 'Промокните кожу мягким полотенцем'],
+              volume: 'Без очищающего средства',
+              tip: 'При чувствительной коже/розацеа утром лучше без ПАВ-очищения — только вода. Полноценное очищение оставляем на вечер.',
+            },
+          });
+        } else {
+          addRoutineItem(morning, 'morning-cleanser', 'cleanser', 'AM', data.steps.cleanser[0]?.name || 'Очищающее средство');
+        }
       }
       
       if (data?.steps?.toner) {

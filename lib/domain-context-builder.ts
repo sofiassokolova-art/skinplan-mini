@@ -60,7 +60,7 @@ export function buildDomainContext(input: BuildDomainContextInput): DomainContex
       questionnaireAnswers.habits = Array.isArray(value) 
         ? value.filter((v): v is string => typeof v === 'string')
         : (typeof value === 'string' ? [value] : [String(value)]);
-    } else if (code === 'diagnoses') {
+    } else if (code === 'diagnoses' || code === 'medical_diagnoses') {
       questionnaireAnswers.diagnoses = Array.isArray(value) 
         ? value.filter((v): v is string => typeof v === 'string')
         : (typeof value === 'string' ? [value] : [String(value)]);
@@ -92,7 +92,7 @@ export function buildDomainContext(input: BuildDomainContextInput): DomainContex
       questionnaireAnswers.sunExposure = Array.isArray(value) 
         ? (typeof value[0] === 'string' ? value[0] : String(value[0]))
         : (typeof value === 'string' ? value : String(value));
-    } else if (code === 'sensitivity_level' || code === 'sensitivityLevel') {
+    } else if (code === 'skin_sensitivity' || code === 'sensitivity_level' || code === 'sensitivityLevel') {
       questionnaireAnswers.sensitivityLevel = Array.isArray(value) 
         ? (typeof value[0] === 'string' ? value[0] : String(value[0]))
         : (typeof value === 'string' ? value : String(value)) || 'low';
@@ -179,4 +179,3 @@ export function buildDomainContext(input: BuildDomainContextInput): DomainContex
 
   return context;
 }
-
