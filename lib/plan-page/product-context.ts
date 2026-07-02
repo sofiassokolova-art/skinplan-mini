@@ -146,6 +146,7 @@ function buildSingleCard(args: {
     price: product.price ?? null,
     imageUrl: product.imageUrl ?? null,
     phaseTags,
+    firstPhase: earliestPhase(phases),
     state: {
       inCart,
       inWishlist,
@@ -158,6 +159,14 @@ function buildSingleCard(args: {
 function phasesToTags(phases: Set<'adaptation' | 'active' | 'support'>): string[] {
   if (phases.size === 3) return ['Все фазы'];
   return Array.from(phases).map((p) => getPhaseLabel(p));
+}
+
+// Самая ранняя фаза, где средство встречается (adaptation → active → support).
+// Пустой набор не ожидается (карточка строится из шагов плана), но на всякий случай — adaptation.
+function earliestPhase(phases: Set<'adaptation' | 'active' | 'support'>): 'adaptation' | 'active' | 'support' {
+  if (phases.has('adaptation')) return 'adaptation';
+  if (phases.has('active')) return 'active';
+  return 'support';
 }
 
 function truncate(text: string | null, max: number): string | null {

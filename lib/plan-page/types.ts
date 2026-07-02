@@ -79,6 +79,8 @@ export interface ProductCard {
   imageUrl: string | null;
   /** Теги фаз: "Адаптация" / "Активная фаза" / "Поддержка" / "Все фазы" */
   phaseTags: string[];
+  /** Самая ранняя фаза, где средство появляется — для группировки списка по фазам. */
+  firstPhase: 'adaptation' | 'active' | 'support';
   /** Состояние пользователя */
   state: ProductState;
   /** Сколько есть альтернатив (для индикации "Заменить") */
