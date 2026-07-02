@@ -85,6 +85,8 @@ export async function buildPlanPageContext(
           id: true,
           name: true,
           category: true,
+          step: true,
+          activeIngredients: true,
           price: true,
           imageUrl: true,
           description: true,
@@ -101,7 +103,18 @@ export async function buildPlanPageContext(
   const skinScore = calcSkinScore(profile);
   const profileCards = buildProfileCards(profile);
   const phases = buildPhasesUI(currentDay, mainGoals);
-  const expertNotes = pickExpertNotes(currentDay, mainGoals);
+  // Собираем фактические step-категории плана, чтобы советы дерматолога не упоминали
+  // средства, которых у пользователя нет (напр. HA-сыворотку в плане без сыворотки).
+  const planStepCategories = Array.from(
+    new Set(
+      plan.days.flatMap((d) =>
+        [...(d.morning ?? []), ...(d.evening ?? []), ...(d.weekly ?? [])].map(
+          (s) => String(s.stepCategory),
+        ),
+      ),
+    ),
+  );
+  const expertNotes = pickExpertNotes(currentDay, mainGoals, planStepCategories);
   const productCards = buildProductCards({
     plan,
     products,

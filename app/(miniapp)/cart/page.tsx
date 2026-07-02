@@ -20,6 +20,7 @@ interface WishlistItemData {
     imageUrl: string | null;
     link: string | null;
     marketLinks: any;
+    priceFrom?: number | null;
   };
   feedback: string;
   createdAt: string;
@@ -42,6 +43,7 @@ export default function FavoritesPage() {
       imageUrl: item.product.imageUrl,
       link: item.product.link || null,
       marketLinks: item.product.marketLinks || null,
+      priceFrom: item.product.priceFrom ?? null,
     } : {
       id: item.productId,
       name: 'Неизвестный продукт',

@@ -294,7 +294,7 @@ const products = [
     skinTypes: ['oily', 'combo'],
     concerns: ['pores'],
     activeIngredients: ['цинк', 'медь'],
-    avoidIf: [],
+    avoidIf: ['high_sensitivity'],
     isHero: false,
     priority: 70,
     descriptionUser: 'Очищающий гель для проблемной кожи',

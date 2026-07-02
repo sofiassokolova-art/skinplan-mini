@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
+import { priceFloor } from '@/lib/price-display';
 
 // GET - получить корзину пользователя
 export async function GET(request: NextRequest) {
@@ -52,6 +53,8 @@ export async function GET(request: NextRequest) {
           imageUrl: item.product.imageUrl,
           link: item.product.link,
           marketLinks: item.product.marketLinks,
+          // Не точная цена, а округлённый вниз «пол» для показа «от X ₽».
+          priceFrom: priceFloor(item.product.price),
         },
         quantity: item.quantity,
         createdAt: item.createdAt.toISOString(),
@@ -154,6 +157,7 @@ export async function POST(request: NextRequest) {
           imageUrl: cartItem.product.imageUrl,
           link: cartItem.product.link,
           marketLinks: cartItem.product.marketLinks,
+          priceFrom: priceFloor(cartItem.product.price),
         },
         quantity: cartItem.quantity,
       },

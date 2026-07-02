@@ -103,17 +103,46 @@ describe('P1.1 enforceBrandDiversity', () => {
 
 describe('P1.2 sezonality', () => {
   it('normalizeSeasonalProfile понимает русские и en-варианты', () => {
-    expect(normalizeSeasonalProfile('зимой суше')).toBe('winter_drier');
-    expect(normalizeSeasonalProfile('летом жирнее')).toBe('summer_oilier');
-    expect(normalizeSeasonalProfile('winter_drier')).toBe('winter_drier');
-    expect(normalizeSeasonalProfile('stable')).toBe('stable');
-    expect(normalizeSeasonalProfile(undefined)).toBe(null);
+    expect(normalizeSeasonalProfile('зимой суше')).toEqual({
+      summerOilier: false,
+      winterDrier: true,
+      stable: false,
+    });
+    expect(normalizeSeasonalProfile('летом жирнее')).toEqual({
+      summerOilier: true,
+      winterDrier: false,
+      stable: false,
+    });
+    expect(normalizeSeasonalProfile('winter_drier')).toEqual({
+      summerOilier: false,
+      winterDrier: true,
+      stable: false,
+    });
+    expect(normalizeSeasonalProfile('stable')).toEqual({
+      summerOilier: false,
+      winterDrier: false,
+      stable: true,
+    });
+    expect(normalizeSeasonalProfile(undefined)).toEqual({
+      summerOilier: false,
+      winterDrier: false,
+      stable: false,
+    });
+    expect(normalizeSeasonalProfile(['winter_drier', 'summer_oilier'])).toEqual({
+      summerOilier: true,
+      winterDrier: true,
+      stable: false,
+    });
   });
 
   it('зимой и при winter_drier меняет moisturizer_light → moisturizer_barrier', () => {
     const december = new Date('2025-12-15T12:00:00Z');
     const morning: StepCategory[] = ['cleanser_gentle', 'moisturizer_light', 'spf_50_face'];
-    const { steps, appliedReasons } = applySeasonalAdjustment(morning, 'winter_drier', december);
+    const { steps, appliedReasons } = applySeasonalAdjustment(
+      morning,
+      normalizeSeasonalProfile('winter_drier'),
+      december,
+    );
     expect(steps).toContain('moisturizer_barrier');
     expect(steps).not.toContain('moisturizer_light');
     expect(appliedReasons.length).toBeGreaterThan(0);
@@ -122,7 +151,11 @@ describe('P1.2 sezonality', () => {
   it('летом и при summer_oilier меняет moisturizer_barrier → moisturizer_light', () => {
     const july = new Date('2025-07-15T12:00:00Z');
     const morning: StepCategory[] = ['cleanser_gentle', 'moisturizer_barrier', 'spf_50_face'];
-    const { steps } = applySeasonalAdjustment(morning, 'summer_oilier', july);
+    const { steps } = applySeasonalAdjustment(
+      morning,
+      normalizeSeasonalProfile('summer_oilier'),
+      july,
+    );
     expect(steps).toContain('moisturizer_light');
     expect(steps).not.toContain('moisturizer_barrier');
   });
@@ -131,14 +164,19 @@ describe('P1.2 sezonality', () => {
     const december = new Date('2025-12-15T12:00:00Z');
     const july = new Date('2025-07-15T12:00:00Z');
     const morning: StepCategory[] = ['moisturizer_light'];
-    expect(applySeasonalAdjustment(morning, 'stable', december).steps).toEqual(morning);
-    expect(applySeasonalAdjustment(morning, 'stable', july).steps).toEqual(morning);
+    const stableProfile = normalizeSeasonalProfile('stable');
+    expect(applySeasonalAdjustment(morning, stableProfile, december).steps).toEqual(morning);
+    expect(applySeasonalAdjustment(morning, stableProfile, july).steps).toEqual(morning);
   });
 
   it('весной/осенью не применяет адаптацию (сезон вне триггера)', () => {
     const april = new Date('2025-04-15T12:00:00Z');
     const morning: StepCategory[] = ['moisturizer_light'];
-    const { steps, appliedReasons } = applySeasonalAdjustment(morning, 'winter_drier', april);
+    const { steps, appliedReasons } = applySeasonalAdjustment(
+      morning,
+      normalizeSeasonalProfile('winter_drier'),
+      april,
+    );
     expect(steps).toEqual(morning);
     expect(appliedReasons).toHaveLength(0);
   });

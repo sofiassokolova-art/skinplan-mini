@@ -70,4 +70,3 @@ CREATE INDEX "advcake_order_items_pid_idx" ON "advcake_order_items"("pid");
 
 -- AddForeignKey
 ALTER TABLE "advcake_order_items" ADD CONSTRAINT "advcake_order_items_order_ref_fkey" FOREIGN KEY ("order_ref") REFERENCES "advcake_orders"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-

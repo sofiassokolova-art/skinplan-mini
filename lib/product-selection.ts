@@ -18,6 +18,63 @@ export interface RuleStep {
   max_items?: number;
 }
 
+type PriceSegment = 'mass' | 'mid' | 'premium';
+
+function addAndCondition(where: any, condition: any): void {
+  where.AND = Array.isArray(where.AND)
+    ? [...where.AND, condition]
+    : where.AND
+      ? [where.AND, condition]
+      : [condition];
+}
+
+function normalizePriceSegment(value?: string | null): PriceSegment | null {
+  return value === 'mass' || value === 'mid' || value === 'premium' ? value : null;
+}
+
+function getUserBudgetCapSegments(userPriceSegment?: string | null): PriceSegment[] | null {
+  const segment = normalizePriceSegment(userPriceSegment);
+  if (segment === 'mass') return ['mass'];
+  if (segment === 'mid') return ['mass', 'mid'];
+  // Premium/any не являются ограничивающей верхней границей.
+  return null;
+}
+
+export function getAllowedPriceSegmentsForBudget(
+  stepBudget?: RuleStep['budget'],
+  userPriceSegment?: string | null
+): PriceSegment[] | null {
+  const userCap = getUserBudgetCapSegments(userPriceSegment);
+  if (userCap) return userCap;
+
+  if (stepBudget === 'бюджетный') return ['mass'];
+  if (stepBudget === 'средний') return ['mass', 'mid'];
+  if (stepBudget === 'премиум') return ['premium'];
+  return null;
+}
+
+function buildPriceSegmentCondition(allowedSegments: PriceSegment[] | null): any | null {
+  if (!allowedSegments || allowedSegments.length === 0 || allowedSegments.length === 3) {
+    return null;
+  }
+
+  const conditions: any[] = [
+    { priceSegment: { in: allowedSegments } },
+  ];
+
+  // У части продуктов priceSegment ещё null. Поддерживаем budget-aware подбор,
+  // выводя тот же tier из price, что используют unified-product-filter и plan-generator.
+  if (allowedSegments.length === 1 && allowedSegments[0] === 'mass') {
+    conditions.push({ AND: [{ priceSegment: null }, { price: { lt: 2000 } }] });
+  } else if (allowedSegments.includes('mass') && allowedSegments.includes('mid')) {
+    conditions.push({ AND: [{ priceSegment: null }, { price: { lt: 5000 } }] });
+  } else if (allowedSegments.length === 1 && allowedSegments[0] === 'premium') {
+    conditions.push({ AND: [{ priceSegment: null }, { price: { gte: 5000 } }] });
+  }
+
+  return { OR: conditions };
+}
+
 /**
  * ИСПРАВЛЕНО: Получает продукты по фильтрам шага правила
  * Улучшенная версия с поддержкой частичного совпадения step и нормализацией skinTypes
@@ -147,11 +204,7 @@ export async function getProductsForStep(
   })();
 
   if (skinTypeCondition) {
-    where.AND = Array.isArray(where.AND)
-      ? [...where.AND, skinTypeCondition]
-      : where.AND
-        ? [where.AND, skinTypeCondition]
-        : [skinTypeCondition];
+    addAndCondition(where, skinTypeCondition);
   }
 
   // Concerns: если указаны, ищем по ним, но не блокируем, если не найдено
@@ -166,12 +219,7 @@ export async function getProductsForStep(
       ],
     };
     
-    // Если уже есть AND, добавляем к нему, иначе создаем новый
-    if (where.AND) {
-      where.AND = Array.isArray(where.AND) ? [...where.AND, concernsCondition] : [where.AND, concernsCondition];
-    } else {
-      where.AND = [concernsCondition];
-    }
+    addAndCondition(where, concernsCondition);
   }
 
   if (step.is_non_comedogenic === true) {
@@ -182,23 +230,14 @@ export async function getProductsForStep(
     where.isFragranceFree = true;
   }
 
-  // Фильтрация по бюджету (priceSegment)
-  const ruleBudget = step.budget;
-  if (ruleBudget && ruleBudget !== 'любой') {
-    // Маппинг бюджетных сегментов: бюджетный -> mass, средний -> mid, премиум -> premium
-    const budgetMapping: Record<string, string> = {
-      'бюджетный': 'mass',
-      'средний': 'mid',
-      'премиум': 'premium',
-    };
-    
-    const priceSegment = budgetMapping[ruleBudget];
-    if (priceSegment) {
-      where.priceSegment = priceSegment;
-    }
-  } else if (userPriceSegment) {
-    // Если в правиле не указан бюджет, используем бюджет пользователя
-    where.priceSegment = userPriceSegment;
+  // P1c: бюджет пользователя — верхняя граница на этапе генерации RecommendationSession.
+  // Если правило шага просит premium, но пользователь выбрал "до 2000", пользовательский
+  // cap сильнее: иначе сессия сохраняла один premium-кандидат, и плану уже нечего было
+  // заменить. Средний бюджет допускает mass+mid; premium/любой не сужают подбор.
+  const allowedPriceSegments = getAllowedPriceSegmentsForBudget(step.budget, userPriceSegment);
+  const priceSegmentCondition = buildPriceSegmentCondition(allowedPriceSegments);
+  if (priceSegmentCondition) {
+    addAndCondition(where, priceSegmentCondition);
   }
 
   // Фильтрация по натуральности (если указано)
@@ -236,11 +275,7 @@ export async function getProductsForStep(
     };
     
     // Добавляем в AND условия
-    if (where.AND) {
-      where.AND = Array.isArray(where.AND) ? [...where.AND, activeIngredientsCondition] : [where.AND, activeIngredientsCondition];
-    } else {
-      where.AND = [activeIngredientsCondition];
-    }
+    addAndCondition(where, activeIngredientsCondition);
   }
 
   // Первая попытка: точный поиск
@@ -323,7 +358,11 @@ export async function getProductsForStep(
     // Раньше fallback сбрасывал и тип кожи → жирному пользователю просачивалась
     // маска/средство для СУХОЙ кожи. Лучше вернуть пустой шаг, чем чужой тип.
     if (skinTypeCondition) {
-      fallbackWhere.AND = [skinTypeCondition];
+      addAndCondition(fallbackWhere, skinTypeCondition);
+    }
+
+    if (priceSegmentCondition) {
+      addAndCondition(fallbackWhere, priceSegmentCondition);
     }
 
     const fallbackProducts = await prisma.product.findMany({
@@ -406,4 +445,3 @@ export async function getProductsForStep(
 
   return sorted.slice(0, step.max_items || 3);
 }
-

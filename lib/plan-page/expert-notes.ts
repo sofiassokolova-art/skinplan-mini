@@ -21,9 +21,21 @@ import type { ExpertNote } from './types';
 export function pickExpertNotes(
   currentDay: number,
   mainGoals: GoalKey[],
+  planStepCategories: string[] = [],
 ): ExpertNote[] {
   const phase = getPhaseForDay(currentDay);
-  const phaseTips = DAILY_TIPS.filter((t) => t.phase === phase);
+
+  // Совет, привязанный к средству (requiresStepPrefix), показываем только если
+  // в плане реально есть такой шаг. Иначе пользователь читает совет про сыворотку/
+  // ретинол, которых у него нет (частая жалоба на рассинхрон совета и плана).
+  const stepMatchesPrefix = (prefix: string): boolean =>
+    planStepCategories.some((s) => s.startsWith(prefix));
+
+  const phaseTips = DAILY_TIPS.filter(
+    (t) =>
+      t.phase === phase &&
+      (t.requiresStepPrefix === undefined || stepMatchesPrefix(t.requiresStepPrefix)),
+  );
 
   const goalSet = new Set(mainGoals);
 
@@ -32,15 +44,21 @@ export function pickExpertNotes(
   );
   const universal = phaseTips.filter((t) => t.goalKey === null);
 
-  // Объединяем приоритезированно. Дедупликация по id.
-  const pool = uniqueById([...goalSpecific, ...universal]);
+  // Детерминированный сдвиг по дню — «свежий совет каждый день». Ротируем ВНУТРИ
+  // каждой группы отдельно, а не по всему пулу: иначе при малом числе goal-specific
+  // советов (напр. после фильтра по шагам плана остался один) ротация всего пула
+  // выталкивала его за топ-2, и целевой совет пропадал. Сначала goal-specific, потом
+  // универсальные — приоритет целевых сохраняется.
+  const rotate = (arr: DailyTip[]): DailyTip[] => {
+    if (arr.length === 0) return arr;
+    const offset = (currentDay - 1) % arr.length;
+    return [...arr.slice(offset), ...arr.slice(0, offset)];
+  };
+
+  const pool = uniqueById([...rotate(goalSpecific), ...rotate(universal)]);
   if (pool.length === 0) return [];
 
-  // Детерминированный сдвиг по дню — каждый день первый виден другой совет.
-  const offset = (currentDay - 1) % pool.length;
-  const rotated = [...pool.slice(offset), ...pool.slice(0, offset)];
-
-  return rotated.slice(0, 2).map((tip, idx) => ({
+  return pool.slice(0, 2).map((tip, idx) => ({
     number: String(idx + 1).padStart(2, '0'),
     title: tip.title,
     text: tip.text,
