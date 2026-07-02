@@ -267,7 +267,7 @@ export function QuizInfoScreen({
     );
   }
 
-  // Экран "SkinIQ — ваш персональный анализ кожи"
+  // Экран "skiniq — ваш персональный анализ кожи"
   if (isPersonalAnalysisScreen) {
     return (
       <PersonalAnalysisScreen
@@ -522,8 +522,18 @@ export function QuizInfoScreen({
         })()
       : null;
 
+    // Лейбл чувствительности — длинное предложение («Практически никогда, кожа
+    // устойчивая»). Раньше брали только первое слово регуляркой → в карточке
+    // показывалось «Практически» (обрывок, непонятно). Маппим в короткий уровень.
     const sensitivityShort = typeof sensitivityLabel === 'string'
-      ? (sensitivityLabel.match(/^(Практически|Лёгкое|Заметное|Сильное)/i)?.[0] || null)
+      ? (() => {
+          const l = sensitivityLabel.toLowerCase();
+          if (/практически никогда|устойчив/.test(l)) return 'Низкая';
+          if (/лёгк|легк/.test(l)) return 'Лёгкая';
+          if (/заметн/.test(l)) return 'Заметная';
+          if (/сильн/.test(l)) return 'Высокая';
+          return null;
+        })()
       : null;
 
     return (
@@ -533,7 +543,7 @@ export function QuizInfoScreen({
           padding: 0,
           margin: 0,
           minHeight: '100vh',
-          background: `linear-gradient(rgba(244,242,238,0.45), rgba(244,242,238,0.65)), url(${skinPreviewBackgroundImage}) center / cover no-repeat fixed, var(--canvas)`,
+          background: `url(${skinPreviewBackgroundImage}) center / cover no-repeat fixed, var(--canvas)`,
           position: 'relative',
           width: '100%',
         }}>
@@ -829,7 +839,7 @@ export function QuizInfoScreen({
               fontWeight: 700, fontSize: 'clamp(20px, 6vw, 28px)', lineHeight: '1.25',
               color: '#000000', margin: '0 0 clamp(32px, 10vw, 52px) 0',
             }}>
-              SkinIQ делает уход за&nbsp;кожей{' '}
+              skiniq делает уход за&nbsp;кожей{' '}
               <span
                 style={{
                   background: 'linear-gradient(180deg, transparent 60%, var(--accent) 60%)',
@@ -857,7 +867,7 @@ export function QuizInfoScreen({
     );
   }
 
-  // Экран "SkinIQ заботится о вашем здоровье" (health_trust)
+  // Экран "skiniq заботится о вашем здоровье" (health_trust)
   if (screen.id === 'health_trust') {
     const cards = [
       {
@@ -868,7 +878,7 @@ export function QuizInfoScreen({
           </svg>
         ),
         title: 'Безопасность',
-        desc: 'Все рекомендации по уходу одобрены врачами дерматологами и абсолютно безопасны',
+        desc: 'Рекомендации по уходу составлены с опорой на дерматологические протоколы и учитывают ваши противопоказания',
       },
       {
         icon: (
@@ -910,7 +920,7 @@ export function QuizInfoScreen({
               fontWeight: 700, fontSize: 'clamp(20px, 6vw, 28px)', lineHeight: '1.25',
               color: '#000000', margin: '0', maxWidth: 'min(340px, 92%)',
             }}>
-              SkinIQ заботится
+              skiniq заботится
               <br />
               о вашем{' '}
               <span style={{

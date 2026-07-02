@@ -55,6 +55,9 @@ export default function FeedbackAdmin() {
   const [activeSection, setActiveSection] = useState<FeedbackSection>('products');
   const [activeProductTab, setActiveProductTab] = useState<'all' | 'love' | 'ok' | 'bad'>('all');
   const [error, setError] = useState<string | null>(null);
+  const [productPage, setProductPage] = useState(1);
+  const [planPage, setPlanPage] = useState(1);
+  const [pageInfo, setPageInfo] = useState({ productTotal: 0, planTotal: 0, limit: 50 });
   const [stats, setStats] = useState({
     products: { all: 0, love: 0, ok: 0, bad: 0 },
     planRecommendations: 0,
@@ -62,17 +65,31 @@ export default function FeedbackAdmin() {
     service: 0,
   });
 
+  const isPlanSection =
+    activeSection === 'plan_recommendations' ||
+    activeSection === 'plan_general' ||
+    activeSection === 'service';
+  const currentPage = isPlanSection ? planPage : productPage;
+
   // ИСПРАВЛЕНО (P1): Обёрнут в useCallback для предотвращения лишних перезагрузок
   const loadFeedback = useCallback(async () => {
     try {
       setLoading(true);
-      
-      // Формируем URL с параметром типа для plan feedback
-      let url = '/api/admin/feedback';
-      if (activeSection === 'plan_recommendations' || activeSection === 'plan_general' || activeSection === 'service') {
-        url += `?planFeedbackType=${activeSection}`;
+
+      // Формируем URL: пагинация + фильтр по типу.
+      // Списки и счётчики теперь считаются на сервере (а не по одной странице).
+      const params = new URLSearchParams();
+      if (isPlanSection) {
+        params.set('planFeedbackType', activeSection);
+        params.set('page', String(planPage));
+      } else {
+        params.set('page', String(productPage));
+        if (activeProductTab !== 'all') {
+          params.set('feedback', `bought_${activeProductTab}`);
+        }
       }
-      
+      const url = `/api/admin/feedback?${params.toString()}`;
+
       // ИСПРАВЛЕНО (P0): Используем только cookie для авторизации
       const response = await fetch(url, {
         headers: {
@@ -91,39 +108,31 @@ export default function FeedbackAdmin() {
       }
 
       const data = await response.json();
-      
-      // Фильтруем отзывы по продуктам - исключаем 'not_bought' (они не являются отзывами о покупке)
+
+      // not_bought сервер уже исключает; фильтр оставлен как страховка.
       const allProductFeedback = (data.productFeedback || []) as ProductFeedback[];
-      const boughtFeedback = allProductFeedback.filter((f) => f.feedback !== 'not_bought');
-      setProductFeedback(boughtFeedback);
-      
-      // Фильтруем отзывы по плану по типу в зависимости от активной секции
-      const allPlanFeedback = data.planFeedback || [];
-      let filteredPlanFeedback = allPlanFeedback;
-      
-      if (activeSection === 'plan_recommendations') {
-        filteredPlanFeedback = allPlanFeedback.filter((f: PlanFeedback) => f.type === 'plan_recommendations');
-      } else if (activeSection === 'plan_general') {
-        filteredPlanFeedback = allPlanFeedback.filter((f: PlanFeedback) => f.type === 'plan_general');
-      } else if (activeSection === 'service') {
-        filteredPlanFeedback = allPlanFeedback.filter((f: PlanFeedback) => f.type === 'service');
-      }
-      
-      setPlanFeedback(filteredPlanFeedback);
-      
-      // Обновляем статистику - считаем только отзывы о покупке (исключаем 'not_bought')
-      const productStats = {
-        all: boughtFeedback.length,
-        love: boughtFeedback.filter((f) => f.feedback === 'bought_love').length,
-        ok: boughtFeedback.filter((f) => f.feedback === 'bought_ok').length,
-        bad: boughtFeedback.filter((f) => f.feedback === 'bought_bad').length,
-      };
-      
+      setProductFeedback(allProductFeedback.filter((f) => f.feedback !== 'not_bought'));
+
+      // План-отзывы сервер фильтрует по planFeedbackType — отдаём как есть.
+      setPlanFeedback((data.planFeedback || []) as PlanFeedback[]);
+
+      // Счётчики бейджей — из серверных агрегатов по всей БД.
       setStats({
-        products: productStats,
+        products: {
+          all: data.productFeedbackStats?.all || 0,
+          love: data.productFeedbackStats?.love || 0,
+          ok: data.productFeedbackStats?.ok || 0,
+          bad: data.productFeedbackStats?.bad || 0,
+        },
         planRecommendations: data.planFeedbackStats?.planRecommendations || 0,
         planGeneral: data.planFeedbackStats?.planGeneral || 0,
         service: data.planFeedbackStats?.service || 0,
+      });
+
+      setPageInfo({
+        productTotal: data.pagination?.productFeedbackTotal || 0,
+        planTotal: data.pagination?.planFeedbackTotal || 0,
+        limit: data.pagination?.limit || 50,
       });
     } catch (err: any) {
       console.error('Ошибка загрузки отзывов:', err);
@@ -131,26 +140,36 @@ export default function FeedbackAdmin() {
     } finally {
       setLoading(false);
     }
-  }, [activeSection]);
+  }, [activeSection, activeProductTab, isPlanSection, productPage, planPage, router]);
 
   useEffect(() => {
     loadFeedback();
   }, [loadFeedback]);
 
-  // Перезагружаем данные при смене секции для plan feedback
-  useEffect(() => {
-    if (!loading && (activeSection === 'plan_recommendations' || activeSection === 'plan_general' || activeSection === 'service')) {
-      loadFeedback();
-    }
-  }, [activeSection, loading, loadFeedback]);
+  // Серверная выборка уже отфильтрована по активной вкладке/типу — показываем как есть.
+  const filteredProductFeedback = productFeedback;
 
-  const filteredProductFeedback = productFeedback.filter((f) => {
-    if (activeProductTab === 'all') return true;
-    if (activeProductTab === 'love') return f.feedback === 'bought_love';
-    if (activeProductTab === 'ok') return f.feedback === 'bought_ok';
-    if (activeProductTab === 'bad') return f.feedback === 'bought_bad';
-    return true;
-  });
+  // Кол-во страниц для текущей секции.
+  const totalForSection = isPlanSection ? pageInfo.planTotal : pageInfo.productTotal;
+  const totalPages = Math.max(1, Math.ceil(totalForSection / pageInfo.limit));
+
+  // Сброс на первую страницу при смене секции.
+  const handleSectionChange = (section: FeedbackSection) => {
+    setActiveSection(section);
+    setPlanPage(1);
+    setProductPage(1);
+  };
+
+  // Сброс на первую страницу при смене вкладки продуктов.
+  const handleProductTabChange = (tab: 'all' | 'love' | 'ok' | 'bad') => {
+    setActiveProductTab(tab);
+    setProductPage(1);
+  };
+
+  const goToPage = (page: number) => {
+    if (isPlanSection) setPlanPage(page);
+    else setProductPage(page);
+  };
 
   const getSectionLabel = (section: FeedbackSection) => {
     switch (section) {
@@ -196,7 +215,7 @@ export default function FeedbackAdmin() {
           return (
             <button
               key={section.key}
-              onClick={() => setActiveSection(section.key as FeedbackSection)}
+              onClick={() => handleSectionChange(section.key as FeedbackSection)}
               className={cn(
                 'px-4 py-2 border-b-2 transition-colors flex items-center gap-2',
                 activeSection === section.key
@@ -230,7 +249,7 @@ export default function FeedbackAdmin() {
             return (
               <button
                 key={tab.key}
-                onClick={() => setActiveProductTab(tab.key as any)}
+                onClick={() => handleProductTabChange(tab.key as any)}
                 className={cn(
                   'px-6 py-3 border-b-2 transition-colors flex items-center gap-2',
                   activeProductTab === tab.key
@@ -376,6 +395,30 @@ export default function FeedbackAdmin() {
             )
           )}
         </div>
+
+        {/* Пагинация */}
+        {totalForSection > pageInfo.limit && (
+          <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
+            <button
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage <= 1}
+              className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+            >
+              Назад
+            </button>
+            <span className="text-sm text-gray-600">
+              Страница {currentPage} из {totalPages}
+              <span className="text-gray-400"> · всего {totalForSection}</span>
+            </span>
+            <button
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage >= totalPages}
+              className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+            >
+              Вперёд
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

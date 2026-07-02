@@ -5,9 +5,9 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { POST as postAnswers, GET as getAnswers } from '@/app/api/questionnaire/answers/route';
-import { createPrismaTestClient } from '@/tests/helpers/prisma-test-client';
+import { createPrismaTestClient, isPrismaTestDatabaseAvailable } from '@/tests/helpers/prisma-test-client';
 
-const hasDatabase = !!process.env.DATABASE_URL;
+let hasDatabase = !!process.env.DATABASE_URL;
 const prismaTest = createPrismaTestClient();
 
 const testUserId = 'test-user-api-answers';
@@ -55,6 +55,7 @@ describe('POST /api/questionnaire/answers', () => {
   let testQuestionIds: number[] = [];
 
   beforeAll(async () => {
+    hasDatabase = await isPrismaTestDatabaseAvailable(prismaTest);
     if (!hasDatabase) {
       console.warn('⚠️ DATABASE_URL not set, skipping API tests');
       return;
@@ -176,6 +177,7 @@ describe('GET /api/questionnaire/answers', () => {
   let testQuestionnaireId: number | null = null;
 
   beforeAll(async () => {
+    hasDatabase = await isPrismaTestDatabaseAvailable(prismaTest);
     if (!hasDatabase) {
       console.warn('⚠️ DATABASE_URL not set, skipping API tests');
       return;

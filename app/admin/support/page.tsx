@@ -488,7 +488,7 @@ export default function SupportAdmin() {
                   Спасибо, план обновлён
                 </button>
                 <button
-                  onClick={() => sendTemplate('Скидка 15% на ваш следующий заказ → https://t.me/skiniq_bot')}
+                  onClick={() => sendTemplate('Скидка 15% на ваш следующий заказ → https://t.me/skiniq_app_bot')}
                   className="text-sm px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
                 >
                   Скидка 15%

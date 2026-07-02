@@ -68,7 +68,7 @@ const productsData = [
 
   // 2. ОЧИЩЕНИЕ — BALANCING (10 средств)
   { id: "laroche_effaclar_gel", brand: "La Roche-Posay", name: "Effaclar Gel", segment: "mid", skinTypes: ["combination_oily", "oily"], stepCategory: "cleanser_balancing" },
-  { id: "bioderma_sebium_gel", brand: "Bioderma", name: "Sébium Gel", segment: "mid", skinTypes: ["combination_oily", "oily"], stepCategory: "cleanser_balancing" },
+  { id: "bioderma_sebium_gel", brand: "Bioderma", name: "Sébium Gel", segment: "mid", skinTypes: ["combination_oily", "oily"], stepCategory: "cleanser_balancing", avoidIf: ["high_sensitivity"] },
   { id: "cerave_foaming", brand: "CeraVe", name: "Foaming Cleanser", segment: "budget", skinTypes: ["combination_oily", "oily"], stepCategory: "cleanser_balancing" },
   { id: "cosrx_lowph_cleanser", brand: "COSRX", name: "Low pH Good Morning Gel", segment: "mid", skinTypes: ["normal", "combination_oily", "oily"], stepCategory: "cleanser_balancing" },
   { id: "medi_peel_ac_bubble", brand: "Medi-Peel", name: "A.C Bubble Cleanser", segment: "mid", skinTypes: ["combination_oily", "oily"], stepCategory: "cleanser_balancing" },
@@ -171,7 +171,7 @@ const productsData = [
 
   // balancing
   { id: "effaclar_mat", brand: "La Roche-Posay", name: "Effaclar MAT", segment: "mid", skinTypes: ["combination_oily", "oily"], stepCategory: "moisturizer_balancing" },
-  { id: "bioderma_sebium_mat", brand: "Bioderma", name: "Sébium Mat Control", segment: "mid", skinTypes: ["oily"], stepCategory: "moisturizer_balancing" },
+  { id: "bioderma_sebium_mat", brand: "Bioderma", name: "Sébium Mat Control", segment: "mid", skinTypes: ["oily"], stepCategory: "moisturizer_balancing", avoidIf: ["high_sensitivity"] },
   { id: "for_me_mat_gel", brand: "For Me", name: "Matte Gel Cream", segment: "budget", skinTypes: ["oily"], stepCategory: "moisturizer_balancing" },
 
   // barrier
@@ -292,6 +292,7 @@ async function main() {
           category: step, // Базовый category
           skinTypes,
           priceSegment,
+          avoidIf: productData.avoidIf || [],
           published: true,
           status: 'published',
         },
@@ -318,4 +319,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-

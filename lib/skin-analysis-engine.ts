@@ -99,6 +99,14 @@ export function calculateSkinAxes(answers: QuestionnaireAnswers | NormalizedQues
   
   const a = normalized; // для краткости
 
+  // seasonal_changes стал multi_choice → seasonality/seasonChange может быть массивом.
+  // Сводим к строке для подстрочных проверок ниже (работает и для строки, и для массива).
+  const seasonStr = (() => {
+    const raw: unknown = (a.seasonality as unknown) ?? (a as any).seasonChange ?? null;
+    if (Array.isArray(raw)) return raw.join(' ').toLowerCase();
+    return typeof raw === 'string' ? raw.toLowerCase() : '';
+  })();
+
   // ИСПРАВЛЕНО (P0): 1. Oiliness (жирность) - null если данных нет
   const oiliness = (() => {
     // ИСПРАВЛЕНО: Если нет данных о типе кожи - возвращаем null (неизвестно)
@@ -110,7 +118,7 @@ export function calculateSkinAxes(answers: QuestionnaireAnswers | NormalizedQues
     if (a.skinType === 'dry') score -= 30;
     if (Array.isArray(a.concerns) && a.concerns.some((c: string) => c.includes('Жирность') || c.includes('блеск'))) score += 30;
     // ИСПРАВЛЕНО: Используем seasonality вместо seasonChange
-    if (a.seasonality === 'summer_oilier' || (typeof a.seasonality === 'string' && a.seasonality.includes('лето'))) score += 15;
+    if (seasonStr.includes('summer_oilier') || seasonStr.includes('лет') || seasonStr.includes('жирн')) score += 15;
     return Math.max(0, Math.min(100, score));
   })();
 
@@ -123,7 +131,7 @@ export function calculateSkinAxes(answers: QuestionnaireAnswers | NormalizedQues
     if (Array.isArray(a.concerns) && a.concerns.some((c: string) => c.includes('Сухость') || c.includes('стянутость'))) score -= 40;
     if (a.skinType === 'dry') score -= 35;
     // ИСПРАВЛЕНО: Используем seasonality вместо seasonChange
-    if (a.seasonality === 'winter_drier' || (typeof a.seasonality === 'string' && a.seasonality.includes('зима'))) score -= 20;
+    if (seasonStr.includes('winter_drier') || seasonStr.includes('зим') || seasonStr.includes('сух')) score -= 20;
     if (Array.isArray(a.habits) && a.habits.some((h: string) => h.includes('не высыпаюсь') || h.includes('мало сплю'))) score -= 15;
     return Math.max(0, Math.min(100, score));
   })();

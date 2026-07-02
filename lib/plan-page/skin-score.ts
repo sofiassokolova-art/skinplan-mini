@@ -69,17 +69,7 @@ function labelFromScore(score: number): SkinScoreInfo['label'] {
 function buildScoreDescription(profile: SkinProfile, score: number): string {
   const fragments: string[] = [];
 
-  // Точка отсчёта
-  if (score >= 80) {
-    fragments.push('По ответам анкеты кожа в стабильном состоянии — выраженных проблем не выявлено');
-  } else if (score >= 60) {
-    fragments.push('По ответам анкеты кожа выглядит реактивной');
-  } else if (score >= 40) {
-    fragments.push('По ответам анкеты кожа испытывает заметную нагрузку');
-  } else {
-    fragments.push('По ответам анкеты состояние кожи требует деликатного подхода');
-  }
-
+  // Сначала собираем конкретные триггеры — от них зависит формулировка опенера.
   const triggers: string[] = [];
 
   if ((profile.acneLevel ?? 0) >= 2) {
@@ -103,7 +93,25 @@ function buildScoreDescription(profile: SkinProfile, score: number): string {
     triggers.push('повышенный риск пигментации и поствоспалительных следов');
   }
 
-  if (triggers.length > 0) {
+  const hasTriggers = triggers.length > 0;
+
+  // Точка отсчёта. ВАЖНО: при высоком скоре нельзя писать «проблем не выявлено»,
+  // если ниже перечисляем триггер (напр. обезвоженность) — получалось противоречие
+  // «выраженных проблем не выявлено: кожа обезвожена». Поэтому при наличии триггеров
+  // опенер мягко признаёт, что есть на что обратить внимание.
+  if (score >= 80) {
+    fragments.push(hasTriggers
+      ? 'По ответам анкеты кожа в целом стабильна, но есть на что обратить внимание'
+      : 'По ответам анкеты кожа в стабильном состоянии — выраженных проблем не выявлено');
+  } else if (score >= 60) {
+    fragments.push('По ответам анкеты кожа выглядит реактивной');
+  } else if (score >= 40) {
+    fragments.push('По ответам анкеты кожа испытывает заметную нагрузку');
+  } else {
+    fragments.push('По ответам анкеты состояние кожи требует деликатного подхода');
+  }
+
+  if (hasTriggers) {
     fragments.push(': ' + triggers.join(', '));
   }
 

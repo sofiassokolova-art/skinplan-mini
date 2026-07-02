@@ -8,6 +8,19 @@ import { api } from '@/lib/api';
 
 const CART_QUERY_KEY = 'cart';
 
+async function refreshCartCache(queryClient: ReturnType<typeof useQueryClient>) {
+  try {
+    await queryClient.fetchQuery({
+      queryKey: [CART_QUERY_KEY],
+      queryFn: () => api.getCart() as Promise<any>,
+      staleTime: 0,
+    });
+  } catch {
+    // Если фоновое обновление не удалось, хотя бы помечаем кэш устаревшим.
+    queryClient.invalidateQueries({ queryKey: [CART_QUERY_KEY] });
+  }
+}
+
 /**
  * Хук для получения корзины (с кэшированием)
  */
@@ -177,9 +190,23 @@ export function useAddToCart() {
   return useMutation({
     mutationFn: ({ productId, quantity = 1 }: { productId: number; quantity?: number }) =>
       api.addToCart(productId, quantity),
-    onSuccess: () => {
-      // Инвалидируем кэш корзины после добавления
-      queryClient.invalidateQueries({ queryKey: [CART_QUERY_KEY] });
+    onSuccess: async () => {
+      await refreshCartCache(queryClient);
+    },
+  });
+}
+
+/**
+ * Хук для добавления нескольких товаров в корзину одним UI-действием.
+ */
+export function useAddManyToCart() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (productIds: number[]) =>
+      Promise.all(productIds.map((productId) => api.addToCart(productId, 1))),
+    onSuccess: async () => {
+      await refreshCartCache(queryClient);
     },
   });
 }
@@ -192,10 +219,8 @@ export function useRemoveFromCart() {
 
   return useMutation({
     mutationFn: (productId: number) => api.removeFromCart(productId),
-    onSuccess: () => {
-      // Инвалидируем кэш корзины после удаления
-      queryClient.invalidateQueries({ queryKey: [CART_QUERY_KEY] });
+    onSuccess: async () => {
+      await refreshCartCache(queryClient);
     },
   });
 }
-

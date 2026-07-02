@@ -241,7 +241,9 @@ export default function FunnelAdmin() {
       {/* Конверсия по экранам анкеты */}
       {screenConversions.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">Конверсия по экранам анкеты (41 экран)</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-6">
+            Конверсия по экранам анкеты ({screenConversions.length} экранов)
+          </h2>
           <div className="overflow-x-auto">
             <div className="mb-4 text-sm text-gray-600">
               Всего начали анкету: {funnelData.startedQuiz} пользователей

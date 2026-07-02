@@ -48,6 +48,11 @@ export interface RuleContext {
   // Concerns из ответов пользователя (для правил, которые проверяют concerns: { hasSome: [...] })
   concerns?: string[];
 
+  // Goals (skin_goals) пользователя в виде GoalKey-токенов (antiage/pores/…).
+  // ВАЖНО: цели — отдельный сигнал от concerns. Раньше движок их вообще не видел,
+  // и молодой пользователь с целью antiage/pores проваливался в сезонный фолбэк.
+  goals?: string[];
+
   // Дополнительные поля
   hasPregnancy?: boolean;
   pregnant?: boolean;
@@ -87,7 +92,8 @@ export function buildRuleContext(
   skinScores: Array<{ axis: string; value: number }>,
   normalizedSkinType: string | null,
   normalizedSensitivity: string | null,
-  concerns?: string[] // ИСПРАВЛЕНО: Добавлен параметр concerns для правил, которые проверяют concerns: { hasSome: [...] }
+  concerns?: string[], // ИСПРАВЛЕНО: Добавлен параметр concerns для правил, которые проверяют concerns: { hasSome: [...] }
+  goals?: string[] // Цели (skin_goals) как GoalKey-токены, для правил { goals: { hasSome: [...] } }
 ): RuleContext {
   const medicalMarkers = (profile.medicalMarkers as Record<string, any> | null) || {};
 
@@ -157,7 +163,10 @@ export function buildRuleContext(
     
     // Concerns из ответов пользователя (для правил, которые проверяют concerns: { hasSome: [...] })
     concerns: concerns,
-    
+
+    // Goals (skin_goals) как GoalKey-токены
+    goals: goals ?? [],
+
     // Дополнительные поля
     hasPregnancy: profile.hasPregnancy || false,
     pregnant: profile.hasPregnancy || false,

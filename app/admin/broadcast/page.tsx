@@ -576,7 +576,7 @@ export default function BroadcastAdmin() {
                     type="url"
                     value={button.url}
                     onChange={(e) => updateButton(index, 'url', e.target.value)}
-                    placeholder="https://t.me/skiniq_bot?start=..."
+                    placeholder="https://t.me/skiniq_app_bot?start=..."
                     className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   />
                 </div>

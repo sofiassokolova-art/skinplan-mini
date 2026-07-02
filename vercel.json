@@ -20,6 +20,12 @@
     },
     "app/api/cron/funnel-nudges/route.ts": {
       "maxDuration": 60
+    },
+    "app/api/cron/advcake-sync/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/admin/advcake/route.ts": {
+      "maxDuration": 60
     }
   }
 }

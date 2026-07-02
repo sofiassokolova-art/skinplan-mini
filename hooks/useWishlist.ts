@@ -6,6 +6,18 @@ import { api } from '@/lib/api';
 
 const WISHLIST_QUERY_KEY = 'wishlist';
 
+async function refreshWishlistCache(queryClient: ReturnType<typeof useQueryClient>) {
+  try {
+    await queryClient.fetchQuery({
+      queryKey: [WISHLIST_QUERY_KEY],
+      queryFn: () => api.getWishlist() as Promise<any>,
+      staleTime: 0,
+    });
+  } catch {
+    queryClient.invalidateQueries({ queryKey: [WISHLIST_QUERY_KEY] });
+  }
+}
+
 /**
  * Хук для получения избранного (с кэшированием)
  */
@@ -26,9 +38,8 @@ export function useAddToWishlist() {
 
   return useMutation({
     mutationFn: (productId: number) => api.addToWishlist(productId),
-    onSuccess: () => {
-      // Инвалидируем кэш избранного после добавления
-      queryClient.invalidateQueries({ queryKey: [WISHLIST_QUERY_KEY] });
+    onSuccess: async () => {
+      await refreshWishlistCache(queryClient);
     },
   });
 }
@@ -41,10 +52,8 @@ export function useRemoveFromWishlist() {
 
   return useMutation({
     mutationFn: (productId: number) => api.removeFromWishlist(productId),
-    onSuccess: () => {
-      // Инвалидируем кэш избранного после удаления
-      queryClient.invalidateQueries({ queryKey: [WISHLIST_QUERY_KEY] });
+    onSuccess: async () => {
+      await refreshWishlistCache(queryClient);
     },
   });
 }
-

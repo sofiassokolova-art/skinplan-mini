@@ -121,7 +121,10 @@ export async function GET(request: NextRequest) {
     });
 
     // ИСПРАВЛЕНО (P1): Вычисляем доход через aggregate (_sum по amount)
-    // Доход от покупки плана: суммируем amount успешных платежей с productCode='plan_access'
+    // Доход с планов: первичная покупка (plan_access) + продления (subscription_month,
+    // plan_renewal_discount). retake_* — это перепрохождение анкеты, не доход с плана.
+    // amount хранится в КОПЕЙКАХ (см. PRODUCTS в app/api/payments/create) — делим на 100,
+    // чтобы дашборд показывал рубли, а не раздувал сумму в 100 раз.
     const revenue = await prisma.payment
       .aggregate({
         _sum: {
@@ -129,10 +132,12 @@ export async function GET(request: NextRequest) {
         },
         where: {
           status: 'succeeded',
-          productCode: 'plan_access',
+          productCode: {
+            in: ['plan_access', 'subscription_month', 'plan_renewal_discount'],
+          },
         },
       })
-      .then((res) => res._sum.amount || 0)
+      .then((res) => (res._sum.amount || 0) / 100)
       .catch((err) => {
         console.error('❌ Error calculating revenue:', err);
         return 0;

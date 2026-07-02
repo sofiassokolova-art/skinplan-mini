@@ -60,7 +60,7 @@ export function buildDomainContext(input: BuildDomainContextInput): DomainContex
       questionnaireAnswers.habits = Array.isArray(value) 
         ? value.filter((v): v is string => typeof v === 'string')
         : (typeof value === 'string' ? [value] : [String(value)]);
-    } else if (code === 'diagnoses') {
+    } else if (code === 'diagnoses' || code === 'medical_diagnoses') {
       questionnaireAnswers.diagnoses = Array.isArray(value) 
         ? value.filter((v): v is string => typeof v === 'string')
         : (typeof value === 'string' ? [value] : [String(value)]);
@@ -71,12 +71,16 @@ export function buildDomainContext(input: BuildDomainContextInput): DomainContex
     // ИСПРАВЛЕНО (P0): Маппинг кодов анкеты - используем канонические ключи
     // seasonality (не season_change), spf_usage (не spf_frequency)
     } else if (code === 'seasonality' || code === 'season_change' || code === 'seasonChange') {
-      // ИСПРАВЛЕНО: Маппим на seasonality для канонической схемы
-      questionnaireAnswers.seasonality = Array.isArray(value) 
-        ? (typeof value[0] === 'string' ? value[0] : String(value[0])) as any
-        : (typeof value === 'string' ? value : String(value)) as any;
-      // Обратная совместимость
-      questionnaireAnswers.seasonChange = questionnaireAnswers.seasonality as any;
+      // seasonal_changes теперь multi_choice. Канонический single для analysis-engine
+      // (ось жирности): один выбор → он; несколько противоречивых → нейтрально (null),
+      // иначе нудж по сезону получался бы случайным. seasonChange несёт ПОЛНЫЙ список
+      // (массив) для сезонной адаптации плана (normalizeSeasonalProfile разбирает оба флага).
+      const seasonList = Array.isArray(value)
+        ? value.filter((v): v is string => typeof v === 'string')
+        : (typeof value === 'string' ? [value] : value == null ? [] : [String(value)]);
+      questionnaireAnswers.seasonality = (seasonList.length === 1 ? seasonList[0] : null) as any;
+      // Обратная совместимость + multi: план получает весь список.
+      questionnaireAnswers.seasonChange = (seasonList.length === 1 ? seasonList[0] : seasonList) as any;
     } else if (code === 'retinol_reaction' || code === 'retinolReaction') {
       questionnaireAnswers.retinolReaction = Array.isArray(value) 
         ? (typeof value[0] === 'string' ? value[0] : String(value[0]))
@@ -92,7 +96,7 @@ export function buildDomainContext(input: BuildDomainContextInput): DomainContex
       questionnaireAnswers.sunExposure = Array.isArray(value) 
         ? (typeof value[0] === 'string' ? value[0] : String(value[0]))
         : (typeof value === 'string' ? value : String(value));
-    } else if (code === 'sensitivity_level' || code === 'sensitivityLevel') {
+    } else if (code === 'skin_sensitivity' || code === 'sensitivity_level' || code === 'sensitivityLevel') {
       questionnaireAnswers.sensitivityLevel = Array.isArray(value) 
         ? (typeof value[0] === 'string' ? value[0] : String(value[0]))
         : (typeof value === 'string' ? value : String(value)) || 'low';
@@ -179,4 +183,3 @@ export function buildDomainContext(input: BuildDomainContextInput): DomainContex
 
   return context;
 }
-

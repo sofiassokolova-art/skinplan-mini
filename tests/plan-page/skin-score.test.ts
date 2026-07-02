@@ -114,6 +114,15 @@ describe('calcSkinScore', () => {
     expect(withPigmentation.description).toMatch(/пигментации/i);
   });
 
+  it('не пишет "проблем не выявлено", если высокий скор содержит конкретный триггер', () => {
+    const result = calcSkinScore(makeProfile({ dehydrationLevel: 3 }));
+
+    expect(result.score).toBe(85);
+    expect(result.description).not.toMatch(/проблем не выявлено/i);
+    expect(result.description).toMatch(/в целом стабильна, но есть на что обратить внимание/i);
+    expect(result.description).toMatch(/обезвожен/i);
+  });
+
   it('описание содержит стратегию плана, согласованную со скором', () => {
     const high = calcSkinScore(makeProfile());
     expect(high.description).toMatch(/профилактик/i);

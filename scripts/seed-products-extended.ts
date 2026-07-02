@@ -180,6 +180,7 @@ const PRODUCTS = [
     skinTypes: ['combo'],
     concerns: ['pores'],
     ingredients: ['цинк', 'медь'],
+    avoidIf: ['high_sensitivity'],
     price: 1100,
     priceSegment: 'mid',
     isFragranceFree: true,
@@ -770,6 +771,8 @@ async function seedProductsExtended() {
       step: productData.step,
       skinTypes: productData.skinTypes,
       concerns: productData.concerns,
+      activeIngredients: productData.ingredients,
+      avoidIf: productData.avoidIf || [],
       isFragranceFree: productData.isFragranceFree,
       isNonComedogenic: productData.isNonComedogenic,
       priceSegment: productData.priceSegment,
@@ -809,4 +812,3 @@ seedProductsExtended()
   .finally(async () => {
     await prisma.$disconnect();
   });
-

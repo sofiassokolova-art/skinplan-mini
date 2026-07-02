@@ -31,7 +31,7 @@ export function deriveFocusKeys(labels: Array<string | null | undefined>): Set<s
   for (const raw of labels) {
     const l = String(raw ?? '').toLowerCase();
     if (/акне|высыпан|прыщ|acne/.test(l)) keys.add('acne');
-    if (/пор[ыа]|менее заметн|pores/.test(l)) keys.add('pores');
+    if (/пор[ыа]|менее заметн|(чёрн|черн)\S*\s*точ|комедон|blackhead|pores/.test(l)) keys.add('pores');
     if (/жирн|блеск|сальн|oili/.test(l)) keys.add('oiliness');
     if (/пигмент|неровн|выровнять тон|пятн|pigment/.test(l)) keys.add('pigmentation');
     if (/морщин|возраст|старени|мелкие лини|antiage|wrinkle/.test(l)) keys.add('wrinkles');

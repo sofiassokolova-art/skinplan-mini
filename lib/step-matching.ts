@@ -35,11 +35,17 @@ export function mapStepToStepCategory(
   const isCleanserContext = stepStr.includes('cleanser') || categoryStr === 'cleanser';
   const isTonerContext = stepStr.includes('toner') || categoryStr === 'toner';
   const isSerumContext = stepStr.includes('serum') || categoryStr === 'serum';
+  // Бальзам для губ. step='lip_care' иногда имеет ошибочный category='moisturizer'
+  // (Mixit Lip Balm), из-за чего лип-балм просачивался в слот крема для лица и
+  // вытеснял настоящий moisturizer. Шаг lip_care — приоритетнее category: если это
+  // средство для губ, оно НЕ должно попадать в moisturizer-категории.
+  const isLipContext = stepStr.startsWith('lip') || categoryStr === 'lip_care' || categoryStr === 'lip';
   const isMoisturizerContext =
-    stepStr.includes('moisturizer') ||
-    stepStr.includes('cream') ||
-    categoryStr === 'moisturizer' ||
-    categoryStr === 'cream';
+    !isLipContext &&
+    (stepStr.includes('moisturizer') ||
+      stepStr.includes('cream') ||
+      categoryStr === 'moisturizer' ||
+      categoryStr === 'cream');
 
   // --- Cleanser ---
   const oilPattern = /\b(oil|масло)\b/i;
@@ -164,7 +170,7 @@ export function mapStepToStepCategory(
     categories.push('moisturizer_barrier');
   } else if (stepStr.startsWith('moisturizer_soothing') || (isMoisturizerContext && stepStr.includes('soothing'))) {
     categories.push('moisturizer_soothing');
-  } else if (stepStr === 'moisturizer' || stepStr === 'cream' || categoryStr === 'moisturizer' || categoryStr === 'cream') {
+  } else if (!isLipContext && (stepStr === 'moisturizer' || stepStr === 'cream' || categoryStr === 'moisturizer' || categoryStr === 'cream')) {
     const normalizedSkinType = (skinType || '').toLowerCase();
     if (normalizedSkinType === 'dry' || normalizedSkinType === 'combination_dry') {
       categories.push('moisturizer_barrier', 'moisturizer_soothing', 'moisturizer_light');

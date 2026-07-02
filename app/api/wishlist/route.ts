@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { ApiResponse } from '@/lib/api-response';
 import { requireTelegramAuth, tryGetTelegramIdentityFromRequest } from '@/lib/auth/telegram-auth';
+import { priceFloor } from '@/lib/price-display';
 
 // GET - получение списка избранного
 export async function GET(request: NextRequest) {
@@ -87,6 +88,8 @@ export async function GET(request: NextRequest) {
         imageUrl: item.product.imageUrl,
         link: item.product.link,
         marketLinks: item.product.marketLinks,
+        // Не точная цена, а округлённый вниз «пол» для показа «от X ₽».
+        priceFrom: priceFloor(item.product.price),
       },
       feedback: feedbackMap.get(item.productId) || 'not_bought',
       createdAt: item.createdAt,

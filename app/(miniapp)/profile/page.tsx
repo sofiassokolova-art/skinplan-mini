@@ -45,8 +45,8 @@ const BODY_FONT =
 
 const FAQ_ITEMS: Array<{ question: string; answer: string }> = [
   {
-    question: 'Как работает SkinIQ?',
-    answer: 'SkinIQ анализирует вашу кожу на основе ответов в анкете и создает персональный 28-дневный план ухода. Мы учитываем тип кожи, проблемы, чувствительность и другие факторы для подбора оптимальных средств.',
+    question: 'Как работает skiniq?',
+    answer: 'skiniq анализирует вашу кожу на основе ответов в анкете и создает персональный 28-дневный план ухода. Мы учитываем тип кожи, проблемы, чувствительность и другие факторы для подбора оптимальных средств.',
   },
   {
     question: 'Как часто нужно обновлять план?',
@@ -635,7 +635,7 @@ export default function PersonalCabinet() {
           radial-gradient(78% 32% at 10% 92%, rgba(213,254,97,0.46) 0%, transparent 62%),
           var(--canvas);}
         .pf-rd .pf-topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 20px 14px;}
-        .pf-rd .pf-logo{font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:18px;font-weight:700;letter-spacing:-0.4px;color:var(--ink);}
+        .pf-rd .pf-logo{font-family:var(--font-inter),-apple-system,BlinkMacSystemFont,sans-serif;font-size:18px;font-weight:500;letter-spacing:0;color:var(--ink);text-transform:lowercase;}
         .pf-rd .pf-head{display:flex;align-items:center;gap:16px;padding:0 20px 18px;}
         .pf-rd .pf-avatar{width:64px;height:64px;flex-shrink:0;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px rgba(255,255,255,0.9),0 6px 18px rgba(10,10,10,0.18);}
         .pf-rd .pf-avatar-fallback{background:linear-gradient(135deg,#2A2A2A,var(--ink));color:var(--accent);display:grid;place-items:center;font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:22px;font-weight:600;}
@@ -692,7 +692,7 @@ export default function PersonalCabinet() {
 
       {/* Topbar */}
       <div className="pf-topbar">
-        <div className="pf-logo">SkinIQ</div>
+        <div className="pf-logo">skiniq</div>
       </div>
 
       {/* Шапка: аватар + имя */}
@@ -718,7 +718,7 @@ export default function PersonalCabinet() {
                 <div className="pf-eyebrow">Ваш план ухода</div>
                 <div className="pf-plan-value">День {planInfo.currentDay} из {planTotalDays}</div>
                 {daysInApp >= 1 && (
-                  <div className="pf-plan-sub">Со SkinIQ уже {daysInApp} {daysWord(daysInApp)}</div>
+                  <div className="pf-plan-sub">Со skiniq уже {daysInApp} {daysWord(daysInApp)}</div>
                 )}
               </div>
               <div className="pf-plan-badge">{planPct}%</div>

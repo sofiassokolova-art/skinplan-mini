@@ -112,14 +112,15 @@ function RecognizeYourselfScreenComponent({
         <span
           style={{
             fontFamily:
-              "var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 400,
+              "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 500,
             fontSize: 'clamp(18px, 5vw, 24px)',
             color: 'var(--canvas-white)',
             letterSpacing: '0px',
+            textTransform: 'lowercase',
           }}
         >
-          SkinIQ
+          skiniq
         </span>
       </div>
 

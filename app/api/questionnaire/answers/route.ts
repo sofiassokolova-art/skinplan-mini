@@ -49,6 +49,20 @@ function serializeProfile(profile: any) {
   };
 }
 
+function normalizeDiagnosisLabel(label: string): string | null {
+  const normalizedLabel = label.toLowerCase();
+  if (normalizedLabel.includes('нет')) return null;
+  if (normalizedLabel.includes('акне') || normalizedLabel.includes('acne')) return 'acne';
+  if (normalizedLabel.includes('розацеа') || normalizedLabel.includes('rosacea')) return 'rosacea';
+  if (normalizedLabel.includes('себор') || normalizedLabel.includes('seborr')) return 'seborrheic_dermatitis';
+  if (normalizedLabel.includes('атоп') || normalizedLabel.includes('atopic')) return 'atopic_dermatitis';
+  if (normalizedLabel.includes('мелаз') || normalizedLabel.includes('melasma')) return 'melasma';
+  if (normalizedLabel.includes('пигментац') || normalizedLabel.includes('pigmentation')) return 'melasma';
+  if (normalizedLabel.includes('экзема') || normalizedLabel.includes('eczema')) return 'eczema';
+  if (normalizedLabel.includes('псориаз') || normalizedLabel.includes('psoriasis')) return 'psoriasis';
+  return label;
+}
+
 // ИСПРАВЛЕНО: Добавлен GET метод для получения ответов пользователя
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -614,13 +628,6 @@ export async function POST(request: NextRequest) {
                 answerValue: answer.answerValue !== undefined ? answer.answerValue : null,
                 answerValues: answer.answerValues !== undefined ? (answer.answerValues as any) : null,
               },
-              include: {
-                question: {
-                  include: {
-                    answerOptions: true,
-                  },
-                },
-              },
             });
 
           logger.debug('Answer upserted', {
@@ -640,22 +647,6 @@ export async function POST(request: NextRequest) {
         savedQuestionIds: savedAnswers.map(a => a.questionId),
       });
 
-      // ИСПРАВЛЕНО: Сохраняем имя пользователя из ответа на вопрос USER_NAME
-      const nameAnswer = (savedAnswers as any[]).find(a => a.question?.code === 'USER_NAME');
-      if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
-        const userName = String(nameAnswer.answerValue).trim();
-        // ВАЖНО: ограничиваем select, чтобы не падать при рассинхроне схемы БД
-        await tx.user.update({
-          where: { id: userId! },
-          data: { firstName: userName },
-          select: { id: true },
-        });
-        logger.info('User name saved', {
-          userId,
-          firstName: userName,
-        });
-      }
-
       // Загружаем полные данные для расчета профиля
       const fullAnswers = await tx.userAnswer.findMany({
         where: {
@@ -670,6 +661,24 @@ export async function POST(request: NextRequest) {
           },
         },
       });
+
+      // ИСПРАВЛЕНО: Сохраняем имя пользователя из ответа на вопрос USER_NAME.
+      // Используем уже загруженные fullAnswers, чтобы не тащить question+options
+      // на каждый upsert внутри транзакции.
+      const nameAnswer = (fullAnswers as any[]).find(a => a.question?.code === 'USER_NAME');
+      if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
+        const userName = String(nameAnswer.answerValue).trim();
+        // ВАЖНО: ограничиваем select, чтобы не падать при рассинхроне схемы БД
+        await tx.user.update({
+          where: { id: userId! },
+          data: { firstName: userName },
+          select: { id: true },
+        });
+        logger.info('User name saved', {
+          userId,
+          firstName: userName,
+        });
+      }
 
       // Рассчитываем профиль кожи
       // ВАЖНО: Логируем перед вызовом createSkinProfile для диагностики
@@ -758,31 +767,35 @@ export async function POST(request: NextRequest) {
       
       // ИСПРАВЛЕНО: Извлекаем diagnoses через маппинг value -> label -> доменный enum
       // Используем answerOptionLabels из rawAnswers (уже маппленные), а не сырые answerValues
-      const diagnosesAnswer = rawAnswers.find(a => a.questionCode === 'diagnoses' || a.questionCode === 'DIAGNOSES');
+      const diagnosesAnswer = rawAnswers.find(a =>
+        a.questionCode === 'medical_diagnoses' ||
+        a.questionCode === 'MEDICAL_DIAGNOSES' ||
+        a.questionCode === 'diagnoses' ||
+        a.questionCode === 'DIAGNOSES'
+      );
       
       const extractedData: any = {};
+      if (Array.isArray(profileFromRules.diagnoses) && profileFromRules.diagnoses.length > 0) {
+        extractedData.diagnoses = Array.from(new Set(profileFromRules.diagnoses));
+      }
       // ИСПРАВЛЕНО: Используем answerOptionLabels (labels) вместо answerValues (сырые values)
       // Это гарантирует, что diagnoses будут доменными значениями (acne, rosacea и т.п.), а не "diagnoses_3"
-      if (diagnosesAnswer && diagnosesAnswer.answerOptionLabels && Array.isArray(diagnosesAnswer.answerOptionLabels)) {
+      if (!extractedData.diagnoses && diagnosesAnswer && diagnosesAnswer.answerOptionLabels && Array.isArray(diagnosesAnswer.answerOptionLabels)) {
         // Маппим labels на доменные значения через правила
         // Если label совпадает с доменным значением - используем как есть, иначе нормализуем
-        extractedData.diagnoses = diagnosesAnswer.answerOptionLabels.map((label: string) => {
-          // Нормализуем label к доменному значению (например, "Акне" -> "acne")
-          const normalizedLabel = label.toLowerCase();
-          if (normalizedLabel.includes('акне') || normalizedLabel.includes('acne')) return 'acne';
-          if (normalizedLabel.includes('розацеа') || normalizedLabel.includes('rosacea')) return 'rosacea';
-          if (normalizedLabel.includes('экзема') || normalizedLabel.includes('eczema')) return 'eczema';
-          if (normalizedLabel.includes('псориаз') || normalizedLabel.includes('psoriasis')) return 'psoriasis';
-          // Если не распознали - возвращаем label как есть (может быть уже доменным значением)
-          return label;
-        });
+        extractedData.diagnoses = diagnosesAnswer.answerOptionLabels
+          .map((label: string) => normalizeDiagnosisLabel(label))
+          .filter((diagnosis): diagnosis is string => Boolean(diagnosis));
       } else if (diagnosesAnswer && Array.isArray(diagnosesAnswer.answerValues)) {
         // Fallback: если answerOptionLabels нет, используем answerValues, но с предупреждением
         logger.warn('Using raw answerValues for diagnoses (answerOptionLabels not available)', {
           userId,
           questionId: diagnosesAnswer.questionId,
         });
-        extractedData.diagnoses = diagnosesAnswer.answerValues;
+        extractedData.diagnoses = diagnosesAnswer.answerValues
+          .filter((value): value is string => typeof value === 'string')
+          .map((value: string) => normalizeDiagnosisLabel(value))
+          .filter((diagnosis): diagnosis is string => Boolean(diagnosis));
       }
       // ИСПРАВЛЕНО: Используем mainGoals из buildSkinProfileFromAnswers вместо concernsAnswer
       if (profileFromRules.mainGoals && Array.isArray(profileFromRules.mainGoals) && profileFromRules.mainGoals.length > 0) {
@@ -1355,35 +1368,31 @@ export async function POST(request: NextRequest) {
     const duration = Date.now() - startTime;
     logApiRequest(method, path, 200, duration, userId || undefined);
 
-    // КРИТИЧНО: Проверяем, что профиль реально виден в БД после создания
-    // Используем тот же prisma instance для проверки
-    // Это поможет диагностировать проблему "разные БД"
-    const profileAfterCreate = await prisma.skinProfile.findUnique({
-      where: { id: profile.id },
-      select: { id: true, userId: true, version: true },
-    });
-    
-    // Логируем fingerprint БД для сравнения с другими роутами (повторно после создания профиля)
-    const fingerprintAfterCreate = await logDbFingerprint('/api/questionnaire/answers');
-    
-    console.warn('🔍 [QUESTIONNAIRE/ANSWERS] Profile verification after create:', JSON.stringify({
-      createdProfileId: profile.id,
-      foundInDb: !!profileAfterCreate,
-      profileAfterCreate: profileAfterCreate,
-      userId,
-      fingerprint: fingerprintAfterCreate ? {
-        db: fingerprintAfterCreate.db,
-        schema: fingerprintAfterCreate.schema,
-        user: fingerprintAfterCreate.user,
-        host: fingerprintAfterCreate.host,
-        port: fingerprintAfterCreate.port,
-      } : null,
-      databaseUrl: process.env.DATABASE_URL ? {
-        host: process.env.DATABASE_URL.match(/@([^:]+)/)?.[1],
-        db: process.env.DATABASE_URL.match(/\/([^?]+)/)?.[1],
-        prefix: process.env.DATABASE_URL.substring(0, 50) + '...',
-      } : null,
-    }, null, 2));
+    let profileFoundAfterCreate: boolean | undefined;
+    if (process.env.DEBUG_DB_FINGERPRINT === 'true') {
+      // Тяжёлая проверка нужна только при явной диагностике рассинхрона БД.
+      const profileAfterCreate = await prisma.skinProfile.findUnique({
+        where: { id: profile.id },
+        select: { id: true, userId: true, version: true },
+      });
+      profileFoundAfterCreate = !!profileAfterCreate;
+
+      const fingerprintAfterCreate = await logDbFingerprint('/api/questionnaire/answers');
+
+      console.warn('🔍 [QUESTIONNAIRE/ANSWERS] Profile verification after create:', JSON.stringify({
+        createdProfileId: profile.id,
+        foundInDb: profileFoundAfterCreate,
+        profileAfterCreate,
+        userId,
+        fingerprint: fingerprintAfterCreate ? {
+          db: fingerprintAfterCreate.db,
+          schema: fingerprintAfterCreate.schema,
+          user: fingerprintAfterCreate.user,
+          host: fingerprintAfterCreate.host,
+          port: fingerprintAfterCreate.port,
+        } : null,
+      }, null, 2));
+    }
     
     logger.info('✅ Answers submitted and profile created successfully', {
       userId,
@@ -1391,7 +1400,7 @@ export async function POST(request: NextRequest) {
       profileVersion: profile.version,
       answersCount: savedAnswers.length,
       duration,
-      profileFoundAfterCreate: !!profileAfterCreate,
+      ...(profileFoundAfterCreate !== undefined ? { profileFoundAfterCreate } : {}),
     });
 
     // ИСПРАВЛЕНО: Генерация плана — единый источник — страница /plan при state=generating.

@@ -18,6 +18,63 @@ export interface RuleStep {
   max_items?: number;
 }
 
+type PriceSegment = 'mass' | 'mid' | 'premium';
+
+function addAndCondition(where: any, condition: any): void {
+  where.AND = Array.isArray(where.AND)
+    ? [...where.AND, condition]
+    : where.AND
+      ? [where.AND, condition]
+      : [condition];
+}
+
+function normalizePriceSegment(value?: string | null): PriceSegment | null {
+  return value === 'mass' || value === 'mid' || value === 'premium' ? value : null;
+}
+
+function getUserBudgetCapSegments(userPriceSegment?: string | null): PriceSegment[] | null {
+  const segment = normalizePriceSegment(userPriceSegment);
+  if (segment === 'mass') return ['mass'];
+  if (segment === 'mid') return ['mass', 'mid'];
+  // Premium/any не являются ограничивающей верхней границей.
+  return null;
+}
+
+export function getAllowedPriceSegmentsForBudget(
+  stepBudget?: RuleStep['budget'],
+  userPriceSegment?: string | null
+): PriceSegment[] | null {
+  const userCap = getUserBudgetCapSegments(userPriceSegment);
+  if (userCap) return userCap;
+
+  if (stepBudget === 'бюджетный') return ['mass'];
+  if (stepBudget === 'средний') return ['mass', 'mid'];
+  if (stepBudget === 'премиум') return ['premium'];
+  return null;
+}
+
+function buildPriceSegmentCondition(allowedSegments: PriceSegment[] | null): any | null {
+  if (!allowedSegments || allowedSegments.length === 0 || allowedSegments.length === 3) {
+    return null;
+  }
+
+  const conditions: any[] = [
+    { priceSegment: { in: allowedSegments } },
+  ];
+
+  // У части продуктов priceSegment ещё null. Поддерживаем budget-aware подбор,
+  // выводя тот же tier из price, что используют unified-product-filter и plan-generator.
+  if (allowedSegments.length === 1 && allowedSegments[0] === 'mass') {
+    conditions.push({ AND: [{ priceSegment: null }, { price: { lt: 2000 } }] });
+  } else if (allowedSegments.includes('mass') && allowedSegments.includes('mid')) {
+    conditions.push({ AND: [{ priceSegment: null }, { price: { lt: 5000 } }] });
+  } else if (allowedSegments.length === 1 && allowedSegments[0] === 'premium') {
+    conditions.push({ AND: [{ priceSegment: null }, { price: { gte: 5000 } }] });
+  }
+
+  return { OR: conditions };
+}
+
 /**
  * ИСПРАВЛЕНО: Получает продукты по фильтрам шага правила
  * Улучшенная версия с поддержкой частичного совпадения step и нормализацией skinTypes
@@ -112,63 +169,42 @@ export async function getProductsForStep(
     // Fallback будет использован позже, если продуктов недостаточно
   }
 
-  // ИСПРАВЛЕНО: Применяем фильтрацию по типу кожи всегда, если указан profileClassification
-  // Если в шаге правила указаны skin_types - используем их, иначе используем тип кожи пользователя
-  if (!isSPF) {
-    let skinTypesToFilter: string[] = [];
-    
-    if (step.skin_types && step.skin_types.length > 0) {
-      // Используем типы кожи из шага правила
-      skinTypesToFilter = step.skin_types;
-    } else if (profileClassification?.skinType) {
-      // ИСПРАВЛЕНО: Если в шаге не указаны типы кожи, используем тип кожи пользователя
-      // Это гарантирует, что продукты будут соответствовать типу кожи пользователя
-      skinTypesToFilter = [profileClassification.skinType];
+  // Фильтрация по типу кожи. Строим условие ОДИН раз и переиспользуем его
+  // и в строгом запросе, и в fallback (см. ниже). SPF универсален — для него
+  // фильтр по типу кожи не добавляем.
+  // Если в шаге правила указаны skin_types — используем их, иначе тип кожи пользователя.
+  const skinTypeCondition: { OR: any[] } | null = (() => {
+    if (isSPF) return null;
+    const skinTypesToFilter =
+      step.skin_types && step.skin_types.length > 0
+        ? step.skin_types
+        : profileClassification?.skinType
+          ? [profileClassification.skinType]
+          : [];
+    if (skinTypesToFilter.length === 0) return null;
+
+    const normalizedSkinTypes = new Set<string>();
+    for (const skinType of skinTypesToFilter) {
+      normalizedSkinTypes.add(skinType);
+      if (skinType === 'combo') { normalizedSkinTypes.add('combination_dry'); normalizedSkinTypes.add('combination_oily'); }
+      if (skinType === 'dry') normalizedSkinTypes.add('combination_dry');
+      if (skinType === 'oily') normalizedSkinTypes.add('combination_oily');
+      if (skinType === 'combination_dry') normalizedSkinTypes.add('dry');
+      if (skinType === 'combination_oily') normalizedSkinTypes.add('oily');
     }
-    
-    if (skinTypesToFilter.length > 0) {
-      const normalizedSkinTypes: string[] = [];
-      
-      for (const skinType of skinTypesToFilter) {
-        normalizedSkinTypes.push(skinType);
-        // Если ищем 'combo', также ищем варианты
-        if (skinType === 'combo') {
-          normalizedSkinTypes.push('combination_dry');
-          normalizedSkinTypes.push('combination_oily');
-        }
-        // Если ищем 'dry', также ищем 'combination_dry'
-        if (skinType === 'dry') {
-          normalizedSkinTypes.push('combination_dry');
-        }
-        // Если ищем 'oily', также ищем 'combination_oily'
-        if (skinType === 'oily') {
-          normalizedSkinTypes.push('combination_oily');
-        }
-        // ИСПРАВЛЕНО: Если ищем 'combination_dry', также ищем 'dry'
-        if (skinType === 'combination_dry') {
-          normalizedSkinTypes.push('dry');
-        }
-        // ИСПРАВЛЕНО: Если ищем 'combination_oily', также ищем 'oily'
-        if (skinType === 'combination_oily') {
-          normalizedSkinTypes.push('oily');
-        }
-      }
-      
-      // ИСПРАВЛЕНО: Используем OR для поддержки продуктов без указанных типов кожи (fallback)
-      // но приоритет отдаем продуктам с подходящими типами кожи
-      if (where.AND) {
-        where.AND = Array.isArray(where.AND) ? [...where.AND] : [where.AND];
-      } else {
-        where.AND = [];
-      }
-      
-      where.AND.push({
-        OR: [
-          { skinTypes: { hasSome: normalizedSkinTypes } },
-          { skinTypes: { isEmpty: true } }, // Продукты без указанных типов кожи (fallback)
-        ],
-      });
-    }
+
+    // OR с isEmpty: продукты без разметки типов кожи остаются мягким fallback,
+    // но средства для ЧУЖОГО типа кожи (напр. dry-маска для oily) отсекаются.
+    return {
+      OR: [
+        { skinTypes: { hasSome: [...normalizedSkinTypes] } },
+        { skinTypes: { isEmpty: true } },
+      ],
+    };
+  })();
+
+  if (skinTypeCondition) {
+    addAndCondition(where, skinTypeCondition);
   }
 
   // Concerns: если указаны, ищем по ним, но не блокируем, если не найдено
@@ -183,12 +219,7 @@ export async function getProductsForStep(
       ],
     };
     
-    // Если уже есть AND, добавляем к нему, иначе создаем новый
-    if (where.AND) {
-      where.AND = Array.isArray(where.AND) ? [...where.AND, concernsCondition] : [where.AND, concernsCondition];
-    } else {
-      where.AND = [concernsCondition];
-    }
+    addAndCondition(where, concernsCondition);
   }
 
   if (step.is_non_comedogenic === true) {
@@ -199,23 +230,14 @@ export async function getProductsForStep(
     where.isFragranceFree = true;
   }
 
-  // Фильтрация по бюджету (priceSegment)
-  const ruleBudget = step.budget;
-  if (ruleBudget && ruleBudget !== 'любой') {
-    // Маппинг бюджетных сегментов: бюджетный -> mass, средний -> mid, премиум -> premium
-    const budgetMapping: Record<string, string> = {
-      'бюджетный': 'mass',
-      'средний': 'mid',
-      'премиум': 'premium',
-    };
-    
-    const priceSegment = budgetMapping[ruleBudget];
-    if (priceSegment) {
-      where.priceSegment = priceSegment;
-    }
-  } else if (userPriceSegment) {
-    // Если в правиле не указан бюджет, используем бюджет пользователя
-    where.priceSegment = userPriceSegment;
+  // P1c: бюджет пользователя — верхняя граница на этапе генерации RecommendationSession.
+  // Если правило шага просит premium, но пользователь выбрал "до 2000", пользовательский
+  // cap сильнее: иначе сессия сохраняла один premium-кандидат, и плану уже нечего было
+  // заменить. Средний бюджет допускает mass+mid; premium/любой не сужают подбор.
+  const allowedPriceSegments = getAllowedPriceSegmentsForBudget(step.budget, userPriceSegment);
+  const priceSegmentCondition = buildPriceSegmentCondition(allowedPriceSegments);
+  if (priceSegmentCondition) {
+    addAndCondition(where, priceSegmentCondition);
   }
 
   // Фильтрация по натуральности (если указано)
@@ -253,11 +275,7 @@ export async function getProductsForStep(
     };
     
     // Добавляем в AND условия
-    if (where.AND) {
-      where.AND = Array.isArray(where.AND) ? [...where.AND, activeIngredientsCondition] : [where.AND, activeIngredientsCondition];
-    } else {
-      where.AND = [activeIngredientsCondition];
-    }
+    addAndCondition(where, activeIngredientsCondition);
   }
 
   // Первая попытка: точный поиск
@@ -336,7 +354,17 @@ export async function getProductsForStep(
     }
     fallbackWhere.OR = fallbackConditions;
 
-    // Убираем фильтры по skinTypes и concerns для fallback
+    // ВАЖНО: фильтр по ТИПУ КОЖИ сохраняем и в fallback (concerns по-прежнему смягчаем).
+    // Раньше fallback сбрасывал и тип кожи → жирному пользователю просачивалась
+    // маска/средство для СУХОЙ кожи. Лучше вернуть пустой шаг, чем чужой тип.
+    if (skinTypeCondition) {
+      addAndCondition(fallbackWhere, skinTypeCondition);
+    }
+
+    if (priceSegmentCondition) {
+      addAndCondition(fallbackWhere, priceSegmentCondition);
+    }
+
     const fallbackProducts = await prisma.product.findMany({
       where: fallbackWhere,
       include: {
@@ -397,13 +425,23 @@ export async function getProductsForStep(
     }
   }
 
-  // Сортируем в памяти по приоритету и isHero
+  // Сортируем в памяти. ВАЖНО: если шаг задал concerns — продукты, реально
+  // совпадающие по concern, идут ВЫШЕ isHero. Иначе «геройский» товар не по теме
+  // (напр. acne-BPO в antiage-шаге) перебивал мягкое concern-направление и в набор
+  // попадало нерелевантное «лечение». Совпадения нет у всех — порядок прежний.
+  const wantedConcerns = (step.concerns || []).map((c) => c.toLowerCase());
+  const concernScore = (p: any): number => {
+    if (wantedConcerns.length === 0) return 0;
+    const pc = Array.isArray(p.concerns) ? p.concerns.map((c: string) => String(c).toLowerCase()) : [];
+    return pc.some((c: string) => wantedConcerns.includes(c)) ? 1 : 0;
+  };
   const sorted = products.sort((a: any, b: any) => {
+    const cs = concernScore(b) - concernScore(a);
+    if (cs !== 0) return cs;
     if (a.isHero !== b.isHero) return b.isHero ? 1 : -1;
     if (a.priority !== b.priority) return b.priority - a.priority;
     return b.createdAt.getTime() - a.createdAt.getTime();
   });
-  
+
   return sorted.slice(0, step.max_items || 3);
 }
-

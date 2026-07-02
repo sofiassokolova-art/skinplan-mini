@@ -95,7 +95,9 @@ async function calculateAvgLTV(): Promise<number> {
 
   if (payingUsers === 0) return 0;
 
-  return Math.round(totalRevenue / payingUsers);
+  // amount хранится в КОПЕЙКАХ — делим на 100, иначе LTV раздувается в 100 раз
+  // (UI показывает avgLTV как рубли: «… ₽»).
+  return Math.round(totalRevenue / payingUsers / 100);
 }
 
 /**

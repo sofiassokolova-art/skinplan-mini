@@ -36,6 +36,16 @@ import {
 } from '@/lib/dermatology-product-filter';
 import { getApplicationDaysForWeek } from '@/lib/protocol-plan-integration';
 
+function getSafeFallbackLookupStep(stepCategory: StepCategory): string {
+  const baseStep = getBaseStepFromStepCategory(stepCategory);
+  // Для активов подтипы не взаимозаменяемы: treatment_exfoliant_mild не должен
+  // подбирать treatment_antiage/retinol, а serum_hydrating — serum_vitc.
+  if (baseStep === 'treatment' || baseStep === 'serum' || baseStep === 'spot_treatment') {
+    return stepCategory;
+  }
+  return baseStep;
+}
+
 /**
  * P0.1: Проверяет, можно ли применять активный шаг в конкретный день согласно
  * титрации/циклированию протокола. Реализует реальную постепенность введения активов
@@ -442,7 +452,14 @@ export async function generate28DayPlan(
   const retinoidUsageRaw = String(answers.retinoid_usage ?? '').toLowerCase().trim();
   let retinoidExperience: 'naive' | 'experienced';
   if (retinoidReactionRaw) {
-    if (retinoidReactionRaw.includes('без реакции') || retinoidReactionRaw.includes('лёгкое шелушение') || retinoidReactionRaw.includes('легкое шелушение')) {
+    if (
+      retinoidReactionRaw.includes('без реакции') ||
+      retinoidReactionRaw.includes('лёгкое шелушение') ||
+      retinoidReactionRaw.includes('легкое шелушение') ||
+      retinoidReactionRaw.includes('конкретное средство') ||
+      retinoidReactionRaw.includes('конкретный продукт') ||
+      retinoidReactionRaw.includes('другие ретиноиды')
+    ) {
       retinoidExperience = 'experienced';
     } else {
       // «сильное раздражение / жжение / краснота» или «никогда не использовал» → строгий старт
@@ -575,12 +592,28 @@ export async function generate28DayPlan(
     concerns,
   });
 
-  // Определяем сложность рутины для CarePlanTemplate
+  // Определяем сложность рутины для CarePlanTemplate.
+  // ВАЖНО: answers.care_steps приходит КОДОМ опции (care_steps_1..4), а не русским
+  // лейблом. Раньше проверялось только .includes('миним'/'максим') → код «care_steps_1»
+  // никогда не матчился, и выбор пользователя «Минимум (1–3 шага)» молча игнорировался
+  // (рутина всегда оставалась 'medium'). Поддерживаем и коды, и лейблы.
   let routineComplexity: CarePlanProfileInput['routineComplexity'] = 'medium';
-  if (typeof profileClassification.stepsPreference === 'string') {
-    if (profileClassification.stepsPreference.toLowerCase().includes('миним')) {
+  {
+    const rawSteps = Array.isArray(profileClassification.stepsPreference)
+      ? profileClassification.stepsPreference[0]
+      : profileClassification.stepsPreference;
+    const stepsStr = (rawSteps ?? '').toString().toLowerCase();
+    const stepsCodeMap: Record<string, CarePlanProfileInput['routineComplexity']> = {
+      care_steps_1: 'minimal',
+      care_steps_2: 'medium',
+      care_steps_3: 'maximal',
+      care_steps_4: 'medium', // «Не знаю» → дефолт
+    };
+    if (stepsCodeMap[stepsStr]) {
+      routineComplexity = stepsCodeMap[stepsStr];
+    } else if (stepsStr.includes('миним')) {
       routineComplexity = 'minimal';
-    } else if (profileClassification.stepsPreference.toLowerCase().includes('максим')) {
+    } else if (stepsStr.includes('максим')) {
       routineComplexity = 'maximal';
     }
   }
@@ -679,6 +712,52 @@ export async function generate28DayPlan(
   let adjustedMorning = adjustTemplateSteps(carePlanTemplate.morning);
   let adjustedEvening = adjustTemplateSteps(carePlanTemplate.evening);
   const adjustedWeekly = carePlanTemplate.weekly ? adjustTemplateSteps(carePlanTemplate.weekly) : undefined;
+
+  // Минимальная рутина (routineComplexity='minimal' → шаблон minimalist_any_skin) раньше
+  // была очищение+увлажнение+SPF без единого актива. Из-за этого все активы, которые
+  // подобрал рекомендатор (antiage-сыворотка, эксфолиант под поры и т.п.), молча
+  // выбрасывались: у шаблона нет слота — продукту некуда встать. Пользователь с целью
+  // «antiage/поры/обезвоженность» получал голую базу и справедливо жаловался на «мало
+  // средств». Инжектим РОВНО ОДИН вечерний актив по главной цели — минимум остаётся
+  // минимумом (1 очищение + 1 актив + 1 крем вечером), но перестаёт быть пустым.
+  if (carePlanTemplate.id === 'minimalist_any_skin') {
+    // Мягкие, безретиноловые активы — подходят retinoid-naive коже в фазе адаптации.
+    // Клинический приоритет: активное воспаление и текстура важнее превентивного antiage;
+    // обезвоженность частично закрывает крем, поэтому HA-сыворотка — в самом конце.
+    const goalToEveningActive: Array<[GoalKey, StepCategory]> = [
+      ['acne', 'treatment_acne_azelaic'],
+      ['pores', 'treatment_exfoliant_mild'],
+      ['pigmentation', 'serum_vitc'],
+      ['antiage', 'serum_antiage'],
+      ['wrinkles', 'serum_antiage'],
+      ['dehydration', 'serum_hydrating'],
+      ['barrier', 'serum_hydrating'],
+    ];
+    const goalSet = new Set<GoalKey>(finalMainGoals);
+    const picked = goalToEveningActive.find(([goal]) => goalSet.has(goal));
+    if (picked && !adjustedEvening.includes(picked[1])) {
+      const activeStep = picked[1];
+      // Ставим актив между очищением и увлажнением: cleanser → актив → крем.
+      const insertAt = adjustedEvening.findIndex((s) => !s.startsWith('cleanser'));
+      if (insertAt === -1) {
+        adjustedEvening.push(activeStep);
+      } else {
+        adjustedEvening.splice(insertAt, 0, activeStep);
+      }
+      logger.info('Minimal routine: injected one goal-driven evening active', {
+        userId,
+        goal: picked[0],
+        activeStep,
+        finalMainGoals,
+        adjustedEvening,
+      });
+    } else {
+      logger.info('Minimal routine: no goal-driven active injected', {
+        userId,
+        finalMainGoals,
+      });
+    }
+  }
 
   // P1.2: Сезонная адаптация. Меняет только текстуры увлажняющего; остальные шаги нетронуты.
   // Решение принимается по комбинации (текущий месяц, ответ из анкеты).
@@ -941,6 +1020,7 @@ export async function generate28DayPlan(
         step: product.step || '',
         category: product.category || null,
         price: product.price ?? null,
+        priceSegment: product.priceSegment ?? null,
         imageUrl: product.imageUrl || null,
         isHero: product.isHero ?? false,
         priority: product.priority ?? 0,
@@ -1170,6 +1250,7 @@ export async function generate28DayPlan(
       step: product.step || '',
       category: product.category,
       price: product.price,
+      priceSegment: (product as any).priceSegment ?? null,
       imageUrl: product.imageUrl,
       isHero: product.isHero || false,
       priority: product.priority || 0,
@@ -1308,7 +1389,53 @@ export async function generate28DayPlan(
       });
     }
   });
-  
+
+  // P1c: Budget-preferred подбор. План фильтрует продукты в 'soft'-режиме, где фильтр
+  // бюджета (unified-product-filter) НЕ исключает дорогие товары — иначе шаг мог бы
+  // остаться пустым. А финальный выбор продукта (pickProductForProfileDiversity) берёт
+  // псевдослучайный индекс по всему списку — простой reorder бы не сработал. Поэтому,
+  // если для шага есть товары В ПРЕДЕЛАХ бюджета — оставляем в выборе только их (выбор
+  // дальше идёт уже среди доступных). Если в бюджете ничего нет — оставляем полный
+  // список (шаг не пустеет). Раньше пользователь «до 2000₽» стабильно получал premium.
+  {
+    // Допустимые ценовые сегменты для каждого уровня бюджета (свой + дешевле).
+    const allowedSegments: Record<string, Set<string>> = {
+      'бюджетный': new Set(['mass']),
+      'средний': new Set(['mass', 'mid']),
+      'премиум': new Set(['mass', 'mid', 'premium']),
+      'любой': new Set(['mass', 'mid', 'premium']),
+    };
+    const allowed = allowedSegments[profileClassification.budget || 'любой'];
+    // Применяем только когда бюджет реально ограничивает (не премиум/любой).
+    if (allowed && allowed.size < 3) {
+      // Сегмент товара: явный priceSegment, иначе выводим из цены (как в
+      // unified-product-filter: <2000 mass, <5000 mid, иначе premium). Без обоих — unknown.
+      const segmentOf = (p: ProductWithBrand): string | null => {
+        if (p.priceSegment) return p.priceSegment;
+        if (typeof p.price === 'number') return p.price < 2000 ? 'mass' : p.price < 5000 ? 'mid' : 'premium';
+        return null;
+      };
+      for (const [stepCategory, products] of productsByStepMap.entries()) {
+        if (products.length <= 1) continue;
+        const inBudget = products.filter((p) => {
+          const seg = segmentOf(p);
+          return seg !== null && allowed.has(seg);
+        });
+        // Оставляем только в-бюджетные, лишь если они есть; иначе не трогаем шаг.
+        if (inBudget.length > 0 && inBudget.length < products.length) {
+          productsByStepMap.set(stepCategory, inBudget);
+          logger.info('Budget-preferred filter applied to step', {
+            userId,
+            stepCategory,
+            budget: profileClassification.budget,
+            before: products.length,
+            after: inBudget.length,
+          });
+        }
+      }
+    }
+  }
+
   // Логируем итоговое состояние productsByStepMap после регистрации
   if (userId === '643160759' || process.env.NODE_ENV === 'development') {
     const stepSummary = Array.from(productsByStepMap.entries()).map(([step, products]) => ({
@@ -1858,8 +1985,8 @@ export async function generate28DayPlan(
     step.startsWith('serum_')
   );
   if (serumSteps.length > 0) {
-    const existingSerum = serumSteps.some(step => getProductsForStep(step).length > 0);
-    if (!existingSerum) {
+    const missingSerumSteps = serumSteps.filter(step => getProductsForStep(step).length === 0);
+    if (missingSerumSteps.length > 0) {
       // Диагностика: почему не нашли serum в productsByStepMap/каталоге.
       // Включаем только для явной отладки (env) или для конкретного юзера (чтобы не шуметь).
       let debugDiagnostics = process.env.DEBUG_PLAN_PRODUCTS === 'true';
@@ -1945,7 +2072,7 @@ export async function generate28DayPlan(
           logger.info('Serum availability diagnostics', {
             userId,
             telegramId: telegramIdForLog,
-            requiredSerumSteps: serumSteps,
+            requiredSerumSteps: missingSerumSteps,
             profileSkinType: profileClassification.skinType,
             counts: {
               totalPublished,
@@ -1970,28 +2097,31 @@ export async function generate28DayPlan(
         }
       }
 
-      const fallbackSerum = await findFallbackProduct('serum', profileClassification, { userId });
-      if (fallbackSerum) {
-        // ИСПРАВЛЕНО: это не ошибка, если мы успешно нашли fallback.
-        // Логируем как info, чтобы не засорять WARN-логи в проде.
-        logger.info('No serum products found for required steps, using fallback serum', {
-          userId,
-          serumSteps,
-          productId: fallbackSerum.id,
-          productName: fallbackSerum.name,
-        }, { saveToDb: true, userId });
-        for (const step of serumSteps) {
+      for (const step of missingSerumSteps) {
+        const fallbackLookupStep = getSafeFallbackLookupStep(step);
+        const fallbackSerum = await findFallbackProduct(fallbackLookupStep, profileClassification, { userId });
+        if (fallbackSerum) {
+          // ИСПРАВЛЕНО: это не ошибка, если мы успешно нашли fallback.
+          // Логируем как info, чтобы не засорять WARN-логи в проде.
+          logger.info('No serum products found for required step, using step-specific fallback serum', {
+            userId,
+            step,
+            fallbackLookupStep,
+            productId: fallbackSerum.id,
+            productName: fallbackSerum.name,
+          }, { saveToDb: true, userId });
           registerProductForStep(step, fallbackSerum);
+          if (!selectedProducts.some((p: any) => p.id === fallbackSerum.id)) {
+            selectedProducts.push(fallbackSerum as any);
+          }
+        } else {
+          // Это уже реально проблемная ситуация: ни одной сыворотки не нашли даже для fallback.
+          logger.warn('No serum products found and step-specific fallback serum could not be selected', {
+            userId,
+            step,
+            fallbackLookupStep,
+          });
         }
-        if (!selectedProducts.some((p: any) => p.id === fallbackSerum.id)) {
-          selectedProducts.push(fallbackSerum as any);
-        }
-      } else {
-        // Это уже реально проблемная ситуация: ни одной сыворотки не нашли даже для fallback.
-        logger.warn('No serum products found and fallback serum could not be selected', {
-          userId,
-          serumSteps,
-        });
       }
     }
   }
@@ -2001,22 +2131,34 @@ export async function generate28DayPlan(
     step.startsWith('treatment_') || step.startsWith('spot_treatment')
   );
   if (treatmentSteps.length > 0) {
-    const existingTreatment = treatmentSteps.some(step => getProductsForStep(step).length > 0);
-    if (!existingTreatment) {
-      logger.warn('No treatment products found, searching for fallback', { userId, treatmentSteps });
-      const fallbackTreatment = await findFallbackProduct('treatment', profileClassification, { userId });
-      if (fallbackTreatment) {
-        for (const step of treatmentSteps) {
+    const missingTreatmentSteps = treatmentSteps.filter(step => getProductsForStep(step).length === 0);
+    if (missingTreatmentSteps.length > 0) {
+      logger.warn('No treatment products found for required steps, searching for step-specific fallback', {
+        userId,
+        missingTreatmentSteps,
+      });
+      for (const step of missingTreatmentSteps) {
+        const fallbackLookupStep = getSafeFallbackLookupStep(step);
+        const fallbackTreatment = await findFallbackProduct(fallbackLookupStep, profileClassification, { userId });
+        if (fallbackTreatment) {
           registerProductForStep(step, fallbackTreatment);
+          if (!selectedProducts.some((p: any) => p.id === fallbackTreatment.id)) {
+            selectedProducts.push(fallbackTreatment as any);
+          }
+          logger.info('Fallback treatment added for required step', {
+            step,
+            fallbackLookupStep,
+            productId: fallbackTreatment.id,
+            productName: fallbackTreatment.name,
+            userId,
+          }, { saveToDb: true, userId });
+        } else {
+          logger.warn('No treatment fallback found for required step', {
+            step,
+            fallbackLookupStep,
+            userId,
+          });
         }
-        if (!selectedProducts.some((p: any) => p.id === fallbackTreatment.id)) {
-          selectedProducts.push(fallbackTreatment as any);
-        }
-        logger.info('Fallback treatment added', { 
-          productId: fallbackTreatment.id, 
-          productName: fallbackTreatment.name,
-          userId 
-        }, { saveToDb: true, userId });
       }
     }
   }
@@ -2129,12 +2271,14 @@ export async function generate28DayPlan(
         }
       } else {
         // Для других шагов пробуем базовый fallback
-        const fallbackProduct = await findFallbackProduct(baseStep, profileClassification, { userId });
+        const fallbackLookupStep = getSafeFallbackLookupStep(missingStep);
+        const fallbackProduct = await findFallbackProduct(fallbackLookupStep, profileClassification, { userId });
         if (fallbackProduct) {
           registerProductForStep(missingStep, fallbackProduct);
           logger.info('Found fallback product for missing step', {
             missingStep,
             baseStep,
+            fallbackLookupStep,
             productId: fallbackProduct.id,
             productName: fallbackProduct.name,
           });
@@ -2505,6 +2649,15 @@ export async function generate28DayPlan(
     warnings.push(`⚠️ Учитываются аллергии: ${profileClassification.allergies.join(', ')}`);
   }
 
+  const hasRosaceaDiagnosisForWaterCleanse = normalizedDiagnoses.some((diagnosis) => {
+    const value = String(diagnosis || '').toLowerCase();
+    return value.includes('rosacea') || value.includes('розацеа');
+  });
+  const shouldUseMorningWaterCleanse =
+    ['high', 'very_high'].includes(String(profile.sensitivityLevel || '').toLowerCase()) ||
+    ['medium', 'high', 'critical'].includes(String(profile.rosaceaRisk || '').toLowerCase()) ||
+    hasRosaceaDiagnosisForWaterCleanse;
+
   // Преобразуем план в новый формат Plan28
   // ИСПРАВЛЕНО: plan28Days уже объявлен выше, используем существующий
   const weeklySteps = carePlanTemplate.weekly || [];
@@ -2584,6 +2737,17 @@ export async function generate28DayPlan(
     for (const stepCategory of morningStepsTemplate) {
       const baseStep = getBaseStepFromStepCategory(stepCategory);
 
+      if (shouldUseMorningWaterCleanse && isCleanserStep(stepCategory)) {
+        morningSteps.push({
+          stepCategory,
+          productId: null,
+          alternatives: [],
+          manualLabel: 'Умывание тёплой водой',
+          instruction: 'Утром без очищающего средства: умойтесь тёплой водой и промокните кожу полотенцем.',
+        });
+        continue;
+      }
+
       // P0.1: Титрация — пропускаем активный шаг в дни, когда актив не должен применяться
       // согласно протоколу (постепенное введение ретинола/кислот/витамина C).
       if (!isActiveStepAllowedOnDay(stepCategory, dayIndex, weekNum, dermatologyProtocol, profileClassification)) {
@@ -2658,7 +2822,8 @@ export async function generate28DayPlan(
             
             // Последняя попытка: ищем через findFallbackProduct в БД
             try {
-              const fallbackProduct = await findFallbackProduct(baseStep, profileClassification, { userId });
+              const fallbackLookupStep = getSafeFallbackLookupStep(stepCategory);
+              const fallbackProduct = await findFallbackProduct(fallbackLookupStep, profileClassification, { userId });
               if (fallbackProduct) {
                 registerProductForStep(stepCategory, fallbackProduct);
                 stepProducts = [fallbackProduct];
@@ -2666,6 +2831,7 @@ export async function generate28DayPlan(
                 logger.info('Fallback product found from DB (morning)', {
                   stepCategory,
                   baseStep,
+                  fallbackLookupStep,
                   productId: fallbackProduct.id,
                   productName: fallbackProduct.name,
                   userId,
@@ -2938,7 +3104,8 @@ export async function generate28DayPlan(
             
             // Последняя попытка: ищем через findFallbackProduct в БД
             try {
-              const fallbackProduct = await findFallbackProduct(baseStep, profileClassification, { userId });
+              const fallbackLookupStep = getSafeFallbackLookupStep(stepCategory);
+              const fallbackProduct = await findFallbackProduct(fallbackLookupStep, profileClassification, { userId });
               if (fallbackProduct) {
                 registerProductForStep(stepCategory, fallbackProduct);
                 stepProducts = [fallbackProduct];
@@ -2946,6 +3113,7 @@ export async function generate28DayPlan(
                 logger.info('Fallback product found from DB (evening)', {
                   stepCategory,
                   baseStep,
+                  fallbackLookupStep,
                   productId: fallbackProduct.id,
                   productName: fallbackProduct.name,
                   userId,

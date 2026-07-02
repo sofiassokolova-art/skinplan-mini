@@ -9,7 +9,7 @@ export async function GET() {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SkinIQ ping</title>
+  <title>skiniq ping</title>
 </head>
 <body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#F5FFFC 0%,#E8FBF7 100%);font-family:system-ui,sans-serif;color:#0A5F59;">
   <p style="font-size:18px;">OK</p>

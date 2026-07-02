@@ -2,6 +2,7 @@
 // Полный перенос анкеты из Quiz.tsx в базу данных
 
 import { createScriptPrisma } from './lib/prisma';
+import { inferAnswerScore } from '../lib/profile-calculator';
 
 const prisma = createScriptPrisma();
 
@@ -15,67 +16,7 @@ function mapQuestionType(type: string): string {
 
 // Функция для создания scoreJson на основе вопроса и ответа
 function createScoreJson(questionId: string, optionLabel: string): any {
-  const scores: any = {};
-
-  // Маппинг для типа кожи
-  if (questionId === 'skin_type') {
-    if (optionLabel.includes('Сухая') && !optionLabel.includes('Комбинированная')) {
-      return { oiliness: 0, dehydration: 5 };
-    }
-    if (optionLabel.includes('Комбинированная (сухая)')) {
-      return { oiliness: 2, dehydration: 3 };
-    }
-    if (optionLabel.includes('Нормальная')) {
-      return { oiliness: 1, dehydration: 1 };
-    }
-    if (optionLabel.includes('Комбинированная (жирная)')) {
-      return { oiliness: 3, dehydration: 1 };
-    }
-    if (optionLabel.includes('Жирная')) {
-      return { oiliness: 5, dehydration: 0 };
-    }
-  }
-
-  // Маппинг для проблем кожи
-  if (questionId === 'skin_concerns') {
-    if (optionLabel.includes('Акне')) {
-      return { acne: 3, concerns: ['acne'] };
-    }
-    if (optionLabel.includes('Жирность')) {
-      return { oiliness: 2 };
-    }
-    if (optionLabel.includes('Сухость')) {
-      return { dehydration: 3 };
-    }
-    if (optionLabel.includes('Пигментация')) {
-      return { pigmentation: 2, pigmentationRisk: 'medium' };
-    }
-    if (optionLabel.includes('Чувствительность')) {
-      return { sensitivity: 3 };
-    }
-    if (optionLabel.includes('Розацеа')) {
-      return { rosacea: 2, rosaceaRisk: 'medium' };
-    }
-  }
-
-  // Маппинг для возраста
-  if (questionId === 'age') {
-    if (optionLabel.includes('До 18')) return { age_group: '18_25' };
-    if (optionLabel.includes('18–24')) return { age_group: '18_25' };
-    if (optionLabel.includes('25–34')) return { age_group: '26_30' };
-    if (optionLabel.includes('35–44')) return { age_group: '31_40' };
-    if (optionLabel.includes('45+')) return { age_group: '41_50' };
-  }
-
-  // Маппинг для беременности
-  if (questionId === 'pregnancy_status') {
-    if (optionLabel.includes('беременна') || optionLabel.includes('кормлю')) {
-      return { has_pregnancy: true };
-    }
-    return { has_pregnancy: false };
-  }
-
-  return {};
+  return inferAnswerScore(questionId, optionLabel);
 }
 
 async function seedFullQuestionnaire() {
@@ -254,7 +195,9 @@ async function seedFullQuestionnaire() {
             'Нет, не принимал(а)',
             'Изотретиноин (Аккутан, Роаккутан и аналоги)',
             'Антибиотики (Доксициклин, Миноциклин, Эритромицин и др.)',
-            'Гормональные препараты (Спиронолактон, оральные контрацептивы)',
+            'Спиронолактон / антиандрогенная терапия',
+            'Оральные контрацептивы или другая гормональная терапия',
+            'Тиреоидные препараты (L-тироксин, Эутирокс и аналоги)',
           ],
         },
       ],
@@ -477,4 +420,3 @@ seedFullQuestionnaire()
   .finally(async () => {
     await prisma.$disconnect();
   });
-

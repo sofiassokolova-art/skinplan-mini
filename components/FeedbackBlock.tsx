@@ -368,7 +368,7 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
         color: '#0A5F59',
         marginBottom: '8px',
       }}>
-        {feedbackType === 'service' ? 'Расскажите, как вам SkinIQ?' : 'Подошли ли вам рекомендации?'}
+        {feedbackType === 'service' ? 'Расскажите, как вам skiniq?' : 'Подошли ли вам рекомендации?'}
       </h3>
       <p style={{
         fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",

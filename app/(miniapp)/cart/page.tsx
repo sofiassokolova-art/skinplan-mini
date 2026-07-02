@@ -3,12 +3,12 @@
 
 'use client';
 
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useWishlist, useRemoveFromWishlist } from '@/hooks/useWishlist';
 import { useCart, useAddToCart } from '@/hooks/useCart';
 import type { WishlistResponse } from '@/lib/api-types';
-import { MiniAppPageSkeleton } from '@/components/ui/SkeletonLoader';
+import { TabLoadingShell } from '@/components/TabLoadingShell';
+import { ProfileAvatarButton } from '@/components/ProfileAvatarButton';
 import toast from 'react-hot-toast';
 
 interface WishlistItemData {
@@ -20,13 +20,13 @@ interface WishlistItemData {
     imageUrl: string | null;
     link: string | null;
     marketLinks: any;
+    priceFrom?: number | null;
   };
   feedback: string;
   createdAt: string;
 }
 
 export default function FavoritesPage() {
-  const router = useRouter();
   const { data: wishlistData, isLoading: loading } = useWishlist();
   const removeMutation = useRemoveFromWishlist();
   const { data: cartData } = useCart();
@@ -43,6 +43,7 @@ export default function FavoritesPage() {
       imageUrl: item.product.imageUrl,
       link: item.product.link || null,
       marketLinks: item.product.marketLinks || null,
+      priceFrom: item.product.priceFrom ?? null,
     } : {
       id: item.productId,
       name: 'Неизвестный продукт',
@@ -82,29 +83,27 @@ export default function FavoritesPage() {
     '#F4F2EE';
 
   if (loading) {
-    return <MiniAppPageSkeleton background={bg} rows={4} />;
+    return <TabLoadingShell title="Избранное" background={bg} />;
   }
 
   return (
     <div className="fav-rd" style={{ minHeight: '100vh', background: bg, backgroundAttachment: 'fixed', padding: '8px 20px 120px' }}>
       <style>{`
         .fav-rd .fv-topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 0 14px;}
-        .fav-rd .fv-logo{font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:18px;font-weight:700;letter-spacing:-0.4px;color:#0A0A0A;}
+        .fav-rd .fv-logo{font-family:var(--font-inter),-apple-system,BlinkMacSystemFont,sans-serif;font-size:18px;font-weight:500;letter-spacing:0;color:#0A0A0A;text-transform:lowercase;}
         .fav-rd .fv-avatar{position:relative;width:40px;height:40px;border:0;padding:0;border-radius:50%;background:linear-gradient(135deg,#2A2A2A,#0A0A0A);color:#D5FE61;display:grid;place-items:center;cursor:pointer;box-shadow:0 0 0 2px rgba(255,255,255,0.9),0 6px 18px rgba(10,10,10,0.18);font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:14px;font-weight:700;}
         .fav-rd .fv-avatar::after{content:"";position:absolute;bottom:1px;right:1px;width:10px;height:10px;border-radius:50%;background:#D5FE61;border:2px solid #F4F2EE;}
         .fav-rd .fv-title{margin:6px 2px 18px;font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.6px;color:#0A0A0A;}
         .fav-rd .fv-list{display:flex;flex-direction:column;gap:10px;}
-        .fav-rd .fv-item{position:relative;display:grid;grid-template-columns:76px minmax(0,1fr);gap:14px;padding:12px;border:1px solid rgba(255,255,255,0.7);border-radius:22px;background:rgba(255,255,255,0.62);backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);box-shadow:0 8px 22px rgba(0,0,0,0.04);overflow:hidden;}
-        .fav-rd .fv-thumb{width:76px;height:100%;min-height:96px;display:grid;place-items:center;}
-        .fav-rd .fv-thumb img{max-width:64px;max-height:88px;object-fit:contain;filter:drop-shadow(0 6px 8px rgba(0,0,0,0.1));}
+        .fav-rd .fv-item{position:relative;padding:12px;border:1px solid rgba(255,255,255,0.7);border-radius:22px;background:rgba(255,255,255,0.62);backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);box-shadow:0 8px 22px rgba(0,0,0,0.04);overflow:hidden;}
         .fav-rd .fv-del{position:absolute;top:10px;right:10px;z-index:3;width:28px;height:28px;border:0;border-radius:50%;background:rgba(10,10,10,0.06);color:#0A0A0A;display:grid;place-items:center;cursor:pointer;}
         .fav-rd .fv-del:active{transform:scale(0.9);}
         .fav-rd .fv-del svg{fill:none;stroke:#0A0A0A;stroke-width:1.6;}
-        .fav-rd .fv-body{min-width:0;display:flex;flex-direction:column;gap:8px;padding-right:24px;}
+        .fav-rd .fv-body{min-width:0;display:flex;flex-direction:column;gap:8px;padding-right:44px;}
         .fav-rd .fv-brand{font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#6B7280;}
         .fav-rd .fv-name{font-size:14px;font-weight:700;line-height:1.22;letter-spacing:-0.15px;color:#0A0A0A;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
-        .fav-rd .fv-cta{width:100%;height:44px;border:0;border-radius:0;background:#D5FE61;color:#000;font-family:var(--font-inter),sans-serif;font-weight:400;font-size:13px;text-transform:uppercase;letter-spacing:0.02em;cursor:pointer;transition:transform .15s;}
-        .fav-rd .fv-cta:active{transform:scale(0.98);}
+        .fav-rd .fv-cta{width:100%;height:44px;border:0;border-radius:999px;background:#D5FE61;color:#000;font-family:var(--font-inter),sans-serif;font-weight:700;font-size:14px;letter-spacing:0;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 18px rgba(213,254,97,0.26);transition:transform .14s ease,box-shadow .14s ease;margin-top:2px;}
+        .fav-rd .fv-cta:active{transform:scale(0.985);box-shadow:0 4px 10px rgba(213,254,97,0.22);}
         .fav-rd .fv-cta.in{background:#0A0A0A;color:#fff;}
         .fav-rd .fv-empty{text-align:center;padding:60px 20px;background:rgba(255,255,255,0.62);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.7);border-radius:24px;margin-top:24px;}
         .fav-rd .fv-empty-cta{display:inline-block;background:#0A0A0A;color:#fff;padding:14px 32px;border-radius:999px;text-decoration:none;font-family:var(--font-inter),sans-serif;font-size:15px;font-weight:600;letter-spacing:-0.1px;box-shadow:0 10px 24px rgba(10,10,10,0.18);transition:transform .14s ease;}
@@ -112,8 +111,8 @@ export default function FavoritesPage() {
       `}</style>
 
       <div className="fv-topbar">
-        <div className="fv-logo">SkinIQ</div>
-        <button className="fv-avatar" aria-label="Профиль" onClick={() => router.push('/profile')}>С</button>
+        <div className="fv-logo">skiniq</div>
+        <ProfileAvatarButton className="fv-avatar" />
       </div>
 
       <h1 className="fv-title">Избранное</h1>
@@ -136,13 +135,6 @@ export default function FavoritesPage() {
                     <path d="M3 3l18 18"/>
                   </svg>
                 </button>
-                <div className="fv-thumb">
-                  {item.product.imageUrl ? (
-                    <img src={item.product.imageUrl} alt="" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                  ) : (
-                    <div style={{ fontSize: '28px' }}>🧴</div>
-                  )}
-                </div>
                 <div className="fv-body">
                   <div className="fv-brand">{item.product.brand.name}</div>
                   <div className="fv-name">{item.product.name}</div>

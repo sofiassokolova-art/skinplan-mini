@@ -357,6 +357,26 @@ const FreeTextInput = memo(function FreeTextInput({ question, answers, onAnswer,
   );
 });
 
+/**
+ * Взаимоисключающие опции в multi_choice: «Нет, реакции не отмечались»,
+ * «Нет, не принимаю», «Круглый год одинаково», «В целом всё устраивает».
+ * При их выборе остальные снимаются (и наоборот). Определяем по лейблу —
+ * устойчиво к переименованию value опций.
+ */
+function isExclusiveAnswerOption(option: { label?: string } | null | undefined): boolean {
+  const l = String(option?.label || '').trim().toLowerCase();
+  if (!l) return false;
+  return (
+    l.startsWith('нет') ||
+    l.includes('не отмеча') ||
+    l.includes('не принима') ||
+    l.includes('круглый год') ||
+    l.includes('в целом всё устраивает') ||
+    l.includes('в целом все устраивает') ||
+    l.includes('ничего из перечисл')
+  );
+}
+
 export const QuizQuestion = memo(function QuizQuestion({
   question,
   currentQuestionIndex,
@@ -463,9 +483,20 @@ export const QuizQuestion = memo(function QuizQuestion({
       wasSelected: isSelected,
     });
     if (isMultiChoice) {
-      const newAnswers = isSelected
-        ? currentAnswers.filter((v) => v !== option.value)
-        : [...currentAnswers, option.value];
+      let newAnswers: string[];
+      if (isSelected) {
+        newAnswers = currentAnswers.filter((v) => v !== option.value);
+      } else if (isExclusiveAnswerOption(option)) {
+        // Взаимоисключающая опция («Нет», «Круглый год одинаково») → очищаем остальные.
+        newAnswers = [option.value];
+      } else {
+        // Обычная опция → снимаем ранее выбранные взаимоисключающие.
+        const cleaned = currentAnswers.filter((v) => {
+          const o = q.options.find((op: any) => op.value === v);
+          return !isExclusiveAnswerOption(o);
+        });
+        newAnswers = [...cleaned, option.value];
+      }
       devLog('📝 [QuizQuestion] LimeStyle: multi-choice answer update', {
         oldAnswers: currentAnswers,
         newAnswers,

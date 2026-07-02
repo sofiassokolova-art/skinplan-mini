@@ -177,7 +177,7 @@ export const RECOMMENDATION_RULES: Rule[] = [
     name: "Комбинированная кожа — баланс", 
     priority: 92, 
     conditions: { 
-      skinType: "combo" 
+      skinType: { in: ["combination_oily", "combination_dry"] }
     }, 
     heroActives: ["матирование Т-зоны", "увлажнение щёк", "ниацинамид", "гелевые текстуры"] 
   },
@@ -200,7 +200,7 @@ export const RECOMMENDATION_RULES: Rule[] = [
     name: "Активный анти-эйдж 35–45 лет", 
     priority: 97, 
     conditions: { 
-      age: { in: ["35-44"] } 
+      age: { in: ["35-44", "45-54"] }
     }, 
     heroActives: ["ретинол 0.3–0.5%", "пептиды матриксил", "бакучиол", "антиоксиданты"] 
   },
@@ -310,7 +310,7 @@ export const RECOMMENDATION_RULES: Rule[] = [
     name: "Чувствительная кожа + пигментация", 
     priority: 97, 
     conditions: { 
-      skinType: "sensitive", 
+      sensitivityLevel: "high",
       pigmentation: { gte: 65 } 
     }, 
     heroActives: ["ниацинамид", "транексамовая кислота мягкая", "SPF минеральный"] 
@@ -350,4 +350,3 @@ export const RECOMMENDATION_RULES: Rule[] = [
     heroActives: ["ниацинамид", "гиалуроновая кислота", "SPF"],
   },
 ];
-

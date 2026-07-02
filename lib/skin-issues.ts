@@ -16,6 +16,22 @@ export interface SkinIssue {
   image_url?: string;
 }
 
+function answerTokens(answersMap: Record<string, any>, ...codes: string[]): string[] {
+  return codes.flatMap((code) => {
+    const raw = answersMap[code];
+    if (Array.isArray(raw)) return raw.map(String);
+    if (raw) return [String(raw)];
+    return [];
+  });
+}
+
+function hasToken(values: string[], fragments: string[]): boolean {
+  return values.some((value) => {
+    const normalized = value.toLowerCase();
+    return fragments.some((fragment) => normalized.includes(fragment));
+  });
+}
+
 /**
  * Вычисляет проблемы кожи на основе профиля и ответов
  */
@@ -52,14 +68,15 @@ export function calculateSkinIssues(
     }
   }
 
+  const diagnosisAnswers = answerTokens(answersMap, 'medical_diagnoses', 'diagnoses');
+  const oralMedicationAnswers = answerTokens(answersMap, 'oral_medications', 'current_medications');
+
   // 1. Акне / высыпания (согласно ТЗ)
   const acneConcern = answersMap.skin_concerns?.some((c: string) =>
     c.includes('Акне') || c.includes('высыпания') || c.includes('acne') || c.includes('акне')
   );
-  const acneDiagnosis = answersMap.medical_diagnoses?.includes('acne') ||
-                        answersMap.medical_diagnoses?.includes('акне');
-  const hasIsotretinoin = answersMap.oral_medications?.includes('isotretinoin') ||
-                         answersMap.oral_medications?.includes('изотретиноин');
+  const acneDiagnosis = hasToken(diagnosisAnswers, ['acne', 'акне']);
+  const hasIsotretinoin = hasToken(oralMedicationAnswers, ['isotretinoin', 'изотретиноин']);
   const acneLevel = profile.acneLevel || 0;
   const hasActiveInflammations = acneLevel >= 4;
 
@@ -130,8 +147,7 @@ export function calculateSkinIssues(
   // 3. Сухость/стянутость
   const hydrationScore = skinScores.find(s => s.axis === 'hydration')?.value ?? 100;
   if (hydrationScore <= 60) {
-    const hasAtopic = answersMap.medical_diagnoses?.includes('atopic_dermatitis') ||
-                     answersMap.medical_diagnoses?.includes('атопический дерматит');
+    const hasAtopic = hasToken(diagnosisAnswers, ['atopic_dermatitis', 'атоп']);
     const hasTightness = answersMap.skin_concerns?.some((c: string) =>
       c.includes('Сухость') || c.includes('стянутость') || c.includes('dehydration') || c.includes('обезвоженность')
     ) || answersMap.skin_type === 'dry' || answersMap.skin_type === 'combination_dry';
@@ -194,10 +210,8 @@ export function calculateSkinIssues(
   // 6. Краснота, раздражение, чувствительность
   const sensitivityLevel = profile.sensitivityLevel || 'low';
   const rednessScore = skinScores.find(s => s.axis === 'redness')?.value ?? 50;
-  const hasRosacea = answersMap.medical_diagnoses?.includes('rosacea') ||
-                    answersMap.medical_diagnoses?.includes('розацеа');
-  const hasDermatitis = answersMap.medical_diagnoses?.includes('dermatitis') ||
-                       answersMap.medical_diagnoses?.includes('дерматит');
+  const hasRosacea = hasToken(diagnosisAnswers, ['rosacea', 'розацеа', 'купероз']);
+  const hasDermatitis = hasToken(diagnosisAnswers, ['dermatitis', 'дерматит', 'атоп', 'себор']);
 
   if (sensitivityLevel === 'high' || sensitivityLevel === 'very_high' ||
       rednessScore >= 50 || hasRosacea || hasDermatitis) {

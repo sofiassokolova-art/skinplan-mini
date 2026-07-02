@@ -113,10 +113,12 @@ function LayoutContent({
   const { paywallVisible } = usePaywallVisibility();
   
   const isOnQuizPage = pathname === '/quiz' || pathname.startsWith('/quiz/');
+  const isLegalPage = pathname === '/terms' || pathname === '/privacy';
   
   // Скрываем навигацию на определенных страницах и в режимах/экранах, где она мешает UX
   const isOnRootPage = pathname === '/';
   const hideNav = isOnQuizPage || 
+                  isLegalPage ||
                   pathname === '/loading' ||
                   pathname.startsWith('/loading/') ||
                   isResumeScreen ||
@@ -199,7 +201,7 @@ function LayoutContent({
       {/* КРИТИЧНО: Используем hideNav, который включает проверку isOnQuizPage и проверку нового пользователя на главной */}
       {!hideNav && <BottomNavigation />}
       {/* Сервисный попап для отзывов (не показываем на анкете и когда виден пейвол PaymentGate) */}
-      {!isOnQuizPage && !paywallVisible && <ServiceFeedbackPopup />}
+      {!isOnQuizPage && !isLegalPage && !paywallVisible && <ServiceFeedbackPopup />}
     </>
   );
 }

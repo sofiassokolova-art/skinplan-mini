@@ -15,6 +15,8 @@ import { handleGetPlan } from '@/lib/quiz/handlers/handleGetPlan';
 import { startPrewarmSubmit } from '@/lib/quiz/prewarm-submit';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 import { getQuizInfoBackgroundImage } from '@/app/(miniapp)/quiz/image-assets';
+import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
+import { deriveFocusKeys } from '@/lib/focus-keys';
 
 export interface ImproveSkinScreenProps {
   screen: InfoScreen;
@@ -87,6 +89,57 @@ function ImproveSkinScreenComponent({
 
   const hasInitData =
     typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
+
+  // Таймлайн «Что произойдёт с кожей» — раньше был захардкожен и обещал ВСЕМ
+  // «уходит стянутость» и «меньше высыпаний». Пользователи без этих проблем
+  // (напр. без акне) справедливо жаловались, что им приписывают несуществующее.
+  // Теперь вехи собираются из реальных беспокойств/целей: обещаем только то, что
+  // релевантно, а при отсутствии сигнала даём нейтральную формулировку без диагноза.
+  const timeline = React.useMemo(() => {
+    const allQuestions = extractQuestionsFromQuestionnaire(questionnaire);
+    const labelsFor = (code: string): string[] => {
+      const q = allQuestions.find((qq: any) => qq?.code === code);
+      if (!q || !answers) return [];
+      const raw = answers[(q as any).id];
+      if (raw === undefined || raw === null) return [];
+      const options = (q as any).options || (q as any).answerOptions || [];
+      const resolveOne = (v: string): string => {
+        const opt = options.find((o: any) =>
+          String(o.id) === String(v) || o.value === v || o.label === v,
+        );
+        return opt?.label || v;
+      };
+      return (Array.isArray(raw) ? raw : [raw]).map(resolveOne);
+    };
+
+    const focus = deriveFocusKeys([
+      ...labelsFor('skin_concerns'),
+      ...labelsFor('skin_goals'),
+    ]);
+
+    const week1 = focus.has('acne')
+      ? 'Меньше новых высыпаний, кожа спокойнее'
+      : focus.has('pigmentation')
+        ? 'Тон постепенно выравнивается'
+        : (focus.has('dehydration') || focus.has('barrier'))
+          ? 'Уходит сухость и стянутость, кожа увлажнена'
+          : 'Кожа выглядит свежее и отдохнувшей';
+
+    const week23 = (focus.has('pores') || focus.has('oiliness'))
+      ? 'Поры выглядят чище, кожа ровнее'
+      : (focus.has('wrinkles'))
+        ? 'Кожа более упругая, появляется сияние'
+        : focus.has('pigmentation')
+          ? 'Тон ровнее, следы менее заметны'
+          : 'Появляется здоровое сияние';
+
+    return [
+      { day: 'День 1–3', text: 'Кожа привыкает к уходу — увлажнение и барьер в приоритете' },
+      { day: 'Неделя 1', text: week1 },
+      { day: 'Неделя 2–3', text: week23 },
+      { day: 'День 28', text: 'Кожа выглядит здоровой и ухоженной, сияет без фильтров', highlight: true },
+    ];
+  }, [questionnaire, answers]);
 
   return (
     <>
@@ -239,12 +292,7 @@ function ImproveSkinScreenComponent({
             </div>
 
             {/* Вертикальный таймлайн с лаймовым рельсом */}
-            {[
-              { day: 'День 1–3', text: 'Уходит стянутость — кожа увлажнена и спокойна' },
-              { day: 'Неделя 1', text: 'Тон выравнивается, меньше новых высыпаний' },
-              { day: 'Неделя 2–3', text: 'Поры чище, появляется здоровое сияние' },
-              { day: 'День 28', text: 'Кожа плотная и ровная, сияет без фильтров', highlight: true },
-            ].map((step, i, arr) => {
+            {timeline.map((step, i, arr) => {
               const isLast = i === arr.length - 1;
               return (
                 <div key={step.day} style={{ display: 'flex', gap: 14, alignItems: 'stretch' }}>

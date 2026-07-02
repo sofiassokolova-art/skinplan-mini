@@ -84,14 +84,15 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
         <span
           className="quiz-welcome-title"
           style={{
-            fontFamily: "var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 700,
+            fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 500,
             fontSize: 'clamp(18px, 5vw, 24px)',
             color: 'var(--canvas-white)',
             letterSpacing: '0px',
+            textTransform: 'lowercase',
           }}
         >
-          SkinIQ
+          skiniq
         </span>
       </div>
 

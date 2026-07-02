@@ -180,11 +180,22 @@ export function buildSkinProfileFromAnswers(
   // Маппинг questionCode -> rule.key (для обратной совместимости)
   const codeToKeyMap: Record<string, string> = {
     'skin_goals': 'goals_primary',
+    'SKIN_GOALS': 'goals_primary',
     'goals_primary': 'goals_primary',
-    'skin_concerns': 'concerns_primary',
-    'concerns_primary': 'concerns_primary',
+    'skin_concerns': 'current_concerns',
+    'SKIN_CONCERNS': 'current_concerns',
+    'current_concerns': 'current_concerns',
+    'concerns_primary': 'current_concerns',
+    'skin_sensitivity': 'skin_sensitivity',
+    'medical_diagnoses': 'diagnoses',
+    'MEDICAL_DIAGNOSES': 'diagnoses',
+    'diagnoses': 'diagnoses',
+    'DIAGNOSES': 'diagnoses',
     'prescription_topical': 'topical_rx',
+    'PRESCRIPTION_TOPICAL': 'topical_rx',
+    'PRESCRIPTION_CREAMS': 'topical_rx',
     'oral_medications': 'oral_meds',
+    'ORAL_MEDICATIONS': 'oral_meds',
   };
 
   // ИСПРАВЛЕНО: Создаем мапу ответов по кодам для проверки условий в single_choice_conditional
@@ -254,4 +265,3 @@ export function applyRuleToProfile(
 ): void {
   applyRule(rule, answerValue, profile);
 }
-

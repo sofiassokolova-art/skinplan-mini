@@ -132,6 +132,24 @@ export async function GET(request: NextRequest) {
       acneLevel: profile.acneLevel || 0,
     };
 
+    const labelsOf = (answer: any): string[] => {
+      const opts = answer.question?.answerOptions ?? [];
+      const map = new Map<string, string>(opts.map((opt: { value: string; label: string }) => [opt.value, opt.label]));
+      const values = Array.isArray(answer.answerValues) ? answer.answerValues : [];
+      return values.map((value: string) => map.get(value) ?? String(value));
+    };
+    const labelOfSingle = (answer: any): string | null => {
+      if (!answer.answerValue) return null;
+      const option = answer.question?.answerOptions?.find((opt: { value: string; label: string }) => opt.value === answer.answerValue);
+      return option?.label ?? String(answer.answerValue);
+    };
+    const normalizeSensitivityAnswer = (raw: string | null): string => {
+      const value = String(raw || '').toLowerCase();
+      if (value.includes('сильн') || value.includes('стойк') || value.includes('high') || value.endsWith('_4')) return 'high';
+      if (value.includes('заметн') || value.includes('средн') || value.includes('medium') || value.endsWith('_3')) return 'medium';
+      return 'low';
+    };
+
     // Извлекаем данные из ответов
     for (const answer of userAnswers) {
       const code = answer.question?.code || '';
@@ -145,8 +163,8 @@ export async function GET(request: NextRequest) {
           const option = answer.question?.answerOptions?.find((opt: { value: string; label: string }) => opt.value === value);
           return option?.label ?? String(value);
         });
-      } else if (code === 'diagnoses' && Array.isArray(answer.answerValues)) {
-        questionnaireAnswers.diagnoses = answer.answerValues as string[];
+      } else if ((code === 'diagnoses' || code === 'medical_diagnoses') && Array.isArray(answer.answerValues)) {
+        questionnaireAnswers.diagnoses = labelsOf(answer);
       } else if (code === 'habits' && Array.isArray(answer.answerValues)) {
         // Лейблы, а не коды: оси матчат привычки по тексту («солнце без SPF», «Курю»).
         questionnaireAnswers.habits = (answer.answerValues as string[]).map((value) => {
@@ -159,6 +177,8 @@ export async function GET(request: NextRequest) {
         questionnaireAnswers.sunExposure = value as string;
       } else if (code === 'skin_shine_time') {
         questionnaireAnswers.skinShineTime = value as string;
+      } else if (code === 'skin_sensitivity' || code === 'sensitivity_level' || code === 'sensitivityLevel') {
+        questionnaireAnswers.sensitivityLevel = normalizeSensitivityAnswer(labelOfSingle(answer) || (value as string) || 'low');
       } else if (code === 'current_medications' && Array.isArray(answer.answerValues)) {
         questionnaireAnswers.currentMedications = answer.answerValues as string[];
       }
@@ -353,5 +373,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
 

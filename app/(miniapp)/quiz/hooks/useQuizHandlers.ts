@@ -10,6 +10,7 @@ import type { Question } from '@/lib/quiz/types';
 import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
 import { filterQuestions } from '@/lib/quiz/filterQuestions';
+import { getQuizSteps } from '@/lib/quiz/quizSteps';
 import { loadQuestionnaire as loadQuestionnaireHandler } from '@/lib/quiz/loadQuestionnaire';
 import * as userPreferences from '@/lib/user-preferences';
 import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
@@ -204,7 +205,56 @@ export function useQuizHandlers({ currentQuestion, screen }: UseQuizHandlersPara
     async (_answersToSave: Record<number, string | string[]>, questionIndex: number, infoScreenIndex: number) => {
       if (!questionnaire?.id) return;
 
-      quizState.pendingProgressRef.current = { questionIndex, infoScreenIndex };
+      const initialInfoScreens = getInitialInfoScreens();
+      const getGlobalScreenIndex = () => {
+        if (infoScreenIndex < initialInfoScreens.length) {
+          return infoScreenIndex;
+        }
+
+        // Для аналитики сохраняем индекс в полном каноническом порядке анкеты,
+        // а не в персонально отфильтрованном пути пользователя. Иначе условные
+        // вопросы сдвигают номера экранов и админка читает не тот экран.
+        const questionsForSteps = rawQuestions.length > 0 ? rawQuestions : allQuestions;
+        const steps = getQuizSteps(questionsForSteps);
+        const pendingInfoScreen = quizState.pendingInfoScreenRef.current;
+
+        if (pendingInfoScreen) {
+          const pendingStepIndex = steps.findIndex(
+            (step) => step.type === 'info' && step.infoScreen.id === pendingInfoScreen.id,
+          );
+          if (pendingStepIndex >= 0) {
+            return initialInfoScreens.length + pendingStepIndex;
+          }
+        }
+
+        const currentQuestionForProgress =
+          allQuestions[questionIndex] ?? rawQuestions[questionIndex];
+        const currentQuestionCode = currentQuestionForProgress?.code
+          ? String(currentQuestionForProgress.code).toLowerCase()
+          : '';
+        const questionStepIndex = steps.findIndex((step) => {
+          if (step.type !== 'question') return false;
+          if (currentQuestionForProgress?.id && step.question.id === currentQuestionForProgress.id) {
+            return true;
+          }
+          return (
+            !!currentQuestionCode &&
+            String(step.question.code || '').toLowerCase() === currentQuestionCode
+          );
+        });
+        if (questionStepIndex >= 0) {
+          return initialInfoScreens.length + questionStepIndex;
+        }
+
+        return infoScreenIndex;
+      };
+
+      const globalInfoScreenIndex = getGlobalScreenIndex();
+
+      quizState.pendingProgressRef.current = {
+        questionIndex,
+        infoScreenIndex: globalInfoScreenIndex,
+      };
       if (quizState.saveProgressTimeoutRef.current) {
         clearTimeout(quizState.saveProgressTimeoutRef.current);
       }
@@ -218,13 +268,16 @@ export function useQuizHandlers({ currentQuestion, screen }: UseQuizHandlersPara
           questionnaireId: questionnaire.id,
           questionId: -1,
           questionIndex: pending?.questionIndex ?? questionIndex,
-          infoScreenIndex: pending?.infoScreenIndex ?? infoScreenIndex,
+          infoScreenIndex: pending?.infoScreenIndex ?? globalInfoScreenIndex,
         });
       }, 500);
     },
     [
+      allQuestions,
       enqueueProgressSave,
       questionnaire?.id,
+      rawQuestions,
+      quizState.pendingInfoScreenRef,
       quizState.pendingProgressRef,
       quizState.saveProgressTimeoutRef,
     ],

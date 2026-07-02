@@ -3,8 +3,8 @@
 // oral_medications, перед блоком «Предпочтения» (первый вопрос — makeup_frequency).
 //
 // Композиция «боль → решение»: сверху приглушённая карточка «Как обычно»
-// (хаос, догадки, лишние траты), ниже коннектор SkinIQ, снизу акцентная
-// лаймовая карточка «Со SkinIQ» (точный план за секунды). Спокойный продающий
+// (хаос, догадки, лишние траты), ниже коннектор skiniq, снизу акцентная
+// лаймовая карточка «Со skiniq» (точный план за секунды). Спокойный продающий
 // контраст без кричащего VS-бейджа и красных крестов; стиль общий с остальными
 // инфо-экранами анкеты (фон-текстура + нейтральный скрим, заголовок слева, стекло).
 
@@ -119,17 +119,6 @@ function AiComparisonScreenComponent({
           sizes="100vw"
           style={{ objectPosition: 'center', pointerEvents: 'none' }}
         />
-        {/* Нейтральный скрим для читаемости (без лаймовых пятен) */}
-        <div
-          aria-hidden
-          style={{
-            position: 'absolute',
-            inset: 0,
-            zIndex: 1,
-            pointerEvents: 'none',
-            background: 'linear-gradient(rgba(244,242,238,0.46), rgba(244,242,238,0.62))',
-          }}
-        />
 
         <div
           className="animate-fade-in"
@@ -240,7 +229,7 @@ function AiComparisonScreenComponent({
             </div>
           </div>
 
-          {/* CONNECTOR — линия + лаймовый чип SkinIQ */}
+          {/* CONNECTOR — линия + лаймовый чип skiniq */}
           <div
             style={{
               display: 'flex',
@@ -269,10 +258,11 @@ function AiComparisonScreenComponent({
                 background: 'var(--accent)',
                 boxShadow: '0 6px 16px rgba(var(--accent-rgb),0.32)',
                 fontSize: 11.5,
-                fontWeight: 700,
-                letterSpacing: '0.3px',
-                textTransform: 'uppercase',
+                fontWeight: 500,
+                letterSpacing: 0,
                 color: 'var(--ink)',
+                fontFamily:
+                  "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                 zIndex: 1,
               }}
             >
@@ -289,7 +279,7 @@ function AiComparisonScreenComponent({
               >
                 <path d="M14 2.5c1.6 7 4.5 9.9 11.5 11.5-7 1.6-9.9 4.5-11.5 11.5C12.4 18.5 9.5 15.6 2.5 14 9.5 12.4 12.4 9.5 14 2.5Z" />
               </svg>
-              SkinIQ
+              skiniq
             </div>
             <div
               aria-hidden
@@ -303,7 +293,7 @@ function AiComparisonScreenComponent({
             />
           </div>
 
-          {/* CARD B — «Со SkinIQ»: акцентная, лаймовая рамка, чек-маркеры, тень */}
+          {/* CARD B — «Со skiniq»: акцентная, лаймовая рамка, чек-маркеры, тень */}
           <div
             style={{
               position: 'relative',
@@ -319,14 +309,15 @@ function AiComparisonScreenComponent({
             <div
               style={{
                 fontSize: '11px',
-                fontWeight: 700,
-                letterSpacing: '0.5px',
-                textTransform: 'uppercase',
+                fontWeight: 500,
+                letterSpacing: 0,
                 color: 'var(--ink)',
+                fontFamily:
+                  "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                 marginBottom: 13,
               }}
             >
-              Со SkinIQ
+              Со skiniq
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
               {skiniqItems.map((t) => (

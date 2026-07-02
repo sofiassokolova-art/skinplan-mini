@@ -10,7 +10,7 @@ const newRules = [
     name: 'Комбинированная кожа + акне (легкое)',
     priority: 93,
     conditionsJson: {
-      skin_type: 'combo',
+      skin_type: { in: ['combination_oily', 'combination_dry'] },
       inflammation: { gte: 40, lte: 60 },
     },
     stepsJson: {
@@ -45,7 +45,7 @@ const newRules = [
     name: 'Комбинированная кожа + акне (среднее)',
     priority: 94,
     conditionsJson: {
-      skin_type: 'combo',
+      skin_type: { in: ['combination_oily', 'combination_dry'] },
       inflammation: { gte: 60, lte: 80 },
     },
     stepsJson: {
@@ -80,7 +80,7 @@ const newRules = [
     name: 'Комбинированная кожа + пигментация',
     priority: 93,
     conditionsJson: {
-      skin_type: 'combo',
+      skin_type: { in: ['combination_oily', 'combination_dry'] },
       pigmentation: { gte: 50 },
     },
     stepsJson: {
@@ -110,7 +110,7 @@ const newRules = [
     name: 'Комбинированная кожа + чувствительность',
     priority: 93,
     conditionsJson: {
-      skin_type: 'combo',
+      skin_type: { in: ['combination_oily', 'combination_dry'] },
       sensitivity_level: 'high',
     },
     stepsJson: {
@@ -144,7 +144,7 @@ const newRules = [
     name: 'Комбинированная кожа + обезвоженность',
     priority: 93,
     conditionsJson: {
-      skin_type: 'combo',
+      skin_type: { in: ['combination_oily', 'combination_dry'] },
       hydration: { lte: 50 },
     },
     stepsJson: {
@@ -181,7 +181,7 @@ const newRules = [
     name: 'Комбинированная кожа + первые признаки старения',
     priority: 92,
     conditionsJson: {
-      skin_type: 'combo',
+      skin_type: { in: ['combination_oily', 'combination_dry'] },
       age: { in: ['25-34'] },
       photoaging: { gte: 40 },
     },
@@ -249,4 +249,3 @@ async function addComboSkinRules() {
 }
 
 addComboSkinRules().catch(console.error);
-

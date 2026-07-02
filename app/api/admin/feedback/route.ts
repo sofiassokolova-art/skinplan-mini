@@ -21,13 +21,21 @@ export async function GET(request: NextRequest) {
     const feedbackType = searchParams.get('feedback'); // bought_love, bought_ok, bought_bad, not_bought
     const skip = (page - 1) * limit;
 
+    // Отзывы о покупке (исключаем not_bought — это не отзыв, а отметка «не куплено»).
+    const BOUGHT_FEEDBACKS = ['bought_love', 'bought_ok', 'bought_bad'];
     const where: any = {};
     if (feedbackType) {
+      // Конкретная вкладка (Love/OK/Bad) — фильтруем по ней.
       where.feedback = feedbackType;
+    } else {
+      // По умолчанию (вкладка «Все») — только отзывы о покупке, без not_bought.
+      where.feedback = { in: BOUGHT_FEEDBACKS };
     }
 
-    // Получаем обратную связь по продуктам (wishlist feedback)
-    const [feedback, total] = await Promise.all([
+    // Получаем обратную связь по продуктам (wishlist feedback).
+    // total — для пагинации текущей выборки; love/ok/bad — реальные счётчики по БД
+    // (а не по одной странице), чтобы бейджи совпадали с дашбордом.
+    const [feedback, total, loveTotal, okTotal, badTotal] = await Promise.all([
       prisma.wishlistFeedback.findMany({
         where,
         skip,
@@ -56,6 +64,9 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: 'desc' },
       }),
       prisma.wishlistFeedback.count({ where }),
+      prisma.wishlistFeedback.count({ where: { feedback: 'bought_love' } }),
+      prisma.wishlistFeedback.count({ where: { feedback: 'bought_ok' } }),
+      prisma.wishlistFeedback.count({ where: { feedback: 'bought_bad' } }),
     ]);
 
     // Получаем обратную связь по планам - разделяем по типу
@@ -124,6 +135,12 @@ export async function GET(request: NextRequest) {
           username: f.user.username,
         },
       })),
+      productFeedbackStats: {
+        all: loveTotal + okTotal + badTotal,
+        love: loveTotal,
+        ok: okTotal,
+        bad: badTotal,
+      },
       planFeedbackStats: {
         planRecommendations: planRecommendationsTotal,
         planGeneral: planGeneralTotal,

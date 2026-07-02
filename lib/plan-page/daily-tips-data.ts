@@ -15,6 +15,13 @@ export interface DailyTip {
   goalKey: GoalKey | null;
   title: string;
   text: string;
+  /**
+   * Совет упоминает конкретное средство (сыворотка, BHA, ретинол…). Показываем его
+   * только если в плане реально есть шаг с таким префиксом step-категории — иначе
+   * пользователь читает «нанесите сыворотку», которой у него нет (частая жалоба).
+   * undefined = совет универсален, привязки к продукту нет.
+   */
+  requiresStepPrefix?: string;
 }
 
 export const DAILY_TIPS: DailyTip[] = [
@@ -60,6 +67,7 @@ export const DAILY_TIPS: DailyTip[] = [
     goalKey: 'dehydration',
     title: 'Увлажнение наносите в два слоя',
     text: 'Сначала сыворотка с гиалуроновой кислотой на влажную кожу, затем крем. Это «запечатывает» влагу.',
+    requiresStepPrefix: 'serum_hydrating',
   },
 
   // ─── Active ───
@@ -90,6 +98,7 @@ export const DAILY_TIPS: DailyTip[] = [
     goalKey: 'acne',
     title: 'BHA-кислоту — только вечером, через день',
     text: 'Наносите на сухую кожу через 20 минут после умывания. Утром обязательно SPF — салициловая повышает фоточувствительность.',
+    requiresStepPrefix: 'treatment_exfoliant',
   },
   {
     id: 'ac-acne-spot',
@@ -97,6 +106,15 @@ export const DAILY_TIPS: DailyTip[] = [
     goalKey: 'acne',
     title: 'Точечный актив — не на всё лицо',
     text: 'Бензоил пероксид и сильные подсушивающие средства наносите только на воспаление, чтобы не пересушить здоровую кожу.',
+    requiresStepPrefix: 'treatment_acne_bpo',
+  },
+  {
+    id: 'ac-acne-azelaic',
+    phase: 'active',
+    goalKey: 'acne',
+    title: 'Азелаиновую кислоту вводите постепенно',
+    text: 'Начните с 2–3 вечеров в неделю тонким слоем после очищения. Если кожа спокойна, частоту можно повышать.',
+    requiresStepPrefix: 'treatment_acne_azelaic',
   },
   {
     id: 'ac-pores-niacinamide',
@@ -104,6 +122,15 @@ export const DAILY_TIPS: DailyTip[] = [
     goalKey: 'pores',
     title: 'Ниацинамид работает в долгую',
     text: 'Видимое сужение пор — после 4–6 недель регулярного использования. Концентрация 5–10% оптимальна.',
+    requiresStepPrefix: 'serum_niacinamide',
+  },
+  {
+    id: 'ac-pores-exfoliant',
+    phase: 'active',
+    goalKey: 'pores',
+    title: 'Чёрные точки лучше не тереть скрабом',
+    text: 'Мягкий эксфолиант работает ровнее: наносите вечером по графику плана и не добавляйте сверху другие кислоты.',
+    requiresStepPrefix: 'treatment_exfoliant',
   },
   {
     id: 'ac-pigmentation-vitc',
@@ -111,6 +138,7 @@ export const DAILY_TIPS: DailyTip[] = [
     goalKey: 'pigmentation',
     title: 'Витамин C — утром, до SPF',
     text: 'L-аскорбиновая кислота 10–15% усиливает защиту от UV-индуцированной пигментации и работает синергично с SPF.',
+    requiresStepPrefix: 'serum_vitc',
   },
   {
     id: 'ac-pigmentation-no-sun',
@@ -125,6 +153,7 @@ export const DAILY_TIPS: DailyTip[] = [
     goalKey: 'wrinkles',
     title: 'Ретинол — горошина, не больше',
     text: 'На сухую кожу через 20 минут после умывания. Начинайте с 2 раз в неделю и наращивайте по переносимости.',
+    requiresStepPrefix: 'treatment_antiage',
   },
   {
     id: 'ac-antiage-retinoid',
@@ -132,6 +161,23 @@ export const DAILY_TIPS: DailyTip[] = [
     goalKey: 'antiage',
     title: 'Антиэйдж — это марафон, не спринт',
     text: 'Видимые изменения от ретиноидов — после 12 недель регулярного использования. Не отменяйте при первых улучшениях.',
+    requiresStepPrefix: 'treatment_antiage',
+  },
+  {
+    id: 'ac-antiage-serum',
+    phase: 'active',
+    goalKey: 'antiage',
+    title: 'Антиэйдж-сыворотку наносите до крема',
+    text: 'Сыворотке нужен тонкий слой на чистой коже. Крем сверху снижает сухость и помогает сохранить регулярность.',
+    requiresStepPrefix: 'serum_antiage',
+  },
+  {
+    id: 'ac-wrinkles-serum',
+    phase: 'active',
+    goalKey: 'wrinkles',
+    title: 'Сыворотка работает только при регулярности',
+    text: 'Не оценивайте результат по одному вечеру: текстура и упругость меняются постепенно, обычно после нескольких недель.',
+    requiresStepPrefix: 'serum_antiage',
   },
   {
     id: 'ac-dehydration-hyaluronic',
@@ -139,6 +185,7 @@ export const DAILY_TIPS: DailyTip[] = [
     goalKey: 'dehydration',
     title: 'Гиалуроновая кислота — на влажную кожу',
     text: 'В сухом помещении она вытягивает влагу из кожи, а не из воздуха. Поэтому всегда наносим поверх увлажнения.',
+    requiresStepPrefix: 'serum_hydrating',
   },
   {
     id: 'ac-barrier-no-acid',
@@ -176,5 +223,6 @@ export const DAILY_TIPS: DailyTip[] = [
     goalKey: 'acne',
     title: 'Не отменяйте BHA полностью',
     text: 'Снизьте до 1–2 раз в неделю — это держит поры чистыми и не даёт акне вернуться.',
+    requiresStepPrefix: 'treatment_exfoliant',
   },
 ];

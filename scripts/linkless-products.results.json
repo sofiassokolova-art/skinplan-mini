@@ -1,0 +1,658 @@
+[
+  {
+    "id": 635,
+    "brand": "Avene",
+    "name": "RetrinAL 0.05",
+    "status": "ok",
+    "link": "https://goldapple.ru/89320600007-redermic-retinol",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/89320600007-redermic-retinol"
+    },
+    "evidence": "Альтернатива для treatment/retinol: H1 'La Roche-Posay Redermic Retinol', карточка Goldapple рендерится, есть корзина."
+  },
+  {
+    "id": 522,
+    "brand": "Azelik",
+    "name": "Azelaic Acid",
+    "status": "ok",
+    "link": "https://market.yandex.ru/card/azelik-gel-dnar-prim/5010681514",
+    "marketLinks": {
+      "ym": "https://market.yandex.ru/card/azelik-gel-dnar-prim/5010681514"
+    },
+    "evidence": "H1: 'Азелик гель туба 15% 30г', карточка Яндекс Маркета рендерится, есть сигнал покупки/доставки."
+  },
+  {
+    "id": 525,
+    "brand": "COSRX",
+    "name": "AC Collection Spot",
+    "status": "ok",
+    "link": "https://goldapple.ru/97560200048-ac-collection-ultimate-spot-cream",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/97560200048-ac-collection-ultimate-spot-cream"
+    },
+    "evidence": "H1: 'COSRX AC Collection Ultimate Spot Cream', карточка Goldapple рендерится, есть корзина."
+  },
+  {
+    "id": 499,
+    "brand": "COSRX",
+    "name": "Hydrium Triple Hyaluronic",
+    "status": "ok",
+    "link": "https://goldapple.ru/97560200043-hydrium-triple-hyaluronic-moisture-ampoule",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/97560200043-hydrium-triple-hyaluronic-moisture-ampoule"
+    },
+    "evidence": "H1: 'COSRX Hydrium Triple Hyaluronic Moisture Ampoule', карточка Goldapple рендерится, есть корзина."
+  },
+  {
+    "id": 572,
+    "brand": "COSRX",
+    "name": "Snail Hydrogel Mask",
+    "status": "ok",
+    "link": "https://www.wildberries.ru/catalog/1162368137/detail.aspx",
+    "marketLinks": {
+      "wildberries": "https://www.wildberries.ru/catalog/1162368137/detail.aspx"
+    },
+    "evidence": "Карточка WB: 'Гидрогелевая маска с муцином улитки COSRX Advanced Snail Mucin Glass Glow Hydrogel Mask 3шт', есть 'Купить сейчас' и 'В корзину'."
+  },
+  {
+    "id": 507,
+    "brand": "CeraVe",
+    "name": "Blemish Control Serum",
+    "status": "ok",
+    "link": "https://goldapple.ru/19000163786-the-niacinamide-15-serum",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/19000163786-the-niacinamide-15-serum"
+    },
+    "evidence": "Альтернатива для niacinamide/blemish serum: H1 'COSRX The Niacinamide 15 Serum', карточка Goldapple рендерится, есть корзина."
+  },
+  {
+    "id": 500,
+    "brand": "CeraVe",
+    "name": "Hydrating HA Serum",
+    "status": "ok",
+    "link": "https://market.yandex.ru/card/syvorotka-dlya-ukhoda-za-kozhey-cerave-hydrating-hyaluronic-acid-serum-30-ml/5561094022",
+    "marketLinks": {
+      "ym": "https://market.yandex.ru/card/syvorotka-dlya-ukhoda-za-kozhey-cerave-hydrating-hyaluronic-acid-serum-30-ml/5561094022"
+    },
+    "evidence": "H1: 'Сыворотка для ухода за кожей CeraVe Hydrating Hyaluronic Acid Serum, 30 мл', карточка рендерится, есть покупка/доставка."
+  },
+  {
+    "id": 492,
+    "brand": "CeraVe",
+    "name": "Hydrating Toner",
+    "status": "ok",
+    "link": "https://goldapple.ru/19000230922-1025-dokdo-toner",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/19000230922-1025-dokdo-toner"
+    },
+    "evidence": "Альтернатива для hydrating toner: H1 'Round Lab 1025 DOKDO TONER', карточка Goldapple рендерится, есть корзина."
+  },
+  {
+    "id": 489,
+    "brand": "Cleara",
+    "name": "Anti-Acne Gel Cleanser",
+    "status": "ok",
+    "link": "https://goldapple.ru/19000048751-salicylic-acid-daily-gentle-cleanser-mini",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/19000048751-salicylic-acid-daily-gentle-cleanser-mini"
+    },
+    "evidence": "Альтернатива для anti-acne cleanser: H1 'COSRX Salicylic Acid Daily Gentle Cleanser mini', карточка Goldapple рендерится, есть корзина."
+  },
+  {
+    "id": 519,
+    "brand": "Cleara",
+    "name": "BPO 2.5%",
+    "status": "ok",
+    "link": "https://market.yandex.ru/card/panoxyl-mylo-dlya-lecheniya-ugrevoy-sypi-acne-cleansing-bar-mylo-s-benzoilperekisyu10-ot-akne-113-gr/5055240521",
+    "marketLinks": {
+      "ym": "https://market.yandex.ru/card/panoxyl-mylo-dlya-lecheniya-ugrevoy-sypi-acne-cleansing-bar-mylo-s-benzoilperekisyu10-ot-akne-113-gr/5055240521"
+    },
+    "evidence": "Альтернатива BPO без рецептурного адапалена: H1 'PanOxyl, Мыло для лечения угревой сыпи Acne Cleansing Bar мыло с бензоилперекисью10% от акне, 113 гр.', карточка Яндекс Маркета рендерится, есть покупка."
+  },
+  {
+    "id": 520,
+    "brand": "Cleara",
+    "name": "BPO 5%",
+    "status": "needs_manual_check",
+    "evidence": "ОТКЛОНЕНО (Claude): подобранная «альтернатива» — антибактериальное мыло от запаха пота, не BPO-средство для лечения акне. Оставляем без ссылки до подбора корректного аналога."
+  },
+  {
+    "id": 470,
+    "brand": "Clinique",
+    "name": "Rinse-Off Foaming Cleanser",
+    "status": "ok",
+    "link": "https://goldapple.ru/15250100023-rinse-off-foaming-cleanser",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/15250100023-rinse-off-foaming-cleanser"
+    },
+    "evidence": "H1: 'Clinique Rinse-Off Foaming Cleanser', карточка Goldapple рендерится, есть корзина."
+  },
+  {
+    "id": 481,
+    "brand": "Dermacos",
+    "name": "Pure Clean Gel",
+    "status": "ok",
+    "link": "https://goldapple.ru/89270200005-sebium-purifying-cleansing-foaming-gel",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/89270200005-sebium-purifying-cleansing-foaming-gel"
+    },
+    "evidence": "Альтернатива для balancing/deep cleanser: H1 'Bioderma Sebium', карточка Goldapple рендерится, есть корзина."
+  },
+  {
+    "id": 555,
+    "brand": "Dr.Jart+",
+    "name": "Cicapair Eye",
+    "status": "ok",
+    "link": "https://goldapple.ru/89312300003-vichy-mineral-89",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/89312300003-vichy-mineral-89"
+    },
+    "evidence": "Альтернатива для eye_cream_basic: H1 'VICHY Mineral 89', карточка Goldapple для ухода за кожей вокруг глаз рендерится, есть корзина."
+  },
+  {
+    "id": 497,
+    "brand": "Dr.Jart+",
+    "name": "Cicapair Toner",
+    "status": "ok",
+    "link": "https://goldapple.ru/19000041344-sensibio",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/19000041344-sensibio"
+    },
+    "evidence": "Альтернатива для soothing toner: H1 'Bioderma Sensibio', карточка Goldapple с успокаивающим тоником рендерится, есть корзина."
+  },
+  {
+    "id": 512,
+    "brand": "Dr.Jart+",
+    "name": "V7 Lightening",
+    "status": "ok",
+    "link": "https://goldapple.ru/24780100004-c-vit",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/24780100004-c-vit"
+    },
+    "evidence": "Альтернатива для brightening serum: H1 'Sesderma C-VIT', карточка Goldapple рендерится, есть корзина."
+  },
+  {
+    "id": 537,
+    "brand": "For Me",
+    "name": "Bakuchiol Serum",
+    "status": "ok",
+    "link": "https://goldapple.ru/19000170048-retinol-intense-reactivating-serum",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/19000170048-retinol-intense-reactivating-serum"
+    },
+    "evidence": "Альтернатива для antiage treatment/serum: H1 'SOME BY MI RETINOL INTENSE REACTIVATING SERUM', карточка Goldapple рендерится, есть корзина."
+  },
+  {
+    "id": 575,
+    "brand": "For Me",
+    "name": "Barrier Balm",
+    "status": "ok",
+    "link": "https://goldapple.ru/19000126618-cicaplast-b5",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/19000126618-cicaplast-b5"
+    },
+    "evidence": "Альтернатива для barrier balm: H1 'La Roche-Posay Cicaplast Baume B5+', карточка Goldapple рендерится, есть корзина."
+  },
+  {
+    "id": 557,
+    "brand": "For Me",
+    "name": "Gentle Eye Cream",
+    "status": "ok",
+    "link": "https://goldapple.ru/19000229388-formen-eye-zone",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/19000229388-formen-eye-zone"
+    },
+    "evidence": "Альтернатива для eye_cream_basic: H1 'PFC CosmeticS Formen Eye Zone', карточка Goldapple с кремом вокруг глаз рендерится, есть корзина."
+  },
+  {
+    "id": 467,
+    "brand": "For Me",
+    "name": "Gentle Gel Cleanser",
+    "status": "ok",
+    "link": "https://goldapple.ru/89270300016-sensibio-mild-cleansing-foaming-gel",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/89270300016-sensibio-mild-cleansing-foaming-gel"
+    },
+    "evidence": "Альтернатива для gentle cleanser: H1 'Bioderma Sensibio', карточка Goldapple с мягким очищающим гелем рендерится, есть корзина."
+  },
+  {
+    "id": 571,
+    "brand": "For Me",
+    "name": "Hydrating Sheet Mask",
+    "status": "ok",
+    "link": "https://goldapple.ru/19000402079-advanced-snail-mucin-mask",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/19000402079-advanced-snail-mucin-mask"
+    },
+    "evidence": "Альтернатива для hydrating mask: H1 'COSRX Snail Mucin', карточка Goldapple с гидрогелевой маской рендерится, есть корзина."
+  },
+  {
+    "id": 544,
+    "brand": "For Me",
+    "name": "Matte Gel Cream",
+    "status": "ok",
+    "link": "https://goldapple.ru/89320200007-effaclar-mat",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/89320200007-effaclar-mat"
+    },
+    "evidence": "Альтернатива для matte/balancing moisturizer: H1 'La Roche-Posay Effaclar Mat', карточка Goldapple рендерится, есть корзина."
+  },
+  {
+    "id": 498,
+    "brand": "For Me",
+    "name": "Soothing Panthenol Toner",
+    "status": "ok",
+    "link": "https://goldapple.ru/19000198799-bifida-cica-herb-toner",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/19000198799-bifida-cica-herb-toner"
+    },
+    "evidence": "Альтернатива для soothing toner: H1 'Ma:nyo Bifida Cica Herb Toner', карточка Goldapple рендерится, есть корзина."
+  },
+  {
+    "id": 518,
+    "brand": "Galderma",
+    "name": "Baziron AC 5%",
+    "status": "ok",
+    "link": "https://apteka.ru/product/baziron-as-5-gel-40-gr-5e326a3e65b5ab0001652151/",
+    "marketLinks": {
+      "apteka": "https://apteka.ru/product/baziron-as-5-gel-40-gr-5e326a3e65b5ab0001652151/"
+    },
+    "evidence": "H1: 'Базирон АС 5% гель 40 гр', карточка apteka.ru рендерится, есть 'Купить'."
+  },
+  {
+    "id": 625,
+    "brand": "Galderma",
+    "name": "Дифферин гель",
+    "status": "ok",
+    "link": "https://apteka.ru/product/differin-gel-dlya-naruzhnogo-primeneniya-01-30-gr-5e327076ca7bdc0001930c63/",
+    "marketLinks": {
+      "apteka": "https://apteka.ru/product/differin-gel-dlya-naruzhnogo-primeneniya-01-30-gr-5e327076ca7bdc0001930c63/"
+    },
+    "evidence": "H1: 'Дифферин гель для наружного применения 0,1% 30 гр', карточка apteka.ru рендерится, есть 'Купить'."
+  },
+  {
+    "id": 486,
+    "brand": "Holika Holika",
+    "name": "Tea Tree Foam",
+    "status": "ok",
+    "link": "https://goldapple.ru/19000012307-tea-tree-purifine-30-cleansing-foam",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/19000012307-tea-tree-purifine-30-cleansing-foam"
+    },
+    "evidence": "Альтернатива для tea tree/deep cleanser: H1 'Dr. Ceuracle Tea Tree Purifine', карточка Goldapple рендерится, есть корзина."
+  },
+  {
+    "id": 466,
+    "brand": "IQ Derma",
+    "name": "Soft Cleansing Gel",
+    "status": "ok",
+    "link": "https://goldapple.ru/19000162309-dermatoclean",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/19000162309-dermatoclean"
+    },
+    "evidence": "Альтернатива для gentle cleansing gel: H1 'Eucerin DermatoCLEAN', карточка Goldapple рендерится, есть корзина."
+  },
+  {
+    "id": 534,
+    "brand": "La Roche-Posay",
+    "name": "Pigmentclar",
+    "status": "ok",
+    "link": "https://market.yandex.ru/card/krem-dlya-ukhoda-za-kozhey-la-roche-posay-pigmentclar-15-ml/5643056211",
+    "marketLinks": {
+      "ym": "https://market.yandex.ru/card/krem-dlya-ukhoda-za-kozhey-la-roche-posay-pigmentclar-15-ml/5643056211"
+    },
+    "evidence": "H1: 'Крем для ухода за кожей La Roche-Posay Pigmentclar, 15 мл', карточка рендерится, есть покупка/доставка."
+  },
+  {
+    "id": 476,
+    "brand": "Medi-Peel",
+    "name": "A.C Bubble Cleanser",
+    "status": "ok",
+    "link": "https://goldapple.ru/89320200010-gel-mous",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/89320200010-gel-mous"
+    },
+    "evidence": "Альтернатива для acne/balancing cleanser: H1 'La Roche-Posay EFFACLAR', видимая карточка Goldapple с очищающим гелем рендерится, есть корзина."
+  },
+  {
+    "id": 570,
+    "brand": "Medi-Peel",
+    "name": "Cica Mask",
+    "status": "ok",
+    "link": "https://goldapple.ru/19000465465-phyto-cica-nol",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/19000465465-phyto-cica-nol"
+    },
+    "evidence": "H1: 'MEDI-PEEL Phyto Cica-Nol', карточка Goldapple содержит 'МАСКА ДЛЯ ЛИЦА', есть корзина."
+  },
+  {
+    "id": 536,
+    "brand": "Medik8",
+    "name": "Crystal Retinal 3",
+    "status": "ok",
+    "link": "https://market.yandex.ru/card/medik8-nochnaya-syvorotka-crystal-retinal-3-serum-30-ml/103360775294",
+    "marketLinks": {
+      "ym": "https://market.yandex.ru/card/medik8-nochnaya-syvorotka-crystal-retinal-3-serum-30-ml/103360775294"
+    },
+    "evidence": "H1: 'Medik8 Ночная сыворотка Crystal Retinal 3 Serum 30 мл', карточка рендерится, есть покупка/доставка."
+  },
+  {
+    "id": 551,
+    "brand": "Mixit",
+    "name": "Cica Cream",
+    "status": "ok",
+    "link": "https://goldapple.ru/89120100011-cica-sootfing-cream",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/89120100011-cica-sootfing-cream"
+    },
+    "evidence": "Альтернатива для cica/soothing cream: H1 'Topicrem Cica+', карточка Goldapple рендерится, есть корзина."
+  },
+  {
+    "id": 556,
+    "brand": "Mixit",
+    "name": "Eye Lift Gel",
+    "status": "ok",
+    "link": "https://goldapple.ru/19000453606-the-one",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/19000453606-the-one"
+    },
+    "evidence": "Альтернатива для eye_cream_basic: H1 'MIXIT The One', карточка Goldapple с кремом для кожи вокруг глаз рендерится, есть корзина."
+  },
+  {
+    "id": 508,
+    "brand": "Mixit",
+    "name": "Niacinamide Booster",
+    "status": "ok",
+    "link": "https://goldapple.ru/19000039298-niacinamide-10-zinc-1-sebum-regulating-anti-acne",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/19000039298-niacinamide-10-zinc-1-sebum-regulating-anti-acne"
+    },
+    "evidence": "Альтернатива для niacinamide booster/serum: H1 'ART & FACT Niacinamide 10% + zinc 1%', карточка Goldapple рендерится, есть корзина."
+  },
+  {
+    "id": 648,
+    "brand": "Noreva",
+    "name": "IKONOS Serum",
+    "status": "ok",
+    "link": "https://goldapple.ru/89270500003-hydrabio-moisturising-concentrate",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/89270500003-hydrabio-moisturising-concentrate"
+    },
+    "evidence": "Альтернатива для serum/hydration: H1 'Bioderma Hydrabio Moisturising Concentrate', карточка Goldapple рендерится, есть корзина."
+  },
+  {
+    "id": 530,
+    "brand": "Paula's Choice",
+    "name": "2% BHA",
+    "status": "ok",
+    "link": "https://market.yandex.ru/card/paulas-choice-eksfoliant-tonik-2-bha-liquid-exfoliant-118-ml/5358091259",
+    "marketLinks": {
+      "ym": "https://market.yandex.ru/card/paulas-choice-eksfoliant-tonik-2-bha-liquid-exfoliant-118-ml/5358091259"
+    },
+    "evidence": "H1: 'Paula's Choice эксфолиант-тоник 2% BHA Liquid Exfoliant 118 мл', карточка рендерится, есть покупка/доставка."
+  },
+  {
+    "id": 485,
+    "brand": "Paula's Choice",
+    "name": "Pore Normalizing Cleanser",
+    "status": "ok",
+    "link": "https://market.yandex.ru/card/ochishchayushcheye-sredstvo-dlya-litsa-protiv-vysypaniy-mini-format-paulas-choice-clear-pore-normalizing-cleanser-30ml/103389481768",
+    "marketLinks": {
+      "ym": "https://market.yandex.ru/card/ochishchayushcheye-sredstvo-dlya-litsa-protiv-vysypaniy-mini-format-paulas-choice-clear-pore-normalizing-cleanser-30ml/103389481768"
+    },
+    "evidence": "H1: 'Очищающее средство для лица против высыпаний мини-формат Paula's Choice CLEAR Pore Normalizing Cleanser 30ml', карточка рендерится, есть покупка/доставка."
+  },
+  {
+    "id": 506,
+    "brand": "Q+A",
+    "name": "Niacinamide Serum",
+    "status": "ok",
+    "link": "https://goldapple.ru/19000396343-niacinamide",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/19000396343-niacinamide"
+    },
+    "evidence": "H1: 'Q+A Niacinamide', карточка Goldapple содержит 'СЫВОРОТКА ДЛЯ ЛИЦА', есть корзина."
+  },
+  {
+    "id": 532,
+    "brand": "Revuele",
+    "name": "AHA Peeling",
+    "status": "ok",
+    "link": "https://market.yandex.ru/card/skrab-revuele-face-peeling-gel-aha-fruit-acids-80-ml/5657287513",
+    "marketLinks": {
+      "ym": "https://market.yandex.ru/card/skrab-revuele-face-peeling-gel-aha-fruit-acids-80-ml/5657287513"
+    },
+    "evidence": "H1: 'Скраб Revuele Face Peeling Gel AHA Fruit Acids, 80 мл', карточка рендерится, есть покупка/доставка."
+  },
+  {
+    "id": 479,
+    "brand": "SKIN1004",
+    "name": "Centella Mild Cleansing Gel",
+    "status": "ok",
+    "link": "https://goldapple.ru/97560200022-low-ph-good-morning-gel-cleanser",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/97560200022-low-ph-good-morning-gel-cleanser"
+    },
+    "evidence": "Альтернатива для mild cleansing gel: H1 'COSRX Low Ph Good Morning Gel Cleanser', карточка Goldapple рендерится, есть корзина."
+  },
+  {
+    "id": 649,
+    "brand": "SUPERBANKA",
+    "name": "Clay Mask",
+    "status": "ok",
+    "link": "https://goldapple.ru/19000465576-blue-clay",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/19000465576-blue-clay"
+    },
+    "evidence": "Альтернатива для clay mask: H1 'MIXIT Blue Clay', видимая карточка Goldapple с очищающей маской для лица рендерится, есть корзина."
+  },
+  {
+    "id": 471,
+    "brand": "Shiseido",
+    "name": "Gentle Cleanser",
+    "status": "ok",
+    "link": "https://goldapple.ru/19000141452-atoderm",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/19000141452-atoderm"
+    },
+    "evidence": "Альтернатива для gentle cleanser: H1 'Bioderma ATODERM', карточка Goldapple с очищающим гелем рендерится, есть корзина."
+  },
+  {
+    "id": 521,
+    "brand": "Skinoren",
+    "name": "Azelaic Acid 15% Gel",
+    "status": "ok",
+    "link": "https://goldapple.ru/19000039348-azelaic-acid-15-lightening-age-spots-anti-acne-effect-anti-inflammatory-effect",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/19000039348-azelaic-acid-15-lightening-age-spots-anti-acne-effect-anti-inflammatory-effect"
+    },
+    "evidence": "Альтернатива для azelaic acid treatment: H1 'ART & FACT Azelaic acid 15%', карточка Goldapple рендерится, есть корзина."
+  },
+  {
+    "id": 483,
+    "brand": "Some By Mi",
+    "name": "AHA-BHA-PHA Foam",
+    "status": "ok",
+    "link": "https://goldapple.ru/19760303639-aha-bha-pha-30-days-miracle-acne-clear-foam",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/19760303639-aha-bha-pha-30-days-miracle-acne-clear-foam"
+    },
+    "evidence": "H1: 'SOME BY MI AHA-BHA-PHA 30 Days Miracle Acne Clear Foam', карточка Goldapple рендерится, есть корзина."
+  },
+  {
+    "id": 477,
+    "brand": "Some By Mi",
+    "name": "Miracle Acne Foam",
+    "status": "ok",
+    "link": "https://goldapple.ru/19760303639-aha-bha-pha-30-days-miracle-acne-clear-foam",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/19760303639-aha-bha-pha-30-days-miracle-acne-clear-foam"
+    },
+    "evidence": "H1: 'SOME BY MI AHA-BHA-PHA 30 Days Miracle Acne Clear Foam', карточка Goldapple рендерится, есть корзина."
+  },
+  {
+    "id": 580,
+    "brand": "Some By Mi",
+    "name": "Snail Brightening Patch",
+    "status": "ok",
+    "link": "https://goldapple.ru/97560200023-acne-pimple-master-patch",
+    "marketLinks": {
+      "goldapple": "https://goldapple.ru/97560200023-acne-pimple-master-patch"
+    },
+    "evidence": "Альтернатива для spot_treatment/patches: H1 'COSRX Acne Pimple Master Patch', карточка Goldapple рендерится, есть корзина."
+  },
+  {
+    "id": 529,
+    "brand": "The Inkey List",
+    "name": "Beta Hydroxy Acid",
+    "status": "ok",
+    "link": "https://market.yandex.ru/card/the-inkey-list-syvorotka-s-salitsilovoy-kislotoy-beta-hydroxy-acid-bha-serum-30-ml/103699882950",
+    "marketLinks": {
+      "ym": "https://market.yandex.ru/card/the-inkey-list-syvorotka-s-salitsilovoy-kislotoy-beta-hydroxy-acid-bha-serum-30-ml/103699882950"
+    },
+    "evidence": "H1: 'The INKEY List Сыворотка с салициловой кислотой Beta Hydroxy Acid (BHA) Serum 30 мл', карточка рендерится, есть покупка/доставка."
+  },
+  {
+    "id": 484,
+    "brand": "The Inkey List",
+    "name": "Salicylic Acid Cleanser",
+    "status": "ok",
+    "link": "https://market.yandex.ru/card/sredstvo-dlya-umyvaniya-the-inkey-list-salicylic-acid-cleanser-60-ml/5852618933",
+    "marketLinks": {
+      "ym": "https://market.yandex.ru/card/sredstvo-dlya-umyvaniya-the-inkey-list-salicylic-acid-cleanser-60-ml/5852618933"
+    },
+    "evidence": "H1: 'Средство для умывания The Inkey List Salicylic Acid Cleanser, 60 мл', карточка рендерится, есть покупка/доставка."
+  },
+  {
+    "id": 533,
+    "brand": "The Ordinary",
+    "name": "Alpha Arbutin",
+    "status": "ok",
+    "link": "https://market.yandex.ru/card/syvorotka-dlya-litsa-alpha-arbutin-2--ha-the-ordinary-obyem-30-ml-protiv-pigmentatsii-i-post-akne-s-alfa-arbutinom-i-gialuronovoy-kislotoy/103481460766",
+    "marketLinks": {
+      "ym": "https://market.yandex.ru/card/syvorotka-dlya-litsa-alpha-arbutin-2--ha-the-ordinary-obyem-30-ml-protiv-pigmentatsii-i-post-akne-s-alfa-arbutinom-i-gialuronovoy-kislotoy/103481460766"
+    },
+    "evidence": "H1: 'Осветляющая сыворотка для лица от постакне Alpha Arbutin 2% + HA The Ordinary, объем 30 мл', карточка рендерится, есть покупка/доставка."
+  },
+  {
+    "id": 511,
+    "brand": "The Ordinary",
+    "name": "Ascorbyl Glucoside 12%",
+    "status": "ok",
+    "link": "https://market.yandex.ru/card/osvetlyayushchaya-syvorotka-s-vitaminom-c-dlya-litsa-ascorbyl-glucoside-solution-12-the-ordinary-obyem-30ml-antioksidantnaya-podderzhka-ot-stareniya-kozhi/103481410414",
+    "marketLinks": {
+      "ym": "https://market.yandex.ru/card/osvetlyayushchaya-syvorotka-s-vitaminom-c-dlya-litsa-ascorbyl-glucoside-solution-12-the-ordinary-obyem-30ml-antioksidantnaya-podderzhka-ot-stareniya-kozhi/103481410414"
+    },
+    "evidence": "H1: 'Осветляющая сыворотка с витамином C для лица Ascorbyl Glucoside Solution 12% The Ordinary, объем 30мл', карточка рендерится, есть покупка/доставка."
+  },
+  {
+    "id": 523,
+    "brand": "The Ordinary",
+    "name": "Azelaic 10%",
+    "status": "ok",
+    "link": "https://market.yandex.ru/card/krem-s-azelainovoy-kislotoy-the-ordinary-azelaic-acid-suspension-10---ot-pryshchey-pokrasneniy-i-postakne-30-ml/5851420470",
+    "marketLinks": {
+      "ym": "https://market.yandex.ru/card/krem-s-azelainovoy-kislotoy-the-ordinary-azelaic-acid-suspension-10---ot-pryshchey-pokrasneniy-i-postakne-30-ml/5851420470"
+    },
+    "evidence": "H1: 'Крем с азелаиновой кислотой The Ordinary Azelaic Acid Suspension 10% ..., 30 мл', карточка рендерится, есть покупка/доставка."
+  },
+  {
+    "id": 531,
+    "brand": "The Ordinary",
+    "name": "Glycolic Acid 7%",
+    "status": "ok",
+    "link": "https://market.yandex.ru/card/the-ordinary-tonik-dlya-litsa-ochishchayushchiy-s-glikolevoy-7-ana-kislotoy-240-ml--glycolic-acid-7-toning-solution-240-ml/4804243409",
+    "marketLinks": {
+      "ym": "https://market.yandex.ru/card/the-ordinary-tonik-dlya-litsa-ochishchayushchiy-s-glikolevoy-7-ana-kislotoy-240-ml--glycolic-acid-7-toning-solution-240-ml/4804243409"
+    },
+    "evidence": "H1: 'The Ordinary ... Glycolic Acid 7% Toning Solution, 240 ml', карточка рендерится, есть покупка/доставка."
+  },
+  {
+    "id": 641,
+    "brand": "The Ordinary",
+    "name": "Glycolic Acid 7% Toning Solution",
+    "status": "ok",
+    "link": "https://market.yandex.ru/card/the-ordinary-tonik-dlya-litsa-ochishchayushchiy-s-glikolevoy-7-ana-kislotoy-240-ml--glycolic-acid-7-toning-solution-240-ml/4804243409",
+    "marketLinks": {
+      "ym": "https://market.yandex.ru/card/the-ordinary-tonik-dlya-litsa-ochishchayushchiy-s-glikolevoy-7-ana-kislotoy-240-ml--glycolic-acid-7-toning-solution-240-ml/4804243409"
+    },
+    "evidence": "H1: 'The Ordinary ... Glycolic Acid 7% Toning Solution, 240 ml', карточка рендерится, есть покупка/доставка."
+  },
+  {
+    "id": 647,
+    "brand": "The Ordinary",
+    "name": "Hyaluronic Acid 2% + B5",
+    "status": "ok",
+    "link": "https://market.yandex.ru/card/syvorotka-dlya-litsa-the-ordinary-hyaluronic-acid-2--b5-30ml/5092651500",
+    "marketLinks": {
+      "ym": "https://market.yandex.ru/card/syvorotka-dlya-litsa-the-ordinary-hyaluronic-acid-2--b5-30ml/5092651500"
+    },
+    "evidence": "H1: 'Сыворотка для лица The Ordinary Hyaluronic Acid 2% + B5 30ml', карточка рендерится, есть покупка/доставка."
+  },
+  {
+    "id": 501,
+    "brand": "The Ordinary",
+    "name": "Marine Hyaluronics",
+    "status": "ok",
+    "link": "https://market.yandex.ru/card/uvlazhnyayushchaya-syvorotka-dlya-litsa-marine-hyaluronics-the-ordinary-obyem-30ml-protiv-sukhosti-i-razdrazheniya/103481422919",
+    "marketLinks": {
+      "ym": "https://market.yandex.ru/card/uvlazhnyayushchaya-syvorotka-dlya-litsa-marine-hyaluronics-the-ordinary-obyem-30ml-protiv-sukhosti-i-razdrazheniya/103481422919"
+    },
+    "evidence": "H1: 'Увлажняющая сыворотка для лица Marine Hyaluronics The Ordinary, объем 30мл', карточка рендерится, есть покупка/доставка."
+  },
+  {
+    "id": 646,
+    "brand": "The Ordinary",
+    "name": "Niacinamide 10% + Zinc 1%",
+    "status": "ok",
+    "link": "https://market.yandex.ru/card/the-ordinary-syvorotka-dlya-litsa-s-niatsinamidom-10-i-tsinkom-1--niacinamide-10--zinc-1-30-ml/4804240596",
+    "marketLinks": {
+      "ym": "https://market.yandex.ru/card/the-ordinary-syvorotka-dlya-litsa-s-niatsinamidom-10-i-tsinkom-1--niacinamide-10--zinc-1-30-ml/4804240596"
+    },
+    "evidence": "H1: 'The Ordinary ... Niacinamide 10% + Zinc 1%, 30 мл', карточка рендерится, есть покупка/доставка."
+  },
+  {
+    "id": 504,
+    "brand": "The Ordinary",
+    "name": "Niacinamide 10%+Zinc",
+    "status": "ok",
+    "link": "https://market.yandex.ru/card/the-ordinary-syvorotka-dlya-litsa-s-niatsinamidom-10-i-tsinkom-1--niacinamide-10--zinc-1-30-ml/4804240596",
+    "marketLinks": {
+      "ym": "https://market.yandex.ru/card/the-ordinary-syvorotka-dlya-litsa-s-niatsinamidom-10-i-tsinkom-1--niacinamide-10--zinc-1-30-ml/4804240596"
+    },
+    "evidence": "H1: 'The Ordinary ... Niacinamide 10% + Zinc 1%, 30 мл', карточка рендерится, есть покупка/доставка."
+  },
+  {
+    "id": 566,
+    "brand": "Uriage",
+    "name": "Bariederm Cica SPF50",
+    "status": "ok",
+    "link": "https://market.yandex.ru/card/krem-s-medyu-i-tsinkom-spf50-uriage-bariederm-cica-cream-40-ml/103808183528",
+    "marketLinks": {
+      "ym": "https://market.yandex.ru/card/krem-s-medyu-i-tsinkom-spf50-uriage-bariederm-cica-cream-40-ml/103808183528"
+    },
+    "evidence": "H1: 'Крем с медью и цинком SPF50+ URIAGE Bariederm Cica-Cream 40 мл', карточка рендерится, есть покупка/доставка."
+  },
+  {
+    "id": 624,
+    "brand": "Акрихин",
+    "name": "Azelik гель 15%",
+    "status": "ok",
+    "link": "https://apteka.ru/product/azelik-15-gel-dlya-naruzhnogo-primeneniya-30-gr-5e32797dca7bdc0001935428/",
+    "marketLinks": {
+      "apteka": "https://apteka.ru/product/azelik-15-gel-dlya-naruzhnogo-primeneniya-30-gr-5e32797dca7bdc0001935428/"
+    },
+    "evidence": "H1: 'Азелик 15% гель для наружного применения 30 гр', карточка apteka.ru рендерится, есть 'Купить'."
+  },
+  {
+    "id": 627,
+    "brand": "Акрихин",
+    "name": "Клиндовит гель",
+    "status": "ok",
+    "link": "https://apteka.ru/product/klindovit-1-gel-dlya-naruzhnogo-primeneniya-30-gr-5e327652ca7bdc00019337db/",
+    "marketLinks": {
+      "apteka": "https://apteka.ru/product/klindovit-1-gel-dlya-naruzhnogo-primeneniya-30-gr-5e327652ca7bdc00019337db/"
+    },
+    "evidence": "H1: 'Клиндовит 1% гель для наружного применения 30 гр', карточка apteka.ru рендерится, есть 'Купить'."
+  }
+]

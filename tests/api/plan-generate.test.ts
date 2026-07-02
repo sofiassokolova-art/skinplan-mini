@@ -5,9 +5,9 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { GET as generatePlan } from '@/app/api/plan/generate/route';
-import { createPrismaTestClient } from '@/tests/helpers/prisma-test-client';
+import { createPrismaTestClient, isPrismaTestDatabaseAvailable } from '@/tests/helpers/prisma-test-client';
 
-const hasDatabase = !!process.env.DATABASE_URL;
+let hasDatabase = !!process.env.DATABASE_URL;
 const prismaTest = createPrismaTestClient();
 
 const testUserId = 'test-user-api-plan-generate';
@@ -63,6 +63,7 @@ describe('GET /api/plan/generate', () => {
   let testProfileId: number | null = null;
 
   beforeAll(async () => {
+    hasDatabase = await isPrismaTestDatabaseAvailable(prismaTest);
     if (!hasDatabase) {
       console.warn('⚠️ DATABASE_URL not set, skipping API tests');
       return;

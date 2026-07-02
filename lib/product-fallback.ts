@@ -20,6 +20,7 @@ export interface ProductWithBrand {
   step: string;
   category: string | null;
   price: number | null;
+  priceSegment?: string | null;
   imageUrl: string | null;
   isHero: boolean;
   priority: number;

@@ -225,6 +225,11 @@ export async function POST(request: NextRequest) {
             return option?.label || val;
           })
           .filter(Boolean);
+      } else if (answer.answerValue && answer.question?.answerOptions) {
+        const option = answer.question.answerOptions.find(opt => opt.value === answer.answerValue);
+        if (option?.label) {
+          answerOptionLabels = [option.label];
+        }
       }
       
       return {
@@ -372,4 +377,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

@@ -163,7 +163,7 @@ const newRules = [
     name: 'Чувствительная кожа + акне (легкое)',
     priority: 91,
     conditionsJson: {
-      skin_type: 'sensitive',
+      sensitivity_level: 'high',
       inflammation: { gte: 40, lte: 60 },
     },
     stepsJson: {
@@ -177,7 +177,7 @@ const newRules = [
     name: 'Чувствительная кожа + пигментация',
     priority: 91,
     conditionsJson: {
-      skin_type: 'sensitive',
+      sensitivity_level: 'high',
       pigmentation: { gte: 50 },
     },
     stepsJson: {
@@ -192,7 +192,7 @@ const newRules = [
     name: 'Чувствительная кожа + обезвоженность',
     priority: 92,
     conditionsJson: {
-      skin_type: 'sensitive',
+      sensitivity_level: 'high',
       hydration: { lte: 50 },
     },
     stepsJson: {
@@ -209,8 +209,8 @@ const newRules = [
     name: '18-25 лет + комбинированная кожа',
     priority: 89,
     conditionsJson: {
-      skin_type: 'combo',
-      age: { in: ['18-25'] },
+      skin_type: { in: ['combination_oily', 'combination_dry'] },
+      age: { in: ['under_25'] },
     },
     stepsJson: {
       spf: { category: ['spf'], max_items: 3 },
@@ -224,7 +224,7 @@ const newRules = [
     priority: 89,
     conditionsJson: {
       skin_type: 'oily',
-      age: { in: ['18-25'] },
+      age: { in: ['under_25'] },
     },
     stepsJson: {
       spf: { category: ['spf'], max_items: 3 },
@@ -237,7 +237,7 @@ const newRules = [
     name: '35-44 лет + комбинированная кожа',
     priority: 91,
     conditionsJson: {
-      skin_type: 'combo',
+      skin_type: { in: ['combination_oily', 'combination_dry'] },
       age: { in: ['35-44'] },
       photoaging: { gte: 50 },
     },
@@ -270,7 +270,7 @@ const newRules = [
     name: 'Весна — комбинированная кожа',
     priority: 87,
     conditionsJson: {
-      skin_type: 'combo',
+      skin_type: { in: ['combination_oily', 'combination_dry'] },
       season: 'spring',
     },
     stepsJson: {
@@ -299,7 +299,7 @@ const newRules = [
     name: 'Осень — комбинированная кожа',
     priority: 87,
     conditionsJson: {
-      skin_type: 'combo',
+      skin_type: { in: ['combination_oily', 'combination_dry'] },
       season: 'autumn',
     },
     stepsJson: {
@@ -330,7 +330,7 @@ const newRules = [
     name: 'Комбинированная кожа + акне + пигментация',
     priority: 95,
     conditionsJson: {
-      skin_type: 'combo',
+      skin_type: { in: ['combination_oily', 'combination_dry'] },
       inflammation: { gte: 50 },
       pigmentation: { gte: 50 },
     },
@@ -419,7 +419,7 @@ const newRules = [
     name: 'Чувствительная кожа — базовый уход',
     priority: 7,
     conditionsJson: {
-      skin_type: 'sensitive',
+      sensitivity_level: 'high',
     },
     stepsJson: {
       spf: { category: ['spf'], max_items: 3 },
@@ -482,4 +482,3 @@ async function addComprehensiveRules() {
 }
 
 addComprehensiveRules().catch(console.error);
-

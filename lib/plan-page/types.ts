@@ -77,6 +77,8 @@ export interface ProductCard {
   /** Цена в рублях */
   price: number | null;
   imageUrl: string | null;
+  /** Фаза, под которой карточка показывается в объединённом блоке "Фазы и средства". */
+  firstPhase: PlanPhases;
   /** Теги фаз: "Адаптация" / "Активная фаза" / "Поддержка" / "Все фазы" */
   phaseTags: string[];
   /** Состояние пользователя */
