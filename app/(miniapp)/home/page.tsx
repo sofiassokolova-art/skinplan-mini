@@ -125,6 +125,7 @@ export default function HomePage() {
   const [error, setError] = useState<unknown>(null);
   const [userName, setUserName] = useState<string | null>(null); // Имя пользователя для приветствия
   const [planExpired, setPlanExpired] = useState(false); // План истёк (28+ дней) → paywall продления
+  const [howtoItem, setHowtoItem] = useState<RoutineItem | null>(null); // Bottom-sheet «как наносить»
   const searchParams = useSearchParams();
   const progressSyncInFlightRef = useRef(false);
 
@@ -822,6 +823,31 @@ export default function HomePage() {
         .home-rd .hr-next-product.blend{mix-blend-mode:multiply;filter:none;}
         .home-rd .hr-next-title{position:absolute;right:12px;bottom:12px;left:12px;font-size:13px;font-weight:600;line-height:1.2;color:var(--ink);}
         .home-rd .hr-retake{width:100%;background:transparent;border:none;color:var(--ink-soft);text-decoration:underline;cursor:pointer;font-size:13px;font-weight:500;padding:14px 0 4px;}
+        .home-rd .hr-howto-btn{position:relative;z-index:2;margin-top:10px;display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(10,10,10,0.12);background:rgba(255,255,255,0.6);color:var(--ink);border-radius:999px;padding:7px 13px;font-size:12px;font-weight:700;letter-spacing:-0.1px;cursor:pointer;transition:transform .14s ease,background .14s ease;}
+        .home-rd .hr-howto-btn:active{transform:scale(0.96);}
+        .home-rd .hr-howto-btn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+        .home-rd .hr-next-card.tappable{cursor:pointer;}
+        .home-rd .hr-next-card.tappable:active{transform:scale(0.98);}
+        .hr-sheet-backdrop{position:fixed;inset:0;z-index:60;background:rgba(10,10,10,0.42);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);display:flex;align-items:flex-end;justify-content:center;animation:hrFade .18s ease;}
+        @keyframes hrFade{from{opacity:0;}to{opacity:1;}}
+        .hr-sheet{width:100%;max-width:520px;max-height:84vh;overflow-y:auto;background:#F4F2EE;border-radius:28px 28px 0 0;padding:10px 22px calc(28px + env(safe-area-inset-bottom)) 22px;box-shadow:0 -16px 40px rgba(10,10,10,0.22);animation:hrSlide .24s cubic-bezier(0.22,1,0.36,1);}
+        @keyframes hrSlide{from{transform:translateY(100%);}to{transform:translateY(0);}}
+        .hr-sheet-grab{width:42px;height:4px;border-radius:999px;background:rgba(10,10,10,0.16);margin:0 auto 16px;}
+        .hr-sheet-head{display:flex;align-items:center;gap:13px;margin-bottom:18px;}
+        .hr-sheet-ic{flex:0 0 auto;width:50px;height:50px;border-radius:16px;background:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.85);display:grid;place-items:center;}
+        .hr-sheet-ic img{width:70%;height:70%;object-fit:contain;}
+        .hr-sheet-kicker{font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#6B7280;}
+        .hr-sheet-title{font-family:var(--font-unbounded),-apple-system,sans-serif;font-size:20px;font-weight:700;letter-spacing:-0.4px;color:#0A0A0A;line-height:1.15;margin-top:2px;}
+        .hr-sheet-steps{list-style:none;margin:0 0 18px;padding:0;display:flex;flex-direction:column;gap:10px;counter-reset:hrstep;}
+        .hr-sheet-steps li{position:relative;padding-left:38px;font-size:14px;line-height:1.4;color:#1F2937;}
+        .hr-sheet-steps li::before{counter-increment:hrstep;content:counter(hrstep);position:absolute;left:0;top:-1px;width:26px;height:26px;border-radius:50%;background:#0A0A0A;color:#D5FE61;display:grid;place-items:center;font-size:12px;font-weight:800;}
+        .hr-sheet-vol{display:inline-flex;align-items:center;gap:7px;background:rgba(213,254,97,0.4);border:1px solid rgba(10,10,10,0.06);border-radius:999px;padding:8px 14px;font-size:12px;font-weight:700;color:#0A0A0A;margin-bottom:16px;}
+        .hr-sheet-tip{display:flex;gap:11px;padding:14px 15px;border-radius:18px;background:rgba(255,255,255,0.72);border:1px solid rgba(255,255,255,0.85);}
+        .hr-sheet-tip-ic{flex:0 0 auto;width:28px;height:28px;border-radius:50%;background:#0A0A0A;display:grid;place-items:center;font-size:15px;}
+        .hr-sheet-tip-tx{font-size:12.5px;line-height:1.42;color:#374151;}
+        .hr-sheet-tip-tx strong{display:block;font-weight:800;color:#0A0A0A;margin-bottom:2px;font-size:11px;letter-spacing:0.04em;text-transform:uppercase;}
+        .hr-sheet-close{width:100%;margin-top:20px;height:48px;border:0;border-radius:999px;background:#0A0A0A;color:#fff;font-family:var(--font-inter),sans-serif;font-size:15px;font-weight:700;cursor:pointer;}
+        .hr-sheet-close:active{transform:scale(0.99);}
       `}</style>
       {/* Topbar */}
       <div className="hr-topbar">
@@ -958,6 +984,16 @@ export default function HomePage() {
                   <div className="hr-featured-sub">
                     {isFinished ? 'Кожа получила всё необходимое' : currentItem?.subtitle}
                   </div>
+                  {!isFinished && currentItem && (
+                    <button
+                      type="button"
+                      className="hr-howto-btn"
+                      onClick={() => setHowtoItem(currentItem)}
+                    >
+                      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 16v-4M12 8h.01" /></svg>
+                      Как наносить
+                    </button>
+                  )}
                 </div>
                 <button
                   className={`hr-featured-action${isFinished ? ' done' : ''}`}
@@ -998,7 +1034,13 @@ export default function HomePage() {
                 const stepNumber = currentStepIndex + offset + 2;
                 const blend = (item.icon || '').includes('cream');
                 return (
-                  <article key={item.id} className="hr-next-card">
+                  <article
+                    key={item.id}
+                    className="hr-next-card tappable"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setHowtoItem(item)}
+                  >
                     <div className="hr-next-top">
                       <span className="hr-next-kicker">Шаг {stepNumber}</span>
                       <span className="hr-next-number">{stepNumber}</span>
@@ -1017,6 +1059,53 @@ export default function HomePage() {
           </section>
         );
       })()}
+
+      {/* Bottom-sheet «как наносить» — совет по конкретному шагу/средству */}
+      {howtoItem && (
+        <div
+          className="hr-sheet-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Как наносить: ${howtoItem.title}`}
+          onClick={() => setHowtoItem(null)}
+        >
+          <div className="hr-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="hr-sheet-grab" />
+            <div className="hr-sheet-head">
+              <div className="hr-sheet-ic">
+                <img src={howtoItem.icon} alt="" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+              </div>
+              <div>
+                <div className="hr-sheet-kicker">{howtoItem.title}</div>
+                <div className="hr-sheet-title">{howtoItem.subtitle}</div>
+              </div>
+            </div>
+            <ol className="hr-sheet-steps">
+              {howtoItem.howto.steps.map((s, i) => (
+                <li key={i}>{s}</li>
+              ))}
+            </ol>
+            {howtoItem.howto.volume && (
+              <div className="hr-sheet-vol">
+                <span aria-hidden="true">💧</span>
+                Количество: {howtoItem.howto.volume}
+              </div>
+            )}
+            {howtoItem.howto.tip && (
+              <div className="hr-sheet-tip">
+                <span className="hr-sheet-tip-ic" aria-hidden="true">🩺</span>
+                <div className="hr-sheet-tip-tx">
+                  <strong>Совет дерматолога</strong>
+                  {howtoItem.howto.tip}
+                </div>
+              </div>
+            )}
+            <button type="button" className="hr-sheet-close" onClick={() => setHowtoItem(null)}>
+              Понятно
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>,
   );

@@ -12,6 +12,7 @@ import type { CartResponse } from '@/lib/api-types';
 import { TabLoadingShell } from '@/components/TabLoadingShell';
 import { ProfileAvatarButton } from '@/components/ProfileAvatarButton';
 import { withAffiliate, isGoldapple, affiliateRel, AFFILIATE_ERID, AFFILIATE_DISCLOSURE } from '@/lib/affiliate';
+import { formatPriceFrom } from '@/lib/price-display';
 import toast from 'react-hot-toast';
 
 export const dynamic = 'force-dynamic';
@@ -25,6 +26,7 @@ interface CartItem {
     imageUrl: string | null;
     link: string | null;
     marketLinks: any;
+    priceFrom?: number | null;
   };
   quantity: number;
   createdAt: string;
@@ -193,6 +195,7 @@ function CartPageContent() {
         .cart-rd .crd-copy{min-width:0;display:flex;flex-direction:column;gap:6px;}
         .cart-rd .crd-brand{font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#6B7280;}
         .cart-rd .crd-name{font-size:18px;font-weight:800;line-height:1.18;letter-spacing:-0.35px;color:#0A0A0A;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+        .cart-rd .crd-price{font-size:13px;font-weight:800;color:#0A0A0A;letter-spacing:-0.2px;}
         .cart-rd .crd-store-row{display:flex;align-items:center;gap:7px;min-width:0;margin-top:2px;}
         .cart-rd .crd-store-dot{width:7px;height:7px;border-radius:50%;background:#D5FE61;box-shadow:0 0 0 3px rgba(213,254,97,0.24);flex:0 0 auto;}
         .cart-rd .crd-store{font-size:12px;font-weight:700;color:#6B7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -210,6 +213,11 @@ function CartPageContent() {
         .cart-rd .crd-ad-mark{grid-column:1/-1;margin:-1px 2px 0;font-size:10px;line-height:1.35;color:#6B7280;letter-spacing:0;text-align:left;user-select:text;}
         .cart-rd .crd-ad-mark strong{font-weight:800;color:#0A0A0A;}
         .cart-rd .crd-erid{margin:14px 0 4px;padding:9px 12px;border-radius:18px;background:rgba(255,255,255,0.62);border:1px solid rgba(10,10,10,0.06);font-size:10px;line-height:1.45;color:#6B7280;letter-spacing:0;text-align:center;user-select:text;}
+        .cart-rd .crd-vpn{display:flex;align-items:flex-start;gap:11px;margin:0 2px 16px;padding:13px 15px;border-radius:20px;background:rgba(255,255,255,0.72);border:1px solid rgba(255,255,255,0.82);backdrop-filter:blur(18px) saturate(150%);-webkit-backdrop-filter:blur(18px) saturate(150%);box-shadow:0 12px 26px rgba(10,10,10,0.05);}
+        .cart-rd .crd-vpn-ic{flex:0 0 auto;width:30px;height:30px;border-radius:50%;background:#0A0A0A;display:grid;place-items:center;}
+        .cart-rd .crd-vpn-ic svg{width:16px;height:16px;fill:none;stroke:#D5FE61;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+        .cart-rd .crd-vpn-tx{font-size:12px;line-height:1.42;color:#374151;letter-spacing:-0.1px;}
+        .cart-rd .crd-vpn-tx strong{font-weight:800;color:#0A0A0A;}
         @media (max-width:360px){
           .cart-rd .crd-actions{grid-template-columns:1fr;}
           .cart-rd .crd-main{padding-right:38px;}
@@ -234,6 +242,16 @@ function CartPageContent() {
         </div>
       ) : (
         <>
+          {/* Информер: РФ-магазины (Золотое Яблоко, Яндекс Маркет) часто не открываются
+              или отдают неверные цены при включённом VPN. Показываем, когда в корзине есть товары. */}
+          <div className="crd-vpn" role="note">
+            <span className="crd-vpn-ic" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6l7-3z" /></svg>
+            </span>
+            <div className="crd-vpn-tx">
+              <strong>Отключите VPN перед переходом в магазин.</strong> Российские магазины (Золотое Яблоко, Яндекс Маркет) могут не открыться или показать неверные цены при включённом VPN.
+            </div>
+          </div>
           <div className="crd-list">
             {cartItems.map((item) => {
               const store = getStore(item.product);
@@ -253,6 +271,9 @@ function CartPageContent() {
                     <div className="crd-copy">
                       <div className="crd-brand">{item.product.brand?.name || 'Unknown'}</div>
                       <div className="crd-name">{item.product.name}</div>
+                      {formatPriceFrom(item.product.priceFrom) && (
+                        <div className="crd-price">{formatPriceFrom(item.product.priceFrom)}</div>
+                      )}
                       {store && (
                         <div className="crd-store-row">
                           <span className="crd-store-dot" aria-hidden="true" />

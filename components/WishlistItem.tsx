@@ -9,6 +9,7 @@ import { useCart, useAddToCart, useRemoveFromCart } from '@/hooks/useCart';
 import FeedbackModal from './FeedbackModal';
 import { ButtonSkeleton } from '@/components/ui/SkeletonLoader';
 import { withAffiliate, affiliateRel, AFFILIATE_ERID } from '@/lib/affiliate';
+import { formatPriceFrom } from '@/lib/price-display';
 import toast from 'react-hot-toast';
 
 interface Product {
@@ -18,7 +19,7 @@ interface Product {
     id: number;
     name: string;
   };
-  price: number | null;
+  priceFrom?: number | null;
   imageUrl: string | null;
   link: string | null;
   marketLinks: any;
@@ -163,6 +164,11 @@ export default function WishlistItem({ item, onRemove }: WishlistItemProps) {
             >
               {item.product.name}
             </div>
+            {formatPriceFrom(item.product.priceFrom) && (
+              <div style={{ fontSize: '14px', fontWeight: 700, color: '#0A0A0A', marginBottom: '12px' }}>
+                {formatPriceFrom(item.product.priceFrom)}
+              </div>
+            )}
             {/* Кнопка добавления в корзину */}
             <div style={{ marginBottom: '16px', position: 'relative' }}>
               <button

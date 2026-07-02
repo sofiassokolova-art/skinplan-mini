@@ -157,6 +157,11 @@ export function matchesSensitivityContraindication(
   }
 
   // Проверяем "very_high_sensitivity"
+  if (contraindication === 'high_sensitivity') {
+    const normalized = normalizeSensitivityForRules(sensitivityLevel);
+    return normalized === 'high' || normalized === 'very_high';
+  }
+
   if (contraindication === 'very_high_sensitivity') {
     const normalized = normalizeSensitivityForRules(sensitivityLevel);
     return normalized === 'very_high';

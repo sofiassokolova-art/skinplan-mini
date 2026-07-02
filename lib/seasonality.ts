@@ -15,7 +15,18 @@
 import type { StepCategory } from './step-category-rules';
 
 export type Season = 'winter' | 'spring' | 'summer' | 'autumn';
-export type SeasonalProfile = 'summer_oilier' | 'winter_drier' | 'stable' | null;
+
+/**
+ * Флаги сезонной реакции кожи. Вопрос `seasonal_changes` стал multi_choice:
+ * «летом жирнее» и «зимой суше» — НЕ взаимоисключающие (самый частый кейс).
+ * Поэтому храним оба флага и применяем нужный по текущему сезону, а не сводим
+ * к одному enum (раньше комбо терялось — оставался только первый выбор).
+ */
+export interface SeasonalProfileFlags {
+  summerOilier: boolean;
+  winterDrier: boolean;
+  stable: boolean;
+}
 
 /** Текущий сезон в северном полушарии (RU/EU/US). */
 export function currentSeason(date: Date = new Date()): Season {
@@ -26,14 +37,23 @@ export function currentSeason(date: Date = new Date()): Season {
   return 'autumn';
 }
 
-/** Нормализует свободный ответ анкеты на тип реакции кожи к сезонам. */
-export function normalizeSeasonalProfile(raw: unknown): SeasonalProfile {
-  if (!raw) return null;
-  const s = String(raw).toLowerCase().trim();
-  if (s.includes('winter_drier') || s.includes('зимой') || s.includes('сух')) return 'winter_drier';
-  if (s.includes('summer_oilier') || s.includes('летом') || s.includes('жирн')) return 'summer_oilier';
-  if (s.includes('stable') || s.includes('стабил') || s.includes('не меняется')) return 'stable';
-  return null;
+/**
+ * Нормализует ответ анкеты (строка ИЛИ массив для multi_choice) в флаги.
+ * Принимает как коды (`summer_oilier`), так и русские лейблы («Летом жирнее»).
+ */
+export function normalizeSeasonalProfile(raw: unknown): SeasonalProfileFlags {
+  const items: string[] = Array.isArray(raw)
+    ? raw.map((v) => String(v))
+    : raw == null ? [] : [String(raw)];
+  const flags: SeasonalProfileFlags = { summerOilier: false, winterDrier: false, stable: false };
+  for (const item of items) {
+    const s = item.toLowerCase().trim();
+    if (!s) continue;
+    if (s.includes('winter_drier') || s.includes('зимой') || s.includes('сух')) flags.winterDrier = true;
+    if (s.includes('summer_oilier') || s.includes('летом') || s.includes('жирн')) flags.summerOilier = true;
+    if (s.includes('stable') || s.includes('стабил') || s.includes('одинаков') || s.includes('не меняется')) flags.stable = true;
+  }
+  return flags;
 }
 
 interface SeasonAdjustment {
@@ -77,16 +97,18 @@ const SUMMER_ADJUSTMENTS: SeasonAdjustment[] = [
  */
 export function applySeasonalAdjustment(
   steps: StepCategory[],
-  seasonalProfile: SeasonalProfile,
+  seasonalProfile: SeasonalProfileFlags,
   now: Date = new Date(),
 ): { steps: StepCategory[]; appliedReasons: string[] } {
   const season = currentSeason(now);
   const appliedReasons: string[] = [];
 
-  // Применяем зимнюю адаптацию, если: сейчас зима И профиль winter_drier (или null — берём как safe default).
-  const useWinter = season === 'winter' && (seasonalProfile === 'winter_drier' || seasonalProfile === null);
-  // Летнюю адаптацию, если сейчас лето И профиль summer_oilier.
-  const useSummer = season === 'summer' && seasonalProfile === 'summer_oilier';
+  // Нет явного сигнала (ничего не выбрано) — безопасный дефолт: зимой уплотняем уход.
+  const noSignal = !seasonalProfile.summerOilier && !seasonalProfile.winterDrier && !seasonalProfile.stable;
+  // Зимняя адаптация: сейчас зима И (кожа «зимой суше» ИЛИ сигнала нет).
+  const useWinter = season === 'winter' && (seasonalProfile.winterDrier || noSignal);
+  // Летняя адаптация: сейчас лето И кожа «летом жирнее».
+  const useSummer = season === 'summer' && seasonalProfile.summerOilier;
 
   if (!useWinter && !useSummer) {
     return { steps, appliedReasons };

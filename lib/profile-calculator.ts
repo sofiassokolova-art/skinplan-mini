@@ -62,6 +62,9 @@ export function inferAnswerScore(questionCode: string, optionLabel: string): Ans
     if (label.includes('акне') || label.includes('высыпан')) {
       return { acne: 3, concerns: ['acne'] };
     }
+    if (label.includes('чёрные точки') || label.includes('черные точки') || label.includes('комедон')) {
+      return { oiliness: 2, concerns: ['pores'] };
+    }
     if (label.includes('жирность') || label.includes('блеск') || label.includes('пор')) {
       return { oiliness: 2 };
     }

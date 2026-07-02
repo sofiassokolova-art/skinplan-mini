@@ -32,14 +32,31 @@ describe('pickExpertNotes', () => {
   });
 
   it('приоритезирует goal-specific советы над универсальными', () => {
-    // День 10, активная фаза, цель = acne. Должен попасть совет с goalKey: 'acne'.
-    const notes = pickExpertNotes(10, ['acne']);
+    // День 10, активная фаза, цель = acne. Должен попасть совет с goalKey: 'acne',
+    // но только если в плане есть соответствующий шаг.
+    const notes = pickExpertNotes(10, ['acne'], ['treatment_acne_azelaic']);
     const acneTip = DAILY_TIPS.find((t) =>
       t.phase === 'active' &&
       t.goalKey === 'acne' &&
       notes.some((n) => n.title === t.title),
     );
     expect(acneTip).toBeDefined();
+  });
+
+  it('не показывает продуктовый совет, если соответствующего шага нет в плане', () => {
+    const notes = pickExpertNotes(10, ['dehydration'], ['serum_antiage']);
+    expect(notes.some((n) => /гиалуронов/i.test(n.title + n.text))).toBe(false);
+  });
+
+  it('показывает продуктовый совет, если соответствующий шаг есть в плане', () => {
+    const notes = pickExpertNotes(10, ['dehydration'], ['serum_hydrating']);
+    expect(notes.some((n) => /гиалуронов/i.test(n.title + n.text))).toBe(true);
+  });
+
+  it('для pores не советует ниацинамид, если в плане мягкий эксфолиант', () => {
+    const notes = pickExpertNotes(10, ['pores'], ['treatment_exfoliant_mild']);
+    expect(notes.some((n) => /ниацинамид/i.test(n.title + n.text))).toBe(false);
+    expect(notes.some((n) => /эксфолиант/i.test(n.title + n.text))).toBe(true);
   });
 
   it('ротирует советы по дню — разный первый совет в разных днях', () => {
