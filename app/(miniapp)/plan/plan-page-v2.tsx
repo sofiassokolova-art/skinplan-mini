@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { clientLogger } from '@/lib/client-logger';
@@ -21,6 +21,7 @@ import type {
   ProfileCard,
   ExpertNote,
 } from '@/lib/plan-page/types';
+import type { PlanPhases } from '@/lib/plan-types';
 
 interface ProductActionState {
   /** productId, по которому сейчас идёт запрос (чтобы блокировать повторные нажатия) */
@@ -291,7 +292,7 @@ export function PlanPageV2() {
         {/* 5. Profile carousel */}
         <ProfileCarousel cards={context.profileCards} />
 
-        {/* 6+7. Фазы плана со средствами внутри каждой фазы */}
+        {/* 6. Phases + Products */}
         <PlanPhasesProductsSection
           phases={context.phases}
           products={context.products}
@@ -303,7 +304,7 @@ export function PlanPageV2() {
           onAddAllToCart={handleAddAllToCart}
         />
 
-        {/* 8. Expert notes */}
+        {/* 7. Expert notes */}
         <ExpertNotesCard
           notes={context.expertNotes}
           onRetakeQuiz={() => {
@@ -312,7 +313,7 @@ export function PlanPageV2() {
           }}
         />
 
-        {/* 9. Feedback */}
+        {/* 8. Feedback */}
         <FeedbackSection onSubmit={handleFeedback} submitted={feedbackSent} />
 
         <div style={{ height: 100 }} />
@@ -407,10 +408,6 @@ function ProfileCarousel({ cards }: { cards: ProfileCard[] }) {
   );
 }
 
-// Объединённый блок «Фазы и средства»: под каждой фазой — реальные карточки средств
-// (те же, что в списке средств: избранное / замена / корзина). Текущая фаза подсвечена
-// лаймом и раскрыта по умолчанию; остальные — аккордеон. Средство показывается один раз,
-// под своей самой ранней фазой (firstPhase).
 function PlanPhasesProductsSection(props: {
   phases: PhaseUI[];
   products: ProductCard[];
@@ -421,60 +418,118 @@ function PlanPhasesProductsSection(props: {
   onToggleCart: (p: ProductCard) => void;
   onAddAllToCart: (products: ProductCard[]) => void;
 }) {
-  const { phases, products, busyId, bulkAdding, onReplace, onToggleWishlist, onToggleCart, onAddAllToCart } = props;
-  const currentPhase = phases.find((p) => p.state === 'current')?.phase ?? phases[0]?.phase ?? null;
-  const [openPhase, setOpenPhase] = useState<PhaseUI['phase'] | null>(currentPhase);
+  const {
+    phases,
+    products,
+    busyId,
+    bulkAdding,
+    onReplace,
+    onToggleWishlist,
+    onToggleCart,
+    onAddAllToCart,
+  } = props;
 
-  if (products.length === 0) return null;
+  const currentPhase = phases.find((phase) => phase.state === 'current')?.phase
+    ?? phases[0]?.phase
+    ?? 'adaptation';
+  const [openPhase, setOpenPhase] = useState<PlanPhases>(currentPhase);
 
-  const productsToAddCount = products.filter((p) => !p.state.inCart).length;
-  const allProductsInCart = productsToAddCount === 0;
+  useEffect(() => {
+    setOpenPhase(currentPhase);
+  }, [currentPhase]);
+
+  const productsByPhase = useMemo(() => createProductsByPhaseMap(products), [products]);
+  const productsToAddCount = products.filter((product) => !product.state.inCart).length;
+  const allProductsInCart = products.length > 0 && productsToAddCount === 0;
+
+  if (phases.length === 0 && products.length === 0) return null;
 
   return (
-    <div className="glass-card-lg pv2-section">
+    <div className="glass-card-lg pv2-section pv2-phases-products-section">
       <div className="pv2-section-head pv2-section-head-align-start">
         <div>
           <div className="pv2-section-title">Фазы и средства</div>
-          <div className="pv2-section-subtitle">Постепенное подключение ухода без перегрузки кожи</div>
+          <div className="pv2-section-subtitle">Средства подключаются по фазам, чтобы не перегружать кожу</div>
         </div>
         <div className="pv2-phases-badge">28<br/>дней</div>
       </div>
 
-      <div className="pv2-pp-list">
+      {products.length > 0 && (
+        <>
+          <button
+            type="button"
+            className={`pv2-add-all-cta ${allProductsInCart ? 'pv2-add-all-done' : ''}`}
+            onClick={() => onAddAllToCart(products)}
+            disabled={bulkAdding || allProductsInCart}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden>
+              <path d="M5.5 8h13l-1.2 10.2a2 2 0 0 1-2 1.8H8.7a2 2 0 0 1-2-1.8Z" />
+              <path d="M8.5 8V6a3.5 3.5 0 0 1 7 0v2" />
+              {!allProductsInCart && <path d="M12 11v5M9.5 13.5h5" />}
+            </svg>
+            {bulkAdding
+              ? 'Добавляем...'
+              : allProductsInCart
+                ? 'Весь набор в корзине'
+                : 'Добавить весь набор на 28 дней'}
+          </button>
+          <div className="pv2-add-all-note">
+            Это весь набор: средства подключаются по фазам — не всё сразу.
+          </div>
+        </>
+      )}
+
+      <div className="pv2-phase-accordion-list">
         {phases.map((phase) => {
-          const phaseProducts = products.filter((p) => p.firstPhase === phase.phase);
+          const phaseProducts = productsByPhase.get(phase.phase) ?? [];
           const isOpen = openPhase === phase.phase;
           const isCurrent = phase.state === 'current';
+
           return (
-            <div className={`pv2-pp-item ${isCurrent ? 'pv2-pp-current' : ''}`} key={phase.phase}>
+            <div
+              className={`pv2-phase-accordion ${isOpen ? 'pv2-phase-accordion-open' : ''} ${isCurrent ? 'pv2-phase-accordion-current' : ''}`}
+              key={phase.phase}
+            >
               <button
                 type="button"
-                className="pv2-pp-head"
+                className="pv2-phase-accordion-trigger"
+                onClick={() => setOpenPhase(phase.phase)}
                 aria-expanded={isOpen}
-                onClick={() => setOpenPhase(isOpen ? null : phase.phase)}
               >
-                <div className="pv2-pp-head-text">
-                  <div className="pv2-pp-label">Фаза {orderOfPhase(phase)} · {phase.daysLabel}</div>
-                  <div className="pv2-pp-name">{phase.phaseLabel}</div>
-                </div>
-                <svg className={`pv2-pp-chev ${isOpen ? 'pv2-pp-chev-open' : ''}`} viewBox="0 0 24 24" aria-hidden><path d="M6 9l6 6 6-6" /></svg>
+                <span className="pv2-phase-accordion-copy">
+                  <span className="pv2-phase-label">Фаза {orderOfPhase(phase.phase)}</span>
+                  <span className="pv2-phase-name">{phase.phaseLabel}</span>
+                  <span className="pv2-phase-days">{phase.daysLabel}</span>
+                </span>
+                <span className="pv2-phase-chevron" aria-hidden>
+                  <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+                </span>
               </button>
+
               {isOpen && (
-                <div className="pv2-pp-body">
-                  <div className="pv2-pp-desc">{phase.description}</div>
-                  {phaseProducts.length === 0 ? (
-                    <div className="pv2-pp-empty">Новых средств в этой фазе нет — продолжаете уход из предыдущих фаз.</div>
+                <div className="pv2-phase-panel">
+                  <div className="pv2-phase-text">{phase.description}</div>
+                  {phase.tags.length > 0 && (
+                    <div className="pv2-phase-tags">
+                      {phase.tags.map((tag) => <span className="pv2-phase-tag" key={tag}>{tag}</span>)}
+                    </div>
+                  )}
+
+                  {phaseProducts.length > 0 ? (
+                    <div className="pv2-product-list">
+                      {phaseProducts.map((product) => (
+                        <ProductCardView
+                          key={product.id}
+                          product={product}
+                          isBusy={busyId === product.id || bulkAdding}
+                          onReplace={onReplace}
+                          onToggleWishlist={onToggleWishlist}
+                          onToggleCart={onToggleCart}
+                        />
+                      ))}
+                    </div>
                   ) : (
-                    phaseProducts.map((p) => (
-                      <ProductCardView
-                        key={p.id}
-                        product={p}
-                        isBusy={busyId === p.id || bulkAdding}
-                        onReplace={onReplace}
-                        onToggleWishlist={onToggleWishlist}
-                        onToggleCart={onToggleCart}
-                      />
-                    ))
+                    <div className="pv2-phase-empty">Новых средств в этой фазе нет.</div>
                   )}
                 </div>
               )}
@@ -482,74 +537,28 @@ function PlanPhasesProductsSection(props: {
           );
         })}
       </div>
-
-      <button
-        type="button"
-        className={`pv2-add-all-cta ${allProductsInCart ? 'pv2-add-all-done' : ''}`}
-        onClick={() => onAddAllToCart(products)}
-        disabled={bulkAdding || allProductsInCart}
-      >
-        <svg viewBox="0 0 24 24" aria-hidden>
-          <path d="M5.5 8h13l-1.2 10.2a2 2 0 0 1-2 1.8H8.7a2 2 0 0 1-2-1.8Z" />
-          <path d="M8.5 8V6a3.5 3.5 0 0 1 7 0v2" />
-          {!allProductsInCart && <path d="M12 11v5M9.5 13.5h5" />}
-        </svg>
-        {bulkAdding ? 'Добавляем...' : allProductsInCart ? 'Весь набор в корзине' : 'Добавить весь набор на 28 дней'}
-      </button>
-
-      <div className="pv2-pp-note">
-        <svg viewBox="0 0 24 24" aria-hidden><circle cx="12" cy="12" r="9" /><path d="M12 16v-4M12 8h.01" /></svg>
-        <span><b>Это весь набор на 28 дней.</b> Средства подключаются по фазам — не всё сразу. Начните со средств текущей фазы.</span>
-      </div>
     </div>
   );
 }
 
-function ProductCardView({ product: p, isBusy, onReplace, onToggleWishlist, onToggleCart }: {
-  product: ProductCard;
-  isBusy: boolean;
-  onReplace: (p: ProductCard) => void;
-  onToggleWishlist: (p: ProductCard) => void;
-  onToggleCart: (p: ProductCard) => void;
-}) {
-  return (
-    <div className="glass-card-sm pv2-product-card">
-      <div className="pv2-product-main">
-        <div className="pv2-product-media"><ProductThumb product={p} /></div>
-        <div className="pv2-product-info">
-          {p.brand && <div className="pv2-product-brand">{p.brand}</div>}
-          <div className="pv2-product-name">{p.name}</div>
-          {p.shortDescription && <div className="pv2-product-desc">{p.shortDescription}</div>}
-          {p.phaseTags.length > 0 && (
-            <div className="pv2-product-tags">
-              {p.phaseTags.map((tag) => <span className="pv2-product-tag" key={tag}>{tag}</span>)}
-            </div>
-          )}
-        </div>
-      </div>
-      <div className="pv2-product-actions">
-        <button
-          className={`pv2-icon-btn pv2-icon-heart ${p.state.inWishlist ? 'pv2-icon-active' : ''}`}
-          onClick={() => onToggleWishlist(p)}
-          disabled={isBusy}
-          aria-label={p.state.inWishlist ? 'Убрать из избранного' : 'В избранное'}
-        >
-          <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-        </button>
-        <button type="button" className="pv2-replace-btn" onClick={() => onReplace(p)} disabled={isBusy} title="Подобрать аналог">
-          <svg viewBox="0 0 24 24" aria-hidden><path d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2"/><path d="M21 4v6h-6M3 20v-6h6"/></svg>
-          <span>Заменить</span>
-        </button>
-        <button className={`pv2-cart-cta ${p.state.inCart ? 'pv2-in-cart' : ''}`} onClick={() => onToggleCart(p)} disabled={isBusy}>
-          {p.state.inCart ? 'В корзине' : 'В корзину'}
-        </button>
-      </div>
-    </div>
-  );
+function createProductsByPhaseMap(products: ProductCard[]): Map<PlanPhases, ProductCard[]> {
+  const result = new Map<PlanPhases, ProductCard[]>([
+    ['adaptation', []],
+    ['active', []],
+    ['support', []],
+  ]);
+
+  for (const product of products) {
+    const list = result.get(product.firstPhase) ?? [];
+    list.push(product);
+    result.set(product.firstPhase, list);
+  }
+
+  return result;
 }
 
-function orderOfPhase(p: PhaseUI): number {
-  switch (p.phase) {
+function orderOfPhase(phase: PlanPhases): number {
+  switch (phase) {
     case 'adaptation': return 1;
     case 'active':     return 2;
     case 'support':    return 3;
@@ -639,6 +648,62 @@ function ProductThumb({ product }: { product: ProductCard }) {
           onError={() => setFailed(true)}
         />
       )}
+    </div>
+  );
+}
+
+function ProductCardView(props: {
+  product: ProductCard;
+  isBusy: boolean;
+  onReplace: (p: ProductCard) => void;
+  onToggleWishlist: (p: ProductCard) => void;
+  onToggleCart: (p: ProductCard) => void;
+}) {
+  const { product, isBusy, onReplace, onToggleWishlist, onToggleCart } = props;
+  return (
+    <div className="glass-card-sm pv2-product-card">
+      <div className="pv2-product-main">
+        <div className="pv2-product-media">
+          <ProductThumb product={product} />
+        </div>
+        <div className="pv2-product-info">
+          {product.brand && <div className="pv2-product-brand">{product.brand}</div>}
+          <div className="pv2-product-name">{product.name}</div>
+          {product.shortDescription && <div className="pv2-product-desc">{product.shortDescription}</div>}
+          {product.phaseTags.length > 0 && (
+            <div className="pv2-product-tags">
+              {product.phaseTags.map((tag) => <span className="pv2-product-tag" key={tag}>{tag}</span>)}
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="pv2-product-actions">
+        <button
+          className={`pv2-icon-btn pv2-icon-heart ${product.state.inWishlist ? 'pv2-icon-active' : ''}`}
+          onClick={() => onToggleWishlist(product)}
+          disabled={isBusy}
+          aria-label={product.state.inWishlist ? 'Убрать из избранного' : 'В избранное'}
+        >
+          <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </button>
+        <button
+          type="button"
+          className="pv2-replace-btn"
+          onClick={() => onReplace(product)}
+          disabled={isBusy}
+          title="Подобрать аналог"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden><path d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2"/><path d="M21 4v6h-6M3 20v-6h6"/></svg>
+          <span>Заменить</span>
+        </button>
+        <button
+          className={`pv2-cart-cta ${product.state.inCart ? 'pv2-in-cart' : ''}`}
+          onClick={() => onToggleCart(product)}
+          disabled={isBusy}
+        >
+          {product.state.inCart ? 'В корзине' : 'В корзину'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -1032,41 +1097,80 @@ function PlanV2Styles() {
         text-align: center;
         line-height: 1.15;
       }
+      .pv2-add-all-note {
+        margin: -4px 0 16px;
+        padding: 10px 12px;
+        border-radius: 16px;
+        background: rgba(10,10,10,0.06);
+        border: 1px solid rgba(10,10,10,0.07);
+        color: var(--ink-soft);
+        font-size: 12px;
+        line-height: 1.45;
+      }
 
-      .pv2-timeline { position: relative; padding-left: 32px; }
-      .pv2-timeline::before {
-        content: '';
-        position: absolute;
-        left: 7px;
-        top: 14px;
-        bottom: 14px;
-        width: 1.5px;
-        background: #E5E5E5;
+      .pv2-phase-accordion-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
       }
-      .pv2-timeline-item { position: relative; padding-bottom: 10px; }
-      .pv2-timeline-item:last-child { padding-bottom: 0; }
-      .pv2-timeline-marker {
-        position: absolute;
-        left: -32px;
-        top: 22px;
-        width: 16px;
-        height: 16px;
+      .pv2-phase-accordion {
+        border-radius: 24px;
+        background: rgba(255,255,255,0.48);
+        border: 1px solid rgba(255,255,255,0.72);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.62);
+        overflow: hidden;
+      }
+      .pv2-phase-accordion-current {
+        background: linear-gradient(135deg, rgba(213,254,97,0.74) 0%, rgba(213,254,97,0.44) 100%);
+        border-color: rgba(var(--accent-rgb),0.56);
+        box-shadow:
+          0 10px 24px rgba(var(--accent-rgb),0.18),
+          inset 0 1px 0 rgba(255,255,255,0.68);
+      }
+      .pv2-phase-accordion-trigger {
+        width: 100%;
+        border: 0;
+        background: transparent;
+        color: var(--ink);
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 34px;
+        align-items: center;
+        gap: 12px;
+        padding: 18px;
+        cursor: pointer;
+        text-align: left;
+        font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
+      }
+      .pv2-phase-accordion-copy {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+      }
+      .pv2-phase-chevron {
+        width: 34px;
+        height: 34px;
         border-radius: 50%;
-        background: #FFFFFF;
-        border: 1.5px solid #D0D0D0;
+        background: rgba(255,255,255,0.72);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform .16s ease, background .16s ease;
       }
-      .pv2-timeline-item.pv2-current .pv2-timeline-marker {
-        background: var(--accent);
-        border-color: var(--accent);
-        box-shadow: 0 0 0 4px rgba(213,254,97,0.25);
+      .pv2-phase-chevron svg {
+        width: 17px;
+        height: 17px;
+        fill: none;
+        stroke: var(--ink);
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
       }
-      .pv2-phase-card {
-        padding: 18px 20px;
-        position: relative;
+      .pv2-phase-accordion-open .pv2-phase-chevron {
+        transform: rotate(180deg);
+        background: rgba(255,255,255,0.9);
       }
-      .pv2-phase-current {
-        background: linear-gradient(135deg, rgba(213,254,97,0.7) 0%, rgba(213,254,97,0.45) 100%);
-        border-color: rgba(213,254,97,0.55);
+      .pv2-phase-panel {
+        padding: 0 14px 16px;
       }
       .pv2-phase-label {
         font-size: 11px;
@@ -1083,7 +1187,7 @@ function PlanV2Styles() {
         letter-spacing: -0.3px;
         margin-bottom: 4px;
       }
-      .pv2-phase-days { font-size: 13px; color: var(--ink-soft); margin-bottom: 14px; }
+      .pv2-phase-days { font-size: 13px; color: var(--ink-soft); }
       .pv2-phase-text { font-size: 13px; color: #475467; line-height: 1.5; margin-bottom: 14px; }
       .pv2-phase-tags { display: flex; flex-wrap: wrap; gap: 6px; }
       .pv2-phase-tag {
@@ -1096,9 +1200,21 @@ function PlanV2Styles() {
         color: var(--ink);
         box-shadow: inset 0 1px 0 rgba(255,255,255,0.42);
       }
-      .pv2-phase-current .pv2-phase-tag {
+      .pv2-phase-accordion-current .pv2-phase-tag {
         background: rgba(255,255,255,0.72);
         border-color: rgba(10,10,10,0.12);
+      }
+      .pv2-phase-panel .pv2-product-list {
+        margin-top: 12px;
+      }
+      .pv2-phase-empty {
+        margin-top: 12px;
+        padding: 14px 16px;
+        border-radius: 18px;
+        background: rgba(255,255,255,0.42);
+        color: var(--ink-soft);
+        font-size: 13px;
+        line-height: 1.45;
       }
 
       .pv2-product-list { display: flex; flex-direction: column; gap: 12px; }
@@ -1135,7 +1251,14 @@ function PlanV2Styles() {
         font-size: 12px;
         font-weight: 800;
         color: var(--ink);
+        min-width: 0;
         transition: transform .14s ease, background .14s ease;
+      }
+      .pv2-replace-btn span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .pv2-replace-btn:disabled { opacity: 0.4; cursor: not-allowed; }
       .pv2-replace-btn:active:not(:disabled) { transform: scale(0.96); }
@@ -1252,7 +1375,7 @@ function PlanV2Styles() {
       }
       .pv2-product-actions {
         display: grid;
-        grid-template-columns: 40px minmax(104px, 0.72fr) minmax(122px, 1fr);
+        grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1fr);
         gap: 8px;
         align-items: center;
         margin-top: 0;
@@ -1302,87 +1425,12 @@ function PlanV2Styles() {
         font-size: 14px;
         cursor: pointer;
         min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .pv2-cart-cta:disabled { opacity: 0.6; cursor: not-allowed; }
       .pv2-cart-cta.pv2-in-cart { background: var(--ink); color: var(--accent); }
-
-      .pv2-pp-list { display: flex; flex-direction: column; gap: 11px; margin-bottom: 14px; }
-      .pv2-pp-item {
-        border-radius: 22px;
-        overflow: hidden;
-        border: 1px solid rgba(10,10,10,0.06);
-        background: rgba(255,255,255,0.6);
-      }
-      .pv2-pp-current {
-        background: #EDFBC6;
-        border-color: rgba(var(--accent-rgb),0.7);
-      }
-      .pv2-pp-head {
-        width: 100%;
-        display: flex;
-        align-items: center;
-        gap: 11px;
-        padding: 14px;
-        background: transparent;
-        border: 0;
-        cursor: pointer;
-        text-align: left;
-      }
-      .pv2-pp-head-text { flex: 1; min-width: 0; }
-      .pv2-pp-label {
-        font-size: 10px;
-        font-weight: 800;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--ink-soft);
-      }
-      .pv2-pp-name {
-        font-family: var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif;
-        font-size: 16px;
-        font-weight: 600;
-        letter-spacing: -0.3px;
-        color: var(--ink);
-      }
-      .pv2-pp-chev {
-        width: 20px;
-        height: 20px;
-        flex-shrink: 0;
-        stroke: #9AA0A6;
-        fill: none;
-        stroke-width: 2;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-        transition: transform .2s ease;
-      }
-      .pv2-pp-chev-open { transform: rotate(180deg); }
-      .pv2-pp-body { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 10px; }
-      .pv2-pp-desc { font-size: 12px; line-height: 1.4; color: var(--ink-soft); }
-      .pv2-pp-empty {
-        font-size: 12px;
-        line-height: 1.4;
-        color: var(--ink-soft);
-        background: rgba(255,255,255,0.55);
-        border: 1px solid rgba(255,255,255,0.8);
-        border-radius: 16px;
-        padding: 12px 14px;
-      }
-      .pv2-pp-note {
-        display: flex;
-        gap: 9px;
-        align-items: flex-start;
-        padding: 12px 14px;
-        background: rgba(255,255,255,0.6);
-        border: 1px solid rgba(255,255,255,0.82);
-        border-radius: 16px;
-        font-size: 12px;
-        line-height: 1.4;
-        color: var(--ink-soft);
-      }
-      .pv2-pp-note svg {
-        width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px;
-        stroke: var(--ink); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
-      }
-      .pv2-pp-note b { font-weight: 800; color: var(--ink); }
 
       .pv2-expert-card {
         background: rgba(10,10,10,0.86);
