@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { verifyAdmin, verifyAdminBoolean } from '@/lib/admin-auth';
+import { buildSkinTypeProfileCondition } from '@/lib/admin-broadcast-filters';
 import type { Prisma } from '@prisma/client';
 // ИСПРАВЛЕНО (P0): Убран JWT - используем только verifyAdmin
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -256,11 +257,14 @@ async function getUsersByFilters(filters: any) {
     const skinProfileConditions: any[] = [];
     
     if (filters.skinTypes && filters.skinTypes.length > 0) {
-      skinProfileConditions.push({
-        skinType: { in: filters.skinTypes },
-      });
+      // combo → combination_dry/oily, sensitive → sensitivityLevel (см. helper);
+      // должно совпадать с broadcast/count, иначе превью-счётчик разойдётся с рассылкой.
+      const skinTypeCondition = buildSkinTypeProfileCondition(filters.skinTypes);
+      if (skinTypeCondition) {
+        skinProfileConditions.push(skinTypeCondition);
+      }
     }
-    
+
     if (filters.concerns && filters.concerns.length > 0) {
       // Фильтруем по notes (упрощенная фильтрация)
       skinProfileConditions.push({

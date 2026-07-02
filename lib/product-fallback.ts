@@ -62,12 +62,23 @@ export async function findFallbackProduct(
     'eye_cream_dark_circles': ['eye_cream', 'eye_serum'], // Крем для глаз
   };
 
+  // Гейт высокой чувствительности: fallback раньше НЕ проверял avoidIf, поэтому
+  // средства с avoidIf:['high_sensitivity'] (напр. Bioderma Sébium) просачивались в
+  // план для розацеа/чувствительной кожи, минуя unified-product-filter. Исключаем их.
+  const excludeHighSensitivity = ['high', 'very_high'].includes(
+    String(profileClassification.sensitivityLevel || '').toLowerCase()
+  );
+  const sensitivityNot: Prisma.ProductWhereInput | undefined = excludeHighSensitivity
+    ? { avoidIf: { has: 'high_sensitivity' } }
+    : undefined;
+
   // Первая попытка: с учетом типа кожи
   const whereClauseWithSkinType: Prisma.ProductWhereInput = {
     published: true,
     brand: {
       isActive: true,
     },
+    ...(sensitivityNot ? { NOT: sensitivityNot } : {}),
   };
 
   // SPF универсален для всех типов кожи
@@ -197,6 +208,7 @@ export async function findFallbackProduct(
           isActive: true,
         },
         OR: partialConditions,
+        ...(sensitivityNot ? { NOT: sensitivityNot } : {}),
       };
       
       product = await prisma.product.findFirst({
@@ -316,10 +328,17 @@ export async function findFallbackProductsBatch(
       conditions.push(stepCondition);
     }
 
+    // Гейт высокой чувствительности (как в findFallbackProduct): не отдаём средства
+    // с avoidIf:['high_sensitivity'] для высокочувствительной/розацеа-кожи.
+    const excludeHighSensitivity = ['high', 'very_high'].includes(
+      String(profileClassification.sensitivityLevel || '').toLowerCase()
+    );
+
     // Выполняем batch запрос
     const products = await prisma.product.findMany({
       where: {
         OR: conditions,
+        ...(excludeHighSensitivity ? { NOT: { avoidIf: { has: 'high_sensitivity' } } } : {}),
       },
       include: {
         brand: true,

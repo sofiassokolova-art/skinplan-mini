@@ -9,12 +9,9 @@ import {
   normalizeSensitivity, 
   normalizeAgeGroup,
   normalizeConcerns,
-  normalizeConcern,
   normalizeIngredients,
 } from './domain-normalizers';
-import { normalizeConcernKey } from './concern-taxonomy';
 import type { SkinTypeKey } from './skin-type-normalizer';
-import type { ConcernKey } from './concern-taxonomy';
 import type { IngredientKey } from './ingredient-normalizer';
 
 function normalizeDiagnosisToken(diagnosis: string): string | null {
