@@ -85,6 +85,8 @@ export async function buildPlanPageContext(
           id: true,
           name: true,
           category: true,
+          step: true,
+          activeIngredients: true,
           price: true,
           imageUrl: true,
           description: true,
