@@ -35,6 +35,7 @@ import {
   type ProductSelectionContext,
 } from '@/lib/dermatology-product-filter';
 import { getApplicationDaysForWeek } from '@/lib/protocol-plan-integration';
+import { productViolatesContraindications } from '@/lib/contraindication-product-filter';
 
 function getSafeFallbackLookupStep(stepCategory: StepCategory): string {
   const baseStep = getBaseStepFromStepCategory(stepCategory);
@@ -99,6 +100,34 @@ function filterStepsByProtocol(
 ): StepCategory[] {
   if (!protocol.forbiddenSteps || protocol.forbiddenSteps.length === 0) return steps;
   return steps.filter(step => !protocol.forbiddenSteps.includes(step));
+}
+
+// Шаги с дополнительными лечебными активами, которые нельзя наслаивать поверх
+// рецептурной наружной терапии акне (Эффезел/Базирон = BPO, Дифферин = адапален):
+// кожа уже получает сильный актив по назначению врача, добавка кислот/второго
+// анти-акне актива в плане даёт раздражение без пользы (кейс Галимат).
+const RX_TOPICAL_CONFLICT_STEPS: StepCategory[] = [
+  'treatment_acne_azelaic',
+  'treatment_acne_bpo',
+  'treatment_acne_local',
+  'treatment_exfoliant_mild',
+  'treatment_exfoliant_strong',
+  'treatment_acid',
+  'serum_exfoliant',
+  'toner_exfoliant',
+  'toner_acid',
+  'toner_aha',
+  'toner_bha',
+  'mask_acid',
+  'mask_peel',
+];
+
+function filterStepsForRxTopicals(
+  steps: StepCategory[],
+  onStrongRxTopicals: boolean
+): StepCategory[] {
+  if (!onStrongRxTopicals) return steps;
+  return steps.filter((step) => !RX_TOPICAL_CONFLICT_STEPS.includes(step));
 }
 
 // ИСПРАВЛЕНО: PlanDay и PlanWeek теперь используются из plan-types.ts и api-types.ts
@@ -296,6 +325,19 @@ export async function generate28DayPlan(
       answers['skin_goals_labels'] = goalLabels;
     }
 
+    // Лейблы исключённых ингредиентов: answers.avoid_ingredients — коды опций
+    // ("avoid_ingredients_7"), для warnings/exclude нужны человекочитаемые названия.
+    if (code === 'avoid_ingredients' && answer.answerValues && Array.isArray(answer.answerValues)) {
+      const avoidLabels: string[] = [];
+      for (const value of answer.answerValues) {
+        const option = answer.question.answerOptions?.find(opt => opt.value === value);
+        if (option?.label) {
+          avoidLabels.push(option.label);
+        }
+      }
+      answers['avoid_ingredients_labels'] = avoidLabels;
+    }
+
     // ИСПРАВЛЕНО: Для medical_diagnoses также сохраняем лейблы опций
     if (code === 'medical_diagnoses' && answer.answerValues && Array.isArray(answer.answerValues)) {
       const diagnosisLabels: string[] = [];
@@ -365,6 +407,25 @@ export async function generate28DayPlan(
   const focusKeys = deriveFocusKeys([...goals, ...concerns]);
 
   const medicalMarkers = (profile.medicalMarkers as Record<string, any> | null) || {};
+
+  // Противопоказания пользователя (из анкеты: avoid_ingredients, рецептурные средства,
+  // кортикостероиды и т.п. — см. lib/skinprofile-rules.json). Используются НЕ только
+  // для гейтов шагов (canApplyStep), но и для фильтрации самих ПРОДУКТОВ ниже:
+  // продукт с салициловой кислотой не должен попадать даже в нейтральный слот
+  // (cleanser/spf) пользователю с no_strong_acids.
+  const userContraindications: string[] = Array.isArray(medicalMarkers.contraindications)
+    ? (medicalMarkers.contraindications as unknown[]).filter((c): c is string => typeof c === 'string')
+    : [];
+
+  // Рецептурная наружная терапия (Эффезел/Базирон = benzoyl_peroxide, Дифферин =
+  // topical_retinoids): вечерний лечебный слот занят препаратом врача — план не должен
+  // наслаивать сверху дополнительные кислоты/активы (кейс Галимат: азелаинка поверх Эффезела).
+  const markersCurrentTopicals: string[] = Array.isArray(medicalMarkers.currentTopicals)
+    ? (medicalMarkers.currentTopicals as unknown[]).filter((t): t is string => typeof t === 'string')
+    : [];
+  const onStrongRxTopicals = markersCurrentTopicals.some((t) =>
+    ['benzoyl_peroxide', 'topical_retinoids'].includes(t)
+  );
   // Создаем минимальный SkinProfile для проверки шагов
   const { createEmptySkinProfile } = await import('@/lib/skinprofile-types');
   const { normalizeSkinTypeForRules, normalizeSensitivityForRules } = await import('@/lib/skin-type-normalizer');
@@ -496,7 +557,11 @@ export async function generate28DayPlan(
     diagnoses: normalizedDiagnoses, // ИСПРАВЛЕНО: Используем нормализованные diagnoses
     rosaceaRisk: (profile.rosaceaRisk as string) ?? null,
     ageGroup: profile.ageGroup || '25-34',
-    exclude: Array.isArray(answers.exclude_ingredients) ? answers.exclude_ingredients : [],
+    // ВАЖНО: вопрос в анкете называется avoid_ingredients (раньше читался несуществующий
+    // ключ exclude_ingredients — исключения пользователя молча терялись).
+    exclude: Array.isArray(answers.avoid_ingredients_labels)
+      ? answers.avoid_ingredients_labels
+      : (Array.isArray(answers.exclude_ingredients) ? answers.exclude_ingredients : []),
     budget: normalizedBudget,
     pregnant: profile.hasPregnancy || false,
     stepsPreference: answers.care_steps || 'средний',
@@ -1228,6 +1293,18 @@ export async function generate28DayPlan(
     stepKey: StepCategory | string,
     product: ProductWithBrand
   ) => {
+    // Точка входа ВСЕХ продуктов в план (регистрация каталога, ensureRequiredProducts,
+    // DB-фолбэки) — единое место, где противопоказанный продукт гарантированно
+    // не попадает в подбор (no_strong_acids и т.п.).
+    if (productViolatesContraindications(product, userContraindications)) {
+      logger.info('Product rejected by user contraindications at registration', {
+        userId,
+        stepKey,
+        productId: product.id,
+        contraindications: userContraindications,
+      });
+      return;
+    }
     const category = stepKey as StepCategory;
     const existing = productsByStepMap.get(category) || [];
     if (!existing.some(p => p.id === product.id)) {
@@ -1414,6 +1491,28 @@ export async function generate28DayPlan(
       });
     }
   });
+
+  // Контра-фильтр ПРОДУКТОВ (не шагов): гейты step-category-rules блокируют кислотные
+  // ШАГИ (toner_acid и т.п.), но продукт с запрещённым активом в нейтральном слоте
+  // (cleanser_gentle, spf_50_face) проходил мимо. Пример: Eucerin Oil Control SPF50+
+  // с салициловой кислотой у пользователя с no_strong_acids. Отсеиваем такие продукты
+  // из подбора целиком — лучше пустой слот с DB-фолбэком, чем противопоказанный продукт.
+  if (userContraindications.length > 0) {
+    for (const [stepCategory, products] of productsByStepMap.entries()) {
+      const safeProducts = products.filter(
+        (p) => !productViolatesContraindications(p, userContraindications)
+      );
+      if (safeProducts.length !== products.length) {
+        productsByStepMap.set(stepCategory, safeProducts);
+        logger.info('Products removed by user contraindications', {
+          userId,
+          stepCategory,
+          removedCount: products.length - safeProducts.length,
+          contraindications: userContraindications,
+        });
+      }
+    }
+  }
 
   // P1c: Budget-preferred подбор. План фильтрует продукты в 'soft'-режиме, где фильтр
   // бюджета (unified-product-filter) НЕ исключает дорогие товары — иначе шаг мог бы
@@ -1870,9 +1969,12 @@ export async function generate28DayPlan(
       productsByStepMap
     );
     
-    // Обновляем productsByStepMap
+    // Обновляем productsByStepMap (с контра-фильтром — merge обходит registerProductForStep)
     for (const [step, products] of updatedProductsMap.entries()) {
-      productsByStepMap.set(step, products);
+      productsByStepMap.set(
+        step,
+        products.filter((p) => !productViolatesContraindications(p, userContraindications))
+      );
     }
     
     // Добавляем новые продукты в selectedProducts
@@ -2685,7 +2787,10 @@ export async function generate28DayPlan(
 
   // Преобразуем план в новый формат Plan28
   // ИСПРАВЛЕНО: plan28Days уже объявлен выше, используем существующий
-  const weeklySteps = carePlanTemplate.weekly || [];
+  const weeklySteps = filterStepsForRxTopicals(
+    (carePlanTemplate.weekly || []) as StepCategory[],
+    onStrongRxTopicals
+  );
   
   // Используем уже определенную routineComplexity из carePlanProfileInput
   // Если нужно переопределить из medicalMarkers, делаем это без const
@@ -2708,13 +2813,19 @@ export async function generate28DayPlan(
     // ИСПРАВЛЕНО: Используем шаги из шаблона напрямую, а не из weeks
     // P1.5: Дополнительно убираем шаги, запрещённые дерматологическим протоколом,
     // чтобы запрещённый активный шаг не оставался в плане пустым плейсхолдером.
-    const rawMorningSteps = filterStepsByProtocol(adjustedMorning, dermatologyProtocol);
+    const rawMorningSteps = filterStepsForRxTopicals(
+      filterStepsByProtocol(adjustedMorning, dermatologyProtocol),
+      onStrongRxTopicals
+    );
     // Если пользователь ежедневно использует макияж, добавляем гидрофильное масло первым этапом вечернего очищения
-    const rawEveningSteps = filterStepsByProtocol(dedupeSteps([
-      ...(needsOilCleansing ? ['cleanser_oil' as StepCategory] : []),
-      ...(needsMicellarCleansing ? ['cleanser_micellar' as StepCategory] : []),
-      ...adjustedEvening,
-    ]), dermatologyProtocol);
+    const rawEveningSteps = filterStepsForRxTopicals(
+      filterStepsByProtocol(dedupeSteps([
+        ...(needsOilCleansing ? ['cleanser_oil' as StepCategory] : []),
+        ...(needsMicellarCleansing ? ['cleanser_micellar' as StepCategory] : []),
+        ...adjustedEvening,
+      ]), dermatologyProtocol),
+      onStrongRxTopicals
+    );
     
     // Фильтруем шаги по правилам профиля
     const allowedMorningSteps = rawMorningSteps.filter((step) => {
@@ -2848,7 +2959,16 @@ export async function generate28DayPlan(
             // Последняя попытка: ищем через findFallbackProduct в БД
             try {
               const fallbackLookupStep = getSafeFallbackLookupStep(stepCategory);
-              const fallbackProduct = await findFallbackProduct(fallbackLookupStep, profileClassification, { userId });
+              let fallbackProduct = await findFallbackProduct(fallbackLookupStep, profileClassification, { userId });
+              if (fallbackProduct && productViolatesContraindications(fallbackProduct, userContraindications)) {
+                logger.info('DB fallback product rejected by contraindications (morning)', {
+                  stepCategory,
+                  productId: fallbackProduct.id,
+                  contraindications: userContraindications,
+                  userId,
+                });
+                fallbackProduct = null;
+              }
               if (fallbackProduct) {
                 registerProductForStep(stepCategory, fallbackProduct);
                 stepProducts = [fallbackProduct];
@@ -3130,7 +3250,16 @@ export async function generate28DayPlan(
             // Последняя попытка: ищем через findFallbackProduct в БД
             try {
               const fallbackLookupStep = getSafeFallbackLookupStep(stepCategory);
-              const fallbackProduct = await findFallbackProduct(fallbackLookupStep, profileClassification, { userId });
+              let fallbackProduct = await findFallbackProduct(fallbackLookupStep, profileClassification, { userId });
+              if (fallbackProduct && productViolatesContraindications(fallbackProduct, userContraindications)) {
+                logger.info('DB fallback product rejected by contraindications (evening)', {
+                  stepCategory,
+                  productId: fallbackProduct.id,
+                  contraindications: userContraindications,
+                  userId,
+                });
+                fallbackProduct = null;
+              }
               if (fallbackProduct) {
                 registerProductForStep(stepCategory, fallbackProduct);
                 stepProducts = [fallbackProduct];
@@ -3262,7 +3391,27 @@ export async function generate28DayPlan(
         alternatives: alternativesEvening,
       });
     }
-    
+
+    // Пользователь на рецептурной наружной терапии: лечебные активы выше отфильтрованы
+    // (см. filterStepsForRxTopicals), вместо них — явный шаг-инструкция про препарат врача,
+    // чтобы вечерняя рутина не выглядела «пустой» и пользователь понимал, куда встаёт Эффезел.
+    if (onStrongRxTopicals) {
+      const rxManualStep: DayStep = {
+        stepCategory: 'treatment_acne_local',
+        productId: null,
+        alternatives: [],
+        manualLabel: 'Ваше лечебное средство',
+        instruction:
+          'Нанесите препарат, назначенный врачом (например, Эффезел или Базирон), тонким слоем на сухую кожу после очищения. Дополнительные кислоты и ретиноиды в этот вечер не нужны.',
+      };
+      const insertAt = eveningSteps.findIndex((s) => !isCleanserStep(s.stepCategory));
+      if (insertAt === -1) {
+        eveningSteps.push(rxManualStep);
+      } else {
+        eveningSteps.splice(insertAt, 0, rxManualStep);
+      }
+    }
+
     // ИСПРАВЛЕНО (P0): Преобразуем weekly steps - шаг создаётся ТОЛЬКО если есть продукты
     const weeklyDaySteps: DayStep[] = [];
     if (isWeekly) {

@@ -49,13 +49,21 @@ export function mapStepToStepCategory(
 
   // --- Cleanser ---
   const oilPattern = /\b(oil|масло)\b/i;
+  // ВАЖНО: токен "oil" ищем строго между разделителями. Раньше стояло includes('_oil'),
+  // и оно матчило "_oily" — из-за этого SPF для жирной кожи (step="spf_50_oily",
+  // Eucerin Oil Control SPF50+) регистрировался как cleanser_oil/cleanser_gentle и
+  // попадал в план на место вечернего умывания (кейс Галимат).
+  const oilToken = /(^|_)oil(_|$)/;
+  // SPF-контекст полностью исключаем из cleanser-веток: солнцезащита — не очищение.
+  const isSpfProduct = /(^|_)(spf|sunscreen)(_|$|\d)/.test(stepStr) || categoryStr === 'spf';
   if (
-    stepStr === 'cleanser_oil' ||
-    stepStr.includes('_oil') ||
-    oilPattern.test(stepStr) ||
-    categoryStr === 'oil' ||
-    categoryStr.includes('_oil') ||
-    oilPattern.test(categoryStr)
+    !isSpfProduct &&
+    (stepStr === 'cleanser_oil' ||
+      oilToken.test(stepStr) ||
+      oilPattern.test(stepStr) ||
+      categoryStr === 'oil' ||
+      oilToken.test(categoryStr) ||
+      oilPattern.test(categoryStr))
   ) {
     categories.push('cleanser_oil');
     categories.push('cleanser_gentle');
