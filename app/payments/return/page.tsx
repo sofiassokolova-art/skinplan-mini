@@ -14,6 +14,19 @@ const BOT_LINK = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
   ? `https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME.replace(/^@/, '')}`
   : 'https://t.me/skiniq_app_bot';
 
+// Инлайн-скрипт (НЕ чанк — выполняется даже когда JS-бандлы не доезжают):
+// если мы внутри webview мини-аппа (в sessionStorage есть tg_init_data, его пишет
+// app/layout.tsx при старте аппа, и он переживает редирект на ЮKassa и обратно),
+// сразу возвращаем пользователя на план — без промежуточного экрана с кнопкой.
+// Во внешнем браузере (нет tg_init_data) остаётся статичный фолбэк с кнопкой в Telegram.
+const AUTO_RETURN_SCRIPT = `
+try {
+  if (sessionStorage.getItem('tg_init_data')) {
+    window.location.replace('/plan?from=payment');
+  }
+} catch (e) {}
+`;
+
 export default async function PaymentsReturnPage({
   searchParams,
 }: {
@@ -35,6 +48,7 @@ export default async function PaymentsReturnPage({
         fontFamily: 'system-ui, -apple-system, sans-serif',
       }}
     >
+      {success && <script dangerouslySetInnerHTML={{ __html: AUTO_RETURN_SCRIPT }} />}
       <div
         style={{
           maxWidth: 400,
@@ -66,7 +80,8 @@ export default async function PaymentsReturnPage({
                 lineHeight: 1.5,
               }}
             >
-              Вернитесь в приложение в Telegram, чтобы посмотреть свой план ухода.
+              Возвращаем вас к плану ухода… Если этого не произошло — вернитесь в
+              приложение в Telegram.
             </p>
             <a
               href={BOT_LINK}
