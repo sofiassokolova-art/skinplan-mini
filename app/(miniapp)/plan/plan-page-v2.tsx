@@ -670,6 +670,12 @@ function ProductCardView(props: {
           {product.brand && <div className="pv2-product-brand">{product.brand}</div>}
           <div className="pv2-product-name">{product.name}</div>
           {product.shortDescription && <div className="pv2-product-desc">{product.shortDescription}</div>}
+          {product.whyPicked && (
+            <div className="pv2-product-why">
+              <span className="pv2-product-why-label">Почему в вашем плане</span>
+              {product.whyPicked}
+            </div>
+          )}
           {product.phaseTags.length > 0 && (
             <div className="pv2-product-tags">
               {product.phaseTags.map((tag) => <span className="pv2-product-tag" key={tag}>{tag}</span>)}
@@ -1364,6 +1370,26 @@ function PlanV2Styles() {
         margin-bottom: 4px;
       }
       .pv2-product-desc { font-size: 13px; color: var(--ink-soft); margin-bottom: 8px; }
+      .pv2-product-why {
+        font-size: 12px;
+        color: var(--ink-soft);
+        line-height: 1.45;
+        background: rgba(var(--accent-rgb), 0.10);
+        border-left: 2px solid rgba(var(--accent-rgb), 0.9);
+        border-radius: 0 8px 8px 0;
+        padding: 7px 10px;
+        margin-bottom: 8px;
+      }
+      .pv2-product-why-label {
+        display: block;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+        color: var(--ink);
+        opacity: 0.55;
+        margin-bottom: 2px;
+      }
       .pv2-product-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
       .pv2-product-tag {
         background: var(--ink);

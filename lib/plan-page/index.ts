@@ -121,6 +121,11 @@ export async function buildPlanPageContext(
     cartProductIds,
     wishlistProductIds,
     replacements,
+    personalization: {
+      mainGoals,
+      skinType: profile.skinType ?? null,
+      sensitivityLevel: profile.sensitivityLevel ?? null,
+    },
   });
 
   return {

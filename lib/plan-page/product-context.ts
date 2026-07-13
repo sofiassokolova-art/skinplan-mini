@@ -5,7 +5,9 @@
 // На выходе — список ProductCard с уже посчитанными состояниями, тегами фаз и firstPhase.
 
 import type { Plan28, DayStep, PlanPhases } from '@/lib/plan-types';
+import type { GoalKey } from '@/lib/concern-taxonomy';
 import { getPhaseForDay, getPhaseLabel } from '@/lib/plan-formatters';
+import { buildWhyPicked } from './why-picked';
 import type { ProductCard } from './types';
 
 interface ProductRow {
@@ -31,6 +33,12 @@ interface BuildProductCardsInput {
   wishlistProductIds: Set<number>;
   /** Карта oldProductId → newProductId (пользовательские замены) */
   replacements: Map<number, number>;
+  /** Персонализация для блока «Почему это средство» */
+  personalization?: {
+    mainGoals: GoalKey[];
+    skinType: string | null;
+    sensitivityLevel: string | null;
+  };
 }
 
 interface ProductUsage {
@@ -46,6 +54,7 @@ interface ProductDraft {
   product: ProductRow;
   phases: Set<PlanPhases>;
   firstPhase: PlanPhases;
+  stepCategories: Set<string>;
   alternativeIds: Set<number>;
   inCart: boolean;
   inWishlist: boolean;
@@ -58,7 +67,7 @@ interface ProductDraft {
  * Главная функция: формирует список карточек продуктов для UI.
  */
 export function buildProductCards(input: BuildProductCardsInput): ProductCard[] {
-  const { plan, products, cartProductIds, wishlistProductIds, replacements } = input;
+  const { plan, products, cartProductIds, wishlistProductIds, replacements, personalization } = input;
   const productsById = new Map(products.map((p) => [p.id, p]));
 
   // 1. Собираем usage по оригинальным productId: фазы, первый день, stepCategory.
@@ -126,6 +135,7 @@ export function buildProductCards(input: BuildProductCardsInput): ProductCard[] 
       product,
       phases: new Set(usage.phases),
       firstPhase: resolveFirstPhase(usage, product),
+      stepCategories: new Set(usage.stepCategories),
       alternativeIds: new Set(altsByProductId.get(origId) ?? []),
       inCart: cartProductIds.has(productId),
       inWishlist: wishlistProductIds.has(productId),
@@ -145,6 +155,7 @@ export function buildProductCards(input: BuildProductCardsInput): ProductCard[] 
       draftsByGroupKey.set(groupKey, {
         ...draft,
         phases: existing.phases,
+        stepCategories: existing.stepCategories,
         alternativeIds: existing.alternativeIds,
       });
     }
@@ -161,10 +172,12 @@ export function buildProductCards(input: BuildProductCardsInput): ProductCard[] 
       product: draft.product,
       phases: draft.phases,
       firstPhase: draft.firstPhase,
+      stepCategories: draft.stepCategories,
       replacementsCount: draft.alternativeIds.size,
       inCart: draft.inCart,
       inWishlist: draft.inWishlist,
       replacedFrom: draft.replacedFrom,
+      personalization,
     }));
 }
 
@@ -206,6 +219,7 @@ function registerUsage(
 
 function mergeDraft(target: ProductDraft, source: ProductDraft): void {
   source.phases.forEach((phase) => target.phases.add(phase));
+  source.stepCategories.forEach((s) => target.stepCategories.add(s));
   source.alternativeIds.forEach((id) => target.alternativeIds.add(id));
 }
 
@@ -218,15 +232,27 @@ function buildSingleCard(args: {
   product: ProductRow;
   phases: Set<PlanPhases>;
   firstPhase: PlanPhases;
+  stepCategories: Set<string>;
   replacementsCount: number;
   inCart: boolean;
   inWishlist: boolean;
   replacedFrom: boolean;
+  personalization?: BuildProductCardsInput['personalization'];
 }): ProductCard {
-  const { product, phases, firstPhase, replacementsCount, inCart, inWishlist } = args;
+  const { product, phases, firstPhase, replacementsCount, inCart, inWishlist, personalization } = args;
 
   const phaseTags = phasesToTags(phases);
   const shortDescription = product.descriptionUser ?? truncate(product.description, 80);
+  const whyPicked = personalization
+    ? buildWhyPicked({
+        activeIngredients: product.activeIngredients ?? [],
+        category: product.category,
+        stepCategories: Array.from(args.stepCategories),
+        mainGoals: personalization.mainGoals,
+        skinType: personalization.skinType,
+        sensitivityLevel: personalization.sensitivityLevel,
+      })
+    : null;
 
   return {
     id: product.id,
@@ -244,6 +270,7 @@ function buildSingleCard(args: {
       replacedByProductId: null, // здесь карточка уже самой замены, не оригинала
     },
     replacementsCount,
+    whyPicked,
   };
 }
 
