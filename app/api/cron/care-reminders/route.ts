@@ -15,12 +15,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { timingSafeEqual } from '@/lib/timing-safe';
+import {
+  CARE_REMINDER_SETUP_PROMPT_TYPE,
+  buildCareReminderSetupKeyboard,
+  buildCareReminderSetupText,
+  parseCareReminderSettings,
+} from '@/lib/care-reminders';
 
 const BATCH_SIZE = 300;
 const MSK_OFFSET_HOURS = 3;
-
-const DEFAULT_MORNING_HOUR = 8;
-const DEFAULT_EVENING_HOUR = 21;
+const SETUP_PROMPT_DELAY_MINUTES = 10;
+const SETUP_PROMPT_LOOKBACK_HOURS = 24;
 
 const MSG_TYPE_MORNING = 'care_reminder_morning';
 const MSG_TYPE_EVENING = 'care_reminder_evening';
@@ -32,26 +37,6 @@ function verifyCron(request: NextRequest): boolean {
   const { searchParams } = new URL(request.url);
   const provided = searchParams.get('secret') || authHeader?.replace('Bearer ', '') || '';
   return Boolean(provided) && timingSafeEqual(provided, cronSecret);
-}
-
-interface ReminderSettings {
-  enabled: boolean;
-  morning: number | null;
-  evening: number | null;
-}
-
-function parseSettings(extra: unknown): ReminderSettings {
-  const raw = (extra as any)?.careReminders;
-  const parseHour = (value: unknown, fallback: number): number | null => {
-    if (value === null || value === -1) return null;
-    if (typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 23) return value;
-    return fallback;
-  };
-  return {
-    enabled: raw?.enabled !== false, // по умолчанию включено
-    morning: parseHour(raw?.morning, DEFAULT_MORNING_HOUR),
-    evening: parseHour(raw?.evening, DEFAULT_EVENING_HOUR),
-  };
 }
 
 async function sendReminder(
@@ -81,6 +66,113 @@ async function sendReminder(
   }
 }
 
+async function sendReminderSetupPrompt(
+  telegramId: string,
+  firstName: string | null,
+): Promise<boolean> {
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  if (!botToken) return false;
+
+  const text = buildCareReminderSetupText(firstName);
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: telegramId,
+        text,
+        parse_mode: 'HTML',
+        reply_markup: buildCareReminderSetupKeyboard(),
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      logger.warn('Care reminder setup prompt failed', {
+        telegramId,
+        status: res.status,
+        body: body.slice(0, 200),
+      });
+    }
+    return res.ok;
+  } catch (e) {
+    logger.warn('Care reminder setup prompt send failed', { telegramId, error: e });
+    return false;
+  }
+}
+
+async function sendDueSetupPrompts(now: Date): Promise<{ setupPrompts: number; setupSkipped: number; setupFailed: number }> {
+  const result = { setupPrompts: 0, setupSkipped: 0, setupFailed: 0 };
+  const promptCutoff = new Date(now.getTime() - SETUP_PROMPT_DELAY_MINUTES * 60 * 1000);
+  const promptWindowStart = new Date(now.getTime() - SETUP_PROMPT_LOOKBACK_HOURS * 60 * 60 * 1000);
+
+  const payments = await prisma.payment.findMany({
+    where: {
+      status: 'succeeded',
+      updatedAt: { gte: promptWindowStart, lte: promptCutoff },
+      user: { telegramId: { not: '' } },
+    },
+    orderBy: { updatedAt: 'desc' },
+    take: BATCH_SIZE,
+    select: {
+      id: true,
+      userId: true,
+      updatedAt: true,
+      user: { select: { telegramId: true, firstName: true } },
+    },
+  });
+
+  const byUser = new Map<string, (typeof payments)[number]>();
+  for (const payment of payments) {
+    if (!byUser.has(payment.userId)) byUser.set(payment.userId, payment);
+  }
+
+  if (byUser.size === 0) return result;
+
+  const prompted = await prisma.botMessage.findMany({
+    where: {
+      userId: { in: [...byUser.keys()] },
+      messageType: CARE_REMINDER_SETUP_PROMPT_TYPE,
+    },
+    select: { userId: true },
+  });
+  const promptedUsers = new Set(prompted.map((row) => row.userId));
+
+  for (const payment of byUser.values()) {
+    const telegramId = payment.user?.telegramId;
+    if (!telegramId || promptedUsers.has(payment.userId)) {
+      result.setupSkipped += 1;
+      continue;
+    }
+
+    const text = buildCareReminderSetupText(payment.user?.firstName ?? null);
+    const ok = await sendReminderSetupPrompt(telegramId, payment.user?.firstName ?? null);
+    if (!ok) {
+      result.setupFailed += 1;
+      continue;
+    }
+
+    await prisma.botMessage.create({
+      data: {
+        userId: payment.userId,
+        telegramId,
+        chatId: telegramId,
+        direction: 'outbound',
+        messageType: CARE_REMINDER_SETUP_PROMPT_TYPE,
+        content: text,
+        rawData: {
+          paymentId: payment.id,
+          paymentUpdatedAt: payment.updatedAt.toISOString(),
+          promptDelayMinutes: SETUP_PROMPT_DELAY_MINUTES,
+        },
+      },
+    }).catch((e) => logger.warn('Care reminder setup prompt record failed', { userId: payment.userId, error: e }));
+
+    result.setupPrompts += 1;
+  }
+
+  return result;
+}
+
 function morningText(firstName: string | null, currentDay: number | null): string {
   const name = (firstName || '').trim();
   const hello = name ? `Доброе утро, ${name}!` : 'Доброе утро!';
@@ -108,6 +200,7 @@ export async function GET(request: NextRequest) {
     }
 
     const now = new Date();
+    const setupResult = await sendDueSetupPrompts(now);
     const mskHour = (now.getUTCHours() + MSK_OFFSET_HOURS) % 24;
     // Начало текущих суток по МСК (для дедупликации «уже слали сегодня»)
     const mskDayStart = new Date(now);
@@ -135,7 +228,7 @@ export async function GET(request: NextRequest) {
     });
 
     const userIds = entitlements.map((e) => e.userId);
-    const result = { morning: 0, evening: 0, skipped: 0, failed: 0 };
+    const result = { ...setupResult, morning: 0, evening: 0, skipped: 0, failed: 0 };
     if (userIds.length === 0) {
       return NextResponse.json({ success: true, mskHour, ...result });
     }
@@ -160,7 +253,7 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-    const prefsByUser = new Map(prefsRows.map((r) => [r.userId, parseSettings(r.extra)]));
+    const prefsByUser = new Map(prefsRows.map((r) => [r.userId, parseCareReminderSettings(r.extra)]));
     const progressByUser = new Map(progressRows.map((r) => [r.userId, r.currentDay]));
     const sentSet = new Set(sentToday.map((r) => `${r.userId}:${r.messageType}`));
 
@@ -168,7 +261,7 @@ export async function GET(request: NextRequest) {
       const telegramId = ent.user?.telegramId;
       if (!telegramId) continue;
 
-      const settings = prefsByUser.get(ent.userId) ?? parseSettings(null);
+      const settings = prefsByUser.get(ent.userId) ?? parseCareReminderSettings(null);
       if (!settings.enabled) { result.skipped += 1; continue; }
 
       const slot =

@@ -6,35 +6,18 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api';
-
-interface ReminderSettings {
-  enabled: boolean;
-  /** Час МСК или null = не напоминать в этот слот */
-  morning: number | null;
-  evening: number | null;
-}
-
-const DEFAULTS: ReminderSettings = { enabled: true, morning: 8, evening: 21 };
+import {
+  DEFAULT_CARE_REMINDERS,
+  type CareReminderSettings,
+  parseCareReminderSettings,
+  withCareReminderSettings,
+} from '@/lib/care-reminders';
 
 const MORNING_HOURS = [6, 7, 8, 9, 10, 11, 12];
 const EVENING_HOURS = [18, 19, 20, 21, 22, 23];
 
-function parseSettings(extra: any): ReminderSettings {
-  const raw = extra?.careReminders;
-  const hour = (v: any, fallback: number | null): number | null => {
-    if (v === null || v === -1) return null;
-    if (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 23) return v;
-    return fallback;
-  };
-  return {
-    enabled: raw?.enabled !== false,
-    morning: hour(raw?.morning, DEFAULTS.morning),
-    evening: hour(raw?.evening, DEFAULTS.evening),
-  };
-}
-
 export function CareRemindersSettings() {
-  const [settings, setSettings] = useState<ReminderSettings | null>(null);
+  const [settings, setSettings] = useState<CareReminderSettings | null>(null);
   const [saving, setSaving] = useState(false);
   // extra целиком: POST заменяет весь объект, нельзя затирать чужие ключи
   const extraRef = useRef<Record<string, unknown>>({});
@@ -45,19 +28,19 @@ export function CareRemindersSettings() {
       .then((prefs: any) => {
         if (cancelled) return;
         extraRef.current = (prefs?.extra && typeof prefs.extra === 'object') ? prefs.extra : {};
-        setSettings(parseSettings(prefs?.extra));
+        setSettings(parseCareReminderSettings(prefs?.extra));
       })
       .catch(() => {
-        if (!cancelled) setSettings(DEFAULTS);
+        if (!cancelled) setSettings(DEFAULT_CARE_REMINDERS);
       });
     return () => { cancelled = true; };
   }, []);
 
-  const save = async (next: ReminderSettings) => {
+  const save = async (next: CareReminderSettings) => {
     setSettings(next);
     setSaving(true);
     try {
-      const extra = { ...extraRef.current, careReminders: next };
+      const extra = withCareReminderSettings(extraRef.current, next, 'profile');
       await api.updateUserPreferences({ extra });
       extraRef.current = extra;
     } catch {

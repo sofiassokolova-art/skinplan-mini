@@ -5,6 +5,12 @@ import { prisma } from '@/lib/db';
 import { getUserIdFromTelegramId } from '@/lib/get-user-from-telegram-id';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { timingSafeEqual } from '@/lib/timing-safe';
+import {
+  CARE_REMINDER_SETUP_CONFIRM_TYPE,
+  formatCareReminderSettingsSummary,
+  parseCareReminderCallback,
+  withCareReminderSettings,
+} from '@/lib/care-reminders';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 // Секретный токен опционален - используется только если установлен в переменных окружения
@@ -16,6 +22,26 @@ const MINI_APP_URL = process.env.NEXT_PUBLIC_MINI_APP_URL || 'https://skinplan-m
 
 interface TelegramUpdate {
   update_id: number;
+  callback_query?: {
+    id: string;
+    from: {
+      id: number;
+      is_bot: boolean;
+      first_name: string;
+      last_name?: string;
+      username?: string;
+      language_code?: string;
+    };
+    message?: {
+      message_id: number;
+      chat: {
+        id: number;
+        type: string;
+      };
+      text?: string;
+    };
+    data?: string;
+  };
   message?: {
     message_id: number;
     from: {
@@ -121,6 +147,58 @@ async function sendMessage(
   }
 }
 
+async function answerCallbackQuery(callbackQueryId: string, text?: string) {
+  if (!TELEGRAM_BOT_TOKEN) return;
+
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        callback_query_id: callbackQueryId,
+        text,
+        show_alert: false,
+      }),
+    });
+    if (!response.ok) {
+      const error = await response.text().catch(() => '');
+      console.error('Telegram answerCallbackQuery error:', response.status, error);
+    }
+  } catch (error) {
+    console.error('Error answering callback query:', error);
+  }
+}
+
+async function editMessageText(
+  chatId: number,
+  messageId: number,
+  text: string,
+  replyMarkup?: any,
+) {
+  if (!TELEGRAM_BOT_TOKEN) {
+    throw new Error('TELEGRAM_BOT_TOKEN not configured');
+  }
+
+  const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: chatId,
+      message_id: messageId,
+      text,
+      parse_mode: 'HTML',
+      reply_markup: replyMarkup,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text().catch(() => '');
+    throw new Error(`Telegram editMessageText error: ${response.status} - ${error}`);
+  }
+
+  return response.json();
+}
+
 export async function POST(request: NextRequest) {
   let update: TelegramUpdate | null = null;
   try {
@@ -149,7 +227,9 @@ export async function POST(request: NextRequest) {
     console.log('📥 Получено обновление от Telegram:', {
       updateId: update.update_id,
       hasMessage: !!update.message,
+      hasCallback: !!update.callback_query,
       messageText: update.message?.text,
+      callbackData: update.callback_query?.data,
       chatId: update.message?.chat?.id,
       fromId: update.message?.from?.id,
       fromUsername: update.message?.from?.username,
@@ -301,6 +381,91 @@ export async function POST(request: NextRequest) {
       } catch (dbError) {
         console.error('Error saving message or support chat (continuing to process commands):', dbError);
       }
+    }
+
+    const reminderOption = parseCareReminderCallback(update.callback_query?.data);
+    if (update.callback_query && reminderOption) {
+      const callback = update.callback_query;
+      const chatId = callback.message?.chat.id ?? callback.from.id;
+      const telegramId = callback.from.id;
+
+      const userId = await getUserIdFromTelegramId(telegramId, {
+        firstName: callback.from.first_name,
+        lastName: callback.from.last_name,
+        username: callback.from.username,
+        languageCode: callback.from.language_code,
+      });
+
+      if (!userId) {
+        await answerCallbackQuery(callback.id, 'Не удалось сохранить настройки');
+        return NextResponse.json({ ok: true, processed: 'care_reminder_callback_error' });
+      }
+
+      await saveBotMessage(
+        userId,
+        callback.id,
+        chatId.toString(),
+        'incoming',
+        'callback',
+        callback.data,
+        callback,
+      );
+
+      const preferences = await prisma.userPreferences.findUnique({
+        where: { userId },
+        select: { extra: true },
+      });
+      const extra = withCareReminderSettings(preferences?.extra, reminderOption.settings, 'telegram');
+
+      await prisma.userPreferences.upsert({
+        where: { userId },
+        create: { userId, extra: extra as any },
+        update: { extra: extra as any },
+      });
+
+      const summary = formatCareReminderSettingsSummary(reminderOption.settings);
+      const confirmText = reminderOption.settings.enabled
+        ? `Готово, буду напоминать ${summary} по МСК.`
+        : 'Готово, ежедневные напоминания выключены.';
+      const finalText = `${confirmText}\n\nИзменить время можно в профиле.`;
+      const replyMarkup = {
+        inline_keyboard: [[{ text: 'Открыть план', web_app: { url: MINI_APP_URL + '/plan' } }]],
+      };
+
+      await answerCallbackQuery(callback.id, 'Настройки сохранены');
+
+      try {
+        if (callback.message?.message_id) {
+          await editMessageText(chatId, callback.message.message_id, finalText, replyMarkup);
+        } else {
+          await sendMessage(chatId, finalText, replyMarkup, userId);
+        }
+      } catch (error) {
+        console.error('Failed to edit care reminder setup message:', error);
+        await sendMessage(chatId, finalText, replyMarkup, userId);
+      }
+
+      await prisma.botMessage.create({
+        data: {
+          userId,
+          telegramId: telegramId.toString(),
+          chatId: chatId.toString(),
+          direction: 'outgoing',
+          messageType: CARE_REMINDER_SETUP_CONFIRM_TYPE,
+          content: finalText,
+          rawData: {
+            callbackData: callback.data,
+            optionId: reminderOption.id,
+          },
+        },
+      }).catch((error) => console.error('Error saving care reminder setup confirmation:', error));
+
+      return NextResponse.json({ ok: true, processed: 'care_reminder_callback' });
+    }
+
+    if (update.callback_query) {
+      await answerCallbackQuery(update.callback_query.id);
+      return NextResponse.json({ ok: true, processed: 'callback_ignored' });
     }
 
     // Обработка команды /start
