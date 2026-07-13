@@ -146,6 +146,16 @@ function getStaleCachedEntitlement(productCode: string): boolean | null {
   return entitlementsCache.codes.includes(requiredEntitlementCode(productCode));
 }
 
+/** «5 средств», «2 средства», «1 средство» — для подписи тизера. */
+function productsCountLabel(count: number): string {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod100 >= 11 && mod100 <= 14) return 'средств';
+  if (mod10 === 1) return 'средство';
+  if (mod10 >= 2 && mod10 <= 4) return 'средства';
+  return 'средств';
+}
+
 function requiredEntitlementCode(productCode: string): string {
   if (productCode === 'retake_topic') return 'retake_topic_access';
   if (productCode === 'retake_full') return 'retake_full_access';
@@ -161,6 +171,31 @@ function isPlanAccessProduct(productCode: string): boolean {
     productCode === 'subscription_month' ||
     productCode === 'plan_renewal_discount'
   );
+}
+
+interface PlanTeaser {
+  morning: string[];
+  evening: string[];
+  productsCount: number;
+  skinTypeLabel: string | null;
+}
+
+/** Тизер структуры готового плана (без названий продуктов) для пейвола plan_access. */
+async function fetchPlanTeaser(initData: string): Promise<PlanTeaser | null> {
+  try {
+    const response = await fetch('/api/plan/teaser', {
+      method: 'GET',
+      headers: { 'X-Telegram-Init-Data': initData },
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    const payload = (data && typeof data === 'object' && 'data' in data) ? (data as any).data : data;
+    const teaser = payload?.teaser;
+    if (!teaser || !Array.isArray(teaser.morning) || !Array.isArray(teaser.evening)) return null;
+    return teaser as PlanTeaser;
+  } catch {
+    return null;
+  }
 }
 
 async function fetchEntitlementCodes(initData: string): Promise<string[]> {
@@ -232,7 +267,24 @@ export function PaymentGate({
   const [refreshTick, setRefreshTick] = useState(0);
   const [checkedOnce, setCheckedOnce] = useState<boolean>(cachedAccess !== null);
   const [initDataReady, setInitDataReady] = useState(false);
+  const [planTeaser, setPlanTeaser] = useState<PlanTeaser | null>(null);
   const { setPaywallVisible } = usePaywallVisibility();
+
+  // Тизер плана — только для первой покупки plan_access (продление/ретейки план уже видели).
+  // Грузим, когда пейвол реально виден: человек должен увидеть «предварительный результат»
+  // (структуру своего готового плана) до оплаты.
+  useEffect(() => {
+    if (hasPaid || !checkedOnce || productCode !== 'plan_access') return;
+    const initData = getInitDataForClient();
+    if (!initData) return;
+    let cancelled = false;
+    fetchPlanTeaser(initData).then((teaser) => {
+      if (!cancelled && teaser) setPlanTeaser(teaser);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [hasPaid, checkedOnce, productCode]);
 
   // Сообщаем layout, что пейвол виден — скрыть нижнюю навигацию (на /plan и /home)
   useEffect(() => {
@@ -756,16 +808,76 @@ export function PaymentGate({
           {paywallSubtitle}
         </p>
 
-        {/* Преимущества */}
+        {/* Тизер готового плана: структура шагов без названий средств — «предварительный
+            результат» до оплаты. Когда он есть, длинный список преимуществ сокращаем. */}
+        {planTeaser && (
+          <div style={{ ...glassStyle, padding: '18px', marginBottom: '16px' }}>
+            <div style={{
+              fontFamily: "var(--font-inter), 'Inter', sans-serif",
+              fontWeight: 600,
+              fontSize: 'clamp(13px, 3.5vw, 15px)',
+              color: '#111',
+              marginBottom: '12px',
+            }}>
+              Ваш план уже собран{planTeaser.skinTypeLabel ? ` — для ${planTeaser.skinTypeLabel}` : ''}
+            </div>
+            {([['Утро', planTeaser.morning], ['Вечер', planTeaser.evening]] as const).map(([label, steps]) => (
+              steps.length > 0 && (
+                <div key={label} style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '8px' }}>
+                  <span style={{
+                    fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                    fontSize: 'clamp(11px, 2.8vw, 12px)',
+                    color: '#888',
+                    minWidth: '44px',
+                    flexShrink: 0,
+                  }}>
+                    {label}
+                  </span>
+                  <span style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                    {steps.map((step, i) => (
+                      <span key={step} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                        {i > 0 && <span style={{ color: '#bbb', fontSize: '11px' }}>→</span>}
+                        <span style={{
+                          fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                          fontSize: 'clamp(11px, 2.9vw, 13px)',
+                          fontWeight: 500,
+                          color: '#1a1a1a',
+                          background: 'rgba(var(--accent-rgb),0.35)',
+                          borderRadius: '100px',
+                          padding: '3px 10px',
+                        }}>
+                          {step}
+                        </span>
+                      </span>
+                    ))}
+                  </span>
+                </div>
+              )
+            ))}
+            {planTeaser.productsCount > 0 && (
+              <div style={{
+                fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                fontSize: 'clamp(11px, 2.8vw, 12px)',
+                color: '#666',
+                marginTop: '10px',
+              }}>
+                {planTeaser.productsCount} {productsCountLabel(planTeaser.productsCount)} подобрано под вашу кожу —
+                названия откроются после оплаты
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Преимущества (при видимом тизере оставляем только два — оффер короче) */}
         <div style={{ ...glassStyle, padding: '20px 18px', marginBottom: '16px' }}>
-          {benefits.map((b, i) => (
+          {(planTeaser ? benefits.slice(2) : benefits).map((b, i, arr) => (
             <div key={i} style={{
               display: 'flex',
               alignItems: 'center',
               gap: '14px',
               paddingTop: i === 0 ? 0 : '13px',
-              paddingBottom: i === benefits.length - 1 ? 0 : '13px',
-              borderBottom: i < benefits.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none',
+              paddingBottom: i === arr.length - 1 ? 0 : '13px',
+              borderBottom: i < arr.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none',
             }}>
               <div style={{
                 width: '36px',

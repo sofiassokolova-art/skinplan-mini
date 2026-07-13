@@ -85,6 +85,8 @@ export interface ProductCard {
   state: ProductState;
   /** Сколько есть альтернатив (для индикации "Заменить") */
   replacementsCount: number;
+  /** «Почему это средство в вашем плане» — 1–2 персональных предложения (или null) */
+  whyPicked: string | null;
 }
 
 /** Совет в "Советах дерматолога" */

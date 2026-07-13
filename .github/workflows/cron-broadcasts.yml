@@ -72,3 +72,11 @@ jobs:
           curl -fsS --max-time 90 \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "https://proskiniq.ru/api/cron/advcake-sync"
+
+      # Напоминания об уходе (утро/вечер) — роут сам решает, чей час наступил,
+      # и дедуплицирует по bot_messages, поэтому дёргаем на каждом 30-мин тике.
+      - name: Care reminders (morning/evening routine)
+        run: |
+          curl -fsS --max-time 90 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://proskiniq.ru/api/cron/care-reminders"
