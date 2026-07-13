@@ -696,7 +696,9 @@ describe('Profile Generation and Product Selection', () => {
           profileId: profile.id,
         });
       }
-    });
+      // 120s: при прогоне против удалённого Neon (staging) каждый запрос — сетевой
+      // round-trip до eu-central-1, дефолтных 30s не хватает.
+    }, 120_000);
 
     it('should select products based on profile characteristics', async () => {
       if (!hasDatabase) return;
