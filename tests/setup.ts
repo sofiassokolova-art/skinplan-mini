@@ -4,6 +4,14 @@
 import '@testing-library/jest-dom';
 import { cleanup } from '@testing-library/react';
 import { afterEach } from 'vitest';
+import { injectAppPrismaOverTcp } from './helpers/prisma-test-client';
+
+// DB-интеграционные прогоны против удалённого Neon (staging/prod): app-клиент
+// из @/lib/db использует Neon HTTP fetch, который с локальной сети не может
+// стартовать interactive transaction (P2028 в /api/questionnaire/answers).
+// Подменяем его на pg TCP через globalThis.__prisma (getPrisma() переиспользует).
+// Без DATABASE_URL (обычный локальный прогон) — no-op.
+injectAppPrismaOverTcp();
 
 // Очистка после каждого теста
 afterEach(() => {

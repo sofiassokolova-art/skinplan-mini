@@ -50,5 +50,33 @@ describe('step matching: product.step/category -> StepCategory', () => {
     expect(mapped).toContain('cleanser_oil');
     expect(mapped).not.toContain('cleanser_micellar');
   });
+
+  describe('регрессия Галимат: _oily не матчится как _oil', () => {
+    it('spf_50_oily (Eucerin Oil Control) НЕ регистрируется как cleanser', () => {
+      // Раньше includes('_oil') матчил '_oily' → SPF вставал в план
+      // на место вечернего умывания.
+      const mapped = mapStepToStepCategory('spf_50_oily', 'spf');
+      expect(mapped).toContain('spf_50_oily');
+      expect(mapped).not.toContain('cleanser_oil');
+      expect(mapped).not.toContain('cleanser_gentle');
+    });
+
+    it('шаг с токеном oily (не spf) тоже не считается гидрофильным маслом', () => {
+      const mapped = mapStepToStepCategory('moisturizer_oily', 'moisturizer', 'oily');
+      expect(mapped).not.toContain('cleanser_oil');
+    });
+
+    it('настоящий токен oil по границам матчится как гидрофильное масло', () => {
+      expect(mapStepToStepCategory('cleansing_oil', 'cleanser')).toContain('cleanser_oil');
+      expect(mapStepToStepCategory('oil_cleanser', 'cleanser')).toContain('cleanser_oil');
+    });
+
+    it('SPF-контекст исключён из cleanser-веток даже при слове oil в шаге', () => {
+      // 'oil control' в названии SPF-продукта не должен уводить его в очищение
+      const mapped = mapStepToStepCategory('spf_oil_control', 'spf');
+      expect(mapped).not.toContain('cleanser_oil');
+      expect(mapped).not.toContain('cleanser_gentle');
+    });
+  });
 });
 
