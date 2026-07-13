@@ -824,7 +824,24 @@ export async function generate28DayPlan(
       ['barrier', 'serum_hydrating'],
     ];
     const goalSet = new Set<GoalKey>(finalMainGoals);
-    const picked = goalToEveningActive.find(([goal]) => goalSet.has(goal));
+    // ВАЖНО: берём первый актив, который РАЗРЕШЁН профилю (canApplyStep), а не просто
+    // первый по приоритету целей. Раньше цель pores у чувствительной кожи с no_strong_acids
+    // выбирала treatment_exfoliant_mild, шаг тут же блокировался гейтами — и юзер получал
+    // ноль активов, хотя под его же цель antiage был безопасный serum_antiage (кейс Динары).
+    const injectionRosaceaRisk = profile.rosaceaRisk as "low" | "medium" | "high" | "critical" | null | undefined;
+    const picked = goalToEveningActive.find(([goal, step]) => {
+      if (!goalSet.has(goal)) return false;
+      const allowance = canApplyStep(step, stepProfile, injectionRosaceaRisk);
+      if (!allowance.allowed) {
+        logger.info('Minimal routine: goal active skipped (blocked for profile)', {
+          userId,
+          goal,
+          step,
+          reason: allowance.reason,
+        });
+      }
+      return allowance.allowed;
+    });
     if (picked && !adjustedEvening.includes(picked[1])) {
       const activeStep = picked[1];
       // Ставим актив между очищением и увлажнением: cleanser → актив → крем.
