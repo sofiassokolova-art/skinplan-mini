@@ -1,9 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import { PrismaNeon } from '@prisma/adapter-neon';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { neonConfig } from '@neondatabase/serverless';
-
-neonConfig.poolQueryViaFetch = true;
+import { piiEncryptionExtension } from '@/lib/crypto/prisma-pii-extension';
 
 const FALLBACK_DATABASE_URL = 'postgresql://test:test@localhost:5432/skinplan_test';
 
@@ -26,14 +23,31 @@ function getSchema(url: string): string | undefined {
 
 export function createPrismaTestClient(databaseUrl = process.env.DATABASE_URL) {
   const connectionString = databaseUrl ?? FALLBACK_DATABASE_URL;
-  const adapter = isLocalDatabaseUrl(connectionString)
-    ? new PrismaPg({ connectionString }, { schema: getSchema(connectionString) })
-    : new PrismaNeon({ connectionString });
+  // Всегда pg TCP (:5432), а не Neon HTTP fetch: с локальной сети fetch-транспорт
+  // флаки и не умеет interactive transactions (P2028). Pooler Neon принимает TCP.
+  const adapter = new PrismaPg({ connectionString }, { schema: getSchema(connectionString) });
 
   return new PrismaClient({
     adapter,
     log: ['error'],
   });
+}
+
+/**
+ * Подменяет app-клиент из @/lib/db (Neon HTTP fetch) на pg TCP для локальных
+ * DB-прогонов против удалённого Neon: getPrisma() в lib/db переиспользует
+ * globalThis.__prisma (??=), поэтому инжект до первого запроса достаточен.
+ * Зеркалит lib/db: тот же piiEncryptionExtension, чтобы поведение роутов не менялось.
+ * Без DATABASE_URL или с localhost-БД — no-op (lib/db сам справится).
+ */
+export function injectAppPrismaOverTcp(databaseUrl = process.env.DATABASE_URL) {
+  if (!databaseUrl || isLocalDatabaseUrl(databaseUrl)) return;
+  const globalForPrisma = globalThis as unknown as { __prisma?: PrismaClient };
+  if (globalForPrisma.__prisma) return;
+  globalForPrisma.__prisma = new PrismaClient({
+    adapter: new PrismaPg({ connectionString: databaseUrl }),
+    log: ['error'],
+  }).$extends(piiEncryptionExtension) as unknown as PrismaClient;
 }
 
 export async function isPrismaTestDatabaseAvailable(prisma: PrismaClient): Promise<boolean> {

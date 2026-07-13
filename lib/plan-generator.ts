@@ -36,6 +36,7 @@ import {
 } from '@/lib/dermatology-product-filter';
 import { getApplicationDaysForWeek } from '@/lib/protocol-plan-integration';
 import { productViolatesContraindications } from '@/lib/contraindication-product-filter';
+import { filterStepsForRxTopicals, isOnStrongRxTopicals } from '@/lib/rx-topicals';
 
 function getSafeFallbackLookupStep(stepCategory: StepCategory): string {
   const baseStep = getBaseStepFromStepCategory(stepCategory);
@@ -100,34 +101,6 @@ function filterStepsByProtocol(
 ): StepCategory[] {
   if (!protocol.forbiddenSteps || protocol.forbiddenSteps.length === 0) return steps;
   return steps.filter(step => !protocol.forbiddenSteps.includes(step));
-}
-
-// Шаги с дополнительными лечебными активами, которые нельзя наслаивать поверх
-// рецептурной наружной терапии акне (Эффезел/Базирон = BPO, Дифферин = адапален):
-// кожа уже получает сильный актив по назначению врача, добавка кислот/второго
-// анти-акне актива в плане даёт раздражение без пользы (кейс Галимат).
-const RX_TOPICAL_CONFLICT_STEPS: StepCategory[] = [
-  'treatment_acne_azelaic',
-  'treatment_acne_bpo',
-  'treatment_acne_local',
-  'treatment_exfoliant_mild',
-  'treatment_exfoliant_strong',
-  'treatment_acid',
-  'serum_exfoliant',
-  'toner_exfoliant',
-  'toner_acid',
-  'toner_aha',
-  'toner_bha',
-  'mask_acid',
-  'mask_peel',
-];
-
-function filterStepsForRxTopicals(
-  steps: StepCategory[],
-  onStrongRxTopicals: boolean
-): StepCategory[] {
-  if (!onStrongRxTopicals) return steps;
-  return steps.filter((step) => !RX_TOPICAL_CONFLICT_STEPS.includes(step));
 }
 
 // ИСПРАВЛЕНО: PlanDay и PlanWeek теперь используются из plan-types.ts и api-types.ts
@@ -420,12 +393,7 @@ export async function generate28DayPlan(
   // Рецептурная наружная терапия (Эффезел/Базирон = benzoyl_peroxide, Дифферин =
   // topical_retinoids): вечерний лечебный слот занят препаратом врача — план не должен
   // наслаивать сверху дополнительные кислоты/активы (кейс Галимат: азелаинка поверх Эффезела).
-  const markersCurrentTopicals: string[] = Array.isArray(medicalMarkers.currentTopicals)
-    ? (medicalMarkers.currentTopicals as unknown[]).filter((t): t is string => typeof t === 'string')
-    : [];
-  const onStrongRxTopicals = markersCurrentTopicals.some((t) =>
-    ['benzoyl_peroxide', 'topical_retinoids'].includes(t)
-  );
+  const onStrongRxTopicals = isOnStrongRxTopicals(medicalMarkers.currentTopicals);
   // Создаем минимальный SkinProfile для проверки шагов
   const { createEmptySkinProfile } = await import('@/lib/skinprofile-types');
   const { normalizeSkinTypeForRules, normalizeSensitivityForRules } = await import('@/lib/skin-type-normalizer');
