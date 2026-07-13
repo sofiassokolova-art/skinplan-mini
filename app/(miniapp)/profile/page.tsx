@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { useTelegram, resolveTelegramInitData } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
 import { MiniAppPageSkeleton } from '@/components/ui/SkeletonLoader';
+import { CareRemindersSettings } from '@/components/CareRemindersSettings';
 import toast from 'react-hot-toast';
 import { clientLogger } from '@/lib/client-logger';
 
@@ -799,6 +800,9 @@ export default function PersonalCabinet() {
             )}
           </div>
         </section>
+
+        {/* Напоминания об уходе (утро/вечер в боте) */}
+        <CareRemindersSettings />
 
         {/* FAQ */}
         <section className="glass-card-md">
