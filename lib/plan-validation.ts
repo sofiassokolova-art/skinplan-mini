@@ -27,6 +27,67 @@ export interface PlanValidationOptions {
   strictMode?: boolean; // Если true, errors блокируют план
 }
 
+function normalizeIngredientForFrequency(ingredient: string): string {
+  return ingredient
+    .toLowerCase()
+    .replace(/[ё]/g, 'е')
+    .replace(/[%(),.]+/g, ' ')
+    .replace(/[-\s]+/g, '_')
+    .trim();
+}
+
+// Стемы: матчатся как подстрока, чтобы покрывать словоформы («гликолевая», «salicylate»).
+const SENSITIVE_STEM_TOKENS = [
+  'retinol',
+  'ретинол',
+  'retinoid',
+  'ретиноид',
+  'retinal',
+  'adapalene',
+  'адапален',
+  'tretinoin',
+  'третиноин',
+  'glycolic',
+  'гликолев',
+  'молочн',
+  'salicylic',
+  'салицил',
+  'azelaic',
+  'азелаин',
+  'benzoyl',
+  'бензоил',
+  'ascorbic',
+  'аскорбин',
+  'hydroquinone',
+  'гидрохинон',
+];
+
+// Короткие аббревиатуры и составные названия: только по границам слов,
+// иначе «alpha arbutin» ловится на 'pha'/'aha', а «sulphate» — на 'pha'.
+const SENSITIVE_WORD_TOKENS = [
+  'aha',
+  'bha',
+  'pha',
+  'lha',
+  'bpo',
+  'lactic_acid',
+  'vitamin_c',
+  'витамин_с',
+  'витамин_c',
+];
+
+function matchesWordToken(normalized: string, token: string): boolean {
+  return new RegExp(`(^|_)${token}(_|$)`).test(normalized);
+}
+
+function isFrequencySensitiveActive(ingredient: string): boolean {
+  const normalized = normalizeIngredientForFrequency(ingredient);
+  return (
+    SENSITIVE_STEM_TOKENS.some((token) => normalized.includes(token)) ||
+    SENSITIVE_WORD_TOKENS.some((token) => matchesWordToken(normalized, token))
+  );
+}
+
 /**
  * Валидирует план на совместимость ингредиентов и соответствие дерматологическим протоколам
  * ИСПРАВЛЕНО: Единый слой валидации плана
@@ -220,8 +281,10 @@ export async function validatePlan(
   // ИСПРАВЛЕНО (P1): Проверка соответствия дерматологическим протоколам
   if (dermatologyProtocols) {
     // ИСПРАВЛЕНО (P1): Базовая проверка протоколов
-    // Проверяем, что активные ингредиенты не используются слишком часто
-    const ingredientFrequency: Record<string, number> = {};
+    // Проверяем, что частотно-чувствительные активы не используются слишком часто.
+    // Считаем именно дни применения, а не количество шагов: один и тот же актив
+    // утром+вечером в один день не должен превращаться в "200% дней".
+    const ingredientDays: Record<string, Set<number>> = {};
     
     for (const day of plan.days) {
       [...(day.morning || []), ...(day.evening || []), ...(day.weekly || [])]
@@ -230,16 +293,18 @@ export async function validatePlan(
           const product = selectedProducts.find(p => String(p.id) === step.productId);
           if (product?.activeIngredients) {
             product.activeIngredients.forEach(ingredient => {
-              ingredientFrequency[ingredient] = (ingredientFrequency[ingredient] || 0) + 1;
+              if (!isFrequencySensitiveActive(ingredient)) return;
+              ingredientDays[ingredient] = ingredientDays[ingredient] || new Set<number>();
+              ingredientDays[ingredient].add(day.dayIndex);
             });
           }
         });
     }
     
-    // ИСПРАВЛЕНО (P1): Предупреждаем, если активный ингредиент используется слишком часто
+    // ИСПРАВЛЕНО (P1): Предупреждаем, если сильный актив применяется слишком часто
     const totalDays = plan.days.length;
-    for (const [ingredient, count] of Object.entries(ingredientFrequency)) {
-      const frequency = count / totalDays;
+    for (const [ingredient, days] of Object.entries(ingredientDays)) {
+      const frequency = days.size / totalDays;
       if (frequency > 0.8) { // Используется в >80% дней
         warnings.push(`HIGH_FREQUENCY_INGREDIENT: ${ingredient} используется в ${Math.round(frequency * 100)}% дней (рекомендуется разнообразие)`);
       }
@@ -381,4 +446,3 @@ export function markIncompatibleDaysAsRecovery(
     days: updatedDays,
   };
 }
-
