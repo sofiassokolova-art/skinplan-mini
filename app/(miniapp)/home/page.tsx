@@ -20,6 +20,7 @@ interface RoutineItem {
   id: string;
   title: string;
   subtitle: string;
+  brand?: string;
   icon: string;
   howto: {
     steps: string[];
@@ -50,6 +51,18 @@ const ICONS: Record<string, string> = {
   oil: '/icons/oil_green.png',
   mask: '/icons/mask_green.png',
 };
+
+function readProductBrand(product: any): string | undefined {
+  const brand = product?.brand;
+  if (!brand) return undefined;
+  if (typeof brand === 'string') return brand;
+  if (typeof brand?.name === 'string') return brand.name;
+  return undefined;
+}
+
+function readProductName(product: any, fallback: string): string {
+  return typeof product?.name === 'string' && product.name.trim() ? product.name : fallback;
+}
 
 const HOME_BACKGROUND =
   'radial-gradient(72% 32% at 0% 0%, rgba(255,224,188,0.7) 0%, transparent 62%),' +
@@ -332,7 +345,8 @@ export default function HomePage() {
             items.push({
               id: `${time}-${baseStep}-${idx}-${productId}`,
               ...meta,
-              subtitle: product.name || meta.title,
+              subtitle: readProductName(product, meta.title),
+              brand: readProductBrand(product),
               done: false,
             });
           });
@@ -391,7 +405,8 @@ export default function HomePage() {
             items.push({
               id: `${time}-${baseStep}-${idx}-${productId}`,
               ...meta,
-              subtitle: product.name || meta.title,
+              subtitle: readProductName(product, meta.title),
+              brand: readProductBrand(product),
               done: false,
             });
           });
@@ -463,11 +478,12 @@ export default function HomePage() {
         baseStep: string,
         time: 'AM' | 'PM',
         subtitle: string,
+        brand?: string,
         overrides: Partial<Pick<RoutineItem, 'title' | 'icon' | 'howto'>> = {},
       ) => {
         const meta = getStepMeta(baseStep, time);
         if (!meta) return;
-        items.push({ id, ...meta, ...overrides, subtitle, done: false });
+        items.push({ id, ...meta, ...overrides, subtitle, brand, done: false });
       };
       
       // Утреннее умывание только тёплой водой для чувствительной/розацеа-кожи:
@@ -481,7 +497,7 @@ export default function HomePage() {
       // УТРЕННЯЯ РУТИНА
       if (data?.steps?.cleanser) {
         if (morningWaterOnlyCleanse) {
-          addRoutineItem(morning, 'morning-cleanser', 'cleanser', 'AM', 'Умывание тёплой водой', {
+          addRoutineItem(morning, 'morning-cleanser', 'cleanser', 'AM', 'Умывание тёплой водой', undefined, {
             howto: {
               steps: ['Умойтесь тёплой (не горячей) водой', 'Промокните кожу мягким полотенцем'],
               volume: 'Без очищающего средства',
@@ -489,34 +505,41 @@ export default function HomePage() {
             },
           });
         } else {
-          addRoutineItem(morning, 'morning-cleanser', 'cleanser', 'AM', data.steps.cleanser[0]?.name || 'Очищающее средство');
+          addRoutineItem(
+            morning,
+            'morning-cleanser',
+            'cleanser',
+            'AM',
+            readProductName(data.steps.cleanser[0], 'Очищающее средство'),
+            readProductBrand(data.steps.cleanser[0]),
+          );
         }
       }
       
       if (data?.steps?.toner) {
-        addRoutineItem(morning, 'morning-toner', 'toner', 'AM', data.steps.toner[0]?.name || 'Тоник');
+        addRoutineItem(morning, 'morning-toner', 'toner', 'AM', readProductName(data.steps.toner[0], 'Тоник'), readProductBrand(data.steps.toner[0]));
       }
       
       if (data?.steps?.treatment) {
-        addRoutineItem(morning, 'morning-active', 'treatment', 'AM', data.steps.treatment[0]?.name || 'Активное средство');
+        addRoutineItem(morning, 'morning-active', 'treatment', 'AM', readProductName(data.steps.treatment[0], 'Активное средство'), readProductBrand(data.steps.treatment[0]));
       }
       
       if (data?.steps?.moisturizer) {
-        addRoutineItem(morning, 'morning-cream', 'moisturizer', 'AM', data.steps.moisturizer[0]?.name || 'Увлажняющий крем');
+        addRoutineItem(morning, 'morning-cream', 'moisturizer', 'AM', readProductName(data.steps.moisturizer[0], 'Увлажняющий крем'), readProductBrand(data.steps.moisturizer[0]));
       }
       
       if (data?.steps?.spf) {
-        addRoutineItem(morning, 'morning-spf', 'spf', 'AM', data.steps.spf[0]?.name || 'SPF 50');
+        addRoutineItem(morning, 'morning-spf', 'spf', 'AM', readProductName(data.steps.spf[0], 'SPF 50'), readProductBrand(data.steps.spf[0]));
       }
       
       // ИСПРАВЛЕНО: Добавляем бальзам для губ утром для всех
       if (data?.steps?.lip_care) {
-        addRoutineItem(morning, 'morning-lip-balm', 'lip_care', 'AM', data.steps.lip_care[0]?.name || 'Бальзам для губ');
+        addRoutineItem(morning, 'morning-lip-balm', 'lip_care', 'AM', readProductName(data.steps.lip_care[0], 'Бальзам для губ'), readProductBrand(data.steps.lip_care[0]));
       }
       
       // ВЕЧЕРНЯЯ РУТИНА
       if (data?.steps?.cleanser) {
-        addRoutineItem(evening, 'evening-cleanser', 'cleanser', 'PM', data.steps.cleanser[0]?.name || 'Двойное очищение', {
+        addRoutineItem(evening, 'evening-cleanser', 'cleanser', 'PM', readProductName(data.steps.cleanser[0], 'Двойное очищение'), readProductBrand(data.steps.cleanser[0]), {
           howto: {
             steps: ['1) Масло: сухими руками распределить, эмульгировать водой', '2) Гель: умыть 30–40 сек, смыть'],
             volume: '1–2 дозы масла + 1–2 пшика геля',
@@ -526,7 +549,8 @@ export default function HomePage() {
       }
       
       if (data?.steps?.treatment || data?.steps?.acid) {
-        addRoutineItem(evening, 'evening-acid', 'treatment', 'PM', data.steps?.treatment?.[0]?.name || data.steps?.acid?.[0]?.name || 'AHA/BHA/PHА пилинг', {
+        const acidProduct = data.steps?.treatment?.[0] || data.steps?.acid?.[0];
+        addRoutineItem(evening, 'evening-acid', 'treatment', 'PM', readProductName(acidProduct, 'AHA/BHA/PHА пилинг'), readProductBrand(acidProduct), {
           title: 'Кислоты (по расписанию)',
           icon: ICONS.acid,
           howto: {
@@ -538,11 +562,12 @@ export default function HomePage() {
       }
       
       if (data?.steps?.treatment || data?.steps?.serum) {
-        addRoutineItem(evening, 'evening-serum', 'serum', 'PM', data.steps?.treatment?.[0]?.name || data.steps?.serum?.[0]?.name || 'Пептидная / успокаивающая');
+        const serumProduct = data.steps?.treatment?.[0] || data.steps?.serum?.[0];
+        addRoutineItem(evening, 'evening-serum', 'serum', 'PM', readProductName(serumProduct, 'Пептидная / успокаивающая'), readProductBrand(serumProduct));
       }
       
       if (data?.steps?.moisturizer) {
-        addRoutineItem(evening, 'evening-cream', 'moisturizer', 'PM', data.steps.moisturizer[0]?.name || 'Питательный крем');
+        addRoutineItem(evening, 'evening-cream', 'moisturizer', 'PM', readProductName(data.steps.moisturizer[0], 'Питательный крем'), readProductBrand(data.steps.moisturizer[0]));
       }
       
       setMorningItems(applyDoneFromStorage(morning, 'AM'));
@@ -801,16 +826,21 @@ export default function HomePage() {
         .home-rd .hr-section-title{font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:16px;font-weight:600;letter-spacing:-0.3px;color:var(--ink);}
         .home-rd .hr-section-note{color:var(--ink-soft);font-size:11px;font-weight:500;}
         .home-rd .hr-featured-wrap{padding:0 20px 16px;}
-        .home-rd .hr-featured{position:relative;overflow:hidden;padding:16px 18px 70px;border-radius:24px;border:1px solid rgba(255,255,255,0.7);background:radial-gradient(100% 115% at 96% 100%, rgba(213,254,97,0.38) 0%, transparent 62%), rgba(255,255,255,0.66);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 12px 34px rgba(56,48,36,0.08);min-height:222px;}
+        .home-rd .hr-featured{position:relative;overflow:hidden;padding:16px 18px 72px;border-radius:24px;border:1px solid rgba(255,255,255,0.7);background:radial-gradient(100% 115% at 96% 100%, rgba(213,254,97,0.38) 0%, transparent 62%), rgba(255,255,255,0.66);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 12px 34px rgba(56,48,36,0.08);min-height:222px;}
         .home-rd .hr-chip{display:inline-flex;align-items:center;min-height:24px;padding:0 10px;border-radius:999px;color:var(--ink);background:var(--accent);font-size:9.5px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;}
         .home-rd .hr-featured-product{position:absolute;top:18px;right:18px;width:108px;height:118px;object-fit:contain;filter:drop-shadow(0 13px 14px rgba(0,0,0,0.14));pointer-events:none;}
         .home-rd .hr-featured-product.blend{mix-blend-mode:multiply;filter:drop-shadow(0 8px 10px rgba(0,0,0,0.08));}
         .home-rd .hr-featured-copy{position:relative;z-index:1;width:58%;margin-top:30px;}
         .home-rd .hr-featured-title{margin-bottom:6px;font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:18px;font-weight:600;line-height:1.18;letter-spacing:-0.5px;color:var(--ink);}
+        .home-rd .hr-featured-brand{margin-bottom:3px;color:var(--ink-soft);font-size:10px;font-weight:800;letter-spacing:0.09em;text-transform:uppercase;line-height:1.2;}
         .home-rd .hr-featured-sub{color:var(--ink-soft);font-size:12.5px;line-height:1.4;font-weight:400;}
-        .home-rd .hr-featured-action{position:absolute;right:16px;bottom:14px;left:16px;height:44px;border:0;border-radius:999px;color:#fff;background:var(--ink);cursor:pointer;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;transition:transform 0.14s ease,opacity 0.14s ease;}
+        .home-rd .hr-featured-actions{position:absolute;right:16px;bottom:14px;left:16px;display:flex;align-items:center;gap:8px;z-index:2;}
+        .home-rd .hr-featured-action{flex:1;height:44px;border:0;border-radius:999px;color:#fff;background:var(--ink);cursor:pointer;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;transition:transform 0.14s ease,opacity 0.14s ease;}
         .home-rd .hr-featured-action:active{transform:scale(0.985);}
         .home-rd .hr-featured-action.done{color:var(--ink);background:var(--accent);}
+        .home-rd .hr-howto-icon-btn{width:44px;height:44px;flex:0 0 44px;border:1px solid rgba(10,10,10,0.1);border-radius:50%;background:rgba(255,255,255,0.82);color:var(--ink);display:grid;place-items:center;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,0.76);transition:transform .14s ease,background .14s ease;}
+        .home-rd .hr-howto-icon-btn:active{transform:scale(0.94);background:#fff;}
+        .home-rd .hr-howto-icon-btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
         .home-rd .hr-undo{margin:-6px 20px 14px;display:flex;justify-content:center;}
         .home-rd .hr-undo button{background:transparent;border:0;padding:6px 10px;color:var(--ink-soft);font-size:12px;font-weight:500;text-decoration:underline;cursor:pointer;}
         .home-rd .hr-next-heading{font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:15px;font-weight:600;letter-spacing:-0.35px;color:var(--ink);margin:0 23px 10px;}
@@ -821,11 +851,10 @@ export default function HomePage() {
         .home-rd .hr-next-number{width:24px;height:24px;display:grid;place-items:center;border-radius:9px;color:var(--ink);background:rgba(10,10,10,0.07);font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:9px;font-weight:600;}
         .home-rd .hr-next-product{position:absolute;top:32px;right:12px;left:12px;width:calc(100% - 24px);height:78px;object-fit:contain;filter:drop-shadow(0 9px 10px rgba(0,0,0,0.1));pointer-events:none;}
         .home-rd .hr-next-product.blend{mix-blend-mode:multiply;filter:none;}
-        .home-rd .hr-next-title{position:absolute;right:12px;bottom:12px;left:12px;font-size:13px;font-weight:600;line-height:1.2;color:var(--ink);}
+        .home-rd .hr-next-copy{position:absolute;right:12px;bottom:12px;left:12px;}
+        .home-rd .hr-next-brand{margin-bottom:2px;color:var(--ink-soft);font-size:8.5px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        .home-rd .hr-next-title{font-size:13px;font-weight:600;line-height:1.2;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
         .home-rd .hr-retake{width:100%;background:transparent;border:none;color:var(--ink-soft);text-decoration:underline;cursor:pointer;font-size:13px;font-weight:500;padding:14px 0 4px;}
-        .home-rd .hr-howto-btn{position:relative;z-index:2;margin-top:10px;display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(10,10,10,0.12);background:rgba(255,255,255,0.6);color:var(--ink);border-radius:999px;padding:7px 13px;font-size:12px;font-weight:700;letter-spacing:-0.1px;cursor:pointer;transition:transform .14s ease,background .14s ease;}
-        .home-rd .hr-howto-btn:active{transform:scale(0.96);}
-        .home-rd .hr-howto-btn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
         .home-rd .hr-next-card.tappable{cursor:pointer;}
         .home-rd .hr-next-card.tappable:active{transform:scale(0.98);}
         .hr-sheet-backdrop{position:fixed;inset:0;z-index:60;background:rgba(10,10,10,0.42);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);display:flex;align-items:flex-end;justify-content:center;animation:hrFade .18s ease;}
@@ -880,7 +909,7 @@ export default function HomePage() {
           <section className="hr-progress-card" aria-label="Прогресс ухода на сегодня">
             <div className="hr-progress-head">
               <div>
-                <div className="hr-eyebrow">Уход на сегодня</div>
+                <div className="hr-eyebrow">Прогресс дня</div>
                 <div className="hr-progress-value">{dayCompletedCount} из {dayTotalCount} шагов</div>
                 <div className="hr-progress-sub">{subText}</div>
               </div>
@@ -981,28 +1010,34 @@ export default function HomePage() {
                   <div className="hr-featured-title">
                     {isFinished ? 'Уход завершён' : currentItem?.title}
                   </div>
+                  {!isFinished && currentItem?.brand && (
+                    <div className="hr-featured-brand">{currentItem.brand}</div>
+                  )}
                   <div className="hr-featured-sub">
                     {isFinished ? 'Кожа получила всё необходимое' : currentItem?.subtitle}
                   </div>
+                </div>
+                <div className="hr-featured-actions">
+                  <button
+                    className={`hr-featured-action${isFinished ? ' done' : ''}`}
+                    type="button"
+                    onClick={handleMarkStep}
+                    disabled={isFinished}
+                  >
+                    {isFinished ? 'Все шаги отмечены' : 'Отметить шаг'}
+                  </button>
                   {!isFinished && currentItem && (
                     <button
                       type="button"
-                      className="hr-howto-btn"
+                      className="hr-howto-icon-btn"
                       onClick={() => setHowtoItem(currentItem)}
+                      aria-label={`Как наносить: ${currentItem.title}`}
+                      title="Как наносить"
                     >
                       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 16v-4M12 8h.01" /></svg>
-                      Как наносить
                     </button>
                   )}
                 </div>
-                <button
-                  className={`hr-featured-action${isFinished ? ' done' : ''}`}
-                  type="button"
-                  onClick={handleMarkStep}
-                  disabled={isFinished}
-                >
-                  {isFinished ? 'Все шаги отмечены' : 'Отметить шаг'}
-                </button>
               </article>
             </section>
             {completedCount > 0 && (
@@ -1051,7 +1086,10 @@ export default function HomePage() {
                       alt=""
                       onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
-                    <div className="hr-next-title">{item.title}</div>
+                    <div className="hr-next-copy">
+                      {item.brand && <div className="hr-next-brand">{item.brand}</div>}
+                      <div className="hr-next-title">{item.subtitle || item.title}</div>
+                    </div>
                   </article>
                 );
               })}

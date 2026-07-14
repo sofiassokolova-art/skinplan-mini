@@ -60,6 +60,15 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
               objectPosition: 'center',
             }}
           />
+          <div
+            aria-hidden
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(180deg, rgba(0,0,0,0.34) 0%, rgba(0,0,0,0.04) 28%, rgba(0,0,0,0) 52%)',
+              pointerEvents: 'none',
+            }}
+          />
         </div>
       )}
 
@@ -90,6 +99,7 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
             color: 'var(--canvas-white)',
             letterSpacing: '0px',
             textTransform: 'lowercase',
+            textShadow: '0 2px 16px rgba(0,0,0,0.48)',
           }}
         >
           skiniq

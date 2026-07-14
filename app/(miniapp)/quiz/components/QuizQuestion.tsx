@@ -66,6 +66,56 @@ function SelectedCheckBadge({ size = 28 }: { size?: number }) {
   );
 }
 
+function normalizeQuizOptionLabel(raw: string, questionCode?: string): string {
+  const code = (questionCode || '').toLowerCase();
+  let label = (raw || '').toString();
+
+  if (code === 'budget') {
+    label = label.replace(/\bdo(?=\s+\d)/gi, 'до');
+  }
+
+  if (code === 'skin_type') {
+    label = label
+      .replace(/,\s*В Т-зоне/g, ', в Т-зоне')
+      .replace(/\s+,/g, ',');
+  }
+
+  return label;
+}
+
+function splitStructuredOptionLabel(raw: string, questionCode?: string) {
+  const label = normalizeQuizOptionLabel(raw, questionCode);
+  const parts = label.split('\n');
+  const title = (parts[0] || '').trim();
+  let description = parts.slice(1).join('\n').trim();
+
+  if (!description && questionCode?.toLowerCase() === 'budget') {
+    const match = title.match(/^(.+?)\s*\((.+)\)$/);
+    if (match) {
+      return {
+        title: match[1].trim(),
+        description: match[2].trim(),
+      };
+    }
+  }
+
+  return { title, description };
+}
+
+function renderStructuredOptionLabel(raw: string, questionCode?: string, descriptionFontSize = '13px') {
+  const { title, description } = splitStructuredOptionLabel(raw, questionCode);
+  if (!description) return title;
+
+  return (
+    <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '3px' }}>
+      <span>{title}</span>
+      <span style={{ fontSize: descriptionFontSize, lineHeight: 1.35, color: '#6B7280', fontWeight: 400 }}>
+        {description}
+      </span>
+    </span>
+  );
+}
+
 // Маппинг вопросов на шаги анкеты (соответствует stepNumber/stepLabel в info-screens.ts).
 // Лейбл «Шаг N: название» рендерится над прогресс-баром вместо отдельного экрана.
 const QUESTION_STEP_MAP: Record<string, { number: number; total: number; label: string }> = {
@@ -117,14 +167,17 @@ const LimeOptionCard = memo(function LimeOptionCard({
   onOptionClick: (option: any, index: number) => void | Promise<void>;
 }) {
   const optionText = option.label || '';
-  const optionParts = optionText.split('\n');
-  let optionTitle = optionParts[0] || '';
+  const { title: structuredTitle, description: structuredDescription } = splitStructuredOptionLabel(
+    optionText,
+    isSkinTypeQuestion ? 'skin_type' : undefined,
+  );
+  let optionTitle = structuredTitle || '';
   // Для типа кожи убираем префикс "Тип N —" или "Тип N -"
   if (isSkinTypeQuestion && optionTitle) {
     const stripped = optionTitle.replace(/^Тип\s*\d+\s*[—\-]\s*/i, '').trim();
     optionTitle = stripped || optionTitle;
   }
-  const optionDescription = optionParts.slice(1).join('\n') || '';
+  const optionDescription = structuredDescription || '';
 
   const isSkinType = isSkinTypeQuestion;
   const whitePadding = isSkinType ? 12 : 16;
@@ -785,7 +838,9 @@ export const QuizQuestion = memo(function QuizQuestion({
                     }}
                   />
                 )}
-                <span>{option.label}</span>
+                <span style={{ minWidth: 0 }}>
+                  {renderStructuredOptionLabel(String(option.label ?? ''), question.code)}
+                </span>
               </span>
             </button>
           );
@@ -958,7 +1013,7 @@ export const QuizQuestion = memo(function QuizQuestion({
 
     const fixIngredientTypo = (s: string) => (s || '').replace(/ингридиенты/gi, 'ингредиенты');
     const renderOptionLabel = (raw: string | undefined) => {
-      const label = (raw || '').toString();
+      const label = normalizeQuizOptionLabel((raw || '').toString(), question?.code);
       const code = (question?.code || '').toLowerCase();
 
       if (code === 'avoid_ingredients') {
@@ -1002,7 +1057,7 @@ export const QuizQuestion = memo(function QuizQuestion({
         );
       }
 
-      return label;
+      return renderStructuredOptionLabel(label, code, isSkinConcernsQuestion ? '13px' : '14px');
     };
     const optionsForDisplay =
       question?.code === 'avoid_ingredients'
