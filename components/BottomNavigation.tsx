@@ -149,11 +149,11 @@ export default function BottomNavigation() {
                   borderRadius: '999px',
                   display: 'grid',
                   placeItems: 'center',
-                  background: '#F6B27A',
+                  background: 'var(--accent)',
                   color: 'var(--ink)',
                   fontSize: '9.5px',
                   fontWeight: 700,
-                  border: '1.5px solid var(--ink)',
+                  border: '1.5px solid rgba(var(--ink-rgb),0.92)',
                 }}
               >
                 {cartCount > 9 ? '9+' : cartCount}

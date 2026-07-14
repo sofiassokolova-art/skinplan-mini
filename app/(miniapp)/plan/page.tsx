@@ -7,6 +7,7 @@
 import { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
+import { getInitData } from '@/lib/api/client';
 import { PlanPageClientNew } from './plan-client-new';
 import { PlanPageClient } from './plan-client';
 import { PlanPageV2 } from './plan-page-v2';
@@ -22,6 +23,11 @@ import {
 } from '@/lib/plan-warm-cache';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AppLoader } from '@/components/AppLoader';
+
+// V2-рендер плана (PlanPageV2) включён по умолчанию и сам грузит продукты через
+// /api/plan/page-context. Батч-загрузка продуктов в processPlanData нужна только
+// legacy-рендеру PlanPageClientNew (флаг NEXT_PUBLIC_PLAN_V2=false).
+const PLAN_V2_ENABLED = process.env.NEXT_PUBLIC_PLAN_V2 !== 'false';
 
 // РЕФАКТОРИНГ P2: Локальный тип данных для страницы плана
 // TODO: В будущем полностью унифицировать с PlanPageData из lib/plan-types.ts
@@ -1071,7 +1077,12 @@ export default function PlanPage() {
 
     const productsMap = new Map<number, any>();
 
-    if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+    // initData берём через общий getInitData (dev-мок + sessionStorage-фолбэк + ожидание SDK),
+    // а не напрямую из window.Telegram.WebApp: SDK может быть ещё не готов или перезаписан
+    // пустым initData, и тогда батч молча пропускался.
+    const initData = typeof window !== 'undefined' ? await getInitData() : null;
+
+    if (initData) {
       try {
         clientLogger.log('📦 Loading products from batch endpoint, count:', productIds.length);
 
@@ -1079,7 +1090,7 @@ export default function PlanPage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-Telegram-Init-Data': window.Telegram.WebApp.initData,
+            'X-Telegram-Init-Data': initData,
           },
           body: JSON.stringify({ productIds }),
         });
@@ -1117,11 +1128,14 @@ export default function PlanPage() {
       }
     }
 
-    // Кэшируем результат
-    productsCacheRef.current.set(cacheKey, {
-      data: productsMap,
-      timestamp: Date.now()
-    });
+    // Кэшируем только непустой результат: пустая карта — признак недоступного
+    // initData/эндпоинта, повторная попытка должна пойти в сеть, а не в кэш.
+    if (productsMap.size > 0) {
+      productsCacheRef.current.set(cacheKey, {
+        data: productsMap,
+        timestamp: Date.now()
+      });
+    }
 
     clientLogger.log('📊 Products loaded and cached, map size:', productsMap.size);
     return productsMap;
@@ -1282,7 +1296,10 @@ export default function PlanPage() {
         description?: string;
       }>();
 
-      if (plan28 && plan28.days) {
+      if (plan28 && plan28.days && PLAN_V2_ENABLED) {
+        // PlanPageV2 сам грузит продукты через /api/plan/page-context —
+        // productsMap здесь не используется, батч-загрузка не нужна.
+      } else if (plan28 && plan28.days) {
         // Для нового формата plan28 собираем все productId из всех дней
         const allProductIds = new Set<number>();
         plan28.days.forEach(day => {
@@ -1550,7 +1567,7 @@ export default function PlanPage() {
     // полноэкранный «Загружаем план...» (этот компонент) и затем shimmer-скелетон
     // внутри PlanPageV2. Теперь — один непрерывный скелетон, который сам
     // превращается в контент. PlanPageV2 в режиме loading рендерит PlanV2Skeleton.
-    const usePlanV2 = process.env.NEXT_PUBLIC_PLAN_V2 !== 'false';
+    const usePlanV2 = PLAN_V2_ENABLED;
     if (usePlanV2) {
       return (
         <ErrorBoundary fallback={planErrorFallback}>
@@ -1614,7 +1631,7 @@ export default function PlanPage() {
   // фазы / средства / советы / фидбек). Старый PlanPageClientNew оставлен
   // как fallback на случай feature-flag отката.
   if (planData.plan28) {
-    const usePlanV2 = process.env.NEXT_PUBLIC_PLAN_V2 !== 'false';
+    const usePlanV2 = PLAN_V2_ENABLED;
 
     if (usePlanV2) {
       return (
