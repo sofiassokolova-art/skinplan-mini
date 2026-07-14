@@ -25,6 +25,18 @@ npm run test:watch
 npm run test:profile
 ```
 
+### Рандомизированный прогон пользователей
+```bash
+DATABASE_URL=... RANDOM_USERS=10 RANDOM_SEED=20260713 npm run test:random-users
+```
+
+`tests/random-users-plan-invariants.test.ts` создает seed-воспроизводимых пользователей,
+проходит настоящий `/api/questionnaire/answers`, генерирует `generate28DayPlan` и проверяет
+инварианты безопасности плана: 28 дней, непустые утро/вечер, противопоказания продуктов,
+беременность без ретиноидов, Rx-терапия без конфликтных кислотных шагов, SPF не в cleanser-слоте,
+и существование всех `productId` в каталоге. Для staging/Neon запускать последовательно; размер
+батча задается через `RANDOM_USERS`, конкретный сценарий — через `RANDOM_SEED`.
+
 ### Тесты с покрытием кода
 ```bash
 npm run test:coverage
@@ -99,4 +111,3 @@ npm test -- --onlyFailures
 - Тестовые данные автоматически очищаются
 - Тесты изолированы друг от друга
 - Каждый тест создает свой набор данных
-
