@@ -542,11 +542,21 @@ export function QuizInfoScreen({
         <div style={{
           padding: 0,
           margin: 0,
-          minHeight: '100vh',
+          minHeight: '100svh',
           background: `url(${skinPreviewBackgroundImage}) center / cover no-repeat fixed, var(--canvas)`,
           position: 'relative',
           width: '100%',
         }}>
+          <div
+            aria-hidden
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background:
+                'linear-gradient(180deg, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.30) 34%, rgba(0,0,0,0.16) 100%)',
+              pointerEvents: 'none',
+            }}
+          />
           <div
             className="animate-fade-in"
             style={{
@@ -565,8 +575,9 @@ export function QuizInfoScreen({
               fontWeight: 700,
               fontSize: '28px',
               lineHeight: '120%',
-              color: '#000000',
+              color: 'var(--canvas-white)',
               margin: 0,
+              textShadow: '0 2px 18px rgba(0,0,0,0.38)',
             }}>
               Ваш предварительный профиль
             </h1>
@@ -575,19 +586,20 @@ export function QuizInfoScreen({
               fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
               fontSize: '15px',
               lineHeight: '140%',
-              color: '#666666',
+              color: 'rgba(var(--canvas-white-rgb),0.86)',
               margin: 0,
+              textShadow: '0 1px 10px rgba(0,0,0,0.28)',
             }}>
               На основе ваших ответов мы уже понимаем, как должен выглядеть ваш уход.
             </p>
 
             {/* Карточка с резюме ответов — glassmorphism в стиле приложения */}
             <div style={{
-              background: 'rgba(255, 255, 255, 0.55)',
-              backdropFilter: 'blur(20px) saturate(180%)',
-              WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-              border: '1px solid rgba(255, 255, 255, 0.70)',
-              boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.5)',
+              background: 'rgba(255, 255, 255, 0.88)',
+              backdropFilter: 'blur(18px) saturate(150%)',
+              WebkitBackdropFilter: 'blur(18px) saturate(150%)',
+              border: '1px solid rgba(255, 255, 255, 0.82)',
+              boxShadow: '0 14px 36px rgba(0, 0, 0, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.62)',
               borderRadius: '20px',
               padding: '20px',
               display: 'flex',
@@ -597,19 +609,19 @@ export function QuizInfoScreen({
             }}>
               {skinTypeShort && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ fontSize: '13px', color: '#888' }}>Тип кожи</span>
+                  <span style={{ fontSize: '13px', color: 'rgba(var(--ink-rgb),0.68)', fontWeight: 650 }}>Тип кожи</span>
                   <span style={{ fontSize: '17px', fontWeight: 600, color: '#000' }}>{skinTypeShort}</span>
                 </div>
               )}
               {concernsList && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ fontSize: '13px', color: '#888' }}>Главный фокус</span>
+                  <span style={{ fontSize: '13px', color: 'rgba(var(--ink-rgb),0.68)', fontWeight: 650 }}>Главный фокус</span>
                   <span style={{ fontSize: '17px', fontWeight: 600, color: '#000' }}>{concernsList}</span>
                 </div>
               )}
               {sensitivityShort && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ fontSize: '13px', color: '#888' }}>Чувствительность</span>
+                  <span style={{ fontSize: '13px', color: 'rgba(var(--ink-rgb),0.68)', fontWeight: 650 }}>Чувствительность</span>
                   <span style={{ fontSize: '17px', fontWeight: 600, color: '#000' }}>{sensitivityShort}</span>
                 </div>
               )}
@@ -619,8 +631,9 @@ export function QuizInfoScreen({
               fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
               fontSize: '15px',
               lineHeight: '140%',
-              color: '#000000',
+              color: 'var(--canvas-white)',
               margin: 0,
+              textShadow: '0 1px 10px rgba(0,0,0,0.30)',
             }}>
               Ещё несколько вопросов — и мы соберём план под ваши предпочтения и бюджет.
             </p>

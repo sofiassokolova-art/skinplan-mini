@@ -277,7 +277,7 @@ export function PlanPageV2() {
           <div className="glass-card-md pv2-mini-card pv2-mini-dark">
             <div className="pv2-mini-label">skiniq streak</div>
             <div className="pv2-mini-value">{context.streak.label}</div>
-            <div className="pv2-mini-sub">Отмечен ежедневный уход</div>
+            <div className="pv2-mini-sub">дни подряд с отметкой ухода</div>
           </div>
         </div>
 
@@ -670,12 +670,6 @@ function ProductCardView(props: {
           {product.brand && <div className="pv2-product-brand">{product.brand}</div>}
           <div className="pv2-product-name">{product.name}</div>
           {product.shortDescription && <div className="pv2-product-desc">{product.shortDescription}</div>}
-          {product.whyPicked && (
-            <div className="pv2-product-why">
-              <span className="pv2-product-why-label">Почему в вашем плане</span>
-              {product.whyPicked}
-            </div>
-          )}
           {product.phaseTags.length > 0 && (
             <div className="pv2-product-tags">
               {product.phaseTags.map((tag) => <span className="pv2-product-tag" key={tag}>{tag}</span>)}
@@ -683,6 +677,12 @@ function ProductCardView(props: {
           )}
         </div>
       </div>
+      {product.whyPicked && (
+        <div className="pv2-product-why">
+          <span className="pv2-product-why-label">Почему в вашем плане</span>
+          {product.whyPicked}
+        </div>
+      )}
       <div className="pv2-product-actions">
         <button
           className={`pv2-icon-btn pv2-icon-heart ${product.state.inWishlist ? 'pv2-icon-active' : ''}`}
@@ -707,7 +707,7 @@ function ProductCardView(props: {
           onClick={() => onToggleCart(product)}
           disabled={isBusy}
         >
-          {product.state.inCart ? 'В корзине' : 'В корзину'}
+          {product.state.inCart ? 'В корзине' : 'Купить'}
         </button>
       </div>
     </div>
@@ -1401,7 +1401,7 @@ function PlanV2Styles() {
       }
       .pv2-product-actions {
         display: grid;
-        grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1fr);
+        grid-template-columns: 40px minmax(0, 1fr);
         gap: 8px;
         align-items: center;
         margin-top: 0;
@@ -1439,6 +1439,7 @@ function PlanV2Styles() {
       }
       .pv2-icon-heart.pv2-icon-active svg { fill: var(--ink); stroke: var(--ink); }
       .pv2-cart-cta {
+        grid-column: 1 / -1;
         background: var(--accent);
         color: var(--ink);
         border: none;
@@ -1451,8 +1452,6 @@ function PlanV2Styles() {
         font-size: 14px;
         cursor: pointer;
         min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
         white-space: nowrap;
       }
       .pv2-cart-cta:disabled { opacity: 0.6; cursor: not-allowed; }

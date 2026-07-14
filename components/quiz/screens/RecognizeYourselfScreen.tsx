@@ -83,7 +83,7 @@ function RecognizeYourselfScreenComponent({
               position: 'absolute',
               inset: 0,
               background:
-                'linear-gradient(to bottom, rgba(0,0,0,0) 35%, rgba(0,0,0,0.55) 100%)',
+                'linear-gradient(to bottom, rgba(0,0,0,0.34) 0%, rgba(0,0,0,0.04) 26%, rgba(0,0,0,0) 35%, rgba(0,0,0,0.55) 100%)',
               pointerEvents: 'none',
             }}
           />
@@ -118,6 +118,7 @@ function RecognizeYourselfScreenComponent({
             color: 'var(--canvas-white)',
             letterSpacing: '0px',
             textTransform: 'lowercase',
+            textShadow: '0 2px 16px rgba(0,0,0,0.48)',
           }}
         >
           skiniq

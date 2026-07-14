@@ -1079,7 +1079,7 @@ export default function PlanPage() {
 
     // initData берём через общий getInitData (dev-мок + sessionStorage-фолбэк + ожидание SDK),
     // а не напрямую из window.Telegram.WebApp: SDK может быть ещё не готов или перезаписан
-    // пустым initData, и тогда батч молча пропускался
+    // пустым initData, и тогда батч молча пропускался.
     const initData = typeof window !== 'undefined' ? await getInitData() : null;
 
     if (initData) {
@@ -1129,7 +1129,7 @@ export default function PlanPage() {
     }
 
     // Кэшируем только непустой результат: пустая карта — признак недоступного
-    // initData/эндпоинта, повторная попытка должна пойти в сеть, а не в кэш
+    // initData/эндпоинта, повторная попытка должна пойти в сеть, а не в кэш.
     if (productsMap.size > 0) {
       productsCacheRef.current.set(cacheKey, {
         data: productsMap,
@@ -1298,7 +1298,7 @@ export default function PlanPage() {
 
       if (plan28 && plan28.days && PLAN_V2_ENABLED) {
         // PlanPageV2 сам грузит продукты через /api/plan/page-context —
-        // productsMap здесь не используется, батч-загрузка не нужна
+        // productsMap здесь не используется, батч-загрузка не нужна.
       } else if (plan28 && plan28.days) {
         // Для нового формата plan28 собираем все productId из всех дней
         const allProductIds = new Set<number>();
