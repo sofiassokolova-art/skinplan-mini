@@ -47,6 +47,7 @@
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
     "test:profile": "vitest tests/profile-generation.test.ts",
+    "test:random-users": "RANDOM_USERS_REQUIRE_DB=1 vitest run tests/random-users-plan-invariants.test.ts --fileParallelism=false --hookTimeout=120000",
     "test:e2e": "playwright test",
     "analyze:bundle": "ANALYZE=true next build",
     "test:100-users": "tsx scripts/test-100-users.ts",

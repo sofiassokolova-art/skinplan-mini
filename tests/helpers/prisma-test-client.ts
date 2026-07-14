@@ -55,14 +55,22 @@ export async function isPrismaTestDatabaseAvailable(prisma: PrismaClient): Promi
     return false;
   }
 
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    return true;
-  } catch (error) {
-    const code = typeof error === 'object' && error !== null && 'code' in error
-      ? String((error as { code?: unknown }).code)
-      : 'unknown';
-    console.warn(`⚠️ Test database unavailable (${code}), skipping database integration tests`);
-    return false;
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      return true;
+    } catch (error) {
+      lastError = error;
+      if (attempt < 3) {
+        await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+      }
+    }
   }
+
+  const code = typeof lastError === 'object' && lastError !== null && 'code' in lastError
+    ? String((lastError as { code?: unknown }).code)
+    : 'unknown';
+  console.warn(`⚠️ Test database unavailable (${code}), skipping database integration tests`);
+  return false;
 }

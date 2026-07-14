@@ -37,6 +37,7 @@ import {
 import { getApplicationDaysForWeek } from '@/lib/protocol-plan-integration';
 import { productViolatesContraindications } from '@/lib/contraindication-product-filter';
 import { filterStepsForRxTopicals, isOnStrongRxTopicals } from '@/lib/rx-topicals';
+import { applyPhaseRoutineVariation } from '@/lib/plan-routine-variation';
 
 function getSafeFallbackLookupStep(stepCategory: StepCategory): string {
   const baseStep = getBaseStepFromStepCategory(stepCategory);
@@ -170,6 +171,24 @@ function getFallbackStep(step: string): StepCategory | undefined {
   if (step.startsWith('moisturizer')) return 'moisturizer_light';
   if (step.startsWith('spf') || step === 'spf') return 'spf_50_face';
   return undefined;
+}
+
+function getRoutineOrder(stepCategory: string): number {
+  if (stepCategory.startsWith('cleanser')) return 0;
+  if (stepCategory.startsWith('toner')) return 1;
+  if (stepCategory.startsWith('serum')) return 2;
+  if (stepCategory.startsWith('treatment')) return 3;
+  if (stepCategory.startsWith('moisturizer')) return 4;
+  if (stepCategory.startsWith('spf')) return 5;
+  return 6;
+}
+
+function findActiveInsertIndex<T>(
+  steps: T[],
+  getStepCategory: (step: T) => string
+): number {
+  const insertAt = steps.findIndex((step) => getRoutineOrder(getStepCategory(step)) > 3);
+  return insertAt === -1 ? steps.length : insertAt;
 }
 
 /**
@@ -812,13 +831,9 @@ export async function generate28DayPlan(
     });
     if (picked && !adjustedEvening.includes(picked[1])) {
       const activeStep = picked[1];
-      // Ставим актив между очищением и увлажнением: cleanser → актив → крем.
-      const insertAt = adjustedEvening.findIndex((s) => !s.startsWith('cleanser'));
-      if (insertAt === -1) {
-        adjustedEvening.push(activeStep);
-      } else {
-        adjustedEvening.splice(insertAt, 0, activeStep);
-      }
+      // Ставим актив после toner/serum и до крема: cleanser → toner/serum → актив → крем.
+      const insertAt = findActiveInsertIndex(adjustedEvening, (s) => s);
+      adjustedEvening.splice(insertAt, 0, activeStep);
       logger.info('Minimal routine: injected one goal-driven evening active', {
         userId,
         goal: picked[0],
@@ -2841,13 +2856,34 @@ export async function generate28DayPlan(
       return isAllowed;
     });
     
+    const variedRoutine = applyPhaseRoutineVariation({
+      morningSteps: allowedMorningSteps,
+      eveningSteps: allowedEveningSteps,
+      dayIndex,
+      phase,
+      routineComplexity,
+      isWeeklyFocusDay: isWeekly,
+    });
+    if (variedRoutine.appliedRules.length > 0) {
+      logger.debug('Phase routine variation applied', {
+        userId,
+        dayIndex,
+        phase,
+        rules: variedRoutine.appliedRules,
+        morningBefore: allowedMorningSteps,
+        morningAfter: variedRoutine.morningSteps,
+        eveningBefore: allowedEveningSteps,
+        eveningAfter: variedRoutine.eveningSteps,
+      });
+    }
+
     const morningStepsTemplate = ensureStepPresence(
-      ensureStepPresence(allowedMorningSteps, isCleanserStep, CLEANER_FALLBACK_STEP),
+      ensureStepPresence(variedRoutine.morningSteps, isCleanserStep, CLEANER_FALLBACK_STEP),
       isSPFStep,
       SPF_FALLBACK_STEP
     );
     const eveningStepsTemplate = ensureStepPresence(
-      allowedEveningSteps.filter((step) => !isSPFStep(step)),
+      variedRoutine.eveningSteps.filter((step) => !isSPFStep(step)),
       isCleanserStep,
       CLEANER_FALLBACK_STEP
     );
@@ -3387,14 +3423,10 @@ export async function generate28DayPlan(
         alternatives: [],
         manualLabel: 'Ваше лечебное средство',
         instruction:
-          'Нанесите препарат, назначенный врачом (например, Эффезел или Базирон), тонким слоем на сухую кожу после очищения. Дополнительные кислоты и ретиноиды в этот вечер не нужны.',
+          'Нанесите препарат, назначенный врачом (например, Эффезел или Базирон), тонким слоем на сухую кожу после очищения и мягких водных средств. Дополнительные кислоты и ретиноиды в этот вечер не нужны.',
       };
-      const insertAt = eveningSteps.findIndex((s) => !isCleanserStep(s.stepCategory));
-      if (insertAt === -1) {
-        eveningSteps.push(rxManualStep);
-      } else {
-        eveningSteps.splice(insertAt, 0, rxManualStep);
-      }
+      const insertAt = findActiveInsertIndex(eveningSteps, (s) => s.stepCategory);
+      eveningSteps.splice(insertAt, 0, rxManualStep);
     }
 
     // ИСПРАВЛЕНО (P0): Преобразуем weekly steps - шаг создаётся ТОЛЬКО если есть продукты

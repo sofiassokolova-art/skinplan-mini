@@ -48,6 +48,10 @@ let hasDatabase = !!process.env.DATABASE_URL;
 const USERS_N = Number(process.env.RANDOM_USERS) || 5;
 const SEED = (Number(process.env.RANDOM_SEED) || Date.now()) >>> 0;
 const VERBOSE = process.env.RANDOM_VERBOSE === '1';
+const REQUIRE_DB =
+  process.env.RANDOM_USERS_REQUIRE_DB === '1' ||
+  process.env.RANDOM_USERS !== undefined ||
+  process.env.RANDOM_SEED !== undefined;
 const TEST_TIMEOUT_MS =
   Number(process.env.RANDOM_TEST_TIMEOUT_MS) || Math.max(900_000, 120_000 + USERS_N * 75_000);
 const originalConsole = {
@@ -140,6 +144,9 @@ describe(`random users: инварианты плана (seed=${SEED}, n=${USERS
     muteAppLogsUnlessVerbose();
 
     hasDatabase = await isPrismaTestDatabaseAvailable(prismaTest);
+    if (!hasDatabase && REQUIRE_DB) {
+      throw new Error('DATABASE_URL is set, but test database is unavailable');
+    }
     if (!hasDatabase) return;
 
     const questionnaire = await prismaTest.questionnaire.findFirst({
@@ -153,10 +160,14 @@ describe(`random users: инварианты плана (seed=${SEED}, n=${USERS
     });
     if (!questionnaire) return;
     questionnaireId = questionnaire.id;
-    questions = [
+    const questionsById = new Map<number, QuestionWithOptions>();
+    for (const question of [
       ...questionnaire.questions,
       ...questionnaire.questionGroups.flatMap((g) => g.questions),
-    ] as QuestionWithOptions[];
+    ] as QuestionWithOptions[]) {
+      questionsById.set(question.id, question);
+    }
+    questions = [...questionsById.values()];
     testLog(`🎲 seed=${SEED}, users=${USERS_N}, questions=${questions.length}`);
   }, 120_000);
 
