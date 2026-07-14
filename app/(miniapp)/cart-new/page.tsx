@@ -12,7 +12,6 @@ import type { CartResponse } from '@/lib/api-types';
 import { TabLoadingShell } from '@/components/TabLoadingShell';
 import { ProfileAvatarButton } from '@/components/ProfileAvatarButton';
 import { withAffiliate, isGoldapple, affiliateRel, AFFILIATE_ERID, AFFILIATE_DISCLOSURE } from '@/lib/affiliate';
-import { formatPriceFrom } from '@/lib/price-display';
 import toast from 'react-hot-toast';
 
 export const dynamic = 'force-dynamic';
@@ -26,7 +25,6 @@ interface CartItem {
     imageUrl: string | null;
     link: string | null;
     marketLinks: any;
-    priceFrom?: number | null;
   };
   quantity: number;
   createdAt: string;
@@ -195,7 +193,6 @@ function CartPageContent() {
         .cart-rd .crd-copy{min-width:0;display:flex;flex-direction:column;gap:6px;}
         .cart-rd .crd-brand{font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#6B7280;}
         .cart-rd .crd-name{font-size:18px;font-weight:800;line-height:1.18;letter-spacing:-0.35px;color:#0A0A0A;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
-        .cart-rd .crd-price{font-size:13px;font-weight:800;color:#0A0A0A;letter-spacing:-0.2px;}
         .cart-rd .crd-store-row{display:flex;align-items:center;gap:7px;min-width:0;margin-top:2px;}
         .cart-rd .crd-store-dot{width:7px;height:7px;border-radius:50%;background:#D5FE61;box-shadow:0 0 0 3px rgba(213,254,97,0.24);flex:0 0 auto;}
         .cart-rd .crd-store{font-size:12px;font-weight:700;color:#6B7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -203,6 +200,7 @@ function CartPageContent() {
         .cart-rd .crd-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(112px,0.62fr);gap:8px;align-items:center;}
         .cart-rd .crd-cta{width:100%;height:44px;border:0;border-radius:999px;background:#D5FE61;color:#000;font-family:var(--font-inter),sans-serif;font-weight:800;font-size:14px;letter-spacing:0;cursor:pointer;display:flex;align-items:center;justify-content:center;text-decoration:none;box-shadow:0 10px 22px rgba(213,254,97,0.3);transition:transform .14s ease,box-shadow .14s ease;}
         .cart-rd .crd-cta:active{transform:scale(0.985);box-shadow:0 4px 10px rgba(213,254,97,0.22);}
+        .cart-rd .crd-link-note{min-height:44px;border-radius:18px;background:rgba(10,10,10,0.04);border:1px solid rgba(10,10,10,0.06);color:#6B7280;font-size:11px;font-weight:650;line-height:1.25;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 12px;}
         .cart-rd .crd-fav-cta{width:100%;height:44px;border:1px solid rgba(10,10,10,0.1);border-radius:999px;background:rgba(255,255,255,0.78);color:#0A0A0A;font-family:var(--font-inter),sans-serif;font-weight:800;font-size:13px;letter-spacing:0;cursor:pointer;transition:transform .14s ease,background .14s ease,border-color .14s ease;}
         .cart-rd .crd-fav-cta:active:not(:disabled){transform:scale(0.985);}
         .cart-rd .crd-fav-cta:disabled{opacity:0.62;cursor:not-allowed;}
@@ -271,9 +269,6 @@ function CartPageContent() {
                     <div className="crd-copy">
                       <div className="crd-brand">{item.product.brand?.name || 'Unknown'}</div>
                       <div className="crd-name">{item.product.name}</div>
-                      {formatPriceFrom(item.product.priceFrom) && (
-                        <div className="crd-price">{formatPriceFrom(item.product.priceFrom)}</div>
-                      )}
                       {store && (
                         <div className="crd-store-row">
                           <span className="crd-store-dot" aria-hidden="true" />
@@ -295,7 +290,7 @@ function CartPageContent() {
                         В магазин
                       </a>
                     ) : (
-                      <div style={{ fontSize: '11px', color: '#9CA3AF' }}>Ссылка не найдена</div>
+                      <div className="crd-link-note">Скоро появится ссылка на магазин</div>
                     )}
                     <button
                       type="button"
