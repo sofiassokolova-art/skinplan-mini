@@ -496,28 +496,28 @@ html, body {
   --color-error: #EF4444;
 
   /* ─────────────────────────────────────────────────────────────────────
-     Редизайн-палитра (чёрно-лайм-беж). Единый источник правды для
+     Редизайн-палитра (чёрно-лайм на чистой канве). Единый источник правды для
      home / plan v2 / quiz screens. Литеральные значения в этих
      поверхностях должны быть заменены на эти токены.
      ───────────────────────────────────────────────────────────────────── */
   --ink: #0A0A0A;                       /* основной чёрный (текст, dark surface) */
   --ink-soft: #6B7280;                  /* приглушённый серый (caption / sub) */
   --ink-mute: #9CA3AF;                  /* ещё более тихий (divider / max) */
-  --canvas: #F4F2EE;                    /* бежевый фон приложения */
+  --canvas: #FCFCFB;                    /* чистый фон приложения */
   --canvas-white: #FFFFFF;
   --accent: #D5FE61;                    /* лаймовый акцент (current, badges) */
   --ink-rgb: 10, 10, 10;
   --canvas-white-rgb: 255, 255, 255;
   --accent-rgb: 213, 254, 97;
-  --glass-bg: rgba(255, 255, 255, 0.55);
-  --glass-bg-strong: rgba(255, 255, 255, 0.62);
-  --glass-border: rgba(255, 255, 255, 0.70);
-  --glass-dark-bg: rgba(10, 10, 10, 0.12);
-  --glass-dark-border: rgba(255, 255, 255, 0.15);
-  --glass-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
-  --glass-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.06);
-  --blur: blur(24px) saturate(160%);
-  --blur-lg: blur(28px) saturate(160%);
+  --glass-bg: #FFFFFF;
+  --glass-bg-strong: #FFFFFF;
+  --glass-border: rgba(10, 10, 10, 0.08);
+  --glass-dark-bg: rgba(10, 10, 10, 0.92);
+  --glass-dark-border: rgba(255, 255, 255, 0.10);
+  --glass-shadow: 0 1px 2px rgba(10, 10, 10, 0.03), 0 10px 24px rgba(10, 10, 10, 0.04);
+  --glass-shadow-lg: 0 1px 2px rgba(10, 10, 10, 0.03), 0 14px 30px rgba(10, 10, 10, 0.05);
+  --blur: none;
+  --blur-lg: none;
 
   --radius-card-sm: 22px;
   --radius-card-md: 24px;
@@ -673,7 +673,7 @@ html, body {
 
 /* Кнопки — единый чёрный pill-стиль бренда.
    Раньше .btn-primary был бирюзовым (#0A5F59), что не вязалось с
-   редизайном (черно-лайм-беж). Теперь это тот же ink-pill, что
+   редизайном (чёрно-лайм на чистой канве). Теперь это тот же ink-pill, что
    используется в home/error-фолбэках и квиз-вопросах. */
 .btn-primary {
   background-color: var(--ink);

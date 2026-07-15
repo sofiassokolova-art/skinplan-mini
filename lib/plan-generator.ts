@@ -6,7 +6,7 @@ import { calculateSkinAxes, getDermatologistRecommendations, type QuestionnaireA
 import { calculateSkinIssues } from '@/lib/skin-issues';
 import { canApplyStep, isStepAllowedForProfile, type StepCategory } from '@/lib/step-category-rules';
 import { selectCarePlanTemplate, type CarePlanProfileInput } from '@/lib/care-plan-templates';
-import type { Plan28, DayPlan, DayStep } from '@/lib/plan-types';
+import type { Plan28, DayPlan, DayStep, PlanPhases } from '@/lib/plan-types';
 import { getPhaseForDay, isWeeklyFocusDay } from '@/lib/plan-types';
 import { logger } from '@/lib/logger';
 import type { SkinProfile } from '@/lib/skinprofile-types';
@@ -138,6 +138,135 @@ function containsExcludedIngredients(
 
 const CLEANER_FALLBACK_STEP: StepCategory = 'cleanser_gentle';
 const SPF_FALLBACK_STEP: StepCategory = 'spf_50_face';
+
+const PHASE_ACTIVE_INGREDIENTS = [
+  'retinol', 'retinoid', 'retinal', 'tretinoin', 'adapalene',
+  'benzoyl_peroxide', 'benzoyl peroxide', 'bpo',
+  'aha', 'bha', 'pha',
+  'glycolic', 'glycolic_acid', 'lactic', 'lactic_acid',
+  'mandelic', 'mandelic_acid', 'salicylic', 'salicylic_acid',
+  'azelaic', 'azelaic_acid',
+  'vitamin_c', 'vitamin c', 'ascorbic',
+  'tranexamic', 'tranexamic_acid',
+  'alpha_arbutin', 'arbutin', 'kojic', 'kojic_acid',
+  'hydroquinone',
+  'lha',
+  'ретин', 'адапален', 'третиноин',
+  'бензоил',
+  'aha', 'bha', 'pha',
+  'гликол', 'салицил', 'молочн', 'миндаль',
+  'азелаин', 'аскорбин', 'витамин с', 'витамин c',
+  'транексам', 'арбутин', 'коев',
+];
+
+const ADAPTATION_SAFE_INGREDIENTS = [
+  'hyaluronic', 'hyaluronic_acid', 'glycerin',
+  'centella', 'panthenol', 'ceramide', 'ceramides',
+  'squalane', 'shea_butter', 'soothing',
+  'niacinamide', 'zinc_pca', 'peptide', 'peptides',
+  'гиалурон', 'глицерин', 'центел', 'пантенол',
+  'церамид', 'сквалан', 'ши',
+  'ниацинамид', 'цинк', 'пептид',
+  'бета-глюкан', 'бета глюкан', 'пробиотик',
+];
+
+const ADAPTATION_STEPS: StepCategory[] = [
+  'cleanser_gentle', 'cleanser_balancing',
+  'toner_hydrating', 'toner_soothing',
+  'serum_hydrating', 'serum_anti_redness', 'serum_niacinamide',
+  'moisturizer_barrier', 'moisturizer_soothing', 'moisturizer_light',
+  'treatment_exfoliant_mild',
+];
+
+const ACTIVE_PHASE_STEPS: StepCategory[] = [
+  'serum_niacinamide', 'serum_vitc', 'serum_brightening_soft',
+  'serum_peptide', 'serum_antiage', 'serum_exfoliant',
+  'toner_exfoliant', 'toner_acid', 'toner_aha', 'toner_bha',
+  'treatment_acne_azelaic', 'treatment_acne_bpo', 'treatment_pigmentation',
+  'treatment_antiage', 'treatment_exfoliant_strong', 'treatment_exfoliant_mild',
+  'treatment_acid',
+  'mask_enzyme', 'mask_acid', 'mask_peel',
+  'cleanser_deep',
+];
+
+const PHASE_RESTRICTED_ACTIVE_STEPS: StepCategory[] = [
+  'serum_vitc', 'serum_brightening_soft', 'serum_antiage', 'serum_exfoliant',
+  'toner_exfoliant', 'toner_acid', 'toner_aha', 'toner_bha',
+  'treatment_acne_azelaic', 'treatment_acne_bpo', 'treatment_pigmentation',
+  'treatment_antiage', 'treatment_exfoliant_strong', 'treatment_exfoliant_mild',
+  'treatment_acid',
+  'mask_enzyme', 'mask_acid', 'mask_peel',
+  'cleanser_deep',
+];
+
+const SUPPORT_STEPS: StepCategory[] = [
+  'moisturizer_barrier', 'moisturizer_balancing',
+  'serum_hydrating', 'serum_niacinamide',
+];
+
+function productActiveText(product: Pick<ProductWithBrand, 'activeIngredients'>): string {
+  const actives = product.activeIngredients || [];
+  return Array.isArray(actives) ? actives.join(' ').toLowerCase() : '';
+}
+
+function hasAnyMarker(text: string, markers: string[]): boolean {
+  return markers.some((marker) => text.includes(marker.toLowerCase()));
+}
+
+function stepMatchesAny(
+  stepCategory: StepCategory,
+  steps: StepCategory[],
+  allowedBaseMatches: string[] = []
+): boolean {
+  const stepBase = getBaseStepFromStepCategory(stepCategory);
+  return steps.some((candidate) => {
+    if (stepCategory === candidate) return true;
+    const candidateBase = getBaseStepFromStepCategory(candidate);
+    return allowedBaseMatches.includes(stepBase) && stepBase === candidateBase;
+  });
+}
+
+export function isProductAllowedInPlanPhase(
+  product: Pick<ProductWithBrand, 'activeIngredients'>,
+  phase: PlanPhases,
+  stepCategory: StepCategory
+): boolean {
+  const activeText = productActiveText(product);
+  const hasPhaseActive = hasAnyMarker(activeText, PHASE_ACTIVE_INGREDIENTS);
+  const hasAdaptationSafeActive = hasAnyMarker(activeText, ADAPTATION_SAFE_INGREDIENTS);
+
+  if (isSPFStep(stepCategory)) {
+    return true;
+  }
+
+  const isPhaseRestrictedActiveStep = PHASE_RESTRICTED_ACTIVE_STEPS.includes(stepCategory);
+
+  if (phase === 'adaptation') {
+    if (isPhaseRestrictedActiveStep) return false;
+    if (hasPhaseActive) return false;
+    if (isCleanserStep(stepCategory)) return true;
+    if (stepMatchesAny(stepCategory, ADAPTATION_STEPS, ['toner', 'moisturizer'])) return true;
+    return hasAdaptationSafeActive || activeText.length === 0;
+  }
+
+  if (phase === 'active') {
+    if (stepMatchesAny(stepCategory, ACTIVE_PHASE_STEPS, ['mask', 'cleanser'])) return true;
+    if (hasPhaseActive) return true;
+    const baseStep = getBaseStepFromStepCategory(stepCategory);
+    if (['cleanser', 'toner', 'serum', 'moisturizer', 'lip_care', 'eye_cream'].includes(baseStep)) {
+      return true;
+    }
+    return false;
+  }
+
+  if (isPhaseRestrictedActiveStep) return false;
+  if (hasPhaseActive) return false;
+  if (stepMatchesAny(stepCategory, SUPPORT_STEPS, ['moisturizer', 'serum'])) return true;
+  if (['cleanser', 'toner', 'moisturizer', 'lip_care', 'eye_cream'].includes(getBaseStepFromStepCategory(stepCategory))) {
+    return true;
+  }
+  return hasAdaptationSafeActive || activeText.length === 0;
+}
 
 const dedupeSteps = (steps: StepCategory[]): StepCategory[] => {
   const seen = new Set<StepCategory>();
@@ -1582,148 +1711,10 @@ export async function generate28DayPlan(
     stepCategory: StepCategory
   ): ProductWithBrand[] => {
     if (products.length === 0) return products;
-    
-    // ИСПРАВЛЕНО: Базовые продукты всегда доступны во всех фазах
-    const baseStep = getBaseStepFromStepCategory(stepCategory);
-    const isBaseProduct = baseStep === 'toner' || baseStep === 'moisturizer' || baseStep === 'cleanser' || baseStep === 'spf';
-    
-    // Если это базовый продукт, возвращаем все продукты (но предпочитаем разные по фазам)
-    if (isBaseProduct) {
-      // Для разнообразия по фазам, возвращаем разные продукты, но не фильтруем строго
-      // Просто возвращаем все доступные продукты - они будут распределены по фазам
-      return products;
-    }
-    
-    // Определяем, какие активные ингредиенты и stepCategory подходят для каждой фазы
-    // ИСПРАВЛЕНО: Используем только те ингредиенты и категории, которые реально есть в БД
-    const strongActives = [
-      'retinol', 'retinoid', 'tretinoin', 'adapalene', 'benzoyl_peroxide', 
-      'benzoyl_peroxide_2_5', 'aha', 'bha', 'glycolic', 'salicylic_acid', 
-      'azelaic_acid', 'azelaic_acid_10', 'azelaic_acid_15', 'hydroquinone'
-    ];
-    const moderateActives = [
-      'azelaic_acid', 'azelaic_acid_10', 'azelaic_acid_15', 'niacinamide', 
-      'vitamin_c10', 'vitamin_c15', 'vitamin_c23', 'alpha_arbutin', 
-      'tranexamic_acid', 'ferulic_acid', 'vitamin_e', 'zinc_pca'
-    ];
-    const gentleActives = [
-      'hyaluronic_acid', 'glycerin', 'centella', 'panthenol', 'ceramides', 
-      'squalane', 'shea_butter', 'soothing_complex'
-    ];
-    
-    // Определяем, какие stepCategory подходят для каждой фазы
-    // ИСПРАВЛЕНО: Используем только существующие категории из БД
-    const adaptationSteps: StepCategory[] = [
-      'cleanser_gentle', 'toner_hydrating', 'toner_soothing',
-      'serum_hydrating', 'serum_anti_redness',
-      'moisturizer_barrier', 'moisturizer_soothing', 'moisturizer_light',
-      'treatment_exfoliant_mild'
-    ];
-    
-    // ИСПРАВЛЕНО: Используем существующие категории шагов с активными ингредиентами
-    // В активной фазе должны быть продукты с кислотами и активными ингредиентами
-    // ВАЖНО: Эти категории должны соответствовать тем, что используются в правилах и сессиях рекомендаций
-    // Правила используют простые названия (serum, treatment), которые маппятся на эти stepCategory через mapStepToStepCategory
-    const activeSteps = [
-      'serum_niacinamide', 'serum_vitc', 'serum_brightening_soft',
-      'serum_peptide', 'serum_antiage', 'serum_exfoliant', // Новые категории сывороток
-      'toner_exfoliant', 'toner_acid', 'toner_aha', 'toner_bha', // Тонеры с кислотами
-      'treatment_acne_azelaic', 'treatment_acne_bpo', 'treatment_pigmentation',
-      'treatment_antiage', 'treatment_exfoliant_strong', 'treatment_exfoliant_mild',
-      'treatment_acid', // Средства с кислотами
-      'mask_enzyme', 'mask_acid', 'mask_peel', // Маски с активными ингредиентами
-      'cleanser_deep' // Очищение с кислотами тоже подходит для активной фазы
-    ];
-    
-    const supportSteps = [
-      'moisturizer_barrier', 'moisturizer_balancing',
-      'serum_hydrating', 'serum_niacinamide'
-    ];
-    
-    return products.filter(product => {
-      // SPF и очищение всегда подходят для всех фаз
-      if (stepCategory.startsWith('spf_') || stepCategory.startsWith('cleanser_')) {
-        return true;
-      }
-      
-      // ИСПРАВЛЕНО: Тонер и крем всегда доступны во всех фазах
-      if (baseStep === 'toner' || baseStep === 'moisturizer') {
-        return true;
-      }
-      
-      // Получаем активные ингредиенты продукта (из БД или из stepCategory)
-      const productActives = (product as any).activeIngredients || [];
-      const activeIngredientsStr = Array.isArray(productActives) 
-        ? productActives.join(' ').toLowerCase()
-        : '';
-      
-      if (phase === 'adaptation') {
-        // Фаза 1: только мягкие продукты
-        // ИСПРАВЛЕНО: Используем точное совпадение или сравнение базовых шагов вместо startsWith(split('_')[0])
-        // чтобы избежать ложных совпадений (например, serum_vitc не должен проходить для serum_hydrating)
-        const stepBaseStep = getBaseStepFromStepCategory(stepCategory);
-        if (adaptationSteps.some((adaptStep: StepCategory) => {
-          if (stepCategory === adaptStep) return true;
-          const adaptBaseStep = getBaseStepFromStepCategory(adaptStep);
-          return stepBaseStep === adaptBaseStep && stepBaseStep !== 'serum' && stepBaseStep !== 'treatment';
-        })) {
-          return true;
-        }
-        
-        // Проверяем активные ингредиенты - исключаем сильные
-        const hasStrongActive = strongActives.some(active => 
-          activeIngredientsStr.includes(active.toLowerCase())
-        );
-        if (hasStrongActive) return false;
-        
-        // Предпочитаем мягкие ингредиенты
-        const hasGentleActive = gentleActives.some(active => 
-          activeIngredientsStr.includes(active.toLowerCase())
-        );
-        return hasGentleActive || activeIngredientsStr.length === 0; // Если нет активных ингредиентов, тоже подходит
-      } else if (phase === 'active') {
-        // Фаза 2: активные ингредиенты
-        // ИСПРАВЛЕНО: Используем точное совпадение или сравнение базовых шагов вместо startsWith(split('_')[0])
-        const stepBaseStep = getBaseStepFromStepCategory(stepCategory);
-        if (activeSteps.some(activeStep => {
-          if (stepCategory === activeStep) return true;
-          const activeBaseStep = getBaseStepFromStepCategory(activeStep as StepCategory);
-          // Для активной фазы разрешаем только точные совпадения или совпадения базовых шагов для определенных категорий
-          return stepBaseStep === activeBaseStep && (stepBaseStep === 'mask' || stepBaseStep === 'cleanser');
-        })) {
-          return true;
-        }
-        
-        // Проверяем активные ингредиенты - предпочитаем сильные или умеренные
-        const hasStrongActive = strongActives.some(active => 
-          activeIngredientsStr.includes(active.toLowerCase())
-        );
-        const hasModerateActive = moderateActives.some(active => 
-          activeIngredientsStr.includes(active.toLowerCase())
-        );
-        return hasStrongActive || hasModerateActive;
-      } else {
-        // Фаза 3: поддерживающие продукты
-        // ИСПРАВЛЕНО: Используем точное совпадение или сравнение базовых шагов вместо startsWith(split('_')[0])
-        const stepBaseStep = getBaseStepFromStepCategory(stepCategory);
-        if (supportSteps.some(supportStep => {
-          if (stepCategory === supportStep) return true;
-          const supportBaseStep = getBaseStepFromStepCategory(supportStep as StepCategory);
-          return stepBaseStep === supportBaseStep;
-        })) {
-          return true;
-        }
-        
-        // Предпочитаем умеренные или мягкие ингредиенты
-        const hasModerateActive = moderateActives.some(active => 
-          activeIngredientsStr.includes(active.toLowerCase())
-        );
-        const hasGentleActive = gentleActives.some(active => 
-          activeIngredientsStr.includes(active.toLowerCase())
-        );
-        return hasModerateActive || hasGentleActive || activeIngredientsStr.length === 0;
-      }
-    });
+
+    return products.filter((product) =>
+      isProductAllowedInPlanPhase(product, phase, stepCategory)
+    );
   };
 
   const getProductsForStep = (step: StepCategory, phase?: 'adaptation' | 'active' | 'support'): ProductWithBrand[] => {
@@ -1746,9 +1737,7 @@ export async function generate28DayPlan(
         if (filtered.length > 0) {
           return filtered;
         }
-        // Если после фильтрации ничего не осталось, возвращаем исходный список
-        // (лучше показать продукт, чем ничего)
-        return exact;
+        return [];
       }
       return exact;
     }
@@ -1777,7 +1766,7 @@ export async function generate28DayPlan(
           if (filtered.length > 0) {
             return filtered;
           }
-          return base;
+          return [];
         }
         return base;
       }
@@ -1827,7 +1816,7 @@ export async function generate28DayPlan(
           if (filtered.length > 0) {
             return filtered;
           }
-          return uniqueProducts;
+          return [];
         }
         return uniqueProducts;
       }
@@ -1864,7 +1853,7 @@ export async function generate28DayPlan(
           if (filtered.length > 0) {
             return filtered;
           }
-          return uniqueProducts;
+          return [];
         }
         return uniqueProducts;
       }
@@ -1900,7 +1889,7 @@ export async function generate28DayPlan(
           if (filtered.length > 0) {
             return filtered;
           }
-          return uniqueProducts;
+          return [];
         }
         return uniqueProducts;
       }
@@ -2990,6 +2979,17 @@ export async function generate28DayPlan(
                 });
                 fallbackProduct = null;
               }
+              if (fallbackProduct && !isProductAllowedInPlanPhase(fallbackProduct, phase, stepCategory)) {
+                logger.info('DB fallback product rejected by phase (morning)', {
+                  stepCategory,
+                  phase,
+                  productId: fallbackProduct.id,
+                  productName: fallbackProduct.name,
+                  activeIngredients: fallbackProduct.activeIngredients,
+                  userId,
+                });
+                fallbackProduct = null;
+              }
               if (fallbackProduct) {
                 registerProductForStep(stepCategory, fallbackProduct);
                 stepProducts = [fallbackProduct];
@@ -3094,7 +3094,7 @@ export async function generate28DayPlan(
       // Пробуем найти через fallback в БД
       try {
         const fallbackLipBalm = await findFallbackProduct('lip_care', profileClassification, { userId });
-        if (fallbackLipBalm) {
+        if (fallbackLipBalm && isProductAllowedInPlanPhase(fallbackLipBalm, phase, lipBalmStep)) {
           registerProductForStep(lipBalmStep, fallbackLipBalm);
           lipBalmProducts = [fallbackLipBalm];
         }
@@ -3139,7 +3139,7 @@ export async function generate28DayPlan(
         // Пробуем найти через fallback в БД
         try {
           const fallbackEyeCream = await findFallbackProduct('eye_cream_dark_circles', profileClassification, { userId });
-          if (fallbackEyeCream) {
+          if (fallbackEyeCream && isProductAllowedInPlanPhase(fallbackEyeCream, phase, eyeCreamStep)) {
             registerProductForStep(eyeCreamStep, fallbackEyeCream);
             eyeCreamProducts = [fallbackEyeCream];
           }
@@ -3277,6 +3277,17 @@ export async function generate28DayPlan(
                   stepCategory,
                   productId: fallbackProduct.id,
                   contraindications: userContraindications,
+                  userId,
+                });
+                fallbackProduct = null;
+              }
+              if (fallbackProduct && !isProductAllowedInPlanPhase(fallbackProduct, phase, stepCategory)) {
+                logger.info('DB fallback product rejected by phase (evening)', {
+                  stepCategory,
+                  phase,
+                  productId: fallbackProduct.id,
+                  productName: fallbackProduct.name,
+                  activeIngredients: fallbackProduct.activeIngredients,
                   userId,
                 });
                 fallbackProduct = null;

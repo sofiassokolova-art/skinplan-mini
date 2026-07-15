@@ -1,8 +1,7 @@
 // app/(miniapp)/profile/page.tsx
 // Личный кабинет пользователя.
-// Дизайн выровнен с редизайн-палитрой (чёрно-лайм-беж): фон var(--canvas) с
-// фикс-слоем градиентных пятен (как home-rd), заголовки Unbounded, glass-карточки,
-// тёмная карточка прогресса плана с лаймовым акцентом, чёрные pill-кнопки.
+// Дизайн выровнен с редизайн-палитрой: чистый фон var(--canvas), заголовки
+// Unbounded, белые карточки, тёмная карточка прогресса плана с лаймовым акцентом.
 
 'use client';
 
@@ -44,29 +43,6 @@ const TITLE_FONT =
 const BODY_FONT =
   "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
 
-const FAQ_ITEMS: Array<{ question: string; answer: string }> = [
-  {
-    question: 'Как работает skiniq?',
-    answer: 'skiniq анализирует вашу кожу на основе ответов в анкете и создает персональный 28-дневный план ухода. Мы учитываем тип кожи, проблемы, чувствительность и другие факторы для подбора оптимальных средств.',
-  },
-  {
-    question: 'Как часто нужно обновлять план?',
-    answer: 'Рекомендуется перепроходить анкету раз в 3-6 месяцев или при значительных изменениях состояния кожи (сезонные изменения, новые проблемы, смена климата).',
-  },
-  {
-    question: 'Где купить рекомендованные средства?',
-    answer: 'Все средства из вашего плана можно купить в аптеках, на маркетплейсах (Ozon, Wildberries) или в специализированных магазинах. В приложении есть прямые ссылки на покупку.',
-  },
-  {
-    question: 'Что делать, если средство не подошло?',
-    answer: 'Вы можете заменить любое средство из плана на альтернативное. Нажмите кнопку "Не подошло — заменить" рядом с продуктом, и мы предложим подходящие варианты.',
-  },
-  {
-    question: 'Как отслеживать прогресс?',
-    answer: 'В разделе "План" вы видите текущий день и прогресс выполнения. Отмечайте выполненные дни, чтобы видеть свой прогресс. Результаты обычно видны через 4-6 недель регулярного использования.',
-  },
-];
-
 // Склонение «N дней» для подписи в карточке плана
 function daysWord(n: number): string {
   const m10 = n % 10;
@@ -74,14 +50,6 @@ function daysWord(n: number): string {
   if (m10 === 1 && m100 !== 11) return 'день';
   if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'дня';
   return 'дней';
-}
-
-function ChevronDownIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <polyline points="6 9 12 15 18 9" />
-    </svg>
-  );
 }
 
 function ChevronRightIcon() {
@@ -122,7 +90,6 @@ export default function PersonalCabinet() {
   const [editingPhone, setEditingPhone] = useState(false);
   const [nameValue, setNameValue] = useState('');
   const [phoneValue, setPhoneValue] = useState('');
-  const [expandedFAQ, setExpandedFAQ] = useState<number | false>(false);
   // ИСПРАВЛЕНО: Имя для отображения - приоритет из ответа USER_NAME
   const [displayNameFromAnswer, setDisplayNameFromAnswer] = useState<string | null>(null);
 
@@ -542,7 +509,7 @@ export default function PersonalCabinet() {
   };
 
   if (loading) {
-    return <MiniAppPageSkeleton rows={4} />;
+    return <MiniAppPageSkeleton background="var(--canvas)" rows={4} />;
   }
 
   if (error && !userProfile) {
@@ -603,16 +570,18 @@ export default function PersonalCabinet() {
     ? Math.floor((new Date().getTime() - new Date(skinProfile.createdAt).getTime()) / (1000 * 60 * 60 * 24))
     : 0;
   const planTotalDays = planInfo.totalDays || 28;
-  const planPct = planInfo.started && planInfo.currentDay
-    ? Math.round((planInfo.currentDay / planTotalDays) * 100)
-    : 0;
 
   // ИСПРАВЛЕНО: Выбираем один источник правды для Telegram user
   // Приоритет: tg.initDataUnsafe.user (более надежный) > useTelegram().user (fallback)
   // Это предотвращает мигания при синхронизации useTelegram
   const telegramUser = tg?.initDataUnsafe?.user || user;
   const userPhotoUrl = telegramUser?.photo_url;
-  const avatarInitial = (fullName[0] || 'S').toUpperCase();
+  const avatarNameSource =
+    displayNameFromAnswer ||
+    userProfile?.firstName ||
+    telegramUser?.first_name ||
+    '';
+  const avatarInitial = avatarNameSource.trim().slice(0, 1).toUpperCase();
 
   return (
     <div
@@ -626,67 +595,63 @@ export default function PersonalCabinet() {
     >
       <style>{`
         html, body { background-color: var(--canvas); }
-        /* Фон — фиксированный псевдо-слой с градиентными пятнами, тот же рецепт,
-           что на /home (background-attachment:fixed не работает в Telegram iOS WebView). */
+        /* Фон — фиксированный псевдо-слой, чтобы Telegram iOS WebView не показывал
+           чужую подложку при overscroll. */
         .pf-rd{position:relative;}
-        .pf-rd::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:
-          radial-gradient(72% 32% at 0% 0%, rgba(255,224,188,0.7) 0%, transparent 62%),
-          radial-gradient(50% 22% at 100% 18%, rgba(213,254,97,0.42) 0%, transparent 70%),
-          radial-gradient(64% 26% at 100% 55%, rgba(220,210,196,0.55) 0%, transparent 65%),
-          radial-gradient(78% 32% at 10% 92%, rgba(213,254,97,0.46) 0%, transparent 62%),
-          var(--canvas);}
-        .pf-rd .pf-topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 20px 14px;}
+        .pf-rd::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:var(--canvas);}
+        .pf-rd .pf-topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 20px 6px;}
         .pf-rd .pf-logo{font-family:var(--font-inter),-apple-system,BlinkMacSystemFont,sans-serif;font-size:18px;font-weight:500;letter-spacing:0;color:var(--ink);text-transform:lowercase;}
-        .pf-rd .pf-head{display:flex;align-items:center;gap:16px;padding:0 20px 18px;}
-        .pf-rd .pf-avatar{width:64px;height:64px;flex-shrink:0;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px rgba(255,255,255,0.9),0 6px 18px rgba(10,10,10,0.18);}
-        .pf-rd .pf-avatar-fallback{background:linear-gradient(135deg,#2A2A2A,var(--ink));color:var(--accent);display:grid;place-items:center;font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:22px;font-weight:600;}
-        .pf-rd .pf-intro{font-size:12px;font-weight:500;color:var(--ink-soft);margin-bottom:4px;}
-        .pf-rd .pf-title{font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:22px;font-weight:700;line-height:1.15;letter-spacing:-0.5px;color:var(--ink);margin:0;overflow-wrap:anywhere;}
-        .pf-rd .pf-username{margin-top:3px;font-size:13px;font-weight:500;color:var(--ink-soft);}
-        .pf-rd .pf-stack{display:flex;flex-direction:column;gap:12px;padding:0 20px;}
-        .pf-rd .pf-card-title{font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:16px;font-weight:600;letter-spacing:-0.3px;color:var(--ink);margin:0 0 14px;}
-        /* Тёмная карточка плана — как hr-progress-card на /home */
-        .pf-rd .pf-plan-card{position:relative;overflow:hidden;padding:15px 18px 14px;border-radius:25px;border:1px solid rgba(255,255,255,0.07);color:#fff;background:radial-gradient(95% 125% at 105% -20%, rgba(213,254,97,0.22) 0%, transparent 66%), #111;box-shadow:0 16px 36px rgba(10,10,10,0.19);}
-        .pf-rd .pf-plan-card::after{content:"";position:absolute;top:-52px;right:-34px;width:152px;height:152px;border-radius:50%;background:radial-gradient(circle, rgba(213,254,97,0.18) 0%, transparent 70%);pointer-events:none;}
-        .pf-rd .pf-plan-head{position:relative;display:flex;align-items:flex-start;justify-content:space-between;gap:14px;}
-        .pf-rd .pf-eyebrow{color:rgba(255,255,255,0.5);font-size:9px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;}
-        .pf-rd .pf-plan-value{margin-top:7px;color:var(--accent);font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:22px;font-weight:700;letter-spacing:-1px;line-height:1;}
-        .pf-rd .pf-plan-sub{margin-top:5px;color:rgba(255,255,255,0.64);font-size:12px;font-weight:500;}
-        .pf-rd .pf-plan-badge{position:relative;z-index:1;width:60px;height:60px;flex-shrink:0;display:grid;place-items:center;border:1px solid rgba(213,254,97,0.22);border-radius:50%;color:var(--accent);background:rgba(255,255,255,0.04);font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;font-weight:600;}
-        .pf-rd .pf-track{position:relative;height:7px;margin-top:14px;overflow:hidden;border-radius:999px;background:rgba(255,255,255,0.1);}
-        .pf-rd .pf-fill{position:absolute;left:0;top:0;bottom:0;border-radius:inherit;background:var(--accent);transition:width 0.28s ease;}
+        /* Шапка: аватар + имя */
+        .pf-rd .pf-head{display:flex;align-items:center;gap:14px;padding:8px 20px 4px;}
+        .pf-rd .pf-avatar-wrap{position:relative;flex-shrink:0;width:64px;height:64px;}
+        .pf-rd .pf-avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px #fff,0 6px 18px rgba(10,10,10,0.12);}
+        .pf-rd .pf-avatar-fallback{background:var(--ink);color:var(--accent);display:grid;place-items:center;font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:24px;font-weight:700;}
+        .pf-rd .pf-avatar-wrap::after{content:"";position:absolute;right:2px;bottom:2px;width:14px;height:14px;border-radius:50%;background:var(--accent-deep,#C2F03C);border:3px solid var(--canvas);}
+        .pf-rd .pf-eyebrow{font-size:10.5px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-mute);}
+        .pf-rd .pf-title{font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:22px;font-weight:600;line-height:1.15;letter-spacing:-0.4px;color:var(--ink);margin:3px 0 0;overflow-wrap:anywhere;}
+        .pf-rd .pf-username{margin-top:2px;font-size:13px;font-weight:500;color:var(--ink-soft);}
+        /* Стек с группами */
+        .pf-rd .pf-stack{padding:0 20px;}
+        .pf-rd .pf-group-title{font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-mute);margin:26px 4px 12px;}
+        /* Флэт-карточки */
+        .pf-rd .pf-card{border:1px solid var(--glass-border);background:var(--glass-bg);border-radius:20px;box-shadow:var(--glass-shadow);}
+        .pf-rd .pf-links{display:flex;flex-direction:column;gap:10px;}
+        .pf-rd .pf-link{display:flex;align-items:center;gap:14px;padding:16px;width:100%;text-align:left;border:1px solid var(--glass-border);background:var(--glass-bg);border-radius:20px;box-shadow:var(--glass-shadow);cursor:pointer;text-decoration:none;color:inherit;font-family:inherit;transition:transform 0.14s ease;}
+        .pf-rd .pf-link:active{transform:scale(0.99);}
+        .pf-rd .pf-link-ic{width:38px;height:38px;flex-shrink:0;border-radius:12px;background:rgba(var(--accent-rgb),0.3);display:grid;place-items:center;color:var(--ink);}
+        .pf-rd .pf-link-ic.quiet{background:rgba(10,10,10,0.05);}
+        .pf-rd .pf-link-ic svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+        .pf-rd .pf-link-body{flex:1;min-width:0;}
+        .pf-rd .pf-link-title{display:block;font-size:14.5px;font-weight:600;letter-spacing:-0.01em;color:var(--ink);}
+        .pf-rd .pf-link-sub{display:block;margin-top:3px;font-size:12px;line-height:1.35;color:var(--ink-soft);}
+        .pf-rd .pf-link-arrow{flex-shrink:0;color:var(--ink-mute);display:grid;place-items:center;}
+        .pf-rd .pf-link-arrow svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+        .pf-rd .pf-link.danger .pf-link-title{color:#D92D20;}
+        .pf-rd .pf-link.danger .pf-link-ic{background:rgba(217,45,32,0.10);color:#D92D20;}
+        .pf-rd .pf-link-dark{background:var(--ink);border-color:rgba(255,255,255,0.10);box-shadow:0 14px 34px -16px rgba(10,10,10,0.55);}
+        .pf-rd .pf-link-dark .pf-link-title{color:#fff;}
+        .pf-rd .pf-link-dark .pf-link-sub{color:rgba(255,255,255,0.6);}
+        .pf-rd .pf-link-dark .pf-link-ic{background:rgba(var(--accent-rgb),0.2);color:var(--accent);}
+        .pf-rd .pf-link-dark .pf-link-arrow{color:rgba(255,255,255,0.5);}
         /* Личные данные */
-        .pf-rd .pf-row + .pf-row{margin-top:14px;padding-top:14px;border-top:1px solid rgba(10,10,10,0.06);}
-        .pf-rd .pf-kicker{font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-mute);margin-bottom:6px;}
+        .pf-rd .pf-data{padding:4px 18px;}
+        .pf-rd .pf-row{padding:16px 0;border-top:1px solid rgba(10,10,10,0.06);}
+        .pf-rd .pf-row:first-child{border-top:0;}
         .pf-rd .pf-row-line{display:flex;align-items:center;justify-content:space-between;gap:12px;}
-        .pf-rd .pf-value{font-size:15px;font-weight:600;color:var(--ink);overflow-wrap:anywhere;}
+        .pf-rd .pf-kicker{font-size:11px;color:var(--ink-mute);margin-bottom:4px;}
+        .pf-rd .pf-value{font-size:14.5px;font-weight:600;color:var(--ink);overflow-wrap:anywhere;}
         .pf-rd .pf-value.empty{color:var(--ink-mute);font-weight:500;}
-        .pf-rd .pf-edit-btn{flex-shrink:0;border:0;cursor:pointer;border-radius:999px;padding:8px 14px;background:rgba(10,10,10,0.07);color:var(--ink);font-size:12px;font-weight:600;transition:transform 0.14s ease;}
-        .pf-rd .pf-edit-btn:active{transform:scale(0.96);}
-        .pf-rd .pf-input{width:100%;box-sizing:border-box;padding:12px 14px;border-radius:14px;border:1px solid rgba(10,10,10,0.10);background:rgba(255,255,255,0.92);font-family:inherit;font-size:16px;color:var(--ink);outline:none;}
+        .pf-rd .pf-edit-btn{flex-shrink:0;border:0;background:transparent;color:var(--ink);font-size:13px;font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer;}
+        .pf-rd .pf-input{width:100%;box-sizing:border-box;padding:12px 14px;border-radius:14px;border:1px solid rgba(10,10,10,0.10);background:#fff;font-family:inherit;font-size:16px;color:var(--ink);outline:none;}
         .pf-rd .pf-input:focus{border-color:rgba(10,10,10,0.35);}
         .pf-rd .pf-edit-actions{display:flex;align-items:center;gap:12px;margin-top:10px;}
         .pf-rd .pf-save{flex:1;height:44px;border:0;border-radius:999px;background:var(--ink);color:#fff;font-family:inherit;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;transition:transform 0.14s ease;}
         .pf-rd .pf-save:active{transform:scale(0.985);}
         .pf-rd .pf-cancel{border:0;background:transparent;padding:6px 10px;color:var(--ink-soft);font-size:13px;font-weight:500;text-decoration:underline;cursor:pointer;}
-        /* FAQ */
-        .pf-rd .pf-faq-item + .pf-faq-item{border-top:1px solid rgba(10,10,10,0.06);}
-        .pf-rd .pf-faq-q{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;background:none;border:0;cursor:pointer;text-align:left;font-family:inherit;font-size:14px;font-weight:600;line-height:1.3;color:var(--ink);}
-        .pf-rd .pf-faq-q svg{flex-shrink:0;color:var(--ink-mute);transition:transform 0.2s ease;}
-        .pf-rd .pf-faq-q.open svg{transform:rotate(180deg);}
-        .pf-rd .pf-faq-a{margin:0;padding:0 28px 14px 0;font-size:13px;line-height:1.55;color:#4B5563;}
-        /* Ссылки-карточки (поддержка, соглашения) */
-        .pf-rd .pf-link-card{display:flex;align-items:center;gap:14px;width:100%;border:0;cursor:pointer;text-decoration:none;text-align:left;color:inherit;font-family:inherit;transition:transform 0.14s ease;}
-        .pf-rd .pf-link-card:active{transform:scale(0.985);}
-        .pf-rd .pf-link-icon{width:40px;height:40px;flex-shrink:0;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--ink);box-shadow:0 2px 8px rgba(213,254,97,0.5);}
-        .pf-rd .pf-link-icon.quiet{background:rgba(10,10,10,0.07);box-shadow:none;}
-        .pf-rd .pf-link-body{flex:1;min-width:0;}
-        .pf-rd .pf-link-title{display:block;font-size:15px;font-weight:600;color:var(--ink);}
-        .pf-rd .pf-link-sub{display:block;margin-top:2px;font-size:12.5px;line-height:1.4;color:var(--ink-soft);}
-        .pf-rd .pf-chevron{flex-shrink:0;color:var(--ink-mute);}
         /* О приложении */
-        .pf-rd .pf-about-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;font-size:13.5px;}
-        .pf-rd .pf-about-row + .pf-about-row{margin-top:10px;}
+        .pf-rd .pf-about{padding:4px 18px;}
+        .pf-rd .pf-about-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:14px 0;border-top:1px solid rgba(10,10,10,0.06);font-size:13.5px;}
+        .pf-rd .pf-about-row:first-child{border-top:0;}
         .pf-rd .pf-about-label{font-weight:500;color:var(--ink-soft);}
         .pf-rd .pf-about-value{font-weight:600;color:var(--ink);text-align:right;}
       `}</style>
@@ -698,42 +663,42 @@ export default function PersonalCabinet() {
 
       {/* Шапка: аватар + имя */}
       <div className="pf-head">
-        {userPhotoUrl ? (
-          <img className="pf-avatar" src={userPhotoUrl} alt={fullName} />
-        ) : (
-          <div className="pf-avatar pf-avatar-fallback" aria-hidden>{avatarInitial}</div>
-        )}
+        <span className="pf-avatar-wrap">
+          {userPhotoUrl ? (
+            <img className="pf-avatar" src={userPhotoUrl} alt={fullName} />
+          ) : (
+            <span className="pf-avatar pf-avatar-fallback" aria-hidden>{avatarInitial}</span>
+          )}
+        </span>
         <div style={{ minWidth: 0 }}>
-          <div className="pf-intro">Личный кабинет</div>
+          <div className="pf-eyebrow">Личный кабинет</div>
           <h1 className="pf-title">{fullName}</h1>
           {userProfile?.username && <div className="pf-username">@{userProfile.username}</div>}
         </div>
       </div>
 
       <div className="pf-stack">
-        {/* Тёмная карточка прогресса плана */}
-        {planInfo.started && planInfo.currentDay && (
-          <section className="pf-plan-card" aria-label="Прогресс плана">
-            <div className="pf-plan-head">
-              <div>
-                <div className="pf-eyebrow">Ваш план ухода</div>
-                <div className="pf-plan-value">День {planInfo.currentDay} из {planTotalDays}</div>
-                {daysInApp >= 1 && (
-                  <div className="pf-plan-sub">Со skiniq уже {daysInApp} {daysWord(daysInApp)}</div>
-                )}
-              </div>
-              <div className="pf-plan-badge">{planPct}%</div>
-            </div>
-            <div className="pf-track">
-              <div className="pf-fill" style={{ width: `${Math.max(4, planPct)}%` }} />
-            </div>
-          </section>
-        )}
+        {/* ── Мой уход ── */}
+        <div className="pf-group-title">Мой уход</div>
+        <div className="pf-links">
+          {/* Напоминания об уходе (утро/вечер в боте) */}
+          <CareRemindersSettings />
 
-        {/* Личные данные */}
-        <section className="glass-card-md">
-          <h2 className="pf-card-title">Личные данные</h2>
+          <Link href="/quiz?retake=1" className="pf-link pf-link-dark">
+            <span className="pf-link-ic">
+              <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2"/><path d="M21 4v6h-6M3 20v-6h6"/></svg>
+            </span>
+            <span className="pf-link-body">
+              <span className="pf-link-title">Перепройти анкету</span>
+              <span className="pf-link-sub">Обновить рекомендации под текущее состояние кожи</span>
+            </span>
+            <span className="pf-link-arrow"><ChevronRightIcon /></span>
+          </Link>
+        </div>
 
+        {/* ── Личные данные ── */}
+        <div className="pf-group-title">Личные данные</div>
+        <div className="pf-card pf-data">
           {/* Имя */}
           <div className="pf-row">
             <div className="pf-kicker">Имя</div>
@@ -799,87 +764,80 @@ export default function PersonalCabinet() {
               </div>
             )}
           </div>
-        </section>
+        </div>
 
-        {/* Напоминания об уходе (утро/вечер в боте) */}
-        <CareRemindersSettings />
+        {/* ── Помощь ── */}
+        <div className="pf-group-title">Помощь</div>
+        <div className="pf-links">
+          <button className="pf-link" type="button" onClick={handleOpenSupport}>
+            <span className="pf-link-ic"><ChatIcon /></span>
+            <span className="pf-link-body">
+              <span className="pf-link-title">Поддержка</span>
+              <span className="pf-link-sub">Пн–Пт, 10:00–19:00 (МСК)</span>
+            </span>
+            <span className="pf-link-arrow"><ChevronRightIcon /></span>
+          </button>
 
-        {/* FAQ */}
-        <section className="glass-card-md">
-          <h2 className="pf-card-title">Часто задаваемые вопросы</h2>
-          <div>
-            {FAQ_ITEMS.map((item, index) => (
-              <div key={index} className="pf-faq-item">
-                <button
-                  className={`pf-faq-q${expandedFAQ === index ? ' open' : ''}`}
-                  aria-expanded={expandedFAQ === index}
-                  onClick={() => setExpandedFAQ(expandedFAQ === index ? false : index)}
-                >
-                  {item.question}
-                  <ChevronDownIcon />
-                </button>
-                {expandedFAQ === index && <p className="pf-faq-a">{item.answer}</p>}
-              </div>
-            ))}
-          </div>
-        </section>
+          <Link href="/faq" className="pf-link">
+            <span className="pf-link-ic quiet">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 4.8 1c0 1.7-2.3 2-2.3 3.5M12 17h.01"/></svg>
+            </span>
+            <span className="pf-link-body">
+              <span className="pf-link-title">Частые вопросы</span>
+              <span className="pf-link-sub">Как работает план и уход</span>
+            </span>
+            <span className="pf-link-arrow"><ChevronRightIcon /></span>
+          </Link>
+        </div>
 
-        {/* Поддержка */}
-        <button className="glass-card-md pf-link-card" type="button" onClick={handleOpenSupport}>
-          <span className="pf-link-icon"><ChatIcon /></span>
-          <span className="pf-link-body">
-            <span className="pf-link-title">Поддержка</span>
-            <span className="pf-link-sub">Операторы на связи в будние дни с 10:00 до 19:00 (МСК)</span>
-          </span>
-          <ChevronRightIcon />
-        </button>
+        {/* ── Правовое ── */}
+        <div className="pf-group-title">Правовое</div>
+        <div className="pf-links">
+          <Link href="/terms" className="pf-link">
+            <span className="pf-link-ic quiet"><DocIcon /></span>
+            <span className="pf-link-body">
+              <span className="pf-link-title">Пользовательское соглашение</span>
+            </span>
+            <span className="pf-link-arrow"><ChevronRightIcon /></span>
+          </Link>
 
-        {/* Пользовательские соглашения */}
-        <Link href="/terms" className="glass-card-md pf-link-card">
-          <span className="pf-link-icon quiet"><DocIcon /></span>
-          <span className="pf-link-body">
-            <span className="pf-link-title">Пользовательские соглашения</span>
-            <span className="pf-link-sub">Условия использования</span>
-          </span>
-          <ChevronRightIcon />
-        </Link>
+          <Link href="/privacy" className="pf-link">
+            <span className="pf-link-ic quiet">
+              <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6l7-3z"/></svg>
+            </span>
+            <span className="pf-link-body">
+              <span className="pf-link-title">Политика конфиденциальности</span>
+            </span>
+            <span className="pf-link-arrow"><ChevronRightIcon /></span>
+          </Link>
 
-        {/* Политика конфиденциальности */}
-        <Link href="/privacy" className="glass-card-md pf-link-card">
-          <span className="pf-link-icon quiet"><DocIcon /></span>
-          <span className="pf-link-body">
-            <span className="pf-link-title">Политика конфиденциальности</span>
-            <span className="pf-link-sub">Как мы обрабатываем ваши данные</span>
-          </span>
-          <ChevronRightIcon />
-        </Link>
+          <button className="pf-link danger" type="button" onClick={handleDeleteData}>
+            <span className="pf-link-ic quiet">
+              <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+            </span>
+            <span className="pf-link-body">
+              <span className="pf-link-title">Удаление данных</span>
+              <span className="pf-link-sub">Очистить мой профиль и удалить аккаунт</span>
+            </span>
+            <span className="pf-link-arrow"><ChevronRightIcon /></span>
+          </button>
+        </div>
 
-        {/* Удаление данных (право субъекта ПДн) */}
-        <button
-          className="glass-card-md pf-link-card"
-          type="button"
-          onClick={handleDeleteData}
-          style={{ width: '100%' }}
-        >
-          <span className="pf-link-body">
-            <span className="pf-link-title" style={{ color: '#D92D20' }}>Удалить мои данные</span>
-            <span className="pf-link-sub">Отзыв согласия и удаление персональных данных</span>
-          </span>
-          <ChevronRightIcon />
-        </button>
-
-        {/* О приложении */}
-        <section className="glass-card-md">
-          <h2 className="pf-card-title">О приложении</h2>
+        {/* ── О приложении ── */}
+        <div className="pf-group-title">О приложении</div>
+        <div className="pf-card pf-about">
           <div className="pf-about-row">
             <span className="pf-about-label">Версия</span>
-            <span className="pf-about-value">{process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0'}</span>
+            <span className="pf-about-value">
+              {process.env.NEXT_PUBLIC_APP_VERSION || '—'}
+              {process.env.NEXT_PUBLIC_APP_COMMIT ? ` · ${process.env.NEXT_PUBLIC_APP_COMMIT}` : ''}
+            </span>
           </div>
           <div className="pf-about-row">
             <span className="pf-about-label">Разработчик</span>
             <span className="pf-about-value">ИП Биктимирова</span>
           </div>
-        </section>
+        </div>
       </div>
     </div>
   );

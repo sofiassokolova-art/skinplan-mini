@@ -64,12 +64,7 @@ function readProductName(product: any, fallback: string): string {
   return typeof product?.name === 'string' && product.name.trim() ? product.name : fallback;
 }
 
-const HOME_BACKGROUND =
-  'radial-gradient(72% 32% at 0% 0%, rgba(255,224,188,0.7) 0%, transparent 62%),' +
-  'radial-gradient(50% 22% at 100% 18%, rgba(213,254,97,0.42) 0%, transparent 70%),' +
-  'radial-gradient(64% 26% at 100% 55%, rgba(220,210,196,0.55) 0%, transparent 65%),' +
-  'radial-gradient(78% 32% at 10% 92%, rgba(213,254,97,0.46) 0%, transparent 62%),' +
-  'var(--canvas)';
+const HOME_BACKGROUND = 'var(--canvas)';
 
 // ФИКС #17: персистентность отмеченных шагов рутины между переключениями страниц.
 // Раньше toggleItem обновлял только локальный стейт; при уходе на /plan и обратно
@@ -784,15 +779,9 @@ export default function HomePage() {
         html, body { background-color: var(--canvas); }
         /* Фон рисуем на фиксированном псевдо-слое (viewport-anchored), а не через
            background-attachment:fixed — последний не красит весь документ в
-           Telegram iOS WebView, из-за чего при листании появлялась пустая/белая
-           область. Теперь градиент гарантированно покрывает весь экран. */
+           Telegram iOS WebView. */
         .home-rd{position:relative;isolation:isolate;}
-        .home-rd::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:
-          radial-gradient(72% 32% at 0% 0%, rgba(255,224,188,0.7) 0%, transparent 62%),
-          radial-gradient(50% 22% at 100% 18%, rgba(213,254,97,0.42) 0%, transparent 70%),
-          radial-gradient(64% 26% at 100% 55%, rgba(220,210,196,0.55) 0%, transparent 65%),
-          radial-gradient(78% 32% at 10% 92%, rgba(213,254,97,0.46) 0%, transparent 62%),
-          var(--canvas);}
+        .home-rd::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:var(--canvas);}
         .home-rd > *{position:relative;z-index:1;}
         .home-rd .hr-topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 20px 14px;}
         .home-rd .hr-logo{font-family:var(--font-inter),-apple-system,BlinkMacSystemFont,sans-serif;font-size:18px;font-weight:500;letter-spacing:0;color:var(--ink);text-transform:lowercase;}
@@ -801,8 +790,8 @@ export default function HomePage() {
         .home-rd .hr-heading{padding:0 20px 14px;}
         .home-rd .hr-intro{font-size:13px;font-weight:500;color:var(--ink-soft);margin-bottom:5px;}
         .home-rd .hr-title{font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:26px;font-weight:700;color:var(--ink);line-height:1.15;letter-spacing:-0.6px;}
-        .home-rd .hr-progress-card{position:relative;overflow:hidden;margin:0 20px 12px;padding:15px 18px 14px;border-radius:25px;border:1px solid rgba(255,255,255,0.07);color:#fff;background:radial-gradient(95% 125% at 105% -20%, rgba(213,254,97,0.22) 0%, transparent 66%), #111;box-shadow:0 16px 36px rgba(10,10,10,0.19);min-height:128px;}
-        .home-rd .hr-progress-card::after{content:"";position:absolute;top:-52px;right:-34px;width:152px;height:152px;border-radius:50%;background:radial-gradient(circle, rgba(213,254,97,0.18) 0%, transparent 70%);pointer-events:none;}
+        .home-rd .hr-progress-card{position:relative;overflow:hidden;margin:0 20px 12px;padding:15px 18px 14px;border-radius:25px;border:1px solid rgba(255,255,255,0.07);color:#fff;background:#111;box-shadow:0 16px 36px rgba(10,10,10,0.19);min-height:128px;}
+        .home-rd .hr-progress-card::after{content:"";position:absolute;top:0;right:0;width:90px;height:100%;background:linear-gradient(90deg, transparent, rgba(213,254,97,0.12));pointer-events:none;}
         .home-rd .hr-progress-head{position:relative;display:flex;align-items:flex-start;justify-content:space-between;gap:14px;}
         .home-rd .hr-eyebrow{color:rgba(255,255,255,0.5);font-size:9px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;}
         .home-rd .hr-progress-value{margin-top:7px;color:var(--accent);font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:24px;font-weight:700;letter-spacing:-1px;line-height:1;}
@@ -810,11 +799,11 @@ export default function HomePage() {
         .home-rd .hr-progress-badge{position:relative;z-index:1;width:60px;height:60px;flex-shrink:0;display:grid;place-items:center;border:1px solid rgba(213,254,97,0.22);border-radius:50%;color:var(--accent);background:rgba(255,255,255,0.04);font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;font-weight:600;}
         .home-rd .hr-track{position:relative;height:7px;margin-top:14px;overflow:hidden;border-radius:999px;background:rgba(255,255,255,0.1);}
         .home-rd .hr-fill{position:absolute;left:0;top:0;bottom:0;border-radius:inherit;background:var(--accent);transition:width 0.28s ease;}
-        .home-rd .hr-tabs{display:flex;gap:4px;margin:0 20px 16px;padding:5px;border:1px solid var(--glass-border);border-radius:14px;background:var(--glass-bg);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);box-shadow:var(--glass-shadow);}
-        .home-rd .hr-tab{flex:1;min-height:44px;border:0;border-radius:10px;background:transparent;color:var(--ink-soft);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:500;transition:all .18s ease;}
-        .home-rd .hr-tab.active{background:rgba(255,255,255,0.92);color:var(--ink);box-shadow:0 4px 14px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.9);font-weight:600;}
-        .home-rd .hr-tab svg{width:17px;height:17px;}
-        .home-rd .hr-routine-card{display:flex;align-items:center;gap:12px;margin:0 20px 16px;padding:13px 14px;border-radius:22px;border:1px solid rgba(255,255,255,0.74);background:rgba(255,255,255,0.66);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 12px 30px rgba(56,48,36,0.07);}
+        .home-rd .hr-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 20px 16px;padding:5px;border:0;border-radius:16px;background:rgba(10,10,10,0.05);box-shadow:none;}
+        .home-rd .hr-tab{min-height:42px;border:0;border-radius:12px;background:transparent;color:var(--ink-soft);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-size:14px;font-weight:600;transition:background .16s ease,color .16s ease;}
+        .home-rd .hr-tab.active{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(10,10,10,0.03),0 8px 20px -12px rgba(10,10,10,0.08);}
+        .home-rd .hr-tab svg{width:16px;height:16px;}
+        .home-rd .hr-routine-card{display:flex;align-items:center;gap:12px;margin:0 20px 16px;padding:13px 14px;border-radius:22px;border:1px solid var(--glass-border);background:#fff;box-shadow:var(--glass-shadow);}
         .home-rd .hr-routine-icon{width:42px;height:42px;flex-shrink:0;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--ink);box-shadow:0 8px 18px rgba(213,254,97,0.3);}
         .home-rd .hr-routine-icon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
         .home-rd .hr-routine-copy{flex:1;min-width:0;}
@@ -826,7 +815,7 @@ export default function HomePage() {
         .home-rd .hr-section-title{font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:16px;font-weight:600;letter-spacing:-0.3px;color:var(--ink);}
         .home-rd .hr-section-note{color:var(--ink-soft);font-size:11px;font-weight:500;}
         .home-rd .hr-featured-wrap{padding:0 20px 16px;}
-        .home-rd .hr-featured{position:relative;overflow:hidden;padding:16px 18px 72px;border-radius:24px;border:1px solid rgba(255,255,255,0.7);background:radial-gradient(100% 115% at 96% 100%, rgba(213,254,97,0.38) 0%, transparent 62%), rgba(255,255,255,0.66);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 12px 34px rgba(56,48,36,0.08);min-height:222px;}
+        .home-rd .hr-featured{position:relative;overflow:hidden;padding:16px 18px 72px;border-radius:24px;border:1px solid var(--glass-border);background:radial-gradient(110% 120% at 96% 100%, rgba(var(--accent-rgb),0.44) 0%, rgba(var(--accent-rgb),0.22) 38%, transparent 66%), #fff;box-shadow:0 1px 2px rgba(10,10,10,0.03),0 14px 30px -18px rgba(10,10,10,0.16);min-height:222px;}
         .home-rd .hr-chip{display:inline-flex;align-items:center;min-height:24px;padding:0 10px;border-radius:999px;color:var(--ink);background:var(--accent);font-size:9.5px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;}
         .home-rd .hr-featured-product{position:absolute;top:18px;right:18px;width:108px;height:118px;object-fit:contain;filter:drop-shadow(0 13px 14px rgba(0,0,0,0.14));pointer-events:none;}
         .home-rd .hr-featured-product.blend{mix-blend-mode:multiply;filter:drop-shadow(0 8px 10px rgba(0,0,0,0.08));}
@@ -845,7 +834,7 @@ export default function HomePage() {
         .home-rd .hr-undo button{background:transparent;border:0;padding:6px 10px;color:var(--ink-soft);font-size:12px;font-weight:500;text-decoration:underline;cursor:pointer;}
         .home-rd .hr-next-heading{font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:15px;font-weight:600;letter-spacing:-0.35px;color:var(--ink);margin:0 23px 10px;}
         .home-rd .hr-next-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:0 20px 8px;}
-        .home-rd .hr-next-card{position:relative;overflow:hidden;min-height:164px;padding:12px;border-radius:20px;border:1px solid rgba(255,255,255,0.7);background:rgba(255,255,255,0.56);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 12px 34px rgba(56,48,36,0.08);cursor:default;}
+        .home-rd .hr-next-card{position:relative;overflow:hidden;min-height:164px;padding:12px;border-radius:20px;border:1px solid var(--glass-border);background:#fff;box-shadow:var(--glass-shadow);cursor:default;}
         .home-rd .hr-next-top{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;}
         .home-rd .hr-next-kicker{color:var(--ink-mute);font-size:9px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;}
         .home-rd .hr-next-number{width:24px;height:24px;display:grid;place-items:center;border-radius:9px;color:var(--ink);background:rgba(10,10,10,0.07);font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:9px;font-weight:600;}
@@ -859,7 +848,7 @@ export default function HomePage() {
         .home-rd .hr-next-card.tappable:active{transform:scale(0.98);}
         .hr-sheet-backdrop{position:fixed;inset:0;z-index:60;background:rgba(10,10,10,0.42);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);display:flex;align-items:flex-end;justify-content:center;animation:hrFade .18s ease;}
         @keyframes hrFade{from{opacity:0;}to{opacity:1;}}
-        .hr-sheet{width:100%;max-width:520px;max-height:84vh;overflow-y:auto;background:#F4F2EE;border-radius:28px 28px 0 0;padding:10px 22px calc(28px + env(safe-area-inset-bottom)) 22px;box-shadow:0 -16px 40px rgba(10,10,10,0.22);animation:hrSlide .24s cubic-bezier(0.22,1,0.36,1);}
+        .hr-sheet{width:100%;max-width:520px;max-height:84vh;overflow-y:auto;background:var(--canvas);border-radius:28px 28px 0 0;padding:10px 22px calc(28px + env(safe-area-inset-bottom)) 22px;box-shadow:0 -16px 40px rgba(10,10,10,0.22);animation:hrSlide .24s cubic-bezier(0.22,1,0.36,1);}
         @keyframes hrSlide{from{transform:translateY(100%);}to{transform:translateY(0);}}
         .hr-sheet-grab{width:42px;height:4px;border-radius:999px;background:rgba(10,10,10,0.16);margin:0 auto 16px;}
         .hr-sheet-head{display:flex;align-items:center;gap:13px;margin-bottom:18px;}

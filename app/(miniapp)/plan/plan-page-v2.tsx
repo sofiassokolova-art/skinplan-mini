@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { RefreshCw, ShoppingCart } from 'lucide-react';
 import { api } from '@/lib/api';
 import { clientLogger } from '@/lib/client-logger';
 import { invalidatePlanWarmCache } from '@/lib/plan-warm-cache';
@@ -364,7 +365,12 @@ function ScoreCard({ score, label, description, onHintClick }: { score: number; 
             {score}<span className="pv2-score-max">/100</span>
           </div>
         </div>
-        <div className="pv2-score-badge">{label}</div>
+        <div
+          className="pv2-score-ring"
+          style={{ background: `conic-gradient(var(--accent-deep, #C2F03C) ${Math.max(0, Math.min(100, score))}%, rgba(10,10,10,0.08) 0)` }}
+        >
+          <span className="pv2-score-ring-label">{label}</span>
+        </div>
       </div>
       <div className="pv2-score-quote">{description}</div>
       <div className="pv2-score-hint">
@@ -396,8 +402,8 @@ function ProfileCarousel({ cards }: { cards: ProfileCard[] }) {
         </div>
       </div>
       <div className="pv2-profile-carousel">
-        {cards.map((card) => (
-          <div className="glass-card-md pv2-profile-card" key={card.key}>
+        {cards.map((card, idx) => (
+          <div className={`glass-card-md pv2-profile-card${idx === 0 ? ' pv2-profile-card-lime' : ''}`} key={card.key}>
             <div className="pv2-profile-label">{card.label}</div>
             <div className="pv2-profile-value">{card.value}</div>
             <div className="pv2-profile-desc">{card.description}</div>
@@ -432,7 +438,7 @@ function PlanPhasesProductsSection(props: {
   const currentPhase = phases.find((phase) => phase.state === 'current')?.phase
     ?? phases[0]?.phase
     ?? 'adaptation';
-  const [openPhase, setOpenPhase] = useState<PlanPhases>(currentPhase);
+  const [openPhase, setOpenPhase] = useState<PlanPhases | null>(currentPhase);
 
   useEffect(() => {
     setOpenPhase(currentPhase);
@@ -445,13 +451,12 @@ function PlanPhasesProductsSection(props: {
   if (phases.length === 0 && products.length === 0) return null;
 
   return (
-    <div className="glass-card-lg pv2-section pv2-phases-products-section">
+    <div className="pv2-section pv2-phases-products-section">
       <div className="pv2-section-head pv2-section-head-align-start">
         <div>
           <div className="pv2-section-title">Фазы и средства</div>
           <div className="pv2-section-subtitle">Средства подключаются по фазам, чтобы не перегружать кожу</div>
         </div>
-        <div className="pv2-phases-badge">28<br/>дней</div>
       </div>
 
       {products.length > 0 && (
@@ -474,7 +479,7 @@ function PlanPhasesProductsSection(props: {
                 : 'Добавить весь набор на 28 дней'}
           </button>
           <div className="pv2-add-all-note">
-            Это весь набор: средства подключаются по фазам — не всё сразу.
+            Средства постепенно подключаются по фазам
           </div>
         </>
       )}
@@ -493,11 +498,29 @@ function PlanPhasesProductsSection(props: {
               <button
                 type="button"
                 className="pv2-phase-accordion-trigger"
-                onClick={() => setOpenPhase(phase.phase)}
+                onClick={(e) => {
+                  // Аккордеон одиночного открытия: при раскрытии другой фазы текущая
+                  // сворачивается, высота страницы резко уменьшается и скролл «улетает»
+                  // вниз (браузер клэмпит позицию к новому концу документа). Фиксируем
+                  // позицию кликнутой шапки в вьюпорте до/после ре-рендера.
+                  const el = e.currentTarget;
+                  const before = el.getBoundingClientRect().top;
+                  setOpenPhase((prev) => (prev === phase.phase ? null : phase.phase));
+                  requestAnimationFrame(() => {
+                    const after = el.getBoundingClientRect().top;
+                    if (after !== before) window.scrollBy(0, after - before);
+                  });
+                }}
                 aria-expanded={isOpen}
               >
+                <span className={`pv2-phase-rail is-${phase.state}`} aria-hidden />
                 <span className="pv2-phase-accordion-copy">
-                  <span className="pv2-phase-label">Фаза {orderOfPhase(phase.phase)}</span>
+                  <span className="pv2-phase-eyebrow">
+                    <span className={`pv2-phase-state is-${phase.state}`}>
+                      {phase.state === 'current' ? 'Сейчас' : phase.state === 'past' ? 'Пройдена' : 'Скоро'}
+                    </span>
+                    <span className="pv2-phase-label">Фаза {orderOfPhase(phase.phase)}</span>
+                  </span>
                   <span className="pv2-phase-name">{phase.phaseLabel}</span>
                   <span className="pv2-phase-days">{phase.daysLabel}</span>
                 </span>
@@ -698,16 +721,19 @@ function ProductCardView(props: {
           onClick={() => onReplace(product)}
           disabled={isBusy}
           title="Подобрать аналог"
+          aria-label={`Подобрать аналог для ${product.name}`}
         >
-          <svg viewBox="0 0 24 24" aria-hidden><path d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2"/><path d="M21 4v6h-6M3 20v-6h6"/></svg>
+          <RefreshCw aria-hidden="true" strokeWidth={2} />
           <span>Заменить</span>
         </button>
         <button
+          type="button"
           className={`pv2-cart-cta ${product.state.inCart ? 'pv2-in-cart' : ''}`}
           onClick={() => onToggleCart(product)}
           disabled={isBusy}
         >
-          {product.state.inCart ? 'В корзине' : 'Купить'}
+          <ShoppingCart aria-hidden="true" strokeWidth={2} />
+          <span>{product.state.inCart ? 'В корзине' : 'В корзину'}</span>
         </button>
       </div>
     </div>
@@ -779,8 +805,6 @@ function FeedbackSection({ onSubmit, submitted }: { onSubmit: (positive: boolean
 function PlanV2Styles() {
   return (
     <style jsx global>{`
-      /* Повторяем мягкие цветовые пятна главной: карточки остаются читаемыми,
-         а план визуально продолжает тот же экранный стиль приложения. */
       .pv2-root {
         min-height: 100svh;
         padding: 0 20px var(--bottom-nav-clearance);
@@ -789,28 +813,21 @@ function PlanV2Styles() {
         position: relative;
         isolation: isolate;
       }
-      /* Фон — на фиксированном псевдо-слое (viewport-anchored). Раньше использовался
-         background-attachment:fixed, но он не закрашивает весь документ в Telegram
-         iOS WebView → при листании появлялся белый/пустой фон. Фиксированный
-         ::before гарантированно покрывает экран на всю высоту. */
+      /* Фон — на фиксированном псевдо-слое (viewport-anchored), чтобы Telegram
+         iOS WebView не показывал чужую подложку при overscroll. */
       .pv2-root::before {
         content: "";
         position: fixed;
         inset: 0;
         z-index: 0;
         pointer-events: none;
-        background:
-          radial-gradient(72% 32% at 0% 0%, rgba(255,224,188,0.7) 0%, transparent 62%),
-          radial-gradient(50% 22% at 100% 18%, rgba(213,254,97,0.42) 0%, transparent 70%),
-          radial-gradient(64% 26% at 100% 55%, rgba(220,210,196,0.55) 0%, transparent 65%),
-          radial-gradient(78% 32% at 10% 92%, rgba(213,254,97,0.46) 0%, transparent 62%),
-          var(--canvas);
+        background: var(--canvas);
       }
       .pv2-root > * {
         position: relative;
         z-index: 1;
       }
-      /* Зеркало #19: подложка html/body тоже беж, чтобы overscroll не светил белым. */
+      /* Подложка html/body такая же, чтобы overscroll не светил старым фоном. */
       html, body { background-color: var(--canvas); }
 
       .pv2-topbar {
@@ -830,10 +847,19 @@ function PlanV2Styles() {
       .pv2-personal-heading {
         font-family: var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif;
         font-weight: 700;
-        font-size: 26px;
-        line-height: 1.2;
-        letter-spacing: -0.6px;
+        font-size: 28px;
+        line-height: 1.16;
+        letter-spacing: -0.7px;
         margin: 8px 4px 22px;
+      }
+      .pv2-personal-heading::after {
+        content: "";
+        display: block;
+        width: 56px;
+        height: 5px;
+        margin-top: 14px;
+        border-radius: 3px;
+        background: var(--accent);
       }
 
       .pv2-double-row {
@@ -846,9 +872,7 @@ function PlanV2Styles() {
         padding-bottom: 22px;
       }
       .pv2-mini-dark {
-        background: rgba(10,10,10,0.88);
-        backdrop-filter: blur(24px) saturate(140%);
-        -webkit-backdrop-filter: blur(24px) saturate(140%);
+        background: rgba(10,10,10,0.92);
         border: 1px solid rgba(255,255,255,0.08);
       }
       .pv2-mini-label { font-size: 12px; color: var(--ink-soft); margin-bottom: 6px; }
@@ -890,19 +914,30 @@ function PlanV2Styles() {
         font-weight: 500;
         color: var(--ink-mute);
       }
-      .pv2-score-badge {
+      .pv2-score-ring {
+        position: relative;
         width: 92px;
         height: 92px;
         border-radius: 50%;
-        border: 6px solid var(--accent);
-        background: rgba(255,255,255,0.7);
-        backdrop-filter: blur(12px);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 600;
-        font-size: 14px;
+        display: grid;
+        place-items: center;
         flex-shrink: 0;
+      }
+      .pv2-score-ring::before {
+        content: "";
+        position: absolute;
+        inset: 8px;
+        border-radius: 50%;
+        background: #fff;
+      }
+      .pv2-score-ring-label {
+        position: relative;
+        z-index: 1;
+        font-weight: 700;
+        font-size: 13px;
+        text-align: center;
+        line-height: 1.1;
+        color: var(--ink);
       }
       .pv2-score-quote {
         border-left: 3px solid var(--accent);
@@ -913,7 +948,7 @@ function PlanV2Styles() {
         margin-bottom: 18px;
       }
       .pv2-score-hint {
-        background: rgba(10,10,10,0.88);
+        background: rgba(10,10,10,0.92);
         border: 1px solid rgba(255,255,255,0.08);
         border-radius: 18px;
         padding: 14px 16px;
@@ -933,9 +968,8 @@ function PlanV2Styles() {
         width: 36px;
         height: 36px;
         border-radius: 50%;
-        background: rgba(255,255,255,0.7);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255,255,255,0.8);
+        background: #fff;
+        border: 1px solid var(--glass-border);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -960,6 +994,17 @@ function PlanV2Styles() {
 
       .pv2-section {
         margin-bottom: 14px;
+      }
+      .pv2-phases-products-section {
+        padding: 6px 0 2px;
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+      }
+      .pv2-phases-products-section .pv2-section-head {
+        padding: 0 4px;
       }
       /* Профиль кожи — без стеклянной «подложки» под каруселью: карточки лежат
          прямо на фоне страницы, без серого frosted-бокса позади скролл-контейнера.
@@ -1081,6 +1126,13 @@ function PlanV2Styles() {
         scroll-snap-align: start;
         min-height: 210px;
       }
+      /* Первая карточка — лаймовая акцентная (как в мокапе) */
+      .pv2-profile-carousel .pv2-profile-card-lime {
+        background: var(--accent);
+        border-color: rgba(var(--accent-rgb), 0.85);
+      }
+      .pv2-profile-card-lime .pv2-profile-label { color: rgba(10,10,10,0.55); }
+      .pv2-profile-card-lime .pv2-profile-desc { color: rgba(10,10,10,0.72); }
       .pv2-profile-label { font-size: 12px; color: var(--ink-soft); margin-bottom: 6px; }
       .pv2-profile-value {
         font-family: var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif;
@@ -1092,17 +1144,6 @@ function PlanV2Styles() {
       }
       .pv2-profile-desc { font-size: 13px; color: var(--ink-soft); line-height: 1.55; }
 
-      .pv2-phases-badge {
-        background: rgba(10,10,10,0.88);
-        backdrop-filter: blur(12px);
-        color: #FFFFFF;
-        font-weight: 600;
-        font-size: 12px;
-        padding: 8px 14px;
-        border-radius: 999px;
-        text-align: center;
-        line-height: 1.15;
-      }
       .pv2-add-all-note {
         margin: -4px 0 16px;
         padding: 10px 12px;
@@ -1121,17 +1162,22 @@ function PlanV2Styles() {
       }
       .pv2-phase-accordion {
         border-radius: 24px;
-        background: rgba(255,255,255,0.48);
-        border: 1px solid rgba(255,255,255,0.72);
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.62);
+        background: #fff;
+        border: 1px solid var(--glass-border);
+        box-shadow:
+          0 8px 24px rgba(10,10,10,0.05),
+          inset 0 1px 0 rgba(255,255,255,0.66);
         overflow: hidden;
       }
       .pv2-phase-accordion-current {
-        background: linear-gradient(135deg, rgba(213,254,97,0.74) 0%, rgba(213,254,97,0.44) 100%);
-        border-color: rgba(var(--accent-rgb),0.56);
+        background: #fff;
+        border-color: rgba(var(--accent-rgb),0.72);
         box-shadow:
-          0 10px 24px rgba(var(--accent-rgb),0.18),
+          0 10px 24px rgba(var(--accent-rgb),0.13),
           inset 0 1px 0 rgba(255,255,255,0.68);
+      }
+      .pv2-phase-accordion-current .pv2-phase-accordion-trigger {
+        background: #fff;
       }
       .pv2-phase-accordion-trigger {
         width: 100%;
@@ -1139,7 +1185,7 @@ function PlanV2Styles() {
         background: transparent;
         color: var(--ink);
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 34px;
+        grid-template-columns: 8px minmax(0, 1fr) 34px;
         align-items: center;
         gap: 12px;
         padding: 18px;
@@ -1147,16 +1193,42 @@ function PlanV2Styles() {
         text-align: left;
         font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
       }
+      /* Левый цветной рельс: лайм = текущая, чёрный = пройдена, серый = скоро */
+      .pv2-phase-rail {
+        width: 8px;
+        height: 42px;
+        border-radius: 999px;
+        background: rgba(10,10,10,0.1);
+      }
+      .pv2-phase-rail.is-current { background: var(--accent-deep, #C2F03C); }
+      .pv2-phase-rail.is-past { background: var(--ink); }
       .pv2-phase-accordion-copy {
         min-width: 0;
         display: flex;
         flex-direction: column;
       }
+      .pv2-phase-eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 5px;
+      }
+      .pv2-phase-state {
+        font-size: 9.5px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        padding: 2px 7px;
+        border-radius: 999px;
+      }
+      .pv2-phase-state.is-current { background: var(--accent); color: var(--ink); }
+      .pv2-phase-state.is-past { background: rgba(10,10,10,0.08); color: var(--ink-soft); }
+      .pv2-phase-state.is-upcoming { background: rgba(10,10,10,0.05); color: var(--ink-mute); }
       .pv2-phase-chevron {
         width: 34px;
         height: 34px;
         border-radius: 50%;
-        background: rgba(255,255,255,0.72);
+        background: #fff;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1173,7 +1245,7 @@ function PlanV2Styles() {
       }
       .pv2-phase-accordion-open .pv2-phase-chevron {
         transform: rotate(180deg);
-        background: rgba(255,255,255,0.9);
+        background: #fff;
       }
       .pv2-phase-panel {
         padding: 0 14px 16px;
@@ -1181,10 +1253,10 @@ function PlanV2Styles() {
       .pv2-phase-label {
         font-size: 11px;
         font-weight: 600;
-        color: var(--ink-soft);
+        color: var(--ink-mute);
         letter-spacing: 0.04em;
         text-transform: uppercase;
-        margin-bottom: 6px;
+        margin-bottom: 0;
       }
       .pv2-phase-name {
         font-family: var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif;
@@ -1207,17 +1279,22 @@ function PlanV2Styles() {
         box-shadow: inset 0 1px 0 rgba(255,255,255,0.42);
       }
       .pv2-phase-accordion-current .pv2-phase-tag {
-        background: rgba(255,255,255,0.72);
+        background: #fff;
         border-color: rgba(10,10,10,0.12);
       }
       .pv2-phase-panel .pv2-product-list {
         margin-top: 12px;
       }
+      .pv2-phase-panel .pv2-product-card {
+        background: #fff;
+        border-color: var(--glass-border);
+        box-shadow: 0 8px 24px rgba(10,10,10,0.07);
+      }
       .pv2-phase-empty {
         margin-top: 12px;
         padding: 14px 16px;
         border-radius: 18px;
-        background: rgba(255,255,255,0.42);
+        background: #fff;
         color: var(--ink-soft);
         font-size: 13px;
         line-height: 1.45;
@@ -1244,9 +1321,8 @@ function PlanV2Styles() {
         width: 100%;
         height: 40px;
         border-radius: 999px;
-        background: rgba(255,255,255,0.7);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255,255,255,0.8);
+        background: #fff;
+        border: 1px solid var(--glass-border);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1269,8 +1345,8 @@ function PlanV2Styles() {
       .pv2-replace-btn:disabled { opacity: 0.4; cursor: not-allowed; }
       .pv2-replace-btn:active:not(:disabled) { transform: scale(0.96); }
       .pv2-replace-btn svg {
-        width: 14px;
-        height: 14px;
+        width: 15px;
+        height: 15px;
         stroke: var(--ink);
         fill: none;
         stroke-width: 1.8;
@@ -1283,9 +1359,8 @@ function PlanV2Styles() {
         width: 92px;
         height: 92px;
         border-radius: 16px;
-        background: rgba(255,255,255,0.7);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255,255,255,0.8);
+        background: #fff;
+        border: 1px solid var(--glass-border);
         flex-shrink: 0;
         overflow: hidden;
       }
@@ -1296,9 +1371,8 @@ function PlanV2Styles() {
         height: 100%;
         object-fit: cover;
       }
-      /* Когда нет реального фото — рисуем неоновое лаймовое пятно за иконкой.
-         Это даёт визуальную опору для PNG-иконок (маска/крем/etc), у которых
-         бывает белый или прозрачный фон — без glow иконка «висит в воздухе». */
+      /* Когда нет реального фото — показываем иконку на мягком лаймовом пятне,
+         без серой квадратной подложки и ровного контура. */
       .pv2-product-img-icon {
         background: transparent;
         border-color: transparent;
@@ -1309,10 +1383,11 @@ function PlanV2Styles() {
       .pv2-product-img-icon::before {
         content: "";
         position: absolute;
-        inset: 8px;
-        border-radius: 50%;
-        background: radial-gradient(circle, rgba(var(--accent-rgb),0.62) 0%, rgba(var(--accent-rgb),0.35) 42%, rgba(var(--accent-rgb),0) 72%);
-        filter: blur(14px);
+        inset: 3px 2px 0;
+        border-radius: 46% 54% 50% 50%;
+        background: radial-gradient(circle at 50% 52%, rgba(var(--accent-rgb),0.88) 0%, rgba(var(--accent-rgb),0.58) 42%, rgba(var(--accent-rgb),0.18) 62%, transparent 78%);
+        filter: blur(7px);
+        transform: scale(1.04);
         z-index: 0;
         pointer-events: none;
       }
@@ -1333,22 +1408,22 @@ function PlanV2Styles() {
       .pv2-product-img-fallback {
         position: relative;
         z-index: 1;
-        width: 62%;
-        height: 62%;
-        margin: 19% auto 0;
+        width: 78%;
+        height: 78%;
+        margin: 11% auto 0;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 20px;
-        background: rgba(255,255,255,0.54);
-        box-shadow: 0 6px 18px rgba(10,10,10,0.08);
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
       }
       .pv2-product-img-fallback svg {
-        width: 70%;
-        height: 70%;
-        fill: rgba(255,255,255,0.72);
-        stroke: rgba(10,10,10,0.62);
-        stroke-width: 3;
+        width: 42%;
+        height: 42%;
+        fill: none;
+        stroke: var(--ink);
+        stroke-width: 2.4;
         stroke-linecap: round;
         stroke-linejoin: round;
       }
@@ -1410,9 +1485,8 @@ function PlanV2Styles() {
         width: 40px;
         height: 40px;
         border-radius: 50%;
-        background: rgba(255,255,255,0.7);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255,255,255,0.8);
+        background: #fff;
+        border: 1px solid var(--glass-border);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1453,7 +1527,12 @@ function PlanV2Styles() {
         cursor: pointer;
         min-width: 0;
         white-space: nowrap;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
       }
+      .pv2-cart-cta svg { width: 16px; height: 16px; flex-shrink: 0; }
       .pv2-cart-cta:disabled { opacity: 0.6; cursor: not-allowed; }
       .pv2-cart-cta.pv2-in-cart { background: var(--ink); color: var(--accent); }
 
