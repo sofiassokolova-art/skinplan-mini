@@ -201,7 +201,7 @@ export function InlineListSkeleton({
 }
 
 export function MiniAppPageSkeleton({
-  background = '#F4F2EE',
+  background = 'var(--canvas)',
   rows = 4,
   paddingBottom = '120px',
   showTopBar = true,

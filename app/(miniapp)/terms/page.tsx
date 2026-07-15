@@ -43,18 +43,13 @@ export default function TermsPage() {
     >
       <style>{`
         html, body { background-color: var(--canvas); }
-        /* Фон — фиксированный псевдо-слой с градиентными пятнами, тот же рецепт,
-           что на /home и /profile (background-attachment:fixed не работает в Telegram iOS WebView). */
+        /* Фон — чистый флэт-холст, как на /home (без градиентных пятен и тёмного скрима
+           из старого дизайна). Фиксированный псевдо-слой, т.к. background-attachment:fixed
+           не красит весь документ в Telegram iOS WebView. */
         .tr-rd{position:relative;isolation:isolate;}
-        .tr-rd::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:
-          radial-gradient(72% 32% at 0% 0%, rgba(255,224,188,0.7) 0%, transparent 62%),
-          radial-gradient(50% 22% at 100% 18%, rgba(213,254,97,0.42) 0%, transparent 70%),
-          radial-gradient(64% 26% at 100% 55%, rgba(220,210,196,0.55) 0%, transparent 65%),
-          radial-gradient(78% 32% at 10% 92%, rgba(213,254,97,0.46) 0%, transparent 62%),
-          var(--canvas);}
-        .tr-rd::after{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:rgba(10,10,10,0.34);backdrop-filter:blur(8px) saturate(82%);-webkit-backdrop-filter:blur(8px) saturate(82%);}
+        .tr-rd::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:var(--canvas);}
         .tr-rd > *{position:relative;z-index:1;}
-        .tr-rd .tr-close{position:fixed;top:calc(env(safe-area-inset-top, 0px) + 14px);right:16px;z-index:4;width:44px;height:44px;border:1px solid rgba(255,255,255,0.16);border-radius:999px;background:rgba(10,10,10,0.74);color:#fff;display:grid;place-items:center;box-shadow:0 14px 32px rgba(10,10,10,0.24),inset 0 1px 0 rgba(255,255,255,0.12);backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);cursor:pointer;}
+        .tr-rd .tr-close{position:fixed;top:calc(env(safe-area-inset-top, 0px) + 14px);right:16px;z-index:4;width:44px;height:44px;border:1px solid var(--glass-border);border-radius:999px;background:var(--canvas-white);color:var(--ink);display:grid;place-items:center;box-shadow:0 1px 2px rgba(10,10,10,0.04),0 10px 24px -12px rgba(10,10,10,0.18);cursor:pointer;}
         .tr-rd .tr-close:active{transform:scale(0.94);}
         .tr-rd .tr-title{font-family:${TITLE_FONT};font-size:22px;font-weight:700;line-height:1.2;letter-spacing:-0.5px;color:var(--ink);margin:6px 0 6px;}
         .tr-rd .tr-sub{font-size:13px;font-weight:500;color:var(--ink-soft);margin:0 0 18px;}

@@ -131,10 +131,11 @@ export function buildProductCards(input: BuildProductCardsInput): ProductCard[] 
     if (!product) continue;
 
     const groupKey = getDisplayGroupKey(usage, origId);
+    const firstPhase = resolveFirstPhase(usage, product);
     const draft: ProductDraft = {
       product,
-      phases: new Set(usage.phases),
-      firstPhase: resolveFirstPhase(usage, product),
+      phases: resolveDisplayPhases(usage, firstPhase),
+      firstPhase,
       stepCategories: new Set(usage.stepCategories),
       alternativeIds: new Set(altsByProductId.get(origId) ?? []),
       inCart: cartProductIds.has(productId),
@@ -280,11 +281,14 @@ function getDisplayGroupKey(usage: ProductUsage, productId: number): string {
 }
 
 function resolveFirstPhase(usage: ProductUsage, product: ProductRow): PlanPhases {
-  if (isBaseOnlyUsage(usage, product)) {
+  if (isSpfOnlyUsage(usage, product)) {
     return usage.firstPhase;
   }
   if (usage.hasActiveStep || hasStrongActiveIngredient(product.activeIngredients)) {
     return 'active';
+  }
+  if (isBaseOnlyUsage(usage, product)) {
+    return usage.firstPhase;
   }
   return usage.firstPhase;
 }
@@ -307,6 +311,17 @@ function isBaseOnlyUsage(usage: ProductUsage, product: ProductRow): boolean {
   return steps.length > 0 && steps.every(isBaseStepCategory);
 }
 
+function isSpfOnlyUsage(usage: ProductUsage, product: ProductRow): boolean {
+  const steps = usage.stepCategories.size > 0
+    ? Array.from(usage.stepCategories)
+    : [product.step, product.category].filter(Boolean).map(String);
+
+  return steps.length > 0 && steps.every((step) => {
+    const normalized = step.toLowerCase();
+    return normalized === 'spf' || normalized.startsWith('spf_');
+  });
+}
+
 function isBaseStepCategory(stepCategory: string): boolean {
   const normalized = stepCategory.toLowerCase();
   if (ACTIVE_STEP_PREFIXES.some((prefix) => normalized.startsWith(prefix))) return false;
@@ -319,9 +334,21 @@ function hasStrongActiveIngredient(activeIngredients: string[]): boolean {
   return STRONG_ACTIVE_PATTERNS.some((pattern) => pattern.test(text));
 }
 
+function resolveDisplayPhases(usage: ProductUsage, firstPhase: PlanPhases): Set<PlanPhases> {
+  // Если firstPhase была сдвинута позднее (например, сильный актив ошибочно
+  // встретился в днях адаптации), чипы должны отражать скорректированную фазу
+  // подключения, а не сырое повторение продукта во всех днях Plan28.
+  if (phaseOrder(firstPhase) > phaseOrder(usage.firstPhase)) {
+    return new Set([firstPhase]);
+  }
+  return new Set(usage.phases);
+}
+
 function phasesToTags(phases: Set<PlanPhases>): string[] {
   if (phases.size === 3) return ['Все фазы'];
-  return Array.from(phases).map((p) => getPhaseLabel(p));
+  return Array.from(phases)
+    .sort((a, b) => phaseOrder(a) - phaseOrder(b))
+    .map((p) => getPhaseLabel(p));
 }
 
 function phaseOrder(phase: PlanPhases): number {
@@ -396,9 +423,10 @@ const STRONG_ACTIVE_PATTERNS = [
   /миндаль/,
   /salicylic/,
   /салицил/,
+  /\blha\b/,
   /ascorb/,
   /аскорб/,
-  /vitamin\s*c/,
+  /vitamin[\s_-]*c/,
   /витамин\s*c/,
   /tranexamic/,
   /транексам/,

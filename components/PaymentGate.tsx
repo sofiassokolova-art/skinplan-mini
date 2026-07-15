@@ -147,15 +147,6 @@ function getStaleCachedEntitlement(productCode: string): boolean | null {
 }
 
 /** «5 средств», «2 средства», «1 средство» — для подписи тизера. */
-function productsCountLabel(count: number): string {
-  const mod10 = count % 10;
-  const mod100 = count % 100;
-  if (mod100 >= 11 && mod100 <= 14) return 'средств';
-  if (mod10 === 1) return 'средство';
-  if (mod10 >= 2 && mod10 <= 4) return 'средства';
-  return 'средств';
-}
-
 function requiredEntitlementCode(productCode: string): string {
   if (productCode === 'retake_topic') return 'retake_topic_access';
   if (productCode === 'retake_full') return 'retake_full_access';
@@ -171,31 +162,6 @@ function isPlanAccessProduct(productCode: string): boolean {
     productCode === 'subscription_month' ||
     productCode === 'plan_renewal_discount'
   );
-}
-
-interface PlanTeaser {
-  morning: string[];
-  evening: string[];
-  productsCount: number;
-  skinTypeLabel: string | null;
-}
-
-/** Тизер структуры готового плана (без названий продуктов) для пейвола plan_access. */
-async function fetchPlanTeaser(initData: string): Promise<PlanTeaser | null> {
-  try {
-    const response = await fetch('/api/plan/teaser', {
-      method: 'GET',
-      headers: { 'X-Telegram-Init-Data': initData },
-    });
-    if (!response.ok) return null;
-    const data = await response.json();
-    const payload = (data && typeof data === 'object' && 'data' in data) ? (data as any).data : data;
-    const teaser = payload?.teaser;
-    if (!teaser || !Array.isArray(teaser.morning) || !Array.isArray(teaser.evening)) return null;
-    return teaser as PlanTeaser;
-  } catch {
-    return null;
-  }
 }
 
 async function fetchEntitlementCodes(initData: string): Promise<string[]> {
@@ -267,24 +233,7 @@ export function PaymentGate({
   const [refreshTick, setRefreshTick] = useState(0);
   const [checkedOnce, setCheckedOnce] = useState<boolean>(cachedAccess !== null);
   const [initDataReady, setInitDataReady] = useState(false);
-  const [planTeaser, setPlanTeaser] = useState<PlanTeaser | null>(null);
   const { setPaywallVisible } = usePaywallVisibility();
-
-  // Тизер плана — только для первой покупки plan_access (продление/ретейки план уже видели).
-  // Грузим, когда пейвол реально виден: человек должен увидеть «предварительный результат»
-  // (структуру своего готового плана) до оплаты.
-  useEffect(() => {
-    if (hasPaid || !checkedOnce || productCode !== 'plan_access') return;
-    const initData = getInitDataForClient();
-    if (!initData) return;
-    let cancelled = false;
-    fetchPlanTeaser(initData).then((teaser) => {
-      if (!cancelled && teaser) setPlanTeaser(teaser);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [hasPaid, checkedOnce, productCode]);
 
   // Сообщаем layout, что пейвол виден — скрыть нижнюю навигацию (на /plan и /home)
   useEffect(() => {
@@ -423,8 +372,9 @@ export function PaymentGate({
     if (initDataReady) {
       devLog('[PaymentGate] initDataReady is true, checking entitlements');
       checkEntitlements();
-      // В dev: сразу показываем контент, проверка в фоне; при таймауте API ничего не меняем
-      if (process.env.NODE_ENV === 'development') {
+      // В dev можно явно включить bypass через env, по умолчанию paywall остаётся видимым.
+      const devBypassEnabled = process.env.NEXT_PUBLIC_PAYWALL_DEV_BYPASS === 'true';
+      if (devBypassEnabled && process.env.NODE_ENV === 'development') {
         if (isMounted) {
           setHasPaid(true);
           setCheckedOnce(true);
@@ -666,7 +616,7 @@ export function PaymentGate({
       : displayPrice * 2;
 
   const isRenewal = productCode === 'subscription_month' || productCode === 'plan_renewal_discount';
-  const priceCaption = isRenewal ? 'Продление на 28 дней' : 'Единоразовый доступ';
+  const priceCaption = isRenewal ? 'Продление на 28 дней' : 'Доступ на 28 дней';
 
   const paywallTitle =
     productCode === 'retake_topic'
@@ -752,7 +702,7 @@ export function PaymentGate({
       inset: 0,
       zIndex: 1000,
       overflowY: 'auto',
-      background: 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(var(--accent-rgb),0.22) 0%, transparent 70%), radial-gradient(ellipse 60% 50% at 80% 80%, rgba(var(--ink-rgb),0.08) 0%, transparent 60%), var(--canvas)',
+      background: 'radial-gradient(ellipse 80% 55% at 50% 0%, rgba(var(--accent-rgb),0.25) 0%, transparent 68%), var(--canvas)',
     }}>
       <div style={{
         maxWidth: '480px',
@@ -808,69 +758,9 @@ export function PaymentGate({
           {paywallSubtitle}
         </p>
 
-        {/* Тизер готового плана: структура шагов без названий средств — «предварительный
-            результат» до оплаты. Когда он есть, длинный список преимуществ сокращаем. */}
-        {planTeaser && (
-          <div style={{ ...glassStyle, padding: '18px', marginBottom: '16px' }}>
-            <div style={{
-              fontFamily: "var(--font-inter), 'Inter', sans-serif",
-              fontWeight: 600,
-              fontSize: 'clamp(13px, 3.5vw, 15px)',
-              color: '#111',
-              marginBottom: '12px',
-            }}>
-              Ваш план уже собран{planTeaser.skinTypeLabel ? ` — для ${planTeaser.skinTypeLabel}` : ''}
-            </div>
-            {([['Утро', planTeaser.morning], ['Вечер', planTeaser.evening]] as const).map(([label, steps]) => (
-              steps.length > 0 && (
-                <div key={label} style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '8px' }}>
-                  <span style={{
-                    fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                    fontSize: 'clamp(11px, 2.8vw, 12px)',
-                    color: '#888',
-                    minWidth: '44px',
-                    flexShrink: 0,
-                  }}>
-                    {label}
-                  </span>
-                  <span style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                    {steps.map((step, i) => (
-                      <span key={step} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                        {i > 0 && <span style={{ color: '#bbb', fontSize: '11px' }}>→</span>}
-                        <span style={{
-                          fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                          fontSize: 'clamp(11px, 2.9vw, 13px)',
-                          fontWeight: 500,
-                          color: '#1a1a1a',
-                          background: 'rgba(var(--accent-rgb),0.35)',
-                          borderRadius: '100px',
-                          padding: '3px 10px',
-                        }}>
-                          {step}
-                        </span>
-                      </span>
-                    ))}
-                  </span>
-                </div>
-              )
-            ))}
-            {planTeaser.productsCount > 0 && (
-              <div style={{
-                fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                fontSize: 'clamp(11px, 2.8vw, 12px)',
-                color: '#666',
-                marginTop: '10px',
-              }}>
-                {planTeaser.productsCount} {productsCountLabel(planTeaser.productsCount)} подобрано под вашу кожу —
-                названия откроются после оплаты
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Преимущества (при видимом тизере оставляем только два — оффер короче) */}
+        {/* Преимущества */}
         <div style={{ ...glassStyle, padding: '20px 18px', marginBottom: '16px' }}>
-          {(planTeaser ? benefits.slice(2) : benefits).map((b, i, arr) => (
+          {benefits.map((b, i, arr) => (
             <div key={i} style={{
               display: 'flex',
               alignItems: 'center',
@@ -956,6 +846,7 @@ export function PaymentGate({
         {/* Чекбоксы согласия + кнопка */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <label style={{
+            position: 'relative',
             display: 'flex',
             alignItems: 'flex-start',
             gap: '10px',
@@ -966,14 +857,36 @@ export function PaymentGate({
               checked={agreedToTerms}
               onChange={(e) => setAgreedToTerms(e.target.checked)}
               style={{
+                position: 'absolute',
+                width: '18px',
+                height: '18px',
+                margin: 0,
+                opacity: 0,
+                cursor: 'pointer',
+              }}
+            />
+            <span
+              aria-hidden="true"
+              style={{
                 width: '18px',
                 height: '18px',
                 marginTop: '1px',
-                cursor: 'pointer',
-                accentColor: 'var(--accent)',
+                borderRadius: '4px',
+                border: agreedToTerms ? '1px solid #0A0A0A' : '1px solid rgba(10,10,10,0.42)',
+                background: agreedToTerms ? '#0A0A0A' : 'transparent',
+                color: 'var(--accent)',
+                display: 'grid',
+                placeItems: 'center',
                 flexShrink: 0,
+                transition: 'background .14s ease, border-color .14s ease',
               }}
-            />
+            >
+              {agreedToTerms && (
+                <svg viewBox="0 0 24 24" style={{ width: 12, height: 12, fill: 'none', stroke: 'currentColor', strokeWidth: 3, strokeLinecap: 'round', strokeLinejoin: 'round' }}>
+                  <path d="m5 12 5 5L20 7" />
+                </svg>
+              )}
+            </span>
             <span style={{
               fontFamily: "var(--font-inter), 'Inter', sans-serif",
               fontSize: 'clamp(11px, 2.8vw, 12px)',
@@ -992,6 +905,7 @@ export function PaymentGate({
           </label>
 
           <label style={{
+            position: 'relative',
             display: 'flex',
             alignItems: 'flex-start',
             gap: '10px',
@@ -1002,14 +916,36 @@ export function PaymentGate({
               checked={agreedToHealth}
               onChange={(e) => setAgreedToHealth(e.target.checked)}
               style={{
+                position: 'absolute',
+                width: '18px',
+                height: '18px',
+                margin: 0,
+                opacity: 0,
+                cursor: 'pointer',
+              }}
+            />
+            <span
+              aria-hidden="true"
+              style={{
                 width: '18px',
                 height: '18px',
                 marginTop: '1px',
-                cursor: 'pointer',
-                accentColor: 'var(--accent)',
+                borderRadius: '4px',
+                border: agreedToHealth ? '1px solid #0A0A0A' : '1px solid rgba(10,10,10,0.42)',
+                background: agreedToHealth ? '#0A0A0A' : 'transparent',
+                color: 'var(--accent)',
+                display: 'grid',
+                placeItems: 'center',
                 flexShrink: 0,
+                transition: 'background .14s ease, border-color .14s ease',
               }}
-            />
+            >
+              {agreedToHealth && (
+                <svg viewBox="0 0 24 24" style={{ width: 12, height: 12, fill: 'none', stroke: 'currentColor', strokeWidth: 3, strokeLinecap: 'round', strokeLinejoin: 'round' }}>
+                  <path d="m5 12 5 5L20 7" />
+                </svg>
+              )}
+            </span>
             <span style={{
               fontFamily: "var(--font-inter), 'Inter', sans-serif",
               fontSize: 'clamp(11px, 2.8vw, 12px)',
@@ -1021,24 +957,25 @@ export function PaymentGate({
             </span>
           </label>
 
-          {/* Кнопка в стиле анкеты */}
+          {/* Кнопка в общем стиле основных CTA */}
           <button
             onClick={handlePayment}
             disabled={!agreedToTerms || !agreedToHealth || isProcessing || !!paymentId}
             style={{
               width: '100%',
-              height: '40px',
-              background: agreedToTerms && agreedToHealth && !isProcessing && !paymentId ? 'var(--accent)' : 'rgba(var(--accent-rgb),0.4)',
-              color: '#000',
+              height: '48px',
+              background: agreedToTerms && agreedToHealth && !isProcessing && !paymentId ? '#0A0A0A' : 'rgba(10,10,10,0.08)',
+              color: agreedToTerms && agreedToHealth && !isProcessing && !paymentId ? '#FFFFFF' : '#9CA3AF',
               fontFamily: "var(--font-inter), 'Inter', sans-serif",
-              fontWeight: 400,
+              fontWeight: 800,
               fontSize: '14px',
-              letterSpacing: '1px',
-              textTransform: 'uppercase',
+              letterSpacing: 0,
+              textTransform: 'none',
               border: 'none',
-              borderRadius: 0,
+              borderRadius: '999px',
               cursor: agreedToTerms && agreedToHealth && !isProcessing && !paymentId ? 'pointer' : 'not-allowed',
-              transition: 'opacity 0.15s',
+              boxShadow: agreedToTerms && agreedToHealth && !isProcessing && !paymentId ? '0 10px 24px rgba(10,10,10,0.18)' : 'none',
+              transition: 'background .14s ease, color .14s ease, transform .14s ease',
             }}
           >
             {paymentId
