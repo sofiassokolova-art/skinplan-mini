@@ -1,13 +1,39 @@
 /** @type {import('next').NextConfig} */
 import withBundleAnalyzer from '@next/bundle-analyzer';
 import { RetryChunkLoadPlugin } from 'webpack-retry-chunk-load-plugin';
+import { readFileSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 
 const bundleAnalyzerConfig = withBundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
 });
 
+// Версия приложения — единый источник правды: package.json + короткий git-хеш.
+// package.json.version инлайнится в клиент как NEXT_PUBLIC_APP_VERSION,
+// коммит берём из Vercel (VERCEL_GIT_COMMIT_SHA), локально — из git rev-parse.
+// В UI («О приложении») собирается как «1.2.0 · a1b2c3d», чтобы поддержка
+// однозначно понимала, какая сборка у пользователя.
+const appVersion = JSON.parse(
+  readFileSync(new URL('./package.json', import.meta.url), 'utf8'),
+).version;
+const appCommit = (() => {
+  const fromCI = process.env.VERCEL_GIT_COMMIT_SHA;
+  if (fromCI) return fromCI.slice(0, 7);
+  try {
+    return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim();
+  } catch {
+    return '';
+  }
+})();
+
 const nextConfig = {
   reactStrictMode: true,
+  env: {
+    NEXT_PUBLIC_APP_VERSION: appVersion,
+    NEXT_PUBLIC_APP_COMMIT: appCommit,
+  },
   productionBrowserSourceMaps: false,
   images: {
     unoptimized: true, // Картинки из telegram CDN отдаём как есть, без Next image optimization

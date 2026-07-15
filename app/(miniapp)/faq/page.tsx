@@ -1,9 +1,20 @@
 // app/(miniapp)/faq/page.tsx
-// Страница часто задаваемых вопросов
+// Часто задаваемые вопросы — редизайн (чистый флэт / editorial).
+// Ответы отражают реальную текущую логику приложения: план по фазам,
+// отметка ухода + streak + индекс кожи на главной, покупка через корзину →
+// «В магазин» (с VPN-памяткой), замена средства, перепрохождение анкеты в ЛК,
+// напоминания в боте, учёт беременности/ограничений.
 
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { X } from 'lucide-react';
+
+const TITLE_FONT =
+  "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif";
+const BODY_FONT =
+  "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
 
 interface FAQItem {
   question: string;
@@ -13,121 +24,123 @@ interface FAQItem {
 const faqItems: FAQItem[] = [
   {
     question: 'Как работает skiniq?',
-    answer: 'skiniq анализирует вашу кожу на основе ответов в анкете и создает персональный 28-дневный план ухода. Мы учитываем тип кожи, проблемы, чувствительность и другие факторы для подбора оптимальных средств.',
+    answer:
+      'skiniq строит персональный план ухода на 28 дней по вашим ответам в анкете. Мы учитываем тип кожи, цели, чувствительность и ограничения и подбираем средства по шагам — очищение, увлажнение, SPF и активы.',
   },
   {
-    question: 'Как часто нужно обновлять план?',
-    answer: 'Рекомендуется перепроходить анкету раз в 3-6 месяцев или при значительных изменениях состояния кожи (сезонные изменения, новые проблемы, смена климата).',
+    question: 'Из чего состоит план?',
+    answer:
+      'План разбит на фазы: адаптация, активная фаза и поддержка. Средства подключаются постепенно, по фазам, чтобы не перегружать кожу. На каждый день есть утренний и вечерний уход.',
   },
   {
-    question: 'Можно ли использовать план во время беременности?',
-    answer: 'Да, наш алгоритм учитывает беременность и кормление грудью. Все рекомендации безопасны и исключают средства с ретинолом и другими нежелательными компонентами.',
+    question: 'Как отмечать уход и следить за прогрессом?',
+    answer:
+      'На главной, в разделе «Уход на сегодня», отмечайте выполненные шаги утром и вечером. За регулярность растёт streak, а индекс кожи повышается по мере прохождения плана.',
   },
   {
     question: 'Где купить рекомендованные средства?',
-    answer: 'Все средства из вашего плана можно купить в аптеках, на маркетплейсах (Ozon, Wildberries) или в специализированных магазинах. В приложении есть прямые ссылки на покупку.',
+    answer:
+      'Добавляйте средства в корзину, а из неё переходите в магазин по кнопке «В магазин» (Золотое Яблоко, Яндекс Маркет и др.). Перед переходом отключите VPN — иначе магазин может не открыться или показать неверные цены.',
   },
   {
     question: 'Что делать, если средство не подошло?',
-    answer: 'Вы можете заменить любое средство из плана на альтернативное. Нажмите кнопку "Не подошло — заменить" рядом с продуктом, и мы предложим подходящие варианты.',
+    answer:
+      'Нажмите «Заменить» на карточке средства — подберём аналог с похожим действием. Понравившиеся средства можно сохранять в избранное.',
   },
   {
-    question: 'Как отслеживать прогресс?',
-    answer: 'В разделе "План" вы видите текущий день и прогресс выполнения. Отмечайте выполненные дни, чтобы видеть свой прогресс. Результаты обычно видны через 4-6 недель регулярного использования.',
+    question: 'Как обновить план, если что-то изменилось?',
+    answer:
+      'Перепройдите анкету в личном кабинете («Перепройти анкету»). План пересоберётся под текущее состояние кожи, новые цели или изменения в образе жизни.',
+  },
+  {
+    question: 'Как настроить напоминания об уходе?',
+    answer:
+      'В личном кабинете включите напоминания и выберите удобное время для утреннего и вечернего ухода — бот пришлёт напоминание в Telegram.',
+  },
+  {
+    question: 'Можно ли пользоваться при беременности и кормлении?',
+    answer:
+      'Да. Если вы укажете это в анкете, алгоритм исключит нежелательные компоненты (например, ретиноиды) и подберёт безопасные средства. При кожных заболеваниях всё же проконсультируйтесь с врачом.',
   },
 ];
 
 export default function FAQPage() {
-  const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
+  const router = useRouter();
+  const [expanded, setExpanded] = useState<Set<number>>(new Set([0]));
 
-  const toggleItem = (index: number) => {
-    const newExpanded = new Set(expandedItems);
-    if (newExpanded.has(index)) {
-      newExpanded.delete(index);
-    } else {
-      newExpanded.add(index);
+  const toggle = (index: number) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  };
+
+  const handleClose = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+      return;
     }
-    setExpandedItems(newExpanded);
+    router.replace('/profile');
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-      padding: '20px',
-      paddingBottom: '120px',
-    }}>
-      <h1 style={{
-        fontSize: '32px',
-        fontWeight: 'bold',
-        color: '#0A5F59',
-        marginBottom: '8px',
-      }}>
-        Часто задаваемые вопросы
-      </h1>
-      <p style={{ fontSize: '16px', color: '#475467', marginBottom: '24px' }}>
-        Ответы на популярные вопросы о skiniq
-      </p>
+    <div
+      className="animate-fade-in fq-rd"
+      style={{
+        minHeight: '100vh',
+        padding: 'calc(env(safe-area-inset-top, 0px) + 72px) 20px calc(env(safe-area-inset-bottom, 0px) + 28px)',
+        fontFamily: BODY_FONT,
+        color: 'var(--ink)',
+      }}
+    >
+      <style>{`
+        html, body { background-color: var(--canvas); }
+        .fq-rd{position:relative;isolation:isolate;}
+        .fq-rd::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:var(--canvas);}
+        .fq-rd > *{position:relative;z-index:1;}
+        .fq-rd .fq-close{position:fixed;top:calc(env(safe-area-inset-top, 0px) + 14px);right:16px;z-index:4;width:44px;height:44px;border:1px solid var(--glass-border);border-radius:999px;background:var(--canvas-white);color:var(--ink);display:grid;place-items:center;box-shadow:0 1px 2px rgba(10,10,10,0.04),0 10px 24px -12px rgba(10,10,10,0.18);cursor:pointer;}
+        .fq-rd .fq-close:active{transform:scale(0.94);}
+        .fq-rd .fq-title{font-family:${TITLE_FONT};font-size:26px;font-weight:700;line-height:1.16;letter-spacing:-0.6px;color:var(--ink);margin:6px 0 6px;}
+        .fq-rd .fq-title::after{content:"";display:block;width:56px;height:5px;margin-top:14px;border-radius:3px;background:var(--accent);}
+        .fq-rd .fq-sub{font-size:13px;font-weight:500;color:var(--ink-soft);margin:16px 0 22px;}
+        .fq-rd .fq-list{display:flex;flex-direction:column;gap:10px;}
+        .fq-rd .fq-item{border:1px solid var(--glass-border);background:var(--glass-bg);border-radius:20px;box-shadow:var(--glass-shadow);overflow:hidden;}
+        .fq-rd .fq-q{width:100%;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px;background:none;border:0;cursor:pointer;text-align:left;font-family:${TITLE_FONT};font-size:15px;font-weight:600;line-height:1.3;letter-spacing:-0.2px;color:var(--ink);}
+        .fq-rd .fq-chevron{flex-shrink:0;width:30px;height:30px;border-radius:50%;background:rgba(10,10,10,0.05);display:grid;place-items:center;transition:transform 0.2s ease,background 0.2s ease;}
+        .fq-rd .fq-q.open .fq-chevron{transform:rotate(180deg);background:rgba(var(--accent-rgb),0.35);}
+        .fq-rd .fq-chevron svg{width:16px;height:16px;fill:none;stroke:var(--ink);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+        .fq-rd .fq-a{margin:0;padding:0 18px 18px;font-size:13.5px;line-height:1.6;color:#475467;}
+      `}</style>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {faqItems.map((item, index) => (
-          <div
-            key={index}
-            style={{
-              backgroundColor: 'white',
-              borderRadius: '20px',
-              padding: '20px',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-              border: '1px solid rgba(10, 95, 89, 0.1)',
-            }}
-          >
-            <button
-              onClick={() => toggleItem(index)}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: 0,
-                textAlign: 'left',
-              }}
-            >
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: 'bold',
-                color: '#0A5F59',
-                margin: 0,
-                flex: 1,
-              }}>
+      <button type="button" className="fq-close" aria-label="Закрыть" onClick={handleClose}>
+        <X size={22} strokeWidth={2.2} aria-hidden />
+      </button>
+
+      <h1 className="fq-title">Частые вопросы</h1>
+      <p className="fq-sub">Как работает план и уход в skiniq</p>
+
+      <div className="fq-list">
+        {faqItems.map((item, index) => {
+          const isOpen = expanded.has(index);
+          return (
+            <div className="fq-item" key={index}>
+              <button
+                type="button"
+                className={`fq-q${isOpen ? ' open' : ''}`}
+                aria-expanded={isOpen}
+                onClick={() => toggle(index)}
+              >
                 {item.question}
-              </h3>
-              <span style={{
-                fontSize: '24px',
-                color: '#0A5F59',
-                marginLeft: '16px',
-                transition: 'transform 0.2s',
-                transform: expandedItems.has(index) ? 'rotate(180deg)' : 'rotate(0deg)',
-              }}>
-                ▼
-              </span>
-            </button>
-            {expandedItems.has(index) && (
-              <p style={{
-                marginTop: '16px',
-                fontSize: '16px',
-                color: '#475467',
-                lineHeight: '1.6',
-                paddingTop: '16px',
-                borderTop: '1px solid #E5E7EB',
-              }}>
-                {item.answer}
-              </p>
-            )}
-          </div>
-        ))}
+                <span className="fq-chevron" aria-hidden>
+                  <svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></svg>
+                </span>
+              </button>
+              {isOpen && <p className="fq-a">{item.answer}</p>}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

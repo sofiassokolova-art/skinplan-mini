@@ -12,6 +12,7 @@ import type { CartResponse } from '@/lib/api-types';
 import { TabLoadingShell } from '@/components/TabLoadingShell';
 import { ProfileAvatarButton } from '@/components/ProfileAvatarButton';
 import { withAffiliate, isGoldapple, affiliateRel, AFFILIATE_ERID, AFFILIATE_DISCLOSURE } from '@/lib/affiliate';
+import { formatPriceFrom } from '@/lib/price-display';
 import toast from 'react-hot-toast';
 
 export const dynamic = 'force-dynamic';
@@ -25,6 +26,7 @@ interface CartItem {
     imageUrl: string | null;
     link: string | null;
     marketLinks: any;
+    priceFrom?: number | null;
   };
   quantity: number;
   createdAt: string;
@@ -158,37 +160,38 @@ function CartPageContent() {
     return !!s && isGoldapple(s.url);
   });
 
-  const bg =
-    'radial-gradient(70% 30% at 0% 0%, rgba(213,254,97,0.55) 0%, transparent 65%),' +
-    'radial-gradient(58% 24% at 100% 18%, rgba(255,224,188,0.5) 0%, transparent 70%),' +
-    'radial-gradient(72% 28% at 0% 55%, rgba(220,210,196,0.55) 0%, transparent 65%),' +
-    'radial-gradient(80% 32% at 100% 92%, rgba(213,254,97,0.4) 0%, transparent 62%),' +
-    '#F4F2EE';
+  const bg = 'var(--canvas)';
 
   if (loading) {
     return <TabLoadingShell title="Корзина" background={bg} />;
   }
 
   return (
-    <div className="cart-rd" style={{ minHeight: '100vh', background: bg, backgroundAttachment: 'fixed', padding: '8px 20px 120px' }}>
+    <div className="cart-rd" style={{ minHeight: '100vh', background: bg, padding: '8px 20px 120px' }}>
       <style>{`
         .cart-rd .crd-topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 0 14px;}
         .cart-rd .crd-logo{font-family:var(--font-inter),-apple-system,BlinkMacSystemFont,sans-serif;font-size:18px;font-weight:500;letter-spacing:0;color:#0A0A0A;text-transform:lowercase;}
         .cart-rd .crd-avatar{position:relative;width:40px;height:40px;border:0;padding:0;border-radius:50%;background:linear-gradient(135deg,#2A2A2A,#0A0A0A);color:#D5FE61;display:grid;place-items:center;cursor:pointer;box-shadow:0 0 0 2px rgba(255,255,255,0.9),0 6px 18px rgba(10,10,10,0.18);font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:14px;font-weight:700;}
-        .cart-rd .crd-avatar::after{content:"";position:absolute;bottom:1px;right:1px;width:10px;height:10px;border-radius:50%;background:#D5FE61;border:2px solid #F4F2EE;}
+        .cart-rd .crd-avatar::after{content:"";position:absolute;bottom:1px;right:1px;width:10px;height:10px;border-radius:50%;background:#D5FE61;border:2px solid var(--canvas);}
         .cart-rd .crd-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:6px 2px 18px;}
         .cart-rd .crd-title{margin:0;font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.6px;color:#0A0A0A;}
         .cart-rd .crd-clear{border:0;background:transparent;color:#6B7280;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:-0.1px;}
         .cart-rd .crd-list{display:flex;flex-direction:column;gap:12px;}
-        .cart-rd .crd-item{position:relative;padding:16px;border:1px solid rgba(255,255,255,0.78);border-radius:28px;background:rgba(255,255,255,0.72);backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%);box-shadow:0 16px 34px rgba(10,10,10,0.06);overflow:hidden;}
+        .cart-rd .crd-item{position:relative;padding:16px;border:1px solid var(--glass-border);border-radius:28px;background:#fff;box-shadow:var(--glass-shadow-lg);overflow:hidden;}
         .cart-rd .crd-del{position:absolute;top:14px;right:14px;z-index:3;width:34px;height:34px;border:0;border-radius:50%;background:rgba(10,10,10,0.06);color:#6B7280;padding:0;display:grid;place-items:center;cursor:pointer;transition:transform .14s ease,background .14s ease;}
         .cart-rd .crd-del svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
         .cart-rd .crd-del:active{transform:scale(0.92);}
+        .cart-rd .crd-fav-icon{position:absolute;top:54px;right:14px;z-index:3;width:34px;height:34px;border:1px solid rgba(10,10,10,0.08);border-radius:50%;background:#F3F4F6;color:#0A0A0A;padding:0;display:grid;place-items:center;cursor:pointer;transition:transform .14s ease,background .14s ease,color .14s ease,border-color .14s ease;}
+        .cart-rd .crd-fav-icon:active:not(:disabled){transform:scale(0.92);}
+        .cart-rd .crd-fav-icon:disabled{opacity:0.58;cursor:not-allowed;}
+        .cart-rd .crd-fav-icon svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
+        .cart-rd .crd-fav-icon.in{background:#0A0A0A;color:#D5FE61;border-color:#0A0A0A;}
+        .cart-rd .crd-fav-icon.in svg{fill:currentColor;}
         .cart-rd .crd-main{display:flex;align-items:center;gap:14px;min-width:0;padding-right:42px;margin-bottom:14px;}
-        .cart-rd .crd-thumb{position:relative;width:82px;height:82px;border-radius:20px;background:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.8);flex:0 0 auto;overflow:hidden;}
+        .cart-rd .crd-thumb{position:relative;width:82px;height:82px;border-radius:20px;background:#fff;border:1px solid var(--glass-border);flex:0 0 auto;overflow:hidden;}
         .cart-rd .crd-thumb-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
         .cart-rd .crd-thumb-icon{background:transparent;border-color:transparent;overflow:visible;}
-        .cart-rd .crd-thumb-icon::before{content:"";position:absolute;inset:7px;border-radius:50%;background:radial-gradient(circle,rgba(213,254,97,0.62) 0%,rgba(213,254,97,0.34) 42%,rgba(213,254,97,0) 72%);filter:blur(13px);z-index:0;}
+        .cart-rd .crd-thumb-icon::before{content:"";position:absolute;inset:7px;border-radius:50%;background:#D5FE61;box-shadow:0 8px 18px rgba(213,254,97,0.28);z-index:0;}
         .cart-rd .crd-thumb-icon-img{position:relative;z-index:1;display:block;width:78%;height:78%;margin:11% auto 0;object-fit:contain;filter:drop-shadow(0 5px 12px rgba(10,10,10,0.24)) drop-shadow(0 0 1px rgba(10,10,10,0.22));}
         .cart-rd .crd-copy{min-width:0;display:flex;flex-direction:column;gap:6px;}
         .cart-rd .crd-brand{font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#6B7280;}
@@ -196,22 +199,20 @@ function CartPageContent() {
         .cart-rd .crd-store-row{display:flex;align-items:center;gap:7px;min-width:0;margin-top:2px;}
         .cart-rd .crd-store-dot{width:7px;height:7px;border-radius:50%;background:#D5FE61;box-shadow:0 0 0 3px rgba(213,254,97,0.24);flex:0 0 auto;}
         .cart-rd .crd-store{font-size:12px;font-weight:700;color:#6B7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        .cart-rd .crd-price{font-size:12.5px;font-weight:800;color:#0A0A0A;margin-top:1px;}
         .cart-rd .crd-qty{font-size:11px;font-weight:700;color:#6B7280;}
-        .cart-rd .crd-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(112px,0.62fr);gap:8px;align-items:center;}
-        .cart-rd .crd-cta{width:100%;height:44px;border:0;border-radius:999px;background:#D5FE61;color:#000;font-family:var(--font-inter),sans-serif;font-weight:800;font-size:14px;letter-spacing:0;cursor:pointer;display:flex;align-items:center;justify-content:center;text-decoration:none;box-shadow:0 10px 22px rgba(213,254,97,0.3);transition:transform .14s ease,box-shadow .14s ease;}
+        .cart-rd .crd-actions{display:grid;grid-template-columns:1fr;gap:8px;align-items:center;}
+        .cart-rd .crd-cta{width:100%;height:44px;border:0;border-radius:999px;background:#D5FE61;color:#000;font-family:var(--font-inter),sans-serif;font-weight:800;font-size:14px;letter-spacing:0;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-shadow:0 10px 22px rgba(213,254,97,0.3);transition:transform .14s ease,box-shadow .14s ease;}
+        .cart-rd .crd-cta svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
         .cart-rd .crd-cta:active{transform:scale(0.985);box-shadow:0 4px 10px rgba(213,254,97,0.22);}
         .cart-rd .crd-link-note{min-height:44px;border-radius:18px;background:rgba(10,10,10,0.04);border:1px solid rgba(10,10,10,0.06);color:#6B7280;font-size:11px;font-weight:650;line-height:1.25;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 12px;}
-        .cart-rd .crd-fav-cta{width:100%;height:44px;border:1px solid rgba(10,10,10,0.1);border-radius:999px;background:rgba(255,255,255,0.78);color:#0A0A0A;font-family:var(--font-inter),sans-serif;font-weight:800;font-size:13px;letter-spacing:0;cursor:pointer;transition:transform .14s ease,background .14s ease,border-color .14s ease;}
-        .cart-rd .crd-fav-cta:active:not(:disabled){transform:scale(0.985);}
-        .cart-rd .crd-fav-cta:disabled{opacity:0.62;cursor:not-allowed;}
-        .cart-rd .crd-fav-cta.in{background:#0A0A0A;color:#D5FE61;border-color:#0A0A0A;}
-        .cart-rd .crd-empty{text-align:center;padding:60px 20px;background:rgba(255,255,255,0.62);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.7);border-radius:24px;margin-top:24px;}
+        .cart-rd .crd-empty{text-align:center;padding:60px 20px;background:#fff;border:1px solid var(--glass-border);border-radius:24px;margin-top:24px;}
         .cart-rd .crd-empty-cta{display:inline-block;background:#0A0A0A;color:#fff;padding:14px 32px;border-radius:999px;text-decoration:none;font-family:var(--font-inter),sans-serif;font-size:15px;font-weight:600;letter-spacing:-0.1px;box-shadow:0 10px 24px rgba(10,10,10,0.18);transition:transform .14s ease;}
         .cart-rd .crd-empty-cta:active{transform:scale(0.98);}
         .cart-rd .crd-ad-mark{grid-column:1/-1;margin:-1px 2px 0;font-size:10px;line-height:1.35;color:#6B7280;letter-spacing:0;text-align:left;user-select:text;}
         .cart-rd .crd-ad-mark strong{font-weight:800;color:#0A0A0A;}
-        .cart-rd .crd-erid{margin:14px 0 4px;padding:9px 12px;border-radius:18px;background:rgba(255,255,255,0.62);border:1px solid rgba(10,10,10,0.06);font-size:10px;line-height:1.45;color:#6B7280;letter-spacing:0;text-align:center;user-select:text;}
-        .cart-rd .crd-vpn{display:flex;align-items:flex-start;gap:11px;margin:0 2px 16px;padding:13px 15px;border-radius:20px;background:rgba(255,255,255,0.72);border:1px solid rgba(255,255,255,0.82);backdrop-filter:blur(18px) saturate(150%);-webkit-backdrop-filter:blur(18px) saturate(150%);box-shadow:0 12px 26px rgba(10,10,10,0.05);}
+        .cart-rd .crd-erid{margin:14px 0 4px;padding:9px 12px;border-radius:18px;background:#fff;border:1px solid rgba(10,10,10,0.06);font-size:10px;line-height:1.45;color:#6B7280;letter-spacing:0;text-align:center;user-select:text;}
+        .cart-rd .crd-vpn{display:flex;align-items:flex-start;gap:11px;margin:0 2px 16px;padding:13px 15px;border-radius:20px;background:#fff;border:1px solid var(--glass-border);box-shadow:var(--glass-shadow);}
         .cart-rd .crd-vpn-ic{flex:0 0 auto;width:30px;height:30px;border-radius:50%;background:#0A0A0A;display:grid;place-items:center;}
         .cart-rd .crd-vpn-ic svg{width:16px;height:16px;fill:none;stroke:#D5FE61;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
         .cart-rd .crd-vpn-tx{font-size:12px;line-height:1.42;color:#374151;letter-spacing:-0.1px;}
@@ -256,12 +257,25 @@ function CartPageContent() {
               const affiliate = store ? withAffiliate(store.url) : null;
               const inWishlist = wishlistProductIds.has(item.product.id);
               const wishlistBusy = wishlistBusyId === item.product.id;
+              const priceLabel = formatPriceFrom(item.product.priceFrom)?.replace(' ₽', ' руб');
               return (
                 <div className="crd-item" key={item.id}>
                   <button className="crd-del" aria-label="Удалить" onClick={() => handleRemove(item.product.id)}>
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                       <path d="M18 6 6 18" />
                       <path d="m6 6 12 12" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    className={`crd-fav-icon ${inWishlist ? 'in' : ''}`}
+                    disabled={wishlistBusy}
+                    onClick={() => handleToggleWishlist(item.product.id)}
+                    aria-label={inWishlist ? 'Убрать из избранного' : 'В избранное'}
+                    title={inWishlist ? 'В избранном' : 'В избранное'}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 21s-7-4.5-9.5-8.5A5 5 0 0 1 12 6a5 5 0 0 1 9.5 6.5C19 16.5 12 21 12 21z" />
                     </svg>
                   </button>
                   <div className="crd-main">
@@ -277,6 +291,7 @@ function CartPageContent() {
                         </div>
                       )}
                       {!store && item.quantity > 1 && <span className="crd-qty">× {item.quantity}</span>}
+                      {priceLabel && <div className="crd-price">{priceLabel}</div>}
                     </div>
                   </div>
                   <div className="crd-actions">
@@ -288,18 +303,13 @@ function CartPageContent() {
                         rel={affiliateRel(affiliate.sponsored)}
                       >
                         В магазин
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M5 12h14M13 6l6 6-6 6" />
+                        </svg>
                       </a>
                     ) : (
                       <div className="crd-link-note">Скоро появится ссылка на магазин</div>
                     )}
-                    <button
-                      type="button"
-                      className={`crd-fav-cta ${inWishlist ? 'in' : ''}`}
-                      disabled={wishlistBusy}
-                      onClick={() => handleToggleWishlist(item.product.id)}
-                    >
-                      {wishlistBusy ? 'Ждём...' : inWishlist ? 'В избранном' : 'В избранное'}
-                    </button>
                     {affiliate?.sponsored && (
                       <div className="crd-ad-mark">Реклама · <strong>erid: {AFFILIATE_ERID}</strong></div>
                     )}
