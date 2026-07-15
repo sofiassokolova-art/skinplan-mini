@@ -1,11 +1,12 @@
 // components/ProfileAvatarButton.tsx
 // Кнопка-аватар в топбаре (ведёт в ЛК). Показывает фото пользователя из Telegram,
-// а если фото нет (или не загрузилось) — первую букву введённого имени.
+// а если фото нет (или не загрузилось) — первую букву реального имени.
+// Если данных нет, оставляем круг пустым: не показываем фиктивные fallback-буквы.
 // Стиль круга/статус-точки задаётся внешним className (hr-avatar / crd-avatar / fv-avatar).
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTelegram } from '@/lib/telegram-client';
 import { useDisplayName } from '@/hooks/useDisplayName';
@@ -19,12 +20,19 @@ export function ProfileAvatarButton({ className, ariaLabel = 'Профиль' }:
   const router = useRouter();
   const { user, tg } = useTelegram();
   const { data: name } = useDisplayName();
+  const [mounted, setMounted] = useState(false);
   const [imgError, setImgError] = useState(false);
 
   const telegramUser = tg?.initDataUnsafe?.user || user;
-  const photoUrl = telegramUser?.photo_url;
-  const initial = (name?.trim()?.[0] || telegramUser?.first_name?.[0] || 'S').toUpperCase();
-  const showPhoto = Boolean(photoUrl) && !imgError;
+  const photoUrl = mounted ? telegramUser?.photo_url : undefined;
+  const initial = mounted
+    ? (name?.trim()?.[0] || telegramUser?.first_name?.[0] || '').toUpperCase()
+    : '';
+  const showPhoto = mounted && Boolean(photoUrl) && !imgError;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <button className={className} aria-label={ariaLabel} onClick={() => router.push('/profile')}>

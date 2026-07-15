@@ -13,6 +13,8 @@ describe('buildProductCards', () => {
         product(201, 'Azelaic Acid 10%', 'treatment_acne_azelaic', 'treatment', ['azelaic_acid']),
         product(301, 'SPF with Salicylic', 'spf_50_oily', 'spf', ['salicylic_acid']),
         product(401, 'Glycolic Acid 7% Toning Solution', 'toner_hydrating', 'toner', ['glycolic_acid']),
+        product(501, 'Soothing Mask', 'mask_soothing', 'mask'),
+        product(601, 'LHA Barrier Cream', 'moisturizer_balancing', 'moisturizer', ['LHA']),
       ],
       cartProductIds: new Set(),
       wishlistProductIds: new Set(),
@@ -24,6 +26,10 @@ describe('buildProductCards', () => {
     expect(cards.find((card) => card.id === 201)?.firstPhase).toBe('active');
     expect(cards.find((card) => card.id === 401)?.firstPhase).toBe('active');
     expect(cards.find((card) => card.id === 301)?.firstPhase).toBe('adaptation');
+    expect(cards.find((card) => card.id === 201)?.phaseTags).toEqual(['Активная фаза']);
+    expect(cards.find((card) => card.id === 301)?.phaseTags).toEqual(['Все фазы']);
+    expect(cards.find((card) => card.id === 501)?.phaseTags).toEqual(['Адаптация']);
+    expect(cards.find((card) => card.id === 601)?.phaseTags).toEqual(['Активная фаза']);
   });
 });
 
@@ -42,9 +48,11 @@ function makePlanWithFrontLoadedActives(): Plan28 {
           step('spf_50_oily', 301),
         ],
         evening: [
+          ...(dayIndex <= 7 ? [step('mask_soothing', 501)] : []),
           step('cleanser_balancing', dayIndex <= 7 ? 101 : 102),
           step('treatment_acne_azelaic', 201, true),
           step('toner_hydrating', 401),
+          step('moisturizer_balancing', 601),
         ],
         weekly: [],
       };

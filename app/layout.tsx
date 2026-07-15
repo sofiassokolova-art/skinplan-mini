@@ -338,10 +338,9 @@ export default async function RootLayout({
         style={{
           margin: 0,
           minHeight: '100vh',
-          // Беж-канва приложения вместо белого: при overscroll/листании в
-          // Telegram WebView (где background-attachment:fixed не красит весь
-          // документ) из-под контента больше не светит белая подложка.
-          backgroundColor: '#F4F2EE',
+          // Чистая канва приложения: при overscroll/листании в Telegram WebView
+          // из-под контента не светит старая подложка.
+          backgroundColor: '#FCFCFB',
         }}
       >
         {/* Контейнер для кнопки «Назад» — первый ребёнок body, блок 80×80 в углу */}
@@ -413,7 +412,7 @@ export default async function RootLayout({
               dangerouslySetInnerHTML={{
                 __html: `
 (function(){
-  var fallbackCss = "display:block;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;padding:14px 22px;background:#0A0A0A;color:#F4F2EE;border-radius:14px;font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.4;text-align:center;max-width:calc(100vw - 32px);box-shadow:0 8px 28px rgba(10,10,10,0.28), 0 0 18px rgba(213,254,97,0.18);";
+  var fallbackCss = "display:block;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;padding:14px 22px;background:#0A0A0A;color:#FCFCFB;border-radius:14px;font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.4;text-align:center;max-width:calc(100vw - 32px);box-shadow:0 8px 28px rgba(10,10,10,0.28), 0 0 18px rgba(213,254,97,0.18);";
   var fallbackHtml = 'Не удалось загрузить приложение. <a href="javascript:location.reload()" style="color:#D5FE61;text-decoration:underline;font-weight:600;white-space:nowrap">Обновить</a>';
   function buildReloadKey(){
     try {
