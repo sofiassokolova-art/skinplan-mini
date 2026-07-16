@@ -191,7 +191,7 @@ function CartPageContent() {
         .cart-rd .crd-thumb{position:relative;width:82px;height:82px;border-radius:20px;background:#fff;border:1px solid var(--glass-border);flex:0 0 auto;overflow:hidden;}
         .cart-rd .crd-thumb-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
         .cart-rd .crd-thumb-icon{background:transparent;border-color:transparent;overflow:visible;}
-        .cart-rd .crd-thumb-icon::before{content:"";position:absolute;inset:7px;border-radius:50%;background:#D5FE61;box-shadow:0 8px 18px rgba(213,254,97,0.28);z-index:0;}
+        .cart-rd .crd-thumb-icon::before{content:"";position:absolute;inset:3px 2px 0;border-radius:46% 54% 50% 50%;background:radial-gradient(circle at 50% 52%,rgba(213,254,97,0.88) 0%,rgba(213,254,97,0.58) 42%,rgba(213,254,97,0.18) 62%,transparent 78%);filter:blur(7px);transform:scale(1.04);z-index:0;pointer-events:none;}
         .cart-rd .crd-thumb-icon-img{position:relative;z-index:1;display:block;width:78%;height:78%;margin:11% auto 0;object-fit:contain;filter:drop-shadow(0 5px 12px rgba(10,10,10,0.24)) drop-shadow(0 0 1px rgba(10,10,10,0.22));}
         .cart-rd .crd-copy{min-width:0;display:flex;flex-direction:column;gap:6px;}
         .cart-rd .crd-brand{font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#6B7280;}
@@ -211,7 +211,7 @@ function CartPageContent() {
         .cart-rd .crd-empty-cta:active{transform:scale(0.98);}
         .cart-rd .crd-ad-mark{grid-column:1/-1;margin:-1px 2px 0;font-size:10px;line-height:1.35;color:#6B7280;letter-spacing:0;text-align:left;user-select:text;}
         .cart-rd .crd-ad-mark strong{font-weight:800;color:#0A0A0A;}
-        .cart-rd .crd-erid{margin:14px 0 4px;padding:9px 12px;border-radius:18px;background:#fff;border:1px solid rgba(10,10,10,0.06);font-size:10px;line-height:1.45;color:#6B7280;letter-spacing:0;text-align:center;user-select:text;}
+        .cart-rd .crd-erid{margin:14px 4px 4px;padding:0;background:transparent;border:0;font-size:10px;line-height:1.45;color:#6B7280;letter-spacing:0;text-align:center;user-select:text;}
         .cart-rd .crd-vpn{display:flex;align-items:flex-start;gap:11px;margin:0 2px 16px;padding:13px 15px;border-radius:20px;background:#fff;border:1px solid var(--glass-border);box-shadow:var(--glass-shadow);}
         .cart-rd .crd-vpn-ic{flex:0 0 auto;width:30px;height:30px;border-radius:50%;background:#0A0A0A;display:grid;place-items:center;}
         .cart-rd .crd-vpn-ic svg{width:16px;height:16px;fill:none;stroke:#D5FE61;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}

@@ -438,10 +438,14 @@ function PlanPhasesProductsSection(props: {
   const currentPhase = phases.find((phase) => phase.state === 'current')?.phase
     ?? phases[0]?.phase
     ?? 'adaptation';
-  const [openPhase, setOpenPhase] = useState<PlanPhases | null>(currentPhase);
+  // Мультиоткрытие: раскрытые фазы держим в Set, чтобы разворот одной фазы не
+  // сворачивал остальные (раньше был одиночный аккордеон — открытие «Фазы 2»
+  // само захлопывало «Фазу 1»).
+  const [openPhases, setOpenPhases] = useState<Set<PlanPhases>>(() => new Set([currentPhase]));
 
+  // Текущую фазу держим открытой по умолчанию, не трогая вручную раскрытые.
   useEffect(() => {
-    setOpenPhase(currentPhase);
+    setOpenPhases((prev) => (prev.has(currentPhase) ? prev : new Set(prev).add(currentPhase)));
   }, [currentPhase]);
 
   const productsByPhase = useMemo(() => createProductsByPhaseMap(products), [products]);
@@ -487,7 +491,7 @@ function PlanPhasesProductsSection(props: {
       <div className="pv2-phase-accordion-list">
         {phases.map((phase) => {
           const phaseProducts = productsByPhase.get(phase.phase) ?? [];
-          const isOpen = openPhase === phase.phase;
+          const isOpen = openPhases.has(phase.phase);
           const isCurrent = phase.state === 'current';
 
           return (
@@ -499,13 +503,18 @@ function PlanPhasesProductsSection(props: {
                 type="button"
                 className="pv2-phase-accordion-trigger"
                 onClick={(e) => {
-                  // Аккордеон одиночного открытия: при раскрытии другой фазы текущая
-                  // сворачивается, высота страницы резко уменьшается и скролл «улетает»
-                  // вниз (браузер клэмпит позицию к новому концу документа). Фиксируем
-                  // позицию кликнутой шапки в вьюпорте до/после ре-рендера.
+                  // При сворачивании фазы высота страницы уменьшается и скролл
+                  // «улетает» вниз (браузер клэмпит позицию к новому концу
+                  // документа). Фиксируем позицию кликнутой шапки в вьюпорте
+                  // до/после ре-рендера.
                   const el = e.currentTarget;
                   const before = el.getBoundingClientRect().top;
-                  setOpenPhase((prev) => (prev === phase.phase ? null : phase.phase));
+                  setOpenPhases((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(phase.phase)) next.delete(phase.phase);
+                    else next.add(phase.phase);
+                    return next;
+                  });
                   requestAnimationFrame(() => {
                     const after = el.getBoundingClientRect().top;
                     if (after !== before) window.scrollBy(0, after - before);

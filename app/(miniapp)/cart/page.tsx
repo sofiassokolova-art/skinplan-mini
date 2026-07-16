@@ -29,6 +29,49 @@ interface WishlistItemData {
   createdAt: string;
 }
 
+// Иконка-заглушка по бренду/названию — тот же набор, что в корзине (cart-new),
+// чтобы у карточек избранного не было пустого места слева, когда у продукта нет
+// реального фото из БД.
+function resolveFavIcon(product: WishlistItemData['product']): string {
+  const n = `${product.brand?.name || ''} ${product.name || ''}`.toLowerCase();
+  if (/spf|sunscreen|санскрин|солнцезащит/.test(n)) return '/icons/clean/spf_true.png';
+  if (/cleanser|cleansing|пенк|гел[ьяе]\s*для|умыван|foam|wash|очищ|очист/.test(n)) return '/icons/clean/cleanser_true.png';
+  if (/balm|бальзам|для\s+губ|lip\b/.test(n)) return '/icons/clean/lipbalm_true.png';
+  if (/oil|масл/.test(n)) return '/icons/oil_green.png';
+  if (/mask|маск/.test(n)) return '/icons/mask_green.png';
+  if (/retinol|ретинол|aha|bha|acid|кислот|пилинг|peel|bpo|benzoyl|бензоил|азелаин/.test(n)) return '/icons/clean/treatment_true.png';
+  if (/serum|сыворотк|essence|эссенц/.test(n)) return '/icons/clean/serum_true.png';
+  if (/toner|тоник|тонер|mist/.test(n)) return '/icons/clean/toner_true.png';
+  return '/icons/clean/cream_true.png';
+}
+
+function FavProductThumb({ product }: { product: WishlistItemData['product'] }) {
+  const [failed, setFailed] = useState(false);
+  const showIcon = !product.imageUrl || failed;
+
+  return (
+    <div className={`fv-thumb ${showIcon ? 'fv-thumb-icon' : ''}`}>
+      {showIcon ? (
+        <img
+          className="fv-thumb-icon-img"
+          src={resolveFavIcon(product)}
+          alt=""
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+        />
+      ) : (
+        <img
+          className="fv-thumb-img"
+          src={product.imageUrl!}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          onError={() => setFailed(true)}
+        />
+      )}
+    </div>
+  );
+}
+
 export default function FavoritesPage() {
   const { data: wishlistData, isLoading: loading } = useWishlist();
   const removeMutation = useRemoveFromWishlist();
@@ -115,7 +158,13 @@ export default function FavoritesPage() {
         .fav-rd .fv-del{position:absolute;top:10px;right:10px;z-index:3;width:28px;height:28px;border:0;border-radius:50%;background:rgba(10,10,10,0.06);color:#0A0A0A;display:grid;place-items:center;cursor:pointer;}
         .fav-rd .fv-del:active{transform:scale(0.9);}
         .fav-rd .fv-del svg{fill:none;stroke:#0A0A0A;stroke-width:1.6;}
-        .fav-rd .fv-body{min-width:0;display:flex;flex-direction:column;gap:8px;padding-right:44px;}
+        .fav-rd .fv-main{display:flex;gap:12px;min-width:0;padding-right:34px;margin-bottom:10px;}
+        .fav-rd .fv-thumb{position:relative;width:64px;height:64px;border-radius:16px;background:#fff;border:1px solid var(--glass-border);flex:0 0 auto;overflow:hidden;}
+        .fav-rd .fv-thumb-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+        .fav-rd .fv-thumb-icon{background:transparent;border-color:transparent;overflow:visible;}
+        .fav-rd .fv-thumb-icon::before{content:"";position:absolute;inset:2px;border-radius:46% 54% 50% 50%;background:radial-gradient(circle at 50% 52%,rgba(213,254,97,0.88) 0%,rgba(213,254,97,0.58) 42%,rgba(213,254,97,0.18) 62%,transparent 78%);filter:blur(6px);transform:scale(1.04);z-index:0;pointer-events:none;}
+        .fav-rd .fv-thumb-icon-img{position:relative;z-index:1;display:block;width:78%;height:78%;margin:11% auto 0;object-fit:contain;filter:drop-shadow(0 4px 10px rgba(10,10,10,0.22)) drop-shadow(0 0 1px rgba(10,10,10,0.2));}
+        .fav-rd .fv-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;}
         .fav-rd .fv-brand{font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#6B7280;}
         .fav-rd .fv-name{font-size:14px;font-weight:700;line-height:1.22;letter-spacing:-0.15px;color:#0A0A0A;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
         .fav-rd .fv-price{font-size:12.5px;font-weight:800;color:#0A0A0A;}
@@ -164,11 +213,15 @@ export default function FavoritesPage() {
                     <path d="M3 3l18 18"/>
                   </svg>
                 </button>
-                <div className="fv-body">
-                  <div className="fv-brand">{item.product.brand.name}</div>
-                  <div className="fv-name">{item.product.name}</div>
-                  {priceLabel && <div className="fv-price">{priceLabel}</div>}
-                  <div className="fv-actions">
+                <div className="fv-main">
+                  <FavProductThumb product={item.product} />
+                  <div className="fv-body">
+                    <div className="fv-brand">{item.product.brand.name}</div>
+                    <div className="fv-name">{item.product.name}</div>
+                    {priceLabel && <div className="fv-price">{priceLabel}</div>}
+                  </div>
+                </div>
+                <div className="fv-actions">
                     <button
                       className={`fv-cta${inCart ? ' in' : ''}`}
                       onClick={() => handleAddToCart(item.product.id)}
@@ -194,7 +247,6 @@ export default function FavoritesPage() {
                       <button className="fv-feedback-option" disabled={feedbackBusyId === item.product.id} onClick={() => handleFeedback(item.product.id, 'bought_bad')}>Не подошло</button>
                     </div>
                   )}
-                </div>
               </div>
             );
           })}
