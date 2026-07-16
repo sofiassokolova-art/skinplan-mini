@@ -317,24 +317,14 @@ export async function POST(request: NextRequest) {
 
                 if (hour < 9 || hour >= 18 || isWeekend) {
                   // Нерабочее время
-                  autoReplyText = `Привет! Сейчас за пределами рабочего времени
+                  autoReplyText = `Привет! Поддержка на связи с 9:00 до 18:00 по МСК в будни. Мы сохранили ваше сообщение и ответим в ближайшее рабочее время.
 
-Поддержка работает с 9:00 до 18:00 по МСК в будние дни.
-
-Ваше сообщение сохранено — ответим сразу, как только выйдем онлайн (ближайшее время — завтра с 9 утра).
-
-Хорошего вечера/выходных!`;
+${isWeekend ? 'Хороших выходных!' : 'Хорошего вечера!'}`;
                 } else {
                   // Рабочее время
-                  autoReplyText = `Привет! Это поддержка skiniq
+                  autoReplyText = `Привет! Это поддержка skiniq.
 
-Сейчас мы онлайн и скоро ответим
-
-Работаем с 9:00 до 18:00 по МСК в будние дни.
-
-По вечерам и выходным отвечаем чуть медленнее, но обязательно читаем все сообщения и вернёмся к вам в рабочее время.
-
-Спасибо за терпение!`;
+Мы онлайн и ответим в течение рабочего дня (9:00–18:00 МСК, будни).`;
                 }
 
                 // Отправляем автоответ
@@ -491,17 +481,16 @@ export async function POST(request: NextRequest) {
       console.log(`🤖 Bot Token configured: ${!!TELEGRAM_BOT_TOKEN}`);
       console.log(`🔑 Bot Token length: ${TELEGRAM_BOT_TOKEN?.length || 0}`);
 
-      const welcomeText = `Добро пожаловать в <b>skiniq</b> — ваш помощник в уходе за кожей!
+      const welcomeText = `Добро пожаловать в <b>skiniq</b> — вашего помощника в уходе за кожей!
+
 Что умеет <b>skiniq</b>:
-• Дает личные советы по уходу
-• Помогает отследить прогресс
-• Дает советы от врачей-дерматологов
+• Составляет персональный план ухода под вашу кожу
+• Помогает отслеживать прогресс
+• Опирается на рекомендации дерматологов
 
-🎁 Начните уже сегодня!
+Анкета займёт 5 минут — и вы получите план ухода, собранный именно под вашу кожу.
 
-Заполнение анкеты займет всего 5 минут. В результате вы получите специальный план ухода, который подходит именно вашей коже.
-
-💚 Доступ к плану — <b>всего за 199 ₽</b>.
+💚 Доступ на 28 дней <b>всего за 199 ₽</b>.
 
 Нажмите на кнопку ниже, чтобы открыть приложение:`;
 
@@ -536,7 +525,7 @@ export async function POST(request: NextRequest) {
         
         // Fallback: то же приветствие, но с кнопкой открытия Mini App (без ссылки в тексте)
         try {
-          const fallbackText = `Добро пожаловать в <b>skiniq</b> — ваш помощник в уходе за кожей!\n\nЧто умеет <b>skiniq</b>:\n• Дает личные советы по уходу\n• Помогает отследить прогресс\n• Дает советы от врачей-дерматологов\n\n🎁 Начните уже сегодня!\n\nЗаполнение анкеты займет всего 5 минут. В результате вы получите специальный план ухода, который подходит именно вашей коже.\n\n💚 Доступ к плану — <b>всего за 199 ₽</b>.\n\nНажмите на кнопку ниже, чтобы открыть приложение:`;
+          const fallbackText = `Добро пожаловать в <b>skiniq</b> — вашего помощника в уходе за кожей!\n\nЧто умеет <b>skiniq</b>:\n• Составляет персональный план ухода под вашу кожу\n• Помогает отслеживать прогресс\n• Опирается на рекомендации дерматологов\n\nАнкета займёт 5 минут — и вы получите план ухода, собранный именно под вашу кожу.\n\n💚 Доступ на 28 дней <b>всего за 199 ₽</b>.\n\nНажмите на кнопку ниже, чтобы открыть приложение:`;
           const fallbackMarkup = {
             inline_keyboard: [[{ text: 'skiniq', web_app: { url: MINI_APP_URL } }]],
           };
@@ -548,337 +537,6 @@ export async function POST(request: NextRequest) {
       }
       
       return NextResponse.json({ ok: true, processed: 'start_command' });
-    }
-
-    // Обработка команды /clear
-    else if (update.message?.text === '/clear' || update.message?.text === '/reset') {
-      const chatId = update.message.chat.id;
-      const telegramId = update.message.from.id;
-      const userId = await getUserIdFromTelegramId(telegramId, {
-        firstName: update.message.from.first_name,
-        lastName: update.message.from.last_name,
-        username: update.message.from.username,
-        languageCode: update.message.from.language_code,
-      });
-
-      const clearText = `🧹 <b>Очистка данных</b>\n\nНажмите на кнопку ниже, чтобы очистить все данные анкеты из браузера.\n\nЭто удалит:\n• Прогресс анкеты\n• Сохраненные ответы\n• Кэш профиля\n\nПосле очистки вы сможете пройти анкету заново.`;
-
-      const replyMarkup = {
-        inline_keyboard: [
-          [
-            {
-              text: '🧹 Очистить данные',
-              web_app: { url: MINI_APP_URL + '/clear-storage' },
-            },
-          ],
-        ],
-      };
-
-      try {
-        await sendMessage(chatId, clearText, replyMarkup, userId || undefined);
-        console.log(`✅ Clear command processed for chat ${chatId}`);
-      } catch (error: any) {
-        console.error(`❌ Failed to send clear message:`, error);
-      }
-      
-      return NextResponse.json({ ok: true, processed: 'clear_command' });
-    }
-
-    // Обработка команды /logs - отправка логов пользователя
-    else if (update.message?.text === '/logs' || update.message?.text?.startsWith('/logs')) {
-      const chatId = update.message.chat.id;
-      const telegramId = update.message.from.id;
-      const userId = await getUserIdFromTelegramId(telegramId, {
-        firstName: update.message.from.first_name,
-        lastName: update.message.from.last_name,
-        username: update.message.from.username,
-        languageCode: update.message.from.language_code,
-      });
-
-      if (!userId) {
-        await sendMessage(chatId, '❌ Не удалось идентифицировать пользователя', undefined);
-        return NextResponse.json({ ok: true, processed: 'logs_command_error' });
-      }
-
-      try {
-        // Получаем последние логи пользователя
-        const logs = await prisma.clientLog.findMany({
-          where: { userId },
-          orderBy: { createdAt: 'desc' },
-          take: 20,
-        });
-
-        // Получаем информацию о профилях
-        const profiles = await prisma.skinProfile.findMany({
-          where: { userId },
-          orderBy: { createdAt: 'desc' },
-          take: 5,
-        });
-
-        // Получаем информацию о планах
-        const plans = await prisma.plan28.findMany({
-          where: { userId },
-          orderBy: { createdAt: 'desc' },
-          take: 3,
-        });
-
-        // Получаем информацию о ответах
-        const answersCount = await prisma.userAnswer.count({
-          where: { userId },
-        });
-
-        // Получаем последние ответы
-        const lastAnswers = await prisma.userAnswer.findMany({
-          where: { userId },
-          orderBy: { createdAt: 'desc' },
-          take: 5,
-          select: {
-            questionId: true,
-            answerValue: true,
-            answerValues: true,
-            createdAt: true,
-          },
-        });
-
-        // Получаем информацию о платежах (с обработкой ошибок, если таблица не существует)
-        let payments: any[] = [];
-        try {
-          payments = await prisma.payment.findMany({
-            where: { userId },
-            orderBy: { createdAt: 'desc' },
-            take: 3,
-            select: {
-              id: true,
-              status: true,
-              amount: true,
-              currency: true,
-              createdAt: true,
-            },
-          });
-        } catch (paymentError: any) {
-          console.warn('⚠️ Failed to fetch payments (table may not exist):', paymentError?.message);
-          // Продолжаем без платежей
-        }
-
-        // Получаем информацию о entitlements (с обработкой ошибок, если таблица не существует)
-        let entitlements: any[] = [];
-        try {
-          entitlements = await prisma.entitlement.findMany({
-            where: { userId },
-            orderBy: { updatedAt: 'desc' },
-            select: {
-              code: true,
-              active: true,
-              validUntil: true,
-              updatedAt: true,
-            },
-          });
-        } catch (entitlementError: any) {
-          console.warn('⚠️ Failed to fetch entitlements (table may not exist):', entitlementError?.message);
-          // Продолжаем без entitlements
-        }
-
-        // Получаем информацию о пользователе
-        const user = await prisma.user.findUnique({
-          where: { id: userId },
-          select: {
-            telegramId: true,
-            createdAt: true,
-            tags: true,
-          },
-        });
-
-        // Формируем сообщение
-        let message = `📊 <b>Ваши логи и данные</b>\n\n`;
-        
-        // Информация о пользоватеle
-        if (user) {
-          const userDate = new Date(user.createdAt).toLocaleString('ru-RU');
-          message += `👤 <b>Пользователь:</b>\n`;
-          message += `  Telegram ID: <code>${user.telegramId}</code>\n`;
-          message += `  Создан: ${userDate}\n`;
-          if (user.tags && user.tags.length > 0) {
-            message += `  Теги: ${user.tags.join(', ')}\n`;
-          }
-          message += `\n`;
-        }
-
-        message += `👤 <b>Профили:</b> ${profiles.length}\n`;
-        if (profiles.length > 0) {
-          profiles.forEach((p, idx) => {
-            const date = new Date(p.createdAt).toLocaleString('ru-RU');
-            message += `  ${idx + 1}. ID: <code>${p.id}</code>\n`;
-            message += `     Version: ${p.version}, Created: ${date}\n`;
-          });
-        } else {
-          message += `  ⚠️ Профили не найдены (это может быть проблемой)\n`;
-        }
-
-        message += `\n📋 <b>Ответы:</b> ${answersCount}\n`;
-        if (lastAnswers.length > 0) {
-          const lastAnswerDate = new Date(lastAnswers[0].createdAt).toLocaleString('ru-RU');
-          message += `  Последний ответ: ${lastAnswerDate}\n`;
-          message += `  Последние вопросы:\n`;
-          lastAnswers.slice(0, 3).forEach((a, idx) => {
-            const date = new Date(a.createdAt).toLocaleString('ru-RU');
-            // Используем answerValue (для single/scale) или answerValues (для multi)
-            const value = a.answerValue 
-              ? (a.answerValue.length > 30 ? a.answerValue.substring(0, 30) + '...' : a.answerValue)
-              : (a.answerValues 
-                  ? (Array.isArray(a.answerValues) ? a.answerValues.join(', ') : JSON.stringify(a.answerValues))
-                  : 'null');
-            const displayValue = typeof value === 'string' && value.length > 30 
-              ? value.substring(0, 30) + '...' 
-              : String(value);
-            message += `    ${idx + 1}. Q:${a.questionId} = ${displayValue}\n`;
-          });
-        }
-        
-        message += `\n📅 <b>Планы:</b> ${plans.length}\n`;
-        if (plans.length > 0) {
-          plans.forEach((p, idx) => {
-            const date = new Date(p.createdAt).toLocaleString('ru-RU');
-            message += `  ${idx + 1}. ProfileVersion: ${p.profileVersion}, Created: ${date}\n`;
-          });
-        }
-
-        message += `\n💳 <b>Платежи:</b> ${payments.length}\n`;
-        if (payments.length > 0) {
-          payments.forEach((p, idx) => {
-            const date = new Date(p.createdAt).toLocaleString('ru-RU');
-            message += `  ${idx + 1}. ${p.status}: ${p.amount} ${p.currency} (${date})\n`;
-          });
-        }
-
-        message += `\n🔐 <b>Доступ (Entitlements):</b> ${entitlements.length}\n`;
-        if (entitlements.length > 0) {
-          entitlements.forEach((e, idx) => {
-            const date = new Date(e.updatedAt).toLocaleString('ru-RU');
-            const validUntil = e.validUntil ? new Date(e.validUntil).toLocaleString('ru-RU') : 'без ограничений';
-            message += `  ${idx + 1}. ${e.code}: ${e.active ? '✅' : '❌'} (до ${validUntil})\n`;
-          });
-        }
-
-        // Подсчитываем ошибки в логах
-        const errorLogs = logs.filter(l => l.level === 'error');
-        const warnLogs = logs.filter(l => l.level === 'warn');
-
-        message += `\n📝 <b>Последние логи (${logs.length}):</b>\n`;
-        if (errorLogs.length > 0) {
-          message += `  ⚠️ Ошибок: ${errorLogs.length}\n`;
-        }
-        if (warnLogs.length > 0) {
-          message += `  ⚠️ Предупреждений: ${warnLogs.length}\n`;
-        }
-        if (logs.length === 0) {
-          message += `  Логов не найдено\n`;
-        } else {
-          logs.slice(0, 10).forEach((log, idx) => {
-            const date = new Date(log.createdAt).toLocaleString('ru-RU');
-            const level = log.level.toUpperCase();
-            const msg = log.message.length > 50 ? log.message.substring(0, 50) + '...' : log.message;
-            const icon = log.level === 'error' ? '❌' : log.level === 'warn' ? '⚠️' : 'ℹ️';
-            message += `  ${idx + 1}. ${icon} [${date}] ${level}: ${msg}\n`;
-          });
-          if (logs.length > 10) {
-            message += `  ... и ещё ${logs.length - 10} логов\n`;
-          }
-        }
-
-        // Отправляем сообщение
-        await sendMessage(chatId, message, undefined, userId);
-        console.log(`✅ Logs sent to chat ${chatId} for user ${userId}`);
-      } catch (error: any) {
-        console.error(`❌ Failed to get/send logs:`, error);
-        await sendMessage(chatId, `❌ Ошибка при получении логов: ${error.message}`, undefined, userId);
-      }
-      
-      return NextResponse.json({ ok: true, processed: 'logs_command' });
-    }
-
-    // Обработка команды /help
-    else if (update.message?.text === '/help') {
-      const chatId = update.message.chat.id;
-      const telegramId = update.message.from.id;
-      const userId = await getUserIdFromTelegramId(telegramId, {
-        firstName: update.message.from.first_name,
-        lastName: update.message.from.last_name,
-        username: update.message.from.username,
-        languageCode: update.message.from.language_code,
-      });
-      const helpText = `📖 <b>Помощь по skiniq</b>
-
-<b>Команды:</b>
-/start - Начать работу с ботом
-/help - Показать эту справку
-/clear - Очистить данные анкеты
-/payment - Установить статус оплаты (для тестирования)
-/logs - Показать ваши логи и данные
-
-<b>Что дальше?</b>
-Нажмите на кнопку "Открыть skiniq" в сообщении /start, чтобы открыть мини-приложение и начать пользоваться всеми возможностями skiniq!`;
-
-      try {
-        await sendMessage(chatId, helpText, undefined, userId || undefined);
-        console.log(`✅ Help message sent to chat ${chatId}`);
-      } catch (error: any) {
-        console.error(`❌ Failed to send help message:`, error);
-      }
-      
-      return NextResponse.json({ ok: true, processed: 'help_command' });
-    }
-
-    // Обработка команды /payment - устанавливает статус оплаты для тестирования
-    else if (update.message?.text === '/payment' || update.message?.text?.startsWith('/payment')) {
-      const chatId = update.message.chat.id;
-      const telegramId = update.message.from.id;
-      const userId = await getUserIdFromTelegramId(telegramId, {
-        firstName: update.message.from.first_name,
-        lastName: update.message.from.last_name,
-        username: update.message.from.username,
-        languageCode: update.message.from.language_code,
-      });
-
-      if (!userId) {
-        await sendMessage(chatId, '❌ Не удалось идентифицировать пользователя', undefined);
-        return NextResponse.json({ ok: true, processed: 'payment_command_error' });
-      }
-
-      // Устанавливаем флаг оплаты в БД через тег пользователя
-      try {
-        const user = await prisma.user.findUnique({
-          where: { id: userId },
-          select: { tags: true },
-        });
-
-        const tags = user?.tags || [];
-        const hasPaymentTag = tags.includes('payment_completed');
-
-        if (!hasPaymentTag) {
-          await prisma.user.update({
-            where: { id: userId },
-            data: {
-              tags: { push: 'payment_completed' },
-            },
-            // ВАЖНО: не возвращаем все поля User (может упасть при рассинхроне схемы БД)
-            select: { id: true },
-          });
-        }
-
-        const paymentText = `✅ <b>Статус оплаты установлен!</b>
-
-Теперь откройте Mini App и обновите страницу - план должен отобразиться без блюра.
-
-<b>Примечание:</b> Это команда для тестирования. В продакшене оплата обрабатывается через платежную систему.`;
-
-        await sendMessage(chatId, paymentText, undefined, userId);
-        console.log(`✅ Payment status set for user ${userId} (telegramId: ${telegramId})`);
-      } catch (error: any) {
-        console.error(`❌ Failed to set payment status:`, error);
-        await sendMessage(chatId, '❌ Ошибка при установке статуса оплаты', undefined, userId);
-      }
-      
-      return NextResponse.json({ ok: true, processed: 'payment_command' });
     }
 
     // Если это сообщение, но не команда - логируем для отладки
@@ -912,8 +570,8 @@ export async function GET(request: NextRequest) {
 
   console.log('🔍 GET webhook request:', { action, url: request.url });
 
-  // Для check/set-webhook: допуск по админ-сессии ИЛИ по секрету WEBHOOK_SET_SECRET (curl без браузера)
-  if (action === 'check' || action === 'set-webhook') {
+  // Для check/set-webhook/set-menu-button: допуск по админ-сессии ИЛИ по секрету WEBHOOK_SET_SECRET (curl без браузера)
+  if (action === 'check' || action === 'set-webhook' || action === 'set-menu-button') {
     const secret = searchParams.get('secret') ?? request.headers.get('x-webhook-set-secret') ?? '';
     const allowedBySecret = !!(WEBHOOK_SET_SECRET && secret && timingSafeEqual(WEBHOOK_SET_SECRET, secret));
     if (!allowedBySecret) {
@@ -991,5 +649,34 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ message: 'Telegram webhook endpoint. Use ?action=check or ?action=set-webhook' });
+  // Установка системной кнопки-меню бота: «Мой план» → /plan
+  if (action === 'set-menu-button') {
+    try {
+      const response = await fetch(
+        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setChatMenuButton`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            menu_button: {
+              type: 'web_app',
+              text: 'Мой план',
+              web_app: { url: `${MINI_APP_URL}/plan` },
+            },
+          }),
+        }
+      );
+      const data = await response.json();
+      console.log('📊 setChatMenuButton response:', { ok: data.ok, description: data.description });
+      return NextResponse.json(data);
+    } catch (error: any) {
+      console.error('❌ Error setting menu button:', error);
+      return NextResponse.json(
+        { error: 'Failed to set menu button', details: error.message },
+        { status: 500 }
+      );
+    }
+  }
+
+  return NextResponse.json({ message: 'Telegram webhook endpoint. Use ?action=check, ?action=set-webhook or ?action=set-menu-button' });
 }

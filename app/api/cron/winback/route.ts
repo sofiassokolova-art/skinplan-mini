@@ -39,9 +39,8 @@ async function sendWinbackMessage(telegramId: string, planUrl: string): Promise<
       body: JSON.stringify({
         chat_id: telegramId,
         text:
-          '🌿 Ваш план ухода завершился, но прогресс кожи лучше не прерывать.\n\n' +
-          'Специально для вас — продление со скидкой: <b>99₽ вместо 499₽</b> за ещё 28 дней ' +
-          'персонального ухода. Предложение ограничено.',
+          '🌿 Ваш план ухода завершился, но прогресс кожи лучше не прерывать. ' +
+          'Продлеваем со скидкой: <b>99 ₽ вместо 499 ₽</b> за ещё 28 дней персонального ухода.',
         parse_mode: 'HTML',
         reply_markup: {
           inline_keyboard: [[{ text: 'Продлить за 99 ₽', web_app: { url: planUrl } }]],
