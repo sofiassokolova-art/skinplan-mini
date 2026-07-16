@@ -902,8 +902,10 @@ export default function PlanPage() {
             await api.generatePlan(profileId);
             clientLogger.log('✅ Plan generation kickoff requested', { profileId: profileId || null });
           } catch (err: any) {
-            // Не критично: polling/обычная загрузка ещё могут подобрать план
-            clientLogger.warn('⚠️ Plan generation kickoff failed (non-critical):', err);
+            // Поллинг/обычная загрузка ещё могут подобрать план, НО молчать нельзя:
+            // в проде на сервер уходит только error-уровень, а именно этот сбой
+            // приводил к «оплатил, а плана нет» (кейс Галимат/Динары).
+            clientLogger.error('❌ Plan generation kickoff failed:', err);
           }
         })();
       }
