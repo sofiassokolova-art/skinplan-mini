@@ -15,8 +15,11 @@
 #     Header: Authorization: Bearer <CRON_SECRET>
 #   GitHub Actions cron НЕточен: тики могут опаздывать на 5–15 мин и иногда пропускаться.
 #
-# Секрет CRON_SECRET хранится в Settings → Secrets and variables → Actions
-# и ДОЛЖЕН совпадать с секретом prod-воркера (wrangler secret put CRON_SECRET --env production).
+# Секрет CRON_SECRET хранится в двух местах и ДОЛЖЕН совпадать:
+# - GitHub → Settings → Secrets and variables → Actions
+# - Vercel → Project → Settings → Environment Variables → Production
+# После ротации CRON_SECRET в Vercel нужен production redeploy, иначе рантайм
+# продолжит использовать env из предыдущего deployment.
 name: Cron — broadcasts & log cleanup (prod)
 
 permissions: {}
