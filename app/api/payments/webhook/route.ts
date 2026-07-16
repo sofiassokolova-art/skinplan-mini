@@ -6,7 +6,77 @@ import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 
+// Self-healing генерация плана может занять до ~30 с (Vercel default 10-15 c мало).
+export const maxDuration = 60;
+
 const YOOKASSA_API = 'https://api.yookassa.ru/v3/payments';
+
+/**
+ * Страховка «оплатил → план обязан существовать».
+ *
+ * Кейс Галимат/Динары (июль 2026): клиентский кикофф генерации на
+ * /plan?state=generating молча падал (warn не попадает в прод-логи), поллинг
+ * не дожидался плана, но пейволл всё равно пускал к оплате → succeeded-платёж
+ * и активный paid_access у юзера БЕЗ plan28. Вебхук — последняя серверная
+ * точка, где это можно гарантированно починить: тут есть PII-ключ и ответы
+ * анкеты, генерируем недостающий план прямо здесь.
+ *
+ * Ошибка генерации НЕ должна валить вебхук: платёж обработан, доступ выдан,
+ * ЮKassa обязана получить 200 (иначе будет ретраить и плодить дубли side-эффектов).
+ */
+async function ensurePlanExists(userId: string): Promise<void> {
+  try {
+    const profile = await prisma.skinProfile.findFirst({
+      where: { userId },
+      orderBy: { version: 'desc' },
+      select: { id: true, version: true },
+    });
+    if (!profile) {
+      // Оплата без анкеты (теоретически возможна через прямую ссылку) — чинить нечего.
+      logger.warn('ensurePlanExists: user paid but has no skin profile', { userId });
+      return;
+    }
+
+    const existing = await prisma.plan28.findUnique({
+      where: { userId_profileVersion: { userId, profileVersion: profile.version } },
+      select: { id: true },
+    });
+    if (existing) return; // Штатный случай: план уже есть.
+
+    logger.error('ensurePlanExists: PAID USER WITHOUT PLAN — self-healing generation', {
+      userId,
+      profileVersion: profile.version,
+    });
+
+    const { generate28DayPlan } = await import('@/lib/plan-generator');
+    const generated = await generate28DayPlan(userId);
+    const plan = generated?.plan28;
+    if (!plan || !Array.isArray(plan.days) || plan.days.length === 0) {
+      logger.error('ensurePlanExists: generation returned empty plan', { userId });
+      return;
+    }
+
+    await prisma.plan28.upsert({
+      where: { userId_profileVersion: { userId, profileVersion: profile.version } },
+      update: { planData: plan as unknown as object, updatedAt: new Date() },
+      create: {
+        userId,
+        skinProfileId: profile.id,
+        profileVersion: profile.version,
+        planData: plan as unknown as object,
+      },
+    });
+    logger.info('ensurePlanExists: plan generated and saved after payment', {
+      userId,
+      profileVersion: profile.version,
+      days: plan.days.length,
+    });
+  } catch (e) {
+    logger.error('ensurePlanExists: self-healing failed (payment still processed)', e as Error, {
+      userId,
+    });
+  }
+}
 
 /**
  * Независимая ре-верификация платежа напрямую в ЮKassa API.
@@ -398,6 +468,13 @@ export async function POST(request: NextRequest) {
           error: e,
         });
       });
+    }
+
+    // Страховка: у оплатившего юзера обязан существовать plan28. Если клиентская
+    // генерация упала (кейс Галимат/Динары) — догенерируем здесь, до уведомления
+    // «Откройте план». Ошибка внутри не валит вебхук (см. ensurePlanExists).
+    if (newStatus === 'succeeded') {
+      await ensurePlanExists(payment.userId);
     }
 
     // Уведомление в Telegram: оплата прошла — открой приложение и посмотри план
