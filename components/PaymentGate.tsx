@@ -51,6 +51,21 @@ function shouldMockTelegramInitData(): boolean {
   return false;
 }
 
+// Открывает страницу оплаты ВНЕ Telegram-webview — в системном браузере.
+// Внутри webview у Т-Банка/ЮKassa не работают автологин, автозаполнение и
+// deeplink в приложение банка (T-Pay), из-за чего юзеру приходится вспоминать
+// пароль от банка. openLink зовём только в реальном Telegram-клиенте (у него
+// есть platform; у dev-шима из layout.tsx его нет, а window.open после await
+// режется попап-блокером) — иначе, как раньше, уходим в текущей вкладке.
+function openPaymentPage(url: string): void {
+  const wa = typeof window !== 'undefined' ? window.Telegram?.WebApp : undefined;
+  if (wa?.openLink && wa.platform && wa.platform !== 'unknown') {
+    wa.openLink(url);
+  } else {
+    window.location.assign(url);
+  }
+}
+
 function getInitDataForClient(): string {
   if (typeof window === 'undefined') {
     return '';
@@ -218,6 +233,8 @@ export function PaymentGate({
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentId, setPaymentId] = useState<string | null>(null);
   const [providerPaymentId, setProviderPaymentId] = useState<string | null>(null);
+  // URL страницы оплаты, открытой во внешнем браузере — чтобы юзер мог открыть её повторно
+  const [externalPaymentUrl, setExternalPaymentUrl] = useState<string | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // hasPaid = "уверены, что оплата есть" (проверяется через Entitlement).
@@ -568,8 +585,11 @@ export function PaymentGate({
             }
           }, 800);
         } else {
-          toast('Переходим к оплате...', { duration: 1500 });
-          window.location.assign(paymentUrl);
+          // Оплата уходит во внешний браузер, мини-апп остаётся открытым:
+          // polling по paymentId (эффект ниже) сам поймает вебхук и откроет доступ.
+          toast('Открываем страницу оплаты…', { duration: 1500 });
+          setExternalPaymentUrl(paymentUrl);
+          openPaymentPage(paymentUrl);
         }
       } else {
         // Если нет paymentUrl, возможно это Telegram Payments или другой провайдер
@@ -993,8 +1013,29 @@ export function PaymentGate({
                 color: '#555',
                 marginBottom: '6px',
               }}>
-                Ожидаем подтверждения от платёжной системы…
+                {externalPaymentUrl
+                  ? 'Оплата открылась в браузере. После оплаты вернитесь сюда — доступ откроется автоматически.'
+                  : 'Ожидаем подтверждения от платёжной системы…'}
               </p>
+              {externalPaymentUrl && (
+                <button
+                  type="button"
+                  onClick={() => openPaymentPage(externalPaymentUrl)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#000',
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                    fontWeight: 600,
+                    marginBottom: '8px',
+                  }}
+                >
+                  Открыть страницу оплаты ещё раз
+                </button>
+              )}
               <p style={{
                 fontFamily: "var(--font-inter), 'Inter', sans-serif",
                 fontSize: '11px',

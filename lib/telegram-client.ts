@@ -13,6 +13,8 @@ export interface TelegramWebApp {
   showPopup: (params: { title: string; message: string; buttons?: Array<{ type: string }> }) => void;
   openLink: (url: string) => void;
   openTelegramLink: (url: string) => void;
+  /** Платформа клиента Telegram ('ios', 'android', 'tdesktop'…). У dev-шима из layout.tsx отсутствует. */
+  platform?: string;
   initData: string;
   initDataUnsafe: {
     user?: {
