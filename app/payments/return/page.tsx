@@ -80,8 +80,7 @@ export default async function PaymentsReturnPage({
                 lineHeight: 1.5,
               }}
             >
-              Возвращаем вас к плану ухода… Если этого не произошло — вернитесь в
-              приложение в Telegram.
+              Вернитесь в приложение в Telegram — доступ откроется автоматически.
             </p>
             <a
               href={BOT_LINK}
