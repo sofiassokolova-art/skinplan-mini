@@ -218,7 +218,8 @@ export function mapStepToStepCategory(
   if (stepStr.startsWith('lip_care') || stepStr.includes('lip')) {
     categories.push('lip_care');
   }
-  if (stepStr.startsWith('balm_barrier_repair') || stepStr.includes('balm')) {
+  // ВАЖНО: не считаем лип-бальзамы (lip balm) барьерным бальзамом для лица.
+  if (stepStr.startsWith('balm_barrier_repair') || (!isLipContext && stepStr.includes('balm'))) {
     categories.push('balm_barrier_repair');
   }
 
