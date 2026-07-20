@@ -60,6 +60,7 @@ export async function findFallbackProduct(
     'mask': ['mask'],
     'lip_care': ['lip_care'], // Бальзам для губ
     'eye_cream_dark_circles': ['eye_cream', 'eye_serum'], // Крем для глаз
+    'balm': ['balm_barrier_repair'], // Восстанавливающий бальзам для лица
   };
 
   // Гейт высокой чувствительности: fallback раньше НЕ проверял avoidIf, поэтому
@@ -273,6 +274,7 @@ export async function findFallbackProductsBatch(
       'treatment': ['treatment'],
       'spf': ['spf'],
       'mask': ['mask'],
+      'balm': ['balm_barrier_repair'],
     };
 
     // Создаем условия для всех шагов
