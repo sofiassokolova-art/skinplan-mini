@@ -71,6 +71,17 @@ export function productViolatesContraindications(
   return false;
 }
 
+/**
+ * true, если продукт содержит сильные кислоты/эксфолианты (семейства no_strong_acids).
+ * Используется slot-aware fallback'ом, чтобы не ставить кислотные продукты
+ * в успокаивающие/увлажняющие слоты (toner_soothing и т.п.).
+ */
+export function productContainsStrongAcids(
+  product: { activeIngredients?: string[] | null }
+): boolean {
+  return productViolatesContraindications(product, ['no_strong_acids']);
+}
+
 /** Отсеивает продукты, нарушающие противопоказания. */
 export function filterProductsByContraindications<T extends { activeIngredients?: string[] | null }>(
   products: T[],
