@@ -38,6 +38,7 @@ import { getApplicationDaysForWeek } from '@/lib/protocol-plan-integration';
 import { productViolatesContraindications } from '@/lib/contraindication-product-filter';
 import { filterStepsForRxTopicals, isOnStrongRxTopicals } from '@/lib/rx-topicals';
 import { applyPhaseRoutineVariation } from '@/lib/plan-routine-variation';
+import { validatePlanInvariants, summarizePlanInvariantViolations } from '@/lib/plan-invariants';
 
 function getSafeFallbackLookupStep(stepCategory: StepCategory): string {
   const baseStep = getBaseStepFromStepCategory(stepCategory);
@@ -3992,6 +3993,36 @@ export async function generate28DayPlan(
     if (validationResult.incompatibleDays.length > 0) {
       plan28 = markIncompatibleDaysAsRecovery(plan28, validationResult.incompatibleDays);
     }
+  }
+
+  // Маяк «слот ↔ продукт» (прод-аудит 20.07.2026): проверяем ФИНАЛЬНЫЙ план после всех
+  // мутаций (fixDuplicateProductsInDay, recovery-marking) — то, что реально уйдёт в БД.
+  // Нарушения не блокируют выдачу: warn с saveToDb, чтобы новые баги подбора были
+  // видны в client_logs сразу. Периодический аудит по всем планам —
+  // scripts/audit-plan-invariants.ts (та же логика в SQL).
+  try {
+    const invariantProductsMap = new Map(
+      selectedProducts.map(p => [
+        String(p.id),
+        { id: p.id, name: p.name, step: p.step, activeIngredients: p.activeIngredients ?? null },
+      ])
+    );
+    const slotProductViolations = validatePlanInvariants(plan28, invariantProductsMap);
+    if (slotProductViolations.length > 0) {
+      logger.warn('plan_invariant_violation_detected', {
+        userId,
+        profileId: profile.id,
+        totalViolations: slotProductViolations.length,
+        issues: slotProductViolations.reduce<Record<string, number>>((acc, v) => {
+          acc[v.issue] = (acc[v.issue] ?? 0) + 1;
+          return acc;
+        }, {}),
+        patterns: summarizePlanInvariantViolations(slotProductViolations).slice(0, 20),
+      }, { userId, saveToDb: true });
+    }
+  } catch (invariantError) {
+    // Детекция не должна уронить генерацию ни при каких обстоятельствах
+    logger.error('plan_invariant_check_failed', invariantError, { userId });
   }
 
   // Мониторинг: финальный лог успешной генерации (для подсчёта default_balanced и аналитики)
