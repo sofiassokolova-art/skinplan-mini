@@ -239,6 +239,13 @@ export function isProductAllowedInPlanPhase(
     return true;
   }
 
+  // Барьерный balm-слот: восстанавливающий бальзам уместен в любой фазе, но активы
+  // (vit C, ретиноиды, кислоты) в этот слот не ставим никогда — даже в active-фазе,
+  // где общее правило «hasPhaseActive → true» их бы пропустило.
+  if (stepCategory === 'balm_barrier_repair') {
+    return !hasPhaseActive;
+  }
+
   const isPhaseRestrictedActiveStep = PHASE_RESTRICTED_ACTIVE_STEPS.includes(stepCategory);
 
   if (phase === 'adaptation') {
@@ -3040,6 +3047,26 @@ export async function generate28DayPlan(
         continue; // Пропускаем шаг без продуктов
       }
       
+      // Один и тот же продукт не должен встречаться дважды в одной утренней рутине
+      // (симметрично вечернему гарду ниже).
+      const usedMorningProductIds = new Set(
+        morningSteps.map((s) => s.productId).filter((id): id is string => Boolean(id))
+      );
+      const nonDuplicateMorningProducts = stepProducts.filter(
+        (p) => !usedMorningProductIds.has(String(p.id))
+      );
+      if (nonDuplicateMorningProducts.length === 0) {
+        logger.warn('Skipping step: all candidates already used in this morning routine', {
+          stepCategory,
+          dayIndex,
+          phase,
+          candidateIds: stepProducts.map((p) => p.id),
+          userId,
+        });
+        continue;
+      }
+      stepProducts = nonDuplicateMorningProducts;
+
       // ИСПРАВЛЕНО: Разнообразие подбора — разные пользователи получают разные продукты
       // (ограничиваем повторяемость Lip Balm, Vitamin C и т.д.)
       const selectedProduct = pickProductForProfileDiversity(
@@ -3383,6 +3410,28 @@ export async function generate28DayPlan(
         }
       }
       
+      // Один и тот же продукт не должен встречаться дважды в одной вечерней рутине
+      // (кейс: Hyaluron Serum одновременно в serum_hydrating и в balm-слоте).
+      // Дерм-фильтр выше это ловит, но его аварийный откат «using first available»
+      // мог вернуть дубль обратно — поэтому жёсткий гард по id именно здесь.
+      const usedEveningProductIds = new Set(
+        eveningSteps.map((s) => s.productId).filter((id): id is string => Boolean(id))
+      );
+      const nonDuplicateEveningProducts = filteredStepProducts.filter(
+        (p) => !usedEveningProductIds.has(String(p.id))
+      );
+      if (nonDuplicateEveningProducts.length === 0) {
+        logger.warn('Skipping step: all candidates already used in this evening routine', {
+          stepCategory,
+          dayIndex,
+          phase,
+          candidateIds: filteredStepProducts.map((p) => p.id),
+          userId,
+        });
+        continue;
+      }
+      filteredStepProducts = nonDuplicateEveningProducts;
+
       // ИСПРАВЛЕНО: Разнообразие подбора — разные пользователи получают разные продукты
       const selectedProductEvening = pickProductForProfileDiversity(
         filteredStepProducts,
