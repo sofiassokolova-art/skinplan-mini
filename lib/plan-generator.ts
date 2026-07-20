@@ -15,9 +15,10 @@ import type { GoalKey } from '@/lib/concern-taxonomy';
 import { deriveFocusKeys, goalsFromFocusKeys } from '@/lib/focus-keys';
 import { PLAN_WEEKS_TOTAL, PLAN_DAYS_PER_WEEK } from '@/lib/constants';
 import { getBaseStepFromStepCategory, isCleanserStep, isSPFStep } from '@/lib/plan-helpers';
-import { 
-  ensureRequiredProducts, 
-  findFallbackProduct, 
+import {
+  ensureRequiredProducts,
+  findFallbackProduct,
+  findFallbackProductForSlot,
   type ProductWithBrand
 } from '@/lib/product-fallback';
 import { mapStepToStepCategory } from '@/lib/step-matching';
@@ -39,15 +40,9 @@ import { productViolatesContraindications } from '@/lib/contraindication-product
 import { filterStepsForRxTopicals, isOnStrongRxTopicals } from '@/lib/rx-topicals';
 import { applyPhaseRoutineVariation } from '@/lib/plan-routine-variation';
 
-function getSafeFallbackLookupStep(stepCategory: StepCategory): string {
-  const baseStep = getBaseStepFromStepCategory(stepCategory);
-  // Для активов подтипы не взаимозаменяемы: treatment_exfoliant_mild не должен
-  // подбирать treatment_antiage/retinol, а serum_hydrating — serum_vitc.
-  if (baseStep === 'treatment' || baseStep === 'serum' || baseStep === 'spot_treatment') {
-    return stepCategory;
-  }
-  return baseStep;
-}
+// getSafeFallbackLookupStep удалён: его семантика (для serum/treatment/spot_treatment
+// подтипы не взаимозаменяемы) переехала в findFallbackProductForSlot (product-fallback.ts),
+// который дополнительно фильтрует кандидатов по совместимости с подтипом слота.
 
 /**
  * P0.1: Проверяет, можно ли применять активный шаг в конкретный день согласно
@@ -2033,21 +2028,29 @@ export async function generate28DayPlan(
   if (moisturizerSteps.length > 0) {
     const existingMoisturizer = moisturizerSteps.some(step => getProductsForStep(step).length > 0);
     if (!existingMoisturizer) {
-      logger.warn('No moisturizer products found, searching for fallback', { userId, moisturizerSteps });
-      const fallbackMoisturizer = await findFallbackProduct('moisturizer', profileClassification, { userId });
-      if (fallbackMoisturizer) {
-        for (const step of moisturizerSteps) {
-          registerProductForStep(step, fallbackMoisturizer);
+      logger.warn('No moisturizer products found, searching for slot-aware fallback', { userId, moisturizerSteps });
+      // ИСПРАВЛЕНО: per-slot подбор, чтобы кислотный/эксфолиирующий продукт
+      // не регистрировался в moisturizer_soothing.
+      let anyMoisturizerFound = false;
+      for (const step of moisturizerSteps) {
+        const fallbackMoisturizer = await findFallbackProductForSlot(step, profileClassification, { userId });
+        if (!fallbackMoisturizer) {
+          logger.warn('No compatible fallback moisturizer found for slot', { step, userId });
+          continue;
         }
+        anyMoisturizerFound = true;
+        registerProductForStep(step, fallbackMoisturizer);
         if (!selectedProducts.some((p: any) => p.id === fallbackMoisturizer.id)) {
           selectedProducts.push(fallbackMoisturizer as any);
         }
-        logger.info('Fallback moisturizer added', { 
-          productId: fallbackMoisturizer.id, 
+        logger.info('Fallback moisturizer added', {
+          step,
+          productId: fallbackMoisturizer.id,
           productName: fallbackMoisturizer.name,
-          userId 
+          userId
         }, { saveToDb: true, userId });
-      } else {
+      }
+      if (!anyMoisturizerFound) {
         logger.error('CRITICAL: Could not find fallback moisturizer!', { userId });
       }
     }
@@ -2078,19 +2081,25 @@ export async function generate28DayPlan(
   if (tonerSteps.length > 0) {
     const existingToner = tonerSteps.some(step => getProductsForStep(step).length > 0);
     if (!existingToner) {
-      logger.warn('No toner products found, searching for fallback', { userId, tonerSteps });
-      const fallbackToner = await findFallbackProduct('toner', profileClassification, { userId });
-      if (fallbackToner) {
-        for (const step of tonerSteps) {
-          registerProductForStep(step, fallbackToner);
+      logger.warn('No toner products found, searching for slot-aware fallback', { userId, tonerSteps });
+      // ИСПРАВЛЕНО (кейс Olga): один generic-fallback регистрировался во ВСЕ toner-слоты,
+      // из-за чего кислотный тонер попадал в toner_soothing. Подбираем per-slot:
+      // сначала точный подтип, затем базовый 'toner' среди совместимых со слотом продуктов.
+      for (const step of tonerSteps) {
+        const fallbackToner = await findFallbackProductForSlot(step, profileClassification, { userId });
+        if (!fallbackToner) {
+          logger.warn('No compatible fallback toner found for slot', { step, userId });
+          continue;
         }
+        registerProductForStep(step, fallbackToner);
         if (!selectedProducts.some((p: any) => p.id === fallbackToner.id)) {
           selectedProducts.push(fallbackToner as any);
         }
-        logger.info('Fallback toner added', { 
-          productId: fallbackToner.id, 
+        logger.info('Fallback toner added', {
+          step,
+          productId: fallbackToner.id,
           productName: fallbackToner.name,
-          userId 
+          userId
         }, { saveToDb: true, userId });
       }
     }
@@ -2214,15 +2223,13 @@ export async function generate28DayPlan(
       }
 
       for (const step of missingSerumSteps) {
-        const fallbackLookupStep = getSafeFallbackLookupStep(step);
-        const fallbackSerum = await findFallbackProduct(fallbackLookupStep, profileClassification, { userId });
+        const fallbackSerum = await findFallbackProductForSlot(step, profileClassification, { userId });
         if (fallbackSerum) {
           // ИСПРАВЛЕНО: это не ошибка, если мы успешно нашли fallback.
           // Логируем как info, чтобы не засорять WARN-логи в проде.
           logger.info('No serum products found for required step, using step-specific fallback serum', {
             userId,
             step,
-            fallbackLookupStep,
             productId: fallbackSerum.id,
             productName: fallbackSerum.name,
           }, { saveToDb: true, userId });
@@ -2235,7 +2242,6 @@ export async function generate28DayPlan(
           logger.warn('No serum products found and step-specific fallback serum could not be selected', {
             userId,
             step,
-            fallbackLookupStep,
           });
         }
       }
@@ -2254,8 +2260,7 @@ export async function generate28DayPlan(
         missingTreatmentSteps,
       });
       for (const step of missingTreatmentSteps) {
-        const fallbackLookupStep = getSafeFallbackLookupStep(step);
-        const fallbackTreatment = await findFallbackProduct(fallbackLookupStep, profileClassification, { userId });
+        const fallbackTreatment = await findFallbackProductForSlot(step, profileClassification, { userId });
         if (fallbackTreatment) {
           registerProductForStep(step, fallbackTreatment);
           if (!selectedProducts.some((p: any) => p.id === fallbackTreatment.id)) {
@@ -2263,7 +2268,6 @@ export async function generate28DayPlan(
           }
           logger.info('Fallback treatment added for required step', {
             step,
-            fallbackLookupStep,
             productId: fallbackTreatment.id,
             productName: fallbackTreatment.name,
             userId,
@@ -2271,7 +2275,6 @@ export async function generate28DayPlan(
         } else {
           logger.warn('No treatment fallback found for required step', {
             step,
-            fallbackLookupStep,
             userId,
           });
         }
@@ -2287,21 +2290,29 @@ export async function generate28DayPlan(
     const existingMask = maskSteps.some(step => getProductsForStep(step).length > 0);
     if (!existingMask) {
       // ИСПРАВЛЕНО: Изменено с WARN на INFO, так как это нормальное поведение - поиск fallback
-      logger.info('No mask products found for specific steps, searching for fallback', { userId, maskSteps });
-      const fallbackMask = await findFallbackProduct('mask', profileClassification, { userId });
-      if (fallbackMask) {
-        for (const step of maskSteps) {
-          registerProductForStep(step, fallbackMask);
+      logger.info('No mask products found for specific steps, searching for slot-aware fallback', { userId, maskSteps });
+      // ИСПРАВЛЕНО: та же проблема, что и с тонерами — generic-fallback мог поставить
+      // кислотную/пилинговую маску в mask_soothing/mask_hydrating. Подбираем per-slot.
+      let anyMaskFound = false;
+      for (const step of maskSteps) {
+        const fallbackMask = await findFallbackProductForSlot(step, profileClassification, { userId });
+        if (!fallbackMask) {
+          logger.warn('No compatible fallback mask found for slot', { step, userId });
+          continue;
         }
+        anyMaskFound = true;
+        registerProductForStep(step, fallbackMask);
         if (!selectedProducts.some((p: any) => p.id === fallbackMask.id)) {
           selectedProducts.push(fallbackMask as any);
         }
-        logger.info('Fallback mask added', { 
-          productId: fallbackMask.id, 
+        logger.info('Fallback mask added', {
+          step,
+          productId: fallbackMask.id,
           productName: fallbackMask.name,
-          userId 
+          userId
         }, { saveToDb: true, userId });
-      } else {
+      }
+      if (!anyMaskFound) {
         logger.warn('No fallback mask found', { userId, maskSteps });
       }
     }
@@ -2386,15 +2397,13 @@ export async function generate28DayPlan(
           }
         }
       } else {
-        // Для других шагов пробуем базовый fallback
-        const fallbackLookupStep = getSafeFallbackLookupStep(missingStep);
-        const fallbackProduct = await findFallbackProduct(fallbackLookupStep, profileClassification, { userId });
+        // Для других шагов пробуем slot-aware fallback (подтип → базовый шаг с фильтром)
+        const fallbackProduct = await findFallbackProductForSlot(missingStep, profileClassification, { userId });
         if (fallbackProduct) {
           registerProductForStep(missingStep, fallbackProduct);
           logger.info('Found fallback product for missing step', {
             missingStep,
             baseStep,
-            fallbackLookupStep,
             productId: fallbackProduct.id,
             productName: fallbackProduct.name,
           });
@@ -2966,10 +2975,9 @@ export async function generate28DayPlan(
               fallbackReason,
             });
             
-            // Последняя попытка: ищем через findFallbackProduct в БД
+            // Последняя попытка: ищем через slot-aware fallback в БД
             try {
-              const fallbackLookupStep = getSafeFallbackLookupStep(stepCategory);
-              let fallbackProduct = await findFallbackProduct(fallbackLookupStep, profileClassification, { userId });
+              let fallbackProduct = await findFallbackProductForSlot(stepCategory, profileClassification, { userId });
               if (fallbackProduct && productViolatesContraindications(fallbackProduct, userContraindications)) {
                 logger.info('DB fallback product rejected by contraindications (morning)', {
                   stepCategory,
@@ -2997,7 +3005,6 @@ export async function generate28DayPlan(
                 logger.info('Fallback product found from DB (morning)', {
                   stepCategory,
                   baseStep,
-                  fallbackLookupStep,
                   productId: fallbackProduct.id,
                   productName: fallbackProduct.name,
                   userId,
@@ -3268,10 +3275,9 @@ export async function generate28DayPlan(
               fallbackReason: fallbackReasonEvening,
             });
             
-            // Последняя попытка: ищем через findFallbackProduct в БД
+            // Последняя попытка: ищем через slot-aware fallback в БД
             try {
-              const fallbackLookupStep = getSafeFallbackLookupStep(stepCategory);
-              let fallbackProduct = await findFallbackProduct(fallbackLookupStep, profileClassification, { userId });
+              let fallbackProduct = await findFallbackProductForSlot(stepCategory, profileClassification, { userId });
               if (fallbackProduct && productViolatesContraindications(fallbackProduct, userContraindications)) {
                 logger.info('DB fallback product rejected by contraindications (evening)', {
                   stepCategory,
@@ -3299,7 +3305,6 @@ export async function generate28DayPlan(
                 logger.info('Fallback product found from DB (evening)', {
                   stepCategory,
                   baseStep,
-                  fallbackLookupStep,
                   productId: fallbackProduct.id,
                   productName: fallbackProduct.name,
                   userId,

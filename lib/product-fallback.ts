@@ -8,6 +8,7 @@ import { logger } from './logger';
 import { MIN_PRODUCTS_FOR_STEP } from './constants';
 import type { Prisma } from '@prisma/client';
 import type { ProfileClassification } from './plan-generation-helpers';
+import { productContainsStrongAcids } from './contraindication-product-filter';
 
 export interface ProductWithBrand {
   id: number;
@@ -31,6 +32,52 @@ export interface ProductWithBrand {
 
 // ProfileClassification импортируется из plan-generation-helpers.ts
 
+export interface FallbackOptions {
+  userId?: string;
+  /** Дополнительный JS-фильтр кандидатов (например, совместимость с подтипом слота). */
+  filter?: (product: ProductWithBrand) => boolean;
+}
+
+// --- Slot-aware совместимость fallback-продуктов ---
+// Баг (Olga, cmrp6kr01000004jui674wjgk): generic fallback по базовому 'toner' поставил
+// Glycolic Acid 7% Toning Solution в слот toner_soothing. Кислотные/эксфолиирующие
+// продукты нельзя регистрировать в успокаивающие/увлажняющие слоты.
+
+/** Токены step/category, означающие кислотный/эксфолиирующий продукт */
+const EXFOLIATING_STEP_TOKENS = new Set([
+  'acid', 'aha', 'bha', 'pha', 'lha',
+  'exfoliant', 'exfoliating', 'peel', 'peeling', 'enzyme',
+]);
+
+/** Слоты, в которые нельзя ставить кислотные/эксфолиирующие продукты */
+function isCalmingSlot(stepCategory: string): boolean {
+  return stepCategory.endsWith('_soothing') || stepCategory.endsWith('_hydrating');
+}
+
+/** true, если продукт кислотный/эксфолиирующий — по step/category или по активам */
+export function isExfoliatingProduct(
+  product: Pick<ProductWithBrand, 'step' | 'category' | 'activeIngredients'>
+): boolean {
+  const tokens = `${product.step || ''}_${product.category || ''}`
+    .toLowerCase()
+    .split(/[^a-z]+/);
+  if (tokens.some((t) => EXFOLIATING_STEP_TOKENS.has(t))) return true;
+  return productContainsStrongAcids(product);
+}
+
+/**
+ * Совместим ли продукт с подтипом слота: в soothing/hydrating слоты не пускаем
+ * кислотные/эксфолиирующие продукты; generic-продукты (step='toner') допустимы,
+ * только если состав не противоречит подтипу слота.
+ */
+export function isProductCompatibleWithSlot(
+  product: Pick<ProductWithBrand, 'step' | 'category' | 'activeIngredients'>,
+  slotStepCategory: string
+): boolean {
+  if (!isCalmingSlot(slotStepCategory)) return true;
+  return !isExfoliatingProduct(product);
+}
+
 /**
  * Ищет fallback продукт для базового шага
  * ВАЖНО: Всегда пытается найти продукт, даже если нужно игнорировать тип кожи
@@ -43,10 +90,25 @@ function simpleHash(str: string): number {
   return Math.abs(h);
 }
 
+/** Применяет JS-фильтр и выбирает кандидата (псевдослучайно при userId, иначе первого). */
+function pickCandidate(
+  products: ProductWithBrand[],
+  baseStep: string,
+  options?: FallbackOptions
+): ProductWithBrand | null {
+  const candidates = options?.filter ? products.filter(options.filter) : products;
+  if (candidates.length === 0) return null;
+  if (options?.userId && candidates.length > 1) {
+    const idx = simpleHash(`${options.userId}|${baseStep}`) % candidates.length;
+    return candidates[idx];
+  }
+  return candidates[0];
+}
+
 export async function findFallbackProduct(
   baseStep: string,
   profileClassification: ProfileClassification,
-  options?: { userId?: string }
+  options?: FallbackOptions
 ): Promise<ProductWithBrand | null> {
   // Маппинг категорий из правил в категории БД (как в getProductsForStep)
   const categoryMapping: Record<string, string[]> = {
@@ -124,35 +186,23 @@ export async function findFallbackProduct(
 
   try {
     // Пробуем найти с учетом типа кожи
-    // ИСПРАВЛЕНО: При userId — findMany для разнообразия, иначе findFirst
+    // ИСПРАВЛЕНО: везде findMany + pickCandidate — так JS-фильтр (options.filter)
+    // применяется до псевдослучайного выбора, а без userId берётся первый кандидат
+    // (эквивалент прежнего findFirst).
     const orderBy = [
       { isHero: 'desc' as const },
       { priority: 'desc' as const },
       { createdAt: 'desc' as const },
     ];
-    let product: ProductWithBrand | null;
-    if (options?.userId) {
-      const products = await prisma.product.findMany({
-        where: whereClauseWithSkinType,
-        include: { brand: true },
-        orderBy,
-        take: 10,
-      });
-      if (products.length === 0) {
-        product = null;
-      } else if (products.length === 1) {
-        product = products[0] as ProductWithBrand;
-      } else {
-        const idx = simpleHash(`${options.userId}|${baseStep}`) % products.length;
-        product = products[idx] as ProductWithBrand;
-      }
-    } else {
-      product = await prisma.product.findFirst({
-        where: whereClauseWithSkinType,
-        include: { brand: true },
-        orderBy,
-      }) as ProductWithBrand | null;
-    }
+    // При фильтре берём больше кандидатов, чтобы отсев не оставил пустой список
+    const takeCount = options?.filter ? 25 : 10;
+    const withSkinType = await prisma.product.findMany({
+      where: whereClauseWithSkinType,
+      include: { brand: true },
+      orderBy,
+      take: takeCount,
+    });
+    let product = pickCandidate(withSkinType as ProductWithBrand[], baseStep, options);
 
     // Если не найдено с учетом типа кожи, пробуем без учета типа кожи
     if (!product && profileClassification.skinType && baseStep !== 'spf') {
@@ -168,18 +218,14 @@ export async function findFallbackProduct(
         ...whereClauseWithSkinType,
       };
       delete (whereClauseWithoutSkinType as any).AND;
-      
-      product = await prisma.product.findFirst({
+
+      const withoutSkinType = await prisma.product.findMany({
         where: whereClauseWithoutSkinType,
-        include: {
-          brand: true,
-        },
-        orderBy: [
-          { isHero: 'desc' },
-          { priority: 'desc' },
-          { createdAt: 'desc' },
-        ],
+        include: { brand: true },
+        orderBy,
+        take: takeCount,
       });
+      product = pickCandidate(withoutSkinType as ProductWithBrand[], baseStep, options);
     }
 
     // Если все еще не найдено, пробуем найти по частичному совпадению step
@@ -210,18 +256,14 @@ export async function findFallbackProduct(
         OR: partialConditions,
         ...(sensitivityNot ? { NOT: sensitivityNot } : {}),
       };
-      
-      product = await prisma.product.findFirst({
+
+      const partialMatches = await prisma.product.findMany({
         where: whereClausePartial,
-        include: {
-          brand: true,
-        },
-        orderBy: [
-          { isHero: 'desc' },
-          { priority: 'desc' },
-          { createdAt: 'desc' },
-        ],
+        include: { brand: true },
+        orderBy,
+        take: takeCount,
       });
+      product = pickCandidate(partialMatches as ProductWithBrand[], baseStep, options);
     }
 
     if (!product) {
@@ -247,6 +289,39 @@ export async function findFallbackProduct(
     });
     return null;
   }
+}
+
+/**
+ * Подтипы этих базовых шагов не взаимозаменяемы: treatment_exfoliant_mild не должен
+ * подбирать treatment_antiage/retinol, а serum_hydrating — serum_vitc.
+ * Для них ищем только точный подтип, без отката к базовому шагу.
+ * (Ранее эта логика жила в getSafeFallbackLookupStep в plan-generator.ts.)
+ */
+const SUBTYPE_ONLY_BASE_STEPS = new Set(['treatment', 'serum', 'spot_treatment']);
+
+/**
+ * Slot-aware fallback: сначала ищет продукт с точным step-подтипом слота
+ * (например toner_soothing), затем — по базовому шагу, но только среди продуктов,
+ * совместимых с подтипом слота (кислотные тонеры не попадут в toner_soothing).
+ */
+export async function findFallbackProductForSlot(
+  slotStepCategory: StepCategory,
+  profileClassification: ProfileClassification,
+  options?: { userId?: string }
+): Promise<ProductWithBrand | null> {
+  const baseStep = getBaseStepFromStepCategory(slotStepCategory);
+  const filter = (p: ProductWithBrand) => isProductCompatibleWithSlot(p, slotStepCategory);
+
+  if (slotStepCategory !== baseStep) {
+    const bySubtype = await findFallbackProduct(slotStepCategory, profileClassification, {
+      ...options,
+      filter,
+    });
+    if (bySubtype) return bySubtype;
+    if (SUBTYPE_ONLY_BASE_STEPS.has(baseStep)) return null;
+  }
+
+  return findFallbackProduct(baseStep, profileClassification, { ...options, filter });
 }
 
 /**
@@ -527,7 +602,9 @@ export async function ensureRequiredProducts(
     if (!fallbackProduct && baseStep === 'serum') {
       const orderedSerumSteps = Array.from(stepCategories);
       for (const stepCategory of orderedSerumSteps) {
-        const byExactCategory = await findFallbackProduct(stepCategory, profileClassification);
+        const byExactCategory = await findFallbackProduct(stepCategory, profileClassification, {
+          filter: (p) => isProductCompatibleWithSlot(p, stepCategory),
+        });
         if (byExactCategory) {
           fallbackProduct = byExactCategory;
           logger.info('Found serum fallback by exact StepCategory', {
@@ -580,15 +657,31 @@ export async function ensureRequiredProducts(
     }
 
     // Присваиваем продукт всем категориям шага
+    // ИСПРАВЛЕНО: общий fallback по базовому шагу мог попасть в несовместимый
+    // подтип-слот (кислотный тонер в toner_soothing). Проверяем совместимость
+    // и при конфликте ищем slot-aware замену именно под этот подтип.
     for (const stepCategory of stepCategories) {
       const existing = result.get(stepCategory) || [];
       if (existing.length === 0) {
-        result.set(stepCategory, [fallbackProduct]);
+        let productForSlot: ProductWithBrand | null = fallbackProduct;
+        if (!isProductCompatibleWithSlot(productForSlot, stepCategory)) {
+          productForSlot = await findFallbackProductForSlot(stepCategory, profileClassification);
+          if (!productForSlot) {
+            logger.warn('Fallback product incompatible with slot subtype and no slot-aware replacement found', {
+              stepCategory,
+              baseStep,
+              rejectedProductId: fallbackProduct.id,
+              rejectedProductName: fallbackProduct.name,
+            });
+            continue;
+          }
+        }
+        result.set(stepCategory, [productForSlot]);
         logger.info('Fallback product assigned to step', {
           stepCategory,
           baseStep,
-          productId: fallbackProduct.id,
-          productName: fallbackProduct.name,
+          productId: productForSlot.id,
+          productName: productForSlot.name,
         });
       }
     }
