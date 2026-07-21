@@ -90,7 +90,11 @@ export async function replaceInactiveBrandProducts(
     const stepCategories = mapStepToStepCategory(
       product.step,
       product.category,
-      profileClassification.skinType || null
+      profileClassification.skinType || null,
+      {
+        name: product.name,
+        activeIngredients: product.activeIngredients,
+      }
     );
     return { product, stepCategories };
   });
@@ -311,4 +315,3 @@ export function registerProductForStepMap(
     existing.push(product);
   }
 }
-
