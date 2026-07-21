@@ -98,7 +98,7 @@ function CartProductThumb({ product }: { product: CartItem['product'] }) {
 
 function CartPageContent() {
   const router = useRouter();
-  const { data: cartData, isLoading: loading } = useCart();
+  const { data: cartData, isPending: cartPending, isError: cartError } = useCart();
   const { data: wishlistData } = useWishlist();
   const removeFromCart = useRemoveFromCart();
   const addToWishlist = useAddToWishlist();
@@ -162,8 +162,10 @@ function CartPageContent() {
 
   const bg = 'var(--canvas)';
 
+  const loading = cartPending || (!cartError && cartData === undefined);
+
   if (loading) {
-    return <TabLoadingShell title="Корзина" background={bg} />;
+    return <TabLoadingShell title="Корзина" background={bg} variant="cart-list" />;
   }
 
   return (
