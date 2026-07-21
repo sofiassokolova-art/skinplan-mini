@@ -788,8 +788,8 @@ export default function HomePage() {
         .home-rd .hr-avatar{position:relative;width:40px;height:40px;border:0;padding:0;border-radius:50%;background:linear-gradient(135deg,#2A2A2A,var(--ink));color:var(--accent);display:grid;place-items:center;cursor:pointer;box-shadow:0 0 0 2px rgba(255,255,255,0.9),0 6px 18px rgba(10,10,10,0.18);font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;font-weight:600;}
         .home-rd .hr-avatar::after{content:"";position:absolute;bottom:1px;right:1px;width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--canvas);}
         .home-rd .hr-heading{padding:0 20px 14px;}
-        .home-rd .hr-intro{font-size:13px;font-weight:500;color:var(--ink-soft);margin-bottom:5px;}
-        .home-rd .hr-title{font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:26px;font-weight:700;color:var(--ink);line-height:1.15;letter-spacing:-0.6px;}
+        .home-rd .hr-intro{font-family:var(--font-inter),-apple-system,BlinkMacSystemFont,sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-mute);margin-bottom:7px;}
+        .home-rd .hr-title{font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:30px;font-weight:700;color:var(--ink);line-height:1.08;letter-spacing:-0.9px;}
         .home-rd .hr-progress-card{position:relative;overflow:hidden;margin:0 20px 12px;padding:15px 18px 14px;border-radius:var(--hr-radius-card);border:1px solid rgba(255,255,255,0.07);color:#fff;background:#111;box-shadow:0 16px 36px rgba(10,10,10,0.19);min-height:128px;}
         .home-rd .hr-progress-card::after{content:"";position:absolute;top:0;right:0;width:90px;height:100%;background:linear-gradient(90deg, transparent, rgba(213,254,97,0.12));pointer-events:none;}
         .home-rd .hr-progress-head{position:relative;display:flex;align-items:flex-start;justify-content:space-between;gap:14px;}
@@ -812,7 +812,7 @@ export default function HomePage() {
         .home-rd .hr-routine-sub{margin-top:2px;font-size:12px;font-weight:500;color:var(--ink-soft);}
         .home-rd .hr-routine-pct{width:48px;height:48px;flex-shrink:0;display:grid;place-items:center;border-radius:50%;background:rgba(10,10,10,0.06);font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:12px;font-weight:700;color:var(--ink);}
         .home-rd .hr-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px;}
-        .home-rd .hr-section-title{font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:16px;font-weight:600;letter-spacing:-0.3px;color:var(--ink);}
+        .home-rd .hr-section-title{font-family:var(--font-inter),-apple-system,BlinkMacSystemFont,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-soft);}
         .home-rd .hr-section-note{color:var(--ink-soft);font-size:11px;font-weight:500;}
         .home-rd .hr-featured-wrap{padding:0 20px 16px;}
         .home-rd .hr-featured{position:relative;overflow:hidden;padding:16px 18px 72px;border-radius:var(--hr-radius-card);border:1px solid var(--glass-border);background:radial-gradient(110% 120% at 96% 100%, rgba(var(--accent-rgb),0.44) 0%, rgba(var(--accent-rgb),0.22) 38%, transparent 66%), #fff;box-shadow:0 1px 2px rgba(10,10,10,0.03),0 14px 30px -18px rgba(10,10,10,0.16);min-height:222px;}
@@ -832,7 +832,7 @@ export default function HomePage() {
         .home-rd .hr-howto-icon-btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
         .home-rd .hr-undo{margin:-6px 20px 14px;display:flex;justify-content:center;}
         .home-rd .hr-undo button{background:transparent;border:0;padding:6px 10px;color:var(--ink-soft);font-size:12px;font-weight:500;text-decoration:underline;cursor:pointer;}
-        .home-rd .hr-next-heading{font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:15px;font-weight:600;letter-spacing:-0.35px;color:var(--ink);margin:0 20px 10px;}
+        .home-rd .hr-next-heading{font-family:var(--font-inter),-apple-system,BlinkMacSystemFont,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-soft);margin:0 20px 10px;}
         .home-rd .hr-next-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:0 20px 8px;}
         .home-rd .hr-next-card{position:relative;overflow:hidden;min-height:164px;padding:12px;border-radius:var(--hr-radius-panel);border:1px solid var(--glass-border);background:#fff;box-shadow:var(--glass-shadow);cursor:default;}
         .home-rd .hr-next-top{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;}

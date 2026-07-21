@@ -1035,10 +1035,12 @@ function PlanV2Styles() {
       }
       .pv2-section-head-align-start { align-items: flex-start; }
       .pv2-section-title {
-        font-family: var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif;
-        font-weight: 700;
-        font-size: 18px;
-        letter-spacing: -0.3px;
+        font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
+        font-weight: 600;
+        font-size: 12px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
       }
       .pv2-section-subtitle {
         font-size: 13px;

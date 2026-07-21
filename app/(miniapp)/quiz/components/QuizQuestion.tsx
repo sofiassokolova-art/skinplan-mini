@@ -739,15 +739,16 @@ export const QuizQuestion = memo(function QuizQuestion({
         {currentStep && (
           <p
             style={{
-              margin: '0 0 6px 0',
+              margin: '0 0 8px 0',
               fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontSize: '12px',
-              fontWeight: 500,
-              color: '#888888',
-              letterSpacing: '0.02em',
+              fontSize: '11px',
+              fontWeight: 600,
+              color: 'var(--ink-mute)',
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
             }}
           >
-            Шаг {currentStep.number}: {currentStep.label}
+            Шаг {currentStep.number} · {currentStep.label}
           </p>
         )}
         <div
@@ -957,8 +958,10 @@ export const QuizQuestion = memo(function QuizQuestion({
             style={{
               fontFamily:
                 "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontSize: '20px',
+              fontSize: '24px',
               fontWeight: isSkinTypeQuestion ? 500 : 700,
+              lineHeight: 1.15,
+              letterSpacing: '-0.5px',
               color: 'var(--ink)',
               marginBottom: subtitleForRender ? '4px' : currentInformer ? '12px' : '20px',
               marginTop: '0',
@@ -1257,8 +1260,10 @@ export const QuizQuestion = memo(function QuizQuestion({
               style={{
                 fontFamily:
                   "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontSize: '20px',
+                fontSize: '24px',
                 fontWeight: 700,
+                lineHeight: 1.15,
+                letterSpacing: '-0.5px',
                 color: 'var(--ink)',
                 marginBottom: subtitleForRender ? '4px' : currentInformer ? '12px' : '24px',
                 marginTop: '0',
