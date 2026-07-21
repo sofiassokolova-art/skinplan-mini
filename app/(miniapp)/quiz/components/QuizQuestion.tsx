@@ -146,6 +146,59 @@ const QUESTION_STEP_MAP: Record<string, { number: number; total: number; label: 
   budget:           { number: 4, total: 4, label: 'Ваши предпочтения' },
 };
 
+// Информеры под заголовком отдельных вопросов.
+// Заменяют собой экраны-интерстишлы, чья единственная работа — снять тревогу:
+// сообщение полезнее там, где вопрос задаётся, чем отдельным экраном до/после.
+// health_trust («skiniq заботится о вашем здоровье») жил отдельным экраном и
+// показывался ПОСЛЕ медицинского блока — то есть успокаивал уже после того,
+// как человек ответил про диагнозы. Теперь текст стоит на первом вопросе блока.
+//
+// Формулировки держим проверяемыми: SkinProfile.medicalMarkers действительно
+// шифруется (см. lib/crypto/prisma-pii-extension.ts), а данные о здоровье
+// действительно используются для отсечения противопоказанных средств.
+const QUESTION_INFORMERS: Record<string, string> = {
+  medical_diagnoses:
+    'Эти данные нужны, чтобы исключить средства, которые вам не подходят. Они хранятся в зашифрованном виде.',
+};
+
+/** Спокойная плашка-информер под заголовком вопроса. */
+function QuestionInformer({ text }: { text: string }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: '10px',
+        marginBottom: '24px',
+        padding: '12px 14px',
+        borderRadius: '14px',
+        background: 'rgba(10,10,10,0.04)',
+        fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+        fontSize: '13px',
+        fontWeight: 400,
+        lineHeight: '1.45',
+        color: 'var(--ink-soft, #6B6B6B)',
+      }}
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{ flexShrink: 0, marginTop: '1px' }}
+        aria-hidden
+      >
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+      </svg>
+      <span>{text}</span>
+    </div>
+  );
+}
+
 // Вынесен на уровень модуля, чтобы не пересоздаваться при ре-рендере — иначе картинки на экране «Тип кожи» мигают
 const LimeOptionCard = memo(function LimeOptionCard({
   option,
@@ -661,6 +714,9 @@ export const QuizQuestion = memo(function QuizQuestion({
   // Лейбл шага для текущего вопроса (если есть в маппинге)
   const currentStep = question?.code ? QUESTION_STEP_MAP[question.code] : undefined;
 
+  // Информер под заголовком (например, про хранение медицинских данных)
+  const currentInformer = question?.code ? QUESTION_INFORMERS[question.code] : undefined;
+
   // Прогресс-бар в ширину контента (те же отступы 20px, что и у заголовка/вариантов)
   const ProgressBar = () => {
     if (hideProgressBar) return null;
@@ -904,7 +960,7 @@ export const QuizQuestion = memo(function QuizQuestion({
               fontSize: '20px',
               fontWeight: isSkinTypeQuestion ? 500 : 700,
               color: 'var(--ink)',
-              marginBottom: subtitle ? '4px' : '20px',
+              marginBottom: subtitleForRender ? '4px' : currentInformer ? '12px' : '20px',
               marginTop: '0',
             }}
           >
@@ -929,6 +985,8 @@ export const QuizQuestion = memo(function QuizQuestion({
               {subtitleForRender}
             </div>
           )}
+
+          {currentInformer && <QuestionInformer text={currentInformer} />}
         </div>
 
         <div
@@ -1202,7 +1260,7 @@ export const QuizQuestion = memo(function QuizQuestion({
                 fontSize: '20px',
                 fontWeight: 700,
                 color: 'var(--ink)',
-                marginBottom: subtitle ? '4px' : '24px',
+                marginBottom: subtitleForRender ? '4px' : currentInformer ? '12px' : '24px',
                 marginTop: '0',
               }}
             >
@@ -1226,6 +1284,8 @@ export const QuizQuestion = memo(function QuizQuestion({
               {subtitleForRender}
               </div>
             )}
+
+            {currentInformer && <QuestionInformer text={currentInformer} />}
           </>
         )}
 

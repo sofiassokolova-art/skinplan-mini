@@ -14,6 +14,7 @@ import { getNextInfoScreenAfterScreen } from '../info-screens';
 import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
 import { WelcomeScreen, PersonalAnalysisScreen, HowItWorksScreen, NoMistakesScreen, RecognizeYourselfScreen, ImproveSkinScreen, AiComparisonScreen } from '@/components/quiz/screens';
 import { FixedContinueButton, TinderButtons } from '@/components/quiz/buttons';
+import { Brand } from '@/components/quiz/Brand';
 import { TestimonialsCarousel, ProductsGrid } from '@/components/quiz/content';
 import { clientLogger } from '@/lib/client-logger';
 import { getInitialInfoScreens } from '../info-screens';
@@ -125,7 +126,7 @@ interface QuizInfoScreenProps {
   pendingInfoScreenRef?: React.MutableRefObject<InfoScreen | null>;
   isInitialInfoScreen?: boolean; // ФИКС: Флаг для начальных инфо экранов
   // Ответы пользователя — нужны для персонализированных экранов (skin_preview).
-  // Опционально: начальные инфо-экраны (welcome, personal_analysis) рендерятся до ответов.
+  // Опционально: начальные инфо-экраны рендерятся до ответов.
   answers?: Record<number, string | string[]>;
 }
 
@@ -325,7 +326,7 @@ export function QuizInfoScreen({
   }
 
   // ФИКС #5: финальный объединённый экран want_improve (раньше шёл после
-  // отдельного skin_transformation, теперь сразу после recognize_yourself_2).
+  // отдельного skin_transformation, теперь сразу после recognize_yourself_1).
   // Совмещает transformation-визуал и CTA "Получить план ухода" — запускает
   // submitAnswers (генерация плана) через handleGetPlan.
   if (screen.id === 'want_improve') {
@@ -852,7 +853,7 @@ export function QuizInfoScreen({
               fontWeight: 700, fontSize: 'clamp(20px, 6vw, 28px)', lineHeight: '1.25',
               color: '#000000', margin: '0 0 clamp(32px, 10vw, 52px) 0',
             }}>
-              skiniq делает уход за&nbsp;кожей{' '}
+              <Brand variant="inline" /> делает уход за&nbsp;кожей{' '}
               <span
                 style={{
                   background: 'linear-gradient(180deg, transparent 60%, var(--accent) 60%)',
@@ -872,102 +873,6 @@ export function QuizInfoScreen({
               {renderCard(content?.right, '#D5FE61',
                 <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="3,9 7,13 15,5"/></svg>
               )}
-            </div>
-          </div>
-          <FixedContinueButton ctaText={screen.ctaText} onClick={handleNext} disabled={isHandlingNext} loadingText="Продолжить" />
-        </div>
-      </>
-    );
-  }
-
-  // Экран "skiniq заботится о вашем здоровье" (health_trust)
-  if (screen.id === 'health_trust') {
-    const cards = [
-      {
-        icon: (
-          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke="#555" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 3 L30 8 L30 18 C30 25 24 30 18 33 C12 30 6 25 6 18 L6 8 Z"/>
-            <polyline points="13,18 16,21 23,14"/>
-          </svg>
-        ),
-        title: 'Безопасность',
-        desc: 'Рекомендации по уходу составлены с опорой на дерматологические протоколы и учитывают ваши противопоказания',
-      },
-      {
-        icon: (
-          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke="#555" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="8" y="16" width="20" height="16" rx="3"/>
-            <path d="M12 16 L12 11 C12 7.7 14.7 5 18 5 C21.3 5 24 7.7 24 11 L24 16"/>
-            <circle cx="18" cy="24" r="2" fill="#555" stroke="none"/>
-          </svg>
-        ),
-        title: 'Конфиденциальность',
-        desc: 'Вся информация остается конфиденциальной и используется только для персональных рекомендаций',
-      },
-    ];
-
-    return (
-      <>
-        {backButton}
-        <div className="qz-mobile-fullscreen" style={{ position: 'relative', overflow: 'hidden', background: 'var(--canvas)' }}>
-          {screen.image && (
-            <Image
-              className="qz-fullscreen-bg"
-              src={screen.image}
-              alt=""
-              fill
-              priority
-              quality={95}
-              sizes="100vw"
-              style={{ objectPosition: 'center top' }}
-            />
-          )}
-          <div style={{
-            position: 'relative', zIndex: 1, maxWidth: '480px', margin: '0 auto', width: '100%',
-            padding: 'clamp(80px, 25vw, 120px) clamp(16px, 5vw, 24px) 0',
-            display: 'flex', flexDirection: 'column', height: '100%', boxSizing: 'border-box',
-            overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-          }}>
-            <h1 style={{
-              fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 700, fontSize: 'clamp(20px, 6vw, 28px)', lineHeight: '1.25',
-              color: '#000000', margin: '0', maxWidth: 'min(340px, 92%)',
-            }}>
-              skiniq заботится
-              <br />
-              о вашем{' '}
-              <span style={{
-                background: 'linear-gradient(180deg, transparent 60%, var(--accent) 60%)',
-                padding: '0 4px',
-                borderRadius: 4,
-              }}>
-                здоровье
-              </span>
-            </h1>
-            <div style={{
-              marginTop: 'auto',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-              paddingBottom: 'calc(clamp(24px, 5vh, 60px) + 72px)',
-            }}>
-              {cards.map((card, i) => (
-                <div key={i} style={{
-                  background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(24px)',
-                  WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.6)',
-                  borderRadius: '20px', padding: '20px 20px 20px 16px',
-                  display: 'flex', alignItems: 'flex-start', gap: '16px',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.06)',
-                }}>
-                  <div style={{ width: '44px', height: '44px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {card.icon}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontFamily: "var(--font-inter), 'Inter', -apple-system, sans-serif", fontWeight: 600, fontSize: 'clamp(13px, 3.8vw, 16px)', color: '#000', margin: '0 0 6px 0', lineHeight: '1.3' }}>{card.title}</p>
-                    <p style={{ fontFamily: "var(--font-inter), 'Inter', -apple-system, sans-serif", fontSize: 'clamp(11px, 3.2vw, 14px)', lineHeight: '1.5', color: '#444', margin: '0' }}>{card.desc}</p>
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
           <FixedContinueButton ctaText={screen.ctaText} onClick={handleNext} disabled={isHandlingNext} loadingText="Продолжить" />

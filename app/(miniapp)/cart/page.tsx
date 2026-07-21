@@ -222,31 +222,31 @@ export default function FavoritesPage() {
                   </div>
                 </div>
                 <div className="fv-actions">
-                    <button
-                      className={`fv-cta${inCart ? ' in' : ''}`}
-                      onClick={() => handleAddToCart(item.product.id)}
-                      disabled={addToCart.isPending}
-                    >
-                      {inCart ? 'В корзине' : 'В корзину'}
-                    </button>
-                    <button
-                      type="button"
-                      className={`fv-feedback${hasFeedback ? ' done' : ''}`}
-                      onClick={() => setFeedbackOpenId((prev) => prev === item.product.id ? null : item.product.id)}
-                    >
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                      </svg>
-                      {hasFeedback ? 'Отзыв учтён' : 'Оставить отзыв'}
-                    </button>
+                  <button
+                    className={`fv-cta${inCart ? ' in' : ''}`}
+                    onClick={() => handleAddToCart(item.product.id)}
+                    disabled={addToCart.isPending}
+                  >
+                    {inCart ? 'В корзине' : 'В корзину'}
+                  </button>
+                  <button
+                    type="button"
+                    className={`fv-feedback${hasFeedback ? ' done' : ''}`}
+                    onClick={() => setFeedbackOpenId((prev) => prev === item.product.id ? null : item.product.id)}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    </svg>
+                    {hasFeedback ? 'Отзыв учтён' : 'Оставить отзыв'}
+                  </button>
+                </div>
+                {feedbackOpenId === item.product.id && (
+                  <div className="fv-feedback-options" aria-label="Отзыв о средстве">
+                    <button className="fv-feedback-option" disabled={feedbackBusyId === item.product.id} onClick={() => handleFeedback(item.product.id, 'bought_love')}>Отлично</button>
+                    <button className="fv-feedback-option" disabled={feedbackBusyId === item.product.id} onClick={() => handleFeedback(item.product.id, 'bought_ok')}>Норм</button>
+                    <button className="fv-feedback-option" disabled={feedbackBusyId === item.product.id} onClick={() => handleFeedback(item.product.id, 'bought_bad')}>Не подошло</button>
                   </div>
-                  {feedbackOpenId === item.product.id && (
-                    <div className="fv-feedback-options" aria-label="Отзыв о средстве">
-                      <button className="fv-feedback-option" disabled={feedbackBusyId === item.product.id} onClick={() => handleFeedback(item.product.id, 'bought_love')}>Отлично</button>
-                      <button className="fv-feedback-option" disabled={feedbackBusyId === item.product.id} onClick={() => handleFeedback(item.product.id, 'bought_ok')}>Норм</button>
-                      <button className="fv-feedback-option" disabled={feedbackBusyId === item.product.id} onClick={() => handleFeedback(item.product.id, 'bought_bad')}>Не подошло</button>
-                    </div>
-                  )}
+                )}
               </div>
             );
           })}
