@@ -37,6 +37,7 @@ import {
   generateProductWarnings,
   getActiveIngredientsFromStepCategory,
   getIngredientsForProduct,
+  getProtocolForbiddenIngredients,
   type ProductSelectionContext,
 } from '@/lib/dermatology-product-filter';
 import { getApplicationDaysForWeek } from '@/lib/protocol-plan-integration';
@@ -816,6 +817,30 @@ export async function generate28DayPlan(
     fitzpatrickType,
   };
 
+  // Определяем дерматологический протокол СРАЗУ после классификации профиля.
+  // Раньше он вычислялся только перед генерацией дней — то есть после регистрации
+  // продуктов и всех ensure/fallback-блоков, из-за чего запреты протокола на состав
+  // (forbiddenIngredients) не применялись к продуктам, попадавшим в план оттуда.
+  const dermatologyProtocol = determineProtocol({
+    diagnoses: profileClassification.diagnoses || [],
+    concerns: profileClassification.concerns || [],
+    skinType: profileClassification.skinType || undefined,
+    sensitivityLevel: (profileClassification.sensitivityLevel || 'medium') as 'low' | 'medium' | 'high' | 'very_high',
+    rosaceaRisk: profileClassification.rosaceaRisk || undefined,
+    onIsotretinoin: profileClassification.onIsotretinoin,
+    currentOralMeds: profileClassification.currentOralMeds,
+    fitzpatrickType: profileClassification.fitzpatrickType, // P2.9: учёт фототипа
+  });
+
+  logger.info('Dermatology protocol determined', {
+    protocol: dermatologyProtocol.condition,
+    protocolName: dermatologyProtocol.name,
+    userId,
+  });
+
+  /** Общие опции fallback-подбора: протокол исключает запрещённые составы на этапе запроса. */
+  const fallbackOptions = { userId, protocol: dermatologyProtocol };
+
   // ИСПРАВЛЕНО: Определяем основной фокус используя единую таксономию concerns
   // Используем normalizePrimaryFocus для согласованности с product.concerns
   const { normalizePrimaryFocus, normalizeConcerns } = await import('./concern-taxonomy');
@@ -1545,10 +1570,11 @@ export async function generate28DayPlan(
   // Группируем продукты по шагам (используем Map для лучшей типизации)
   const productsByStepMap = new Map<StepCategory, ProductWithBrand[]>();
 
+  /** Возвращает true, если продукт реально зарегистрирован (не отсеян гейтами). */
   const registerProductForStep = (
     stepKey: StepCategory | string,
     product: ProductWithBrand
-  ) => {
+  ): boolean => {
     // Точка входа ВСЕХ продуктов в план (регистрация каталога, ensureRequiredProducts,
     // DB-фолбэки) — единое место, где противопоказанный продукт гарантированно
     // не попадает в подбор (no_strong_acids и т.п.).
@@ -1559,7 +1585,27 @@ export async function generate28DayPlan(
         productId: product.id,
         contraindications: userContraindications,
       });
-      return;
+      return false;
+    }
+    // Запрет протокола на СОСТАВ (forbiddenIngredients) проверяется здесь, а не только
+    // при выборе шага: filterStepsByProtocol отсекает лишь forbiddenSteps, поэтому кислотный
+    // тонер спокойно вставал в разрешённый протоколом слот toner_soothing (кейс Ольги,
+    // розацеа + Glycolic Acid 7%). Гейт покрывает все ensure-блоки и DB-фолбэки разом.
+    const protocolForbidden = getProtocolForbiddenIngredients(
+      product,
+      dermatologyProtocol,
+      stepKey as StepCategory
+    );
+    if (protocolForbidden.length > 0) {
+      logger.warn('Product rejected by dermatology protocol at registration', {
+        userId,
+        stepKey,
+        productId: product.id,
+        productName: product.name,
+        protocol: dermatologyProtocol.condition,
+        forbiddenIngredients: protocolForbidden,
+      }, { saveToDb: true, userId });
+      return false;
     }
     const category = stepKey as StepCategory;
     const existing = productsByStepMap.get(category) || [];
@@ -1575,6 +1621,7 @@ export async function generate28DayPlan(
         });
       }
     }
+    return true;
   };
 
   const mapProductToStepCategories = (step: string | null | undefined, category: string | null | undefined): StepCategory[] => {
@@ -2082,20 +2129,27 @@ export async function generate28DayPlan(
     const updatedProductsMap = await ensureRequiredProducts(
       requiredStepsArray,
       profileClassification,
-      productsByStepMap
+      productsByStepMap,
+      dermatologyProtocol
     );
     
-    // Обновляем productsByStepMap (с контра-фильтром — merge обходит registerProductForStep)
+    // Обновляем productsByStepMap (с контра- и протокол-фильтром — merge обходит
+    // registerProductForStep, поэтому обе проверки дублируются здесь явно)
     for (const [step, products] of updatedProductsMap.entries()) {
       productsByStepMap.set(
         step,
-        products.filter((p) => !productViolatesContraindications(p, userContraindications))
+        products.filter(
+          (p) =>
+            !productViolatesContraindications(p, userContraindications) &&
+            getProtocolForbiddenIngredients(p, dermatologyProtocol, step).length === 0
+        )
       );
     }
-    
+
     // Добавляем новые продукты в selectedProducts
-    for (const products of updatedProductsMap.values()) {
+    for (const [step, products] of updatedProductsMap.entries()) {
       for (const product of products) {
+        if (getProtocolForbiddenIngredients(product, dermatologyProtocol, step).length > 0) continue;
         if (!selectedProducts.some(p => p.id === product.id)) {
           selectedProducts.push(product as any);
         }
@@ -2112,7 +2166,7 @@ export async function generate28DayPlan(
     const existingCleanser = cleanserSteps.some(step => getProductsForStep(step).length > 0);
     if (!existingCleanser) {
       logger.info('No cleanser products found, searching for fallback', { userId });
-      const fallbackCleanser = await findFallbackProduct('cleanser', profileClassification, { userId });
+      const fallbackCleanser = await findFallbackProduct('cleanser', profileClassification, fallbackOptions);
       if (fallbackCleanser) {
         for (const step of cleanserSteps) {
           registerProductForStep(step, fallbackCleanser);
@@ -2135,7 +2189,7 @@ export async function generate28DayPlan(
     const existingSPF = spfSteps.some(step => getProductsForStep(step).length > 0);
     if (!existingSPF) {
       logger.info('No SPF products found, searching for fallback', { userId });
-      const fallbackSPF = await findFallbackProduct('spf', profileClassification, { userId });
+      const fallbackSPF = await findFallbackProduct('spf', profileClassification, fallbackOptions);
       if (fallbackSPF) {
         for (const step of spfSteps) {
           registerProductForStep(step, fallbackSPF);
@@ -2165,7 +2219,7 @@ export async function generate28DayPlan(
       // не регистрировался в moisturizer_soothing.
       let anyMoisturizerFound = false;
       for (const step of moisturizerSteps) {
-        const fallbackMoisturizer = await findFallbackProductForSlot(step, profileClassification, { userId });
+        const fallbackMoisturizer = await findFallbackProductForSlot(step, profileClassification, fallbackOptions);
         if (!fallbackMoisturizer) {
           logger.warn('No compatible fallback moisturizer found for slot', { step, userId });
           continue;
@@ -2190,7 +2244,7 @@ export async function generate28DayPlan(
     // Если в шаблоне вообще нет moisturizer - добавляем его в requiredStepCategories
     logger.warn('No moisturizer step in template, adding moisturizer_light as required', { userId });
     requiredStepCategories.add('moisturizer_light');
-    const fallbackMoisturizer = await findFallbackProduct('moisturizer', profileClassification, { userId });
+    const fallbackMoisturizer = await findFallbackProduct('moisturizer', profileClassification, fallbackOptions);
     if (fallbackMoisturizer) {
       registerProductForStep('moisturizer_light', fallbackMoisturizer);
       if (!selectedProducts.some((p: any) => p.id === fallbackMoisturizer.id)) {
@@ -2218,7 +2272,7 @@ export async function generate28DayPlan(
       // из-за чего кислотный тонер попадал в toner_soothing. Подбираем per-slot:
       // сначала точный подтип, затем базовый 'toner' среди совместимых со слотом продуктов.
       for (const step of tonerSteps) {
-        const fallbackToner = await findFallbackProductForSlot(step, profileClassification, { userId });
+        const fallbackToner = await findFallbackProductForSlot(step, profileClassification, fallbackOptions);
         if (!fallbackToner) {
           logger.warn('No compatible fallback toner found for slot', { step, userId });
           continue;
@@ -2355,7 +2409,7 @@ export async function generate28DayPlan(
       }
 
       for (const step of missingSerumSteps) {
-        const fallbackSerum = await findFallbackProductForSlot(step, profileClassification, { userId });
+        const fallbackSerum = await findFallbackProductForSlot(step, profileClassification, fallbackOptions);
         if (fallbackSerum) {
           // ИСПРАВЛЕНО: это не ошибка, если мы успешно нашли fallback.
           // Логируем как info, чтобы не засорять WARN-логи в проде.
@@ -2392,7 +2446,7 @@ export async function generate28DayPlan(
         missingTreatmentSteps,
       });
       for (const step of missingTreatmentSteps) {
-        const fallbackTreatment = await findFallbackProductForSlot(step, profileClassification, { userId });
+        const fallbackTreatment = await findFallbackProductForSlot(step, profileClassification, fallbackOptions);
         if (fallbackTreatment) {
           registerProductForStep(step, fallbackTreatment);
           if (!selectedProducts.some((p: any) => p.id === fallbackTreatment.id)) {
@@ -2427,7 +2481,7 @@ export async function generate28DayPlan(
       // кислотную/пилинговую маску в mask_soothing/mask_hydrating. Подбираем per-slot.
       let anyMaskFound = false;
       for (const step of maskSteps) {
-        const fallbackMask = await findFallbackProductForSlot(step, profileClassification, { userId });
+        const fallbackMask = await findFallbackProductForSlot(step, profileClassification, fallbackOptions);
         if (!fallbackMask) {
           logger.warn('No compatible fallback mask found for slot', { step, userId });
           continue;
@@ -2515,7 +2569,7 @@ export async function generate28DayPlan(
         });
         
         for (const fallbackCategory of moisturizerFallbackHierarchy) {
-          const fallbackProduct = await findFallbackProduct(fallbackCategory, profileClassification, { userId });
+          const fallbackProduct = await findFallbackProduct(fallbackCategory, profileClassification, fallbackOptions);
           if (fallbackProduct) {
             // Регистрируем fallback продукт для missing step
             registerProductForStep(missingStep, fallbackProduct);
@@ -2530,7 +2584,7 @@ export async function generate28DayPlan(
         }
       } else {
         // Для других шагов пробуем slot-aware fallback (подтип → базовый шаг с фильтром)
-        const fallbackProduct = await findFallbackProductForSlot(missingStep, profileClassification, { userId });
+        const fallbackProduct = await findFallbackProductForSlot(missingStep, profileClassification, fallbackOptions);
         if (fallbackProduct) {
           registerProductForStep(missingStep, fallbackProduct);
           logger.info('Found fallback product for missing step', {
@@ -2654,23 +2708,8 @@ export async function generate28DayPlan(
     missingSteps: missingSteps.length > 0 ? missingSteps : undefined,
     });
 
-  // Определяем дерматологический протокол
-  const dermatologyProtocol = determineProtocol({
-    diagnoses: profileClassification.diagnoses || [],
-    concerns: profileClassification.concerns || [],
-    skinType: profileClassification.skinType || undefined,
-    sensitivityLevel: (profileClassification.sensitivityLevel || 'medium') as 'low' | 'medium' | 'high' | 'very_high',
-    rosaceaRisk: profileClassification.rosaceaRisk || undefined,
-    onIsotretinoin: profileClassification.onIsotretinoin,
-    currentOralMeds: profileClassification.currentOralMeds,
-    fitzpatrickType: profileClassification.fitzpatrickType, // P2.9: учёт фототипа
-  });
-
-  logger.info('Dermatology protocol determined', {
-    protocol: dermatologyProtocol.condition,
-    protocolName: dermatologyProtocol.name,
-    userId,
-  });
+  // Дерматологический протокол определён выше (сразу после классификации профиля),
+  // чтобы его запреты действовали и на этапе подбора/регистрации продуктов.
 
   // Шаг 3: Генерация плана (28 дней, 4 недели)
   const plan28Days: DayPlan[] = [];
@@ -2959,8 +2998,11 @@ export async function generate28DayPlan(
 
       productsByStepMap.set(stepCategory, keep);
       for (const product of routed) {
-        routedExfoliantProductIds.add(product.id);
-        registerProductForStep(EXFOLIANT_WEEKLY_STEP, product);
+        // Если продукт отсеян гейтами регистрации (контра/протокол), не помечаем его
+        // как «уехавший в недельный блок» — иначе в weekly добавился бы пустой шаг.
+        if (registerProductForStep(EXFOLIANT_WEEKLY_STEP, product)) {
+          routedExfoliantProductIds.add(product.id);
+        }
       }
       logger.info('Exfoliant products routed out of neutral daily slot to weekly block', {
         userId,
@@ -3196,7 +3238,7 @@ export async function generate28DayPlan(
             
             // Последняя попытка: ищем через slot-aware fallback в БД
             try {
-              let fallbackProduct = await findFallbackProductForSlot(stepCategory, profileClassification, { userId });
+              let fallbackProduct = await findFallbackProductForSlot(stepCategory, profileClassification, fallbackOptions);
               if (fallbackProduct && productViolatesContraindications(fallbackProduct, userContraindications)) {
                 logger.info('DB fallback product rejected by contraindications (morning)', {
                   stepCategory,
@@ -3357,7 +3399,7 @@ export async function generate28DayPlan(
     if (lipBalmProducts.length === 0) {
       // Пробуем найти через fallback в БД
       try {
-        const fallbackLipBalm = await findFallbackProduct('lip_care', profileClassification, { userId });
+        const fallbackLipBalm = await findFallbackProduct('lip_care', profileClassification, fallbackOptions);
         if (fallbackLipBalm && isProductAllowedInPlanPhase(fallbackLipBalm, phase, lipBalmStep)) {
           registerProductForStep(lipBalmStep, fallbackLipBalm);
           lipBalmProducts = [fallbackLipBalm];
@@ -3402,7 +3444,7 @@ export async function generate28DayPlan(
       if (eyeCreamProducts.length === 0) {
         // Пробуем найти через fallback в БД
         try {
-          const fallbackEyeCream = await findFallbackProduct('eye_cream_dark_circles', profileClassification, { userId });
+          const fallbackEyeCream = await findFallbackProduct('eye_cream_dark_circles', profileClassification, fallbackOptions);
           if (fallbackEyeCream && isProductAllowedInPlanPhase(fallbackEyeCream, phase, eyeCreamStep)) {
             registerProductForStep(eyeCreamStep, fallbackEyeCream);
             eyeCreamProducts = [fallbackEyeCream];
@@ -3534,7 +3576,7 @@ export async function generate28DayPlan(
             
             // Последняя попытка: ищем через slot-aware fallback в БД
             try {
-              let fallbackProduct = await findFallbackProductForSlot(stepCategory, profileClassification, { userId });
+              let fallbackProduct = await findFallbackProductForSlot(stepCategory, profileClassification, fallbackOptions);
               if (fallbackProduct && productViolatesContraindications(fallbackProduct, userContraindications)) {
                 logger.info('DB fallback product rejected by contraindications (evening)', {
                   stepCategory,
@@ -4389,7 +4431,7 @@ export async function generate28DayPlan(
   // видны в client_logs сразу. Периодический аудит по всем планам —
   // scripts/audit-plan-invariants.ts (та же логика в SQL).
   try {
-    const slotProductViolations = validatePlanInvariants(plan28, invariantProductsMap);
+    const slotProductViolations = validatePlanInvariants(plan28, invariantProductsMap, dermatologyProtocol);
     if (slotProductViolations.length > 0) {
       logger.warn('plan_invariant_violation_detected', {
         userId,

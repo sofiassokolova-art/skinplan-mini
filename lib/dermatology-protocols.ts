@@ -3,7 +3,7 @@
 
 import type { StepCategory } from './step-category-rules';
 import type { ActiveIngredient } from './ingredient-compatibility';
-import { extractActiveIngredients } from './ingredient-compatibility';
+import { extractActiveIngredients, expandIngredientForMatching } from './ingredient-compatibility';
 
 export type SkinCondition = 'acne' | 'rosacea' | 'atopic_dermatitis' | 'pigmentation' | 'on_isotretinoin' | 'normal';
 
@@ -502,6 +502,24 @@ export function determineProtocol(profile: {
 }
 
 /**
+ * true, если конкретный актив запрещён протоколом.
+ *
+ * ВАЖНО: forbiddenIngredients написаны «зонтиками» (`aha`, `bha`, `retinoid`), а
+ * extractActiveIngredients возвращает конкретные активы (`glycolic_acid`,
+ * `salicylic_acid`, `tretinoin`). Прямой includes() их не матчил — Glycolic Acid 7%
+ * проходил проверку протокола розацеа, где `aha` запрещена (кейс Ольги,
+ * cmrp6kr01000004jui674wjgk). Раскрываем зонтики через expandIngredientForMatching.
+ */
+export function isIngredientForbiddenByProtocol(
+  ingredient: ActiveIngredient,
+  protocol: DermatologyProtocol
+): boolean {
+  return protocol.forbiddenIngredients.some(forbidden =>
+    expandIngredientForMatching(forbidden).includes(ingredient)
+  );
+}
+
+/**
  * Проверяет, соответствует ли продукт протоколу
  * ИСПРАВЛЕНО (P0): 
  * - Использует нормализованные ингредиенты через extractActiveIngredients
@@ -540,7 +558,7 @@ export function isProductAllowedByProtocol(
 
   // ИСПРАВЛЕНО (P0): Проверка запрещенных ингредиентов по нормализованным типам
   for (const extractedIng of extractedIngredients) {
-    if (protocol.forbiddenIngredients.includes(extractedIng)) {
+    if (isIngredientForbiddenByProtocol(extractedIng, protocol)) {
       return {
         allowed: false,
         reason: `Ингредиент ${extractedIng} запрещен в протоколе ${protocol.name}`,
@@ -562,7 +580,7 @@ export function isProductAllowedByProtocol(
   // Проверка allowedIngredients
   if (protocol.allowedIngredients.length > 0) {
     const hasAllowedIngredient = extractedIngredients.some(ing => protocol.allowedIngredients.includes(ing));
-    const hasForbiddenIngredient = extractedIngredients.some(ing => protocol.forbiddenIngredients.includes(ing));
+    const hasForbiddenIngredient = extractedIngredients.some(ing => isIngredientForbiddenByProtocol(ing, protocol));
     
     if (!hasAllowedIngredient && extractedIngredients.length > 0 && !hasForbiddenIngredient) {
       // Если есть активы, но они не в allowlist
