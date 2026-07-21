@@ -217,7 +217,11 @@ export function ReplaceProductModal({ product, isOpen, onClose, onReplace }: Rep
           </button>
         </div>
 
-        <style jsx>{`
+        {/* global, а не scoped: styled-jsx-скоуп не навешивает jsx-класс на
+            элементы этого компонента (и на дочерний ProductThumb), поэтому
+            обычный `<style jsx>` давал мёртвый CSS и модалка рендерилась
+            неоформленной. Все селекторы префиксованы .replace-*, утечки нет. */}
+        <style jsx global>{`
           .replace-modal-overlay {
             position: fixed;
             inset: 0;
@@ -611,8 +615,7 @@ export function ReplaceProductModal({ product, isOpen, onClose, onReplace }: Rep
               gap: 10px;
             }
           }
-        `}</style>
-        <style jsx global>{`
+
           .replace-thumb {
             position: relative;
             width: 72px;
