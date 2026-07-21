@@ -112,9 +112,39 @@ export function getIngredientsForProduct(
 import {
   determineProtocol,
   isProductAllowedByProtocol,
+  isIngredientForbiddenByProtocol,
   getIngredientSchedule,
   type DermatologyProtocol,
 } from './dermatology-protocols';
+
+/**
+ * Активы продукта, запрещённые протоколом (пустой массив = продукт чист).
+ *
+ * Зачем отдельная функция: запрет протокола на ИНГРЕДИЕНТЫ проверялся только при
+ * выборе продукта через filterByProtocol. Продукт, попавший в план через
+ * ensure-блоки/DB-фолбэки (findFallbackProduct), не проверялся вообще — так
+ * Glycolic Acid 7% встал в toner_soothing пользователю с розацеа (toner_soothing
+ * входит в allowedSteps протокола, а filterStepsByProtocol смотрит только шаги).
+ * Это единая точка проверки состава для регистрации продукта в ЛЮБОЙ шаг.
+ */
+export function getProtocolForbiddenIngredients(
+  product: Pick<ProductWithBrand, 'activeIngredients' | 'step' | 'category'>,
+  protocol: DermatologyProtocol,
+  stepCategory?: StepCategory
+): ActiveIngredient[] {
+  if (!protocol.forbiddenIngredients || protocol.forbiddenIngredients.length === 0) return [];
+  const ingredients = getIngredientsForProduct(product, stepCategory);
+  return ingredients.filter(ing => isIngredientForbiddenByProtocol(ing, protocol));
+}
+
+/** true, если состав продукта нарушает protocol.forbiddenIngredients. */
+export function productViolatesProtocol(
+  product: Pick<ProductWithBrand, 'activeIngredients' | 'step' | 'category'>,
+  protocol: DermatologyProtocol,
+  stepCategory?: StepCategory
+): boolean {
+  return getProtocolForbiddenIngredients(product, protocol, stepCategory).length > 0;
+}
 import type { ProfileClassification } from './plan-generation-helpers';
 
 export interface ProductSelectionContext {

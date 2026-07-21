@@ -9,6 +9,8 @@ import { MIN_PRODUCTS_FOR_STEP } from './constants';
 import type { Prisma } from '@prisma/client';
 import type { ProfileClassification } from './plan-generation-helpers';
 import { productContainsStrongAcids } from './contraindication-product-filter';
+import { productViolatesProtocol } from './dermatology-product-filter';
+import type { DermatologyProtocol } from './dermatology-protocols';
 
 export interface ProductWithBrand {
   id: number;
@@ -36,6 +38,16 @@ export interface FallbackOptions {
   userId?: string;
   /** Дополнительный JS-фильтр кандидатов (например, совместимость с подтипом слота). */
   filter?: (product: ProductWithBrand) => boolean;
+  /**
+   * Дерматологический протокол пользователя. Кандидаты с активами из
+   * protocol.forbiddenIngredients исключаются ещё на этапе подбора, а не
+   * отбраковываются позже (иначе слот остаётся пустым). Матчинг по составу —
+   * регексами (extractActiveIngredients), поэтому фильтр JS-уровня, а не SQL;
+   * из БД берётся расширенный пул кандидатов (takeCount).
+   */
+  protocol?: DermatologyProtocol;
+  /** Слот, под который ищем продукт: уточняет активы, если activeIngredients пусты. */
+  slotStepCategory?: StepCategory;
 }
 
 // --- Slot-aware совместимость fallback-продуктов ---
@@ -90,13 +102,31 @@ function simpleHash(str: string): number {
   return Math.abs(h);
 }
 
-/** Применяет JS-фильтр и выбирает кандидата (псевдослучайно при userId, иначе первого). */
+/**
+ * Применяет JS-фильтр + гейт протокола и выбирает кандидата
+ * (псевдослучайно при userId, иначе первого).
+ */
 function pickCandidate(
   products: ProductWithBrand[],
   baseStep: string,
   options?: FallbackOptions
 ): ProductWithBrand | null {
-  const candidates = options?.filter ? products.filter(options.filter) : products;
+  let candidates = options?.filter ? products.filter(options.filter) : products;
+  if (options?.protocol) {
+    const protocol = options.protocol;
+    const before = candidates.length;
+    candidates = candidates.filter(
+      (p) => !productViolatesProtocol(p, protocol, options.slotStepCategory)
+    );
+    if (candidates.length < before) {
+      logger.info('Fallback candidates rejected by protocol forbidden ingredients', {
+        baseStep,
+        protocol: protocol.condition,
+        rejected: before - candidates.length,
+        remaining: candidates.length,
+      });
+    }
+  }
   if (candidates.length === 0) return null;
   if (options?.userId && candidates.length > 1) {
     const idx = simpleHash(`${options.userId}|${baseStep}`) % candidates.length;
@@ -196,7 +226,7 @@ export async function findFallbackProduct(
       { createdAt: 'desc' as const },
     ];
     // При фильтре берём больше кандидатов, чтобы отсев не оставил пустой список
-    const takeCount = options?.filter ? 25 : 10;
+    const takeCount = options?.filter || options?.protocol ? 25 : 10;
     const withSkinType = await prisma.product.findMany({
       where: whereClauseWithSkinType,
       include: { brand: true },
@@ -308,21 +338,19 @@ const SUBTYPE_ONLY_BASE_STEPS = new Set(['treatment', 'serum', 'spot_treatment']
 export async function findFallbackProductForSlot(
   slotStepCategory: StepCategory,
   profileClassification: ProfileClassification,
-  options?: { userId?: string }
+  options?: { userId?: string; protocol?: DermatologyProtocol }
 ): Promise<ProductWithBrand | null> {
   const baseStep = getBaseStepFromStepCategory(slotStepCategory);
   const filter = (p: ProductWithBrand) => isProductCompatibleWithSlot(p, slotStepCategory);
+  const commonOptions: FallbackOptions = { ...options, filter, slotStepCategory };
 
   if (slotStepCategory !== baseStep) {
-    const bySubtype = await findFallbackProduct(slotStepCategory, profileClassification, {
-      ...options,
-      filter,
-    });
+    const bySubtype = await findFallbackProduct(slotStepCategory, profileClassification, commonOptions);
     if (bySubtype) return bySubtype;
     if (SUBTYPE_ONLY_BASE_STEPS.has(baseStep)) return null;
   }
 
-  return findFallbackProduct(baseStep, profileClassification, { ...options, filter });
+  return findFallbackProduct(baseStep, profileClassification, commonOptions);
 }
 
 /**
@@ -544,7 +572,8 @@ export async function ensureProductForStep(
 export async function ensureRequiredProducts(
   requiredSteps: StepCategory[],
   profileClassification: ProfileClassification,
-  existingProductsByStep: Map<StepCategory, ProductWithBrand[]>
+  existingProductsByStep: Map<StepCategory, ProductWithBrand[]>,
+  protocol?: DermatologyProtocol
 ): Promise<Map<StepCategory, ProductWithBrand[]>> {
   const result = new Map(existingProductsByStep);
 
@@ -606,6 +635,8 @@ export async function ensureRequiredProducts(
       for (const stepCategory of orderedSerumSteps) {
         const byExactCategory = await findFallbackProduct(stepCategory, profileClassification, {
           filter: (p) => isProductCompatibleWithSlot(p, stepCategory),
+          protocol,
+          slotStepCategory: stepCategory,
         });
         if (byExactCategory) {
           fallbackProduct = byExactCategory;
@@ -636,7 +667,7 @@ export async function ensureRequiredProducts(
       });
       
       for (const fallbackCategory of moisturizerFallbackCategories) {
-        const fallbackForCategory = await findFallbackProduct(fallbackCategory, profileClassification);
+        const fallbackForCategory = await findFallbackProduct(fallbackCategory, profileClassification, { protocol });
         if (fallbackForCategory) {
           fallbackProduct = fallbackForCategory;
           logger.info('Found moisturizer fallback from hierarchy', {
@@ -666,12 +697,19 @@ export async function ensureRequiredProducts(
       const existing = result.get(stepCategory) || [];
       if (existing.length === 0) {
         let productForSlot: ProductWithBrand | null = fallbackProduct;
-        if (!isProductCompatibleWithSlot(productForSlot, stepCategory)) {
-          productForSlot = await findFallbackProductForSlot(stepCategory, profileClassification);
+        // batch-запрос не знает ни про подтип слота, ни про запреты протокола:
+        // проверяем оба и при конфликте ищем slot+protocol-aware замену.
+        const incompatibleWithSlot = !isProductCompatibleWithSlot(productForSlot, stepCategory);
+        const forbiddenByProtocol =
+          !!protocol && productViolatesProtocol(productForSlot, protocol, stepCategory);
+        if (incompatibleWithSlot || forbiddenByProtocol) {
+          productForSlot = await findFallbackProductForSlot(stepCategory, profileClassification, { protocol });
           if (!productForSlot) {
-            logger.warn('Fallback product incompatible with slot subtype and no slot-aware replacement found', {
+            logger.warn('Fallback product rejected for slot and no replacement found', {
               stepCategory,
               baseStep,
+              incompatibleWithSlot,
+              forbiddenByProtocol,
               rejectedProductId: fallbackProduct.id,
               rejectedProductName: fallbackProduct.name,
             });

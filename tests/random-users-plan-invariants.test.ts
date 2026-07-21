@@ -9,7 +9,9 @@
 //   3. беременность → никаких ретиноидов;
 //   4. Rx-терапия (Эффезел/Базирон/Дифферин) → без кислотных шагов + шаг-инструкция;
 //   5. SPF-продукт никогда не стоит в cleanser-слоте (регрессия _oil/_oily);
-//   6. все productId существуют в каталоге.
+//   6. все productId существуют в каталоге;
+//   7. дерм-протокол: ни один продукт плана не содержит актив из
+//      protocol.forbiddenIngredients (розацеа → без AHA/BHA/ретиноидов/vitC/BPO).
 //
 // Запуск (нужна БД, лучше стейджинг; последовательный режим и большие таймауты):
 //   DATABASE_URL=... npx vitest run tests/random-users-plan-invariants.test.ts \
@@ -39,6 +41,8 @@ vi.mock('@/lib/auth/telegram-auth', () => ({
 import { POST as postAnswers } from '@/app/api/questionnaire/answers/route';
 import { generate28DayPlan } from '@/lib/plan-generator';
 import { productViolatesContraindications } from '@/lib/contraindication-product-filter';
+import { determineProtocol } from '@/lib/dermatology-protocols';
+import { getProtocolForbiddenIngredients } from '@/lib/dermatology-product-filter';
 import { RX_TOPICAL_CONFLICT_STEPS, isOnStrongRxTopicals } from '@/lib/rx-topicals';
 import type { DayStep } from '@/lib/plan-types';
 
@@ -314,8 +318,40 @@ describe(`random users: инварианты плана (seed=${SEED}, n=${USERS
         }
       }
 
+      // 9. Дерм-протокол: ни один продукт плана не содержит актив из
+      //    protocol.forbiddenIngredients (кейс Ольги: AHA-тонер при розацеа).
+      const protocol = determineProtocol({
+        diagnoses: Array.isArray(markers.diagnoses) ? (markers.diagnoses as string[]) : [],
+        concerns: Array.isArray(markers.concerns) ? (markers.concerns as string[]) : [],
+        skinType: profile!.skinType || undefined,
+        sensitivityLevel: (profile!.sensitivityLevel || 'medium') as 'low' | 'medium' | 'high' | 'very_high',
+        rosaceaRisk: profile!.rosaceaRisk || undefined,
+        onIsotretinoin: markers.onIsotretinoin === true,
+        currentOralMeds: Array.isArray(markers.currentOralMeds)
+          ? (markers.currentOralMeds as string[])
+          : [],
+      });
+      if (protocol.forbiddenIngredients.length > 0) {
+        for (const day of days) {
+          for (const step of collectSteps(day)) {
+            if (!step.productId) continue;
+            const p = productById.get(String(step.productId));
+            if (!p) continue;
+            const forbidden = getProtocolForbiddenIngredients(
+              { activeIngredients: p.activeIngredients || [], step: p.step || '', category: p.category },
+              protocol,
+              step.stepCategory
+            );
+            expect(
+              forbidden,
+              `${label} день ${day.dayIndex}: «${p.name}» (id=${p.id}) в слоте ${step.stepCategory} нарушает протокол ${protocol.condition}`
+            ).toEqual([]);
+          }
+        }
+      }
+
       testLog(
-        `✅ ${label} ok: contra=[${contraindications.join(',') || '—'}], rx=${onRx}, pregnancy=${profile!.hasPregnancy}, products=${productIds.size}`
+        `✅ ${label} ok: contra=[${contraindications.join(',') || '—'}], rx=${onRx}, pregnancy=${profile!.hasPregnancy}, protocol=${protocol.condition}, products=${productIds.size}`
       );
 
       // Чистим сразу — чтобы упавший прогон оставил в БД только проблемного юзера
