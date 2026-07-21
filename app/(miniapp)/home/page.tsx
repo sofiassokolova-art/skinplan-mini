@@ -21,7 +21,6 @@ interface RoutineItem {
   title: string;
   subtitle: string;
   brand?: string;
-  frequencyLabel?: string;
   icon: string;
   howto: {
     steps: string[];
@@ -43,7 +42,6 @@ interface Recommendation {
     brand: string;
     description: string;
     imageUrl?: string;
-    frequencyLabel?: string;
   }>>;
 }
 
@@ -64,10 +62,6 @@ function readProductBrand(product: any): string | undefined {
 
 function readProductName(product: any, fallback: string): string {
   return typeof product?.name === 'string' && product.name.trim() ? product.name : fallback;
-}
-
-function readFrequencyLabel(value: unknown): string | undefined {
-  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
 }
 
 const HOME_BACKGROUND = 'var(--canvas)';
@@ -331,7 +325,6 @@ export default function HomePage() {
                   id: `${time}-${baseStep}-${idx}-manual`,
                   ...meta,
                   subtitle: step.manualLabel || meta.title,
-                  frequencyLabel: readFrequencyLabel(step.frequencyLabel),
                   howto: step.instruction
                     ? { steps: [step.instruction], volume: '', tip: '' }
                     : meta.howto,
@@ -349,7 +342,6 @@ export default function HomePage() {
               ...meta,
               subtitle: readProductName(product, meta.title),
               brand: readProductBrand(product),
-              frequencyLabel: readFrequencyLabel(step.frequencyLabel),
               done: false,
             });
           });
@@ -482,7 +474,7 @@ export default function HomePage() {
         time: 'AM' | 'PM',
         subtitle: string,
         brand?: string,
-        overrides: Partial<Pick<RoutineItem, 'title' | 'icon' | 'howto' | 'frequencyLabel'>> = {},
+        overrides: Partial<Pick<RoutineItem, 'title' | 'icon' | 'howto'>> = {},
       ) => {
         const meta = getStepMeta(baseStep, time);
         if (!meta) return;
@@ -515,40 +507,29 @@ export default function HomePage() {
             'AM',
             readProductName(data.steps.cleanser[0], 'Очищающее средство'),
             readProductBrand(data.steps.cleanser[0]),
-            { frequencyLabel: readFrequencyLabel(data.steps.cleanser[0]?.frequencyLabel) },
           );
         }
       }
       
       if (data?.steps?.toner) {
-        addRoutineItem(morning, 'morning-toner', 'toner', 'AM', readProductName(data.steps.toner[0], 'Тоник'), readProductBrand(data.steps.toner[0]), {
-          frequencyLabel: readFrequencyLabel(data.steps.toner[0]?.frequencyLabel),
-        });
+        addRoutineItem(morning, 'morning-toner', 'toner', 'AM', readProductName(data.steps.toner[0], 'Тоник'), readProductBrand(data.steps.toner[0]));
       }
       
       if (data?.steps?.treatment) {
-        addRoutineItem(morning, 'morning-active', 'treatment', 'AM', readProductName(data.steps.treatment[0], 'Активное средство'), readProductBrand(data.steps.treatment[0]), {
-          frequencyLabel: readFrequencyLabel(data.steps.treatment[0]?.frequencyLabel),
-        });
+        addRoutineItem(morning, 'morning-active', 'treatment', 'AM', readProductName(data.steps.treatment[0], 'Активное средство'), readProductBrand(data.steps.treatment[0]));
       }
       
       if (data?.steps?.moisturizer) {
-        addRoutineItem(morning, 'morning-cream', 'moisturizer', 'AM', readProductName(data.steps.moisturizer[0], 'Увлажняющий крем'), readProductBrand(data.steps.moisturizer[0]), {
-          frequencyLabel: readFrequencyLabel(data.steps.moisturizer[0]?.frequencyLabel),
-        });
+        addRoutineItem(morning, 'morning-cream', 'moisturizer', 'AM', readProductName(data.steps.moisturizer[0], 'Увлажняющий крем'), readProductBrand(data.steps.moisturizer[0]));
       }
       
       if (data?.steps?.spf) {
-        addRoutineItem(morning, 'morning-spf', 'spf', 'AM', readProductName(data.steps.spf[0], 'SPF 50'), readProductBrand(data.steps.spf[0]), {
-          frequencyLabel: readFrequencyLabel(data.steps.spf[0]?.frequencyLabel),
-        });
+        addRoutineItem(morning, 'morning-spf', 'spf', 'AM', readProductName(data.steps.spf[0], 'SPF 50'), readProductBrand(data.steps.spf[0]));
       }
       
       // ИСПРАВЛЕНО: Добавляем бальзам для губ утром для всех
       if (data?.steps?.lip_care) {
-        addRoutineItem(morning, 'morning-lip-balm', 'lip_care', 'AM', readProductName(data.steps.lip_care[0], 'Бальзам для губ'), readProductBrand(data.steps.lip_care[0]), {
-          frequencyLabel: readFrequencyLabel(data.steps.lip_care[0]?.frequencyLabel),
-        });
+        addRoutineItem(morning, 'morning-lip-balm', 'lip_care', 'AM', readProductName(data.steps.lip_care[0], 'Бальзам для губ'), readProductBrand(data.steps.lip_care[0]));
       }
       
       // ВЕЧЕРНЯЯ РУТИНА
@@ -559,7 +540,6 @@ export default function HomePage() {
             volume: '1–2 дозы масла + 1–2 пшика геля',
             tip: 'Двойное очищение — в дни макияжа/кислот.',
           },
-          frequencyLabel: readFrequencyLabel(data.steps.cleanser[0]?.frequencyLabel),
         });
       }
       
@@ -573,21 +553,16 @@ export default function HomePage() {
             volume: 'Тонкий слой',
             tip: 'При покраснении — пауза 3–5 дней.',
           },
-          frequencyLabel: readFrequencyLabel(acidProduct?.frequencyLabel),
         });
       }
       
       if (data?.steps?.treatment || data?.steps?.serum) {
         const serumProduct = data.steps?.treatment?.[0] || data.steps?.serum?.[0];
-        addRoutineItem(evening, 'evening-serum', 'serum', 'PM', readProductName(serumProduct, 'Пептидная / успокаивающая'), readProductBrand(serumProduct), {
-          frequencyLabel: readFrequencyLabel(serumProduct?.frequencyLabel),
-        });
+        addRoutineItem(evening, 'evening-serum', 'serum', 'PM', readProductName(serumProduct, 'Пептидная / успокаивающая'), readProductBrand(serumProduct));
       }
       
       if (data?.steps?.moisturizer) {
-        addRoutineItem(evening, 'evening-cream', 'moisturizer', 'PM', readProductName(data.steps.moisturizer[0], 'Питательный крем'), readProductBrand(data.steps.moisturizer[0]), {
-          frequencyLabel: readFrequencyLabel(data.steps.moisturizer[0]?.frequencyLabel),
-        });
+        addRoutineItem(evening, 'evening-cream', 'moisturizer', 'PM', readProductName(data.steps.moisturizer[0], 'Питательный крем'), readProductBrand(data.steps.moisturizer[0]));
       }
       
       setMorningItems(applyDoneFromStorage(morning, 'AM'));
@@ -841,9 +816,7 @@ export default function HomePage() {
         .home-rd .hr-section-note{color:var(--ink-soft);font-size:11px;font-weight:500;}
         .home-rd .hr-featured-wrap{padding:0 20px 16px;}
         .home-rd .hr-featured{position:relative;overflow:hidden;padding:16px 18px 72px;border-radius:24px;border:1px solid var(--glass-border);background:radial-gradient(110% 120% at 96% 100%, rgba(var(--accent-rgb),0.44) 0%, rgba(var(--accent-rgb),0.22) 38%, transparent 66%), #fff;box-shadow:0 1px 2px rgba(10,10,10,0.03),0 14px 30px -18px rgba(10,10,10,0.16);min-height:222px;}
-        .home-rd .hr-chip-row{position:relative;z-index:2;display:flex;align-items:center;flex-wrap:wrap;gap:6px;max-width:calc(100% - 116px);}
         .home-rd .hr-chip{display:inline-flex;align-items:center;min-height:24px;padding:0 10px;border-radius:999px;color:var(--ink);background:var(--accent);font-size:9.5px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;}
-        .home-rd .hr-frequency-chip{display:inline-flex;align-items:center;min-height:24px;padding:0 10px;border-radius:999px;color:#475569;background:#F1F5F9;border:1px solid rgba(71,85,105,0.08);font-size:11px;font-weight:700;letter-spacing:0;white-space:nowrap;}
         .home-rd .hr-featured-product{position:absolute;top:18px;right:18px;width:108px;height:118px;object-fit:contain;filter:drop-shadow(0 13px 14px rgba(0,0,0,0.14));pointer-events:none;}
         .home-rd .hr-featured-product.blend{mix-blend-mode:multiply;filter:drop-shadow(0 8px 10px rgba(0,0,0,0.08));}
         .home-rd .hr-featured-copy{position:relative;z-index:1;width:58%;margin-top:30px;}
@@ -1013,12 +986,7 @@ export default function HomePage() {
                 {!isFinished && <div className="hr-section-note">Следуйте плану по порядку</div>}
               </div>
               <article className="hr-featured">
-                <div className="hr-chip-row">
-                  <span className="hr-chip">{isFinished ? 'Готово' : `Шаг ${currentStepNumber}`}</span>
-                  {!isFinished && currentItem?.frequencyLabel && (
-                    <span className="hr-frequency-chip">{currentItem.frequencyLabel}</span>
-                  )}
-                </div>
+                <span className="hr-chip">{isFinished ? 'Готово' : `Шаг ${currentStepNumber}`}</span>
                 {featuredIcon && (
                   <img
                     className={`hr-featured-product${featuredBlend ? ' blend' : ''}`}
