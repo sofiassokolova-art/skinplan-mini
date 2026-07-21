@@ -26,6 +26,9 @@ import { pickProductForProfileDiversity } from '@/lib/plan-helpers';
 import type { ProfileClassification } from '@/lib/plan-generation-helpers';
 import {
   determineProtocol,
+  isExfoliatingAcid,
+  getMaxWeeklyFrequency,
+  getEffectiveIngredientSchedule,
   type DermatologyProtocol,
 } from '@/lib/dermatology-protocols';
 import {
@@ -33,13 +36,19 @@ import {
   generateProductJustification,
   generateProductWarnings,
   getActiveIngredientsFromStepCategory,
+  getIngredientsForProduct,
   type ProductSelectionContext,
 } from '@/lib/dermatology-product-filter';
 import { getApplicationDaysForWeek } from '@/lib/protocol-plan-integration';
 import { productViolatesContraindications } from '@/lib/contraindication-product-filter';
 import { filterStepsForRxTopicals, isOnStrongRxTopicals } from '@/lib/rx-topicals';
 import { applyPhaseRoutineVariation } from '@/lib/plan-routine-variation';
-import { validatePlanInvariants, summarizePlanInvariantViolations } from '@/lib/plan-invariants';
+import {
+  validatePlanInvariants,
+  summarizePlanInvariantViolations,
+  type PlanInvariantProduct,
+} from '@/lib/plan-invariants';
+import { resolveIntraRoutineConflicts, findIntraRoutineConflicts } from '@/lib/routine-conflict-resolver';
 
 // getSafeFallbackLookupStep удалён: его семантика (для serum/treatment/spot_treatment
 // подтипы не взаимозаменяемы) переехала в findFallbackProductForSlot (product-fallback.ts),
@@ -54,15 +63,28 @@ import { validatePlanInvariants, summarizePlanInvariantViolations } from '@/lib/
  * либо если текущий день недели входит в объединение разрешённых дней расписанных активов.
  * Мягкие ингредиенты без расписания (ceramides, HA, niacinamide, peptides) не ограничивают.
  */
-function isActiveStepAllowedOnDay(
+export function isActiveStepAllowedOnDay(
   stepCategory: StepCategory,
   dayIndex: number,
   week: number,
   protocol: DermatologyProtocol,
-  profileClassification: ProfileClassification
+  profileClassification: ProfileClassification,
+  product?: Pick<ProductWithBrand, 'activeIngredients' | 'step' | 'category'>
 ): boolean {
-  const ingredients = getActiveIngredientsFromStepCategory(stepCategory);
+  // Активы выводим из ПРОДУКТА, а не из слота: кислота может стоять в нейтральном слоте
+  // (toner_soothing/toner_hydrating), у которого своих активов нет — раньше такая кислота
+  // не подпадала под титрацию вовсе и вставала ежедневно (прод: Glycolic 7% все 28 дней).
+  // Приоритет источников в getIngredientsForProduct: activeIngredients → stepCategory →
+  // строка step/category. Маркетинговое название НЕ читается — «Acid Mantle Repair Cream»
+  // ложных срабатываний не даёт. При пустом activeIngredients падаем на слот и капаем.
+  const ingredients = product
+    ? getIngredientsForProduct(product, stepCategory)
+    : getActiveIngredientsFromStepCategory(stepCategory);
   if (ingredients.length === 0) return true;
+
+  // Кап только для leave-on. Кислотная умывалка (cleanser) смывается через секунды и
+  // используется ежедневно — под частотный кап не попадает, иначе ломается очищение.
+  if (isCleanserStep(stepCategory)) return true;
 
   const dayOfWeek = ((dayIndex - 1) % 7) + 1;
   const isNaive = profileClassification.retinoidExperience === 'naive';
@@ -73,6 +95,7 @@ function isActiveStepAllowedOnDay(
     const isRamped = ing === 'retinol' || ing === 'retinoid' || ing === 'aha' || ing === 'bha';
     const days = getApplicationDaysForWeek(ing, protocol, week, {
       naiveCap: isNaive && isRamped ? naiveCapByWeek[week] : undefined,
+      sensitivityLevel: profileClassification.sensitivityLevel,
     });
     if (days === null) continue; // нет ограничений для этого актива
     scheduledDayGroups.push(days);
@@ -81,8 +104,21 @@ function isActiveStepAllowedOnDay(
   // Ни у одного актива нет расписания → ограничений нет.
   if (scheduledDayGroups.length === 0) return true;
 
-  const allowedDays = new Set(scheduledDayGroups.flat());
-  return allowedDays.has(dayOfWeek);
+  // Пересечение, а не объединение: продукт с несколькими кислотами (AHA+BHA тоник)
+  // должен подчиняться САМОМУ строгому расписанию, иначе объединение дней делает
+  // мультикислотный продукт частотнее однокислотного.
+  const [first, ...rest] = scheduledDayGroups;
+  const allowedDays = rest.reduce(
+    (acc, group) => acc.filter((d) => group.includes(d)),
+    first
+  );
+  // Расписания могут не пересекаться (разные кислоты — разные дни). Тогда берём
+  // минимальную по размеру группу, чтобы шаг не исчез из плана полностью.
+  const effectiveDays = allowedDays.length > 0
+    ? allowedDays
+    : scheduledDayGroups.reduce((a, b) => (a.length <= b.length ? a : b));
+
+  return effectiveDays.includes(dayOfWeek);
 }
 
 /**
@@ -134,6 +170,94 @@ function containsExcludedIngredients(
 
 const CLEANER_FALLBACK_STEP: StepCategory = 'cleanser_gentle';
 const SPF_FALLBACK_STEP: StepCategory = 'spf_50_face';
+
+/** Куда уезжает кислота, вытесненная из нейтрального ежедневного слота. */
+const EXFOLIANT_WEEKLY_STEP: StepCategory = 'treatment_exfoliant_mild';
+
+/**
+ * Потолок частоты, ниже которого кислота считается ПЕРИОДИЧЕСКИМ уходом и переезжает
+ * в недельный блок. 4-5 дней/нед (BHA при акне) — это «почти каждый день», такую кислоту
+ * недельный блок показал бы реже, чем нужно, поэтому она остаётся в обычной рутине.
+ */
+export const MAX_WEEKLY_FREQ_FOR_WEEKLY_ROUTING = 3;
+
+/**
+ * Нужно ли уносить продукт из ежедневного НЕЙТРАЛЬНОГО слота в недельный блок.
+ * Чистая функция — основная точка покрытия тестами для маршрутизации.
+ */
+export function shouldRouteAcidToWeekly(
+  product: Pick<ProductWithBrand, 'activeIngredients' | 'step' | 'category'>,
+  stepCategory: StepCategory,
+  protocol: DermatologyProtocol,
+  profileClassification: ProfileClassification
+): boolean {
+  // Нейтральный leave-on слот: очищение, SPF, маски и уже кислотные слоты не трогаем.
+  if (isCleanserStep(stepCategory) || isSPFStep(stepCategory)) return false;
+  if (isExfoliatingStepCategory(stepCategory)) return false;
+  if (getBaseStepFromStepCategory(stepCategory) === 'mask') return false;
+
+  return getIngredientsForProduct(product, stepCategory).some((ing) => {
+    if (!isExfoliatingAcid(ing)) return false;
+    const max = getMaxWeeklyFrequency(ing, protocol, {
+      sensitivityLevel: profileClassification.sensitivityLevel,
+    });
+    return max !== null && max <= MAX_WEEKLY_FREQ_FOR_WEEKLY_ROUTING;
+  });
+}
+
+/** Эксфолиирующий ли шаг по разметке (toner_acid, treatment_exfoliant_*, mask_peel…). */
+function isExfoliatingStepCategory(stepCategory: StepCategory): boolean {
+  return (
+    stepCategory.includes('exfoliant') ||
+    stepCategory.includes('acid') ||
+    stepCategory.includes('aha') ||
+    stepCategory.includes('bha') ||
+    stepCategory.includes('peel')
+  );
+}
+
+/**
+ * Каденция для карточки шага. Формулировка «до N раз» намеренная: тир задаёт ПОТОЛОК,
+ * а фактических вхождений может оказаться меньше (недельный блок даёт ограниченное
+ * число дней). «3 раза в неделю» обещало бы больше, чем в плане реально стоит.
+ */
+export function formatWeeklyFrequencyLabel(frequency: number): string {
+  if (frequency <= 1) return '1 раз в неделю';
+  return `до ${frequency} раз в неделю`;
+}
+
+/**
+ * Частота (дней/нед) активов продукта на текущей неделе. `null` — ограничений нет.
+ * Берём МИНИМАЛЬНУЮ частоту среди активов: продукт должен подчиняться самому строгому
+ * из своих расписаний (мультикислотный тоник — самой строгой из кислот).
+ *
+ * `acidsOnly` разделяет две задачи:
+ *  - КАП недельного блока считаем только по кислотам (менять поведение блока для
+ *    прочих активов у этой задачи мандата нет);
+ *  - ПОДПИСЬ каденции — по всем титруемым активам, включая ретинол: у него ровно тот же
+ *    UX-дефект (шаг исчезает в off-day без объяснения), просто он существовал и раньше.
+ */
+export function getScheduledFrequencyForStep(
+  product: Pick<ProductWithBrand, 'activeIngredients' | 'step' | 'category'>,
+  stepCategory: StepCategory,
+  protocol: DermatologyProtocol,
+  profileClassification: ProfileClassification,
+  week: number = 1,
+  options: { acidsOnly?: boolean } = {}
+): number | null {
+  const { acidsOnly = false } = options;
+  const ingredients = getIngredientsForProduct(product, stepCategory);
+  let strictest: number | null = null;
+  for (const ing of ingredients) {
+    if (acidsOnly && !isExfoliatingAcid(ing)) continue;
+    const { frequency } = getEffectiveIngredientSchedule(ing, protocol, week, {
+      sensitivityLevel: profileClassification.sensitivityLevel,
+    });
+    if (frequency === null || frequency === undefined) continue;
+    strictest = strictest === null ? frequency : Math.min(strictest, frequency);
+  }
+  return strictest;
+}
 
 const PHASE_ACTIVE_INGREDIENTS = [
   'retinol', 'retinoid', 'retinal', 'tretinoin', 'adapalene',
@@ -2793,10 +2917,79 @@ export async function generate28DayPlan(
 
   // Преобразуем план в новый формат Plan28
   // ИСПРАВЛЕНО: plan28Days уже объявлен выше, используем существующий
-  const weeklySteps = filterStepsForRxTopicals(
+  // МАРШРУТИЗАЦИЯ ЭКСФОЛИАНТОВ. Та же природа, что у контра-фильтра выше: гейты работают
+  // по ШАГАМ, а кислота, размеченная как обычный `toner`, попадает в НЕЙТРАЛЬНЫЙ слот
+  // (toner_soothing/toner_hydrating) и там либо стоит ежедневно, либо титрация пробивает
+  // дыры в рутине. Слот «успокаивающий тонер» не должен содержать эксфолиант в принципе.
+  //
+  // Кислоту с потолком ≤3 дн/нед переносим в НЕДЕЛЬНЫЙ блок — это уже существующий и
+  // понятный юзеру контейнер «Дополнительный уход сегодня», и именно так выглядели
+  // корректные планы в аудите. Кислоту с потолком 4-5 (BHA при акне) не трогаем:
+  // она почти ежедневная, её ведёт титрация в обычной рутине.
+  const routedExfoliantProductIds = new Set<number>();
+  // Куда переносить, решаем ДО переноса: если недельный эксфолиирующий шаг для этого
+  // профиля невозможен (запрещён протоколом/правилами шага, либо юзер на Rx-наружке),
+  // маршрутизацию не делаем вовсе — иначе продукт пропадёт из плана совсем, оставшись
+  // в selectedProducts как сирота без единого шага.
+  const weeklyTemplateSteps = filterStepsForRxTopicals(
     (carePlanTemplate.weekly || []) as StepCategory[],
     onStrongRxTopicals
   );
+  const weeklyAlreadyHasExfoliant = weeklyTemplateSteps.some(isExfoliatingStepCategory);
+  const canHostWeeklyExfoliant =
+    weeklyAlreadyHasExfoliant ||
+    (!onStrongRxTopicals &&
+      !dermatologyProtocol.forbiddenSteps.includes(EXFOLIANT_WEEKLY_STEP) &&
+      isStepAllowedForProfile(EXFOLIANT_WEEKLY_STEP, profileClassification as any));
+
+  if (canHostWeeklyExfoliant) {
+    for (const [stepCategory, products] of Array.from(productsByStepMap.entries())) {
+      const keep: ProductWithBrand[] = [];
+      const routed: ProductWithBrand[] = [];
+      for (const product of products) {
+        const periodicAcid = shouldRouteAcidToWeekly(
+          product, stepCategory, dermatologyProtocol, profileClassification
+        );
+        (periodicAcid ? routed : keep).push(product);
+      }
+
+      // Если в слоте НЕТ некислотной альтернативы — оставляем как есть: пустой слот хуже,
+      // чем кислота под частотным капом (кап отработает как страховка в дневном цикле).
+      if (routed.length === 0 || keep.length === 0) continue;
+
+      productsByStepMap.set(stepCategory, keep);
+      for (const product of routed) {
+        routedExfoliantProductIds.add(product.id);
+        registerProductForStep(EXFOLIANT_WEEKLY_STEP, product);
+      }
+      logger.info('Exfoliant products routed out of neutral daily slot to weekly block', {
+        userId,
+        stepCategory,
+        routedProductIds: routed.map((p) => p.id),
+        remainingCount: keep.length,
+      });
+    }
+  } else {
+    logger.info('Exfoliant routing skipped: no weekly slot available for this profile', {
+      userId,
+      onStrongRxTopicals,
+      forbiddenByProtocol: dermatologyProtocol.forbiddenSteps.includes(EXFOLIANT_WEEKLY_STEP),
+    });
+  }
+
+  const weeklySteps = [...weeklyTemplateSteps];
+
+  // Кислоту вытеснили из ежедневного слота — в недельном блоке должен появиться шаг,
+  // который её покажет. Шаблон мог не содержать эксфолиирующего шага вовсе
+  // (напр. minimalist_any_skin). Возможность проверена выше в canHostWeeklyExfoliant.
+  if (routedExfoliantProductIds.size > 0 && !weeklyAlreadyHasExfoliant) {
+    weeklySteps.push(EXFOLIANT_WEEKLY_STEP);
+    logger.info('Exfoliant step added to weekly block for routed acid products', {
+      userId,
+      step: EXFOLIANT_WEEKLY_STEP,
+      routedProductIds: Array.from(routedExfoliantProductIds),
+    });
+  }
   
   // Используем уже определенную routineComplexity из carePlanProfileInput
   // Если нужно переопределить из medicalMarkers, делаем это без const
@@ -2804,6 +2997,24 @@ export async function generate28DayPlan(
     routineComplexity = (medicalMarkers as any).routineComplexity;
   }
   
+  // Счётчик применений эксфолианта в недельном блоке: week -> stepCategory -> количество.
+  const weeklyAcidUsage = new Map<number, Map<StepCategory, number>>();
+
+  const getScheduledFrequency = (
+    product: ProductWithBrand,
+    stepCategory: StepCategory,
+    week: number = 1,
+    options: { acidsOnly?: boolean } = {}
+  ): number | null =>
+    getScheduledFrequencyForStep(
+      product,
+      stepCategory,
+      dermatologyProtocol,
+      profileClassification,
+      week,
+      options
+    );
+
   for (let dayIndex = 1; dayIndex <= 28; dayIndex++) {
     const weekNum = Math.ceil(dayIndex / 7);
     
@@ -3090,7 +3301,21 @@ export async function generate28DayPlan(
         .filter((p) => p.id !== selectedProduct?.id)
         .slice(0, 3)
         .map(p => String(p.id));
-      
+
+      // Титрация по ПРОДУКТУ: слотовая проверка выше не видит кислоту в нейтральном слоте,
+      // потому что у toner_soothing собственных активов нет. Здесь продукт уже выбран.
+      if (
+        selectedProduct &&
+        !isActiveStepAllowedOnDay(
+          stepCategory, dayIndex, weekNum, dermatologyProtocol, profileClassification, selectedProduct
+        )
+      ) {
+        logger.debug('Active product skipped by titration schedule (morning)', {
+          stepCategory, productId: selectedProduct.id, dayIndex, weekNum, userId,
+        });
+        continue;
+      }
+
       // Логируем для отладки
       if (userId === '643160759' || process.env.NODE_ENV === 'development') {
         logger.info('Products for step in plan28 morning', {
@@ -3109,10 +3334,14 @@ export async function generate28DayPlan(
       // ИСПРАВЛЕНО (P0): Шаг добавляется ТОЛЬКО если есть продукт
       // Гарантируем, что в плане нет пустых шагов
       if (selectedProduct) {
+        const morningScheduledFrequency = getScheduledFrequency(selectedProduct, stepCategory, weekNum);
         morningSteps.push({
           stepCategory: stepCategory,
           productId: String(selectedProduct.id),
           alternatives,
+          ...(morningScheduledFrequency !== null
+            ? { frequencyLabel: formatWeeklyFrequencyLabel(morningScheduledFrequency) }
+            : {}),
         });
       }
     }
@@ -3452,7 +3681,21 @@ export async function generate28DayPlan(
         .filter((p) => p.id !== selectedProductEvening?.id)
         .slice(0, 3)
         .map(p => String(p.id));
-      
+
+      // Титрация по ПРОДУКТУ (см. утренний блок). Гейт стоит ДО записи в
+      // selectedProductsForDay, чтобы пропущенный продукт не считался выбранным.
+      if (
+        selectedProductEvening &&
+        !isActiveStepAllowedOnDay(
+          stepCategory, dayIndex, weekNum, dermatologyProtocol, profileClassification, selectedProductEvening
+        )
+      ) {
+        logger.debug('Active product skipped by titration schedule (evening)', {
+          stepCategory, productId: selectedProductEvening.id, dayIndex, weekNum, userId,
+        });
+        continue;
+      }
+
       // Добавляем выбранный продукт в список для проверки дубликатов следующих шагов
       if (selectedProductEvening) {
         selectedProductsForDay.push(selectedProductEvening);
@@ -3472,10 +3715,14 @@ export async function generate28DayPlan(
       }
       
       // ИСПРАВЛЕНО (P0): Шаг добавляется ТОЛЬКО если есть продукт
+      const eveningScheduledFrequency = getScheduledFrequency(selectedProductEvening, stepCategory, weekNum);
       eveningSteps.push({
         stepCategory: stepCategory,
         productId: String(selectedProductEvening.id),
         alternatives: alternativesEvening,
+        ...(eveningScheduledFrequency !== null
+          ? { frequencyLabel: formatWeeklyFrequencyLabel(eveningScheduledFrequency) }
+          : {}),
       });
     }
 
@@ -3501,7 +3748,7 @@ export async function generate28DayPlan(
       for (const step of weeklySteps) {
         const stepCategory = step as StepCategory;
         const stepProducts = getProductsForStep(stepCategory, phase);
-        
+
         // ИСПРАВЛЕНО (P0): Шаг создаётся ТОЛЬКО если есть продукты
         if (stepProducts.length === 0) {
           logger.warn('Skipping weekly step: no products found', {
@@ -3512,7 +3759,7 @@ export async function generate28DayPlan(
           });
           continue;
         }
-        
+
         const selectedWeeklyProduct = pickProductForProfileDiversity(
           stepProducts,
           userId ?? '',
@@ -3523,11 +3770,36 @@ export async function generate28DayPlan(
           .filter((p) => p.id !== selectedWeeklyProduct.id)
           .slice(0, 3)
           .map(p => String(p.id));
-        
+
+        // СВЕДЕНИЕ ДВУХ РАСПИСАНИЙ. Дни недельного блока заданы КАЛЕНДАРНО
+        // (isWeeklyFocusDay: 3,7,10,14… — до 3-4 раз/нед при maximal), а тир кислоты
+        // задан в днях/нед. Пересекать их напрямую нельзя: календарные дни и дни недели
+        // разъезжаются и могут занулить актив совсем. Поэтому считаем факт применения
+        // внутри недели и не даём выйти за потолок тира.
+        const acidFrequency = getScheduledFrequency(
+          selectedWeeklyProduct, stepCategory, weekNum, { acidsOnly: true }
+        );
+        if (acidFrequency !== null) {
+          const usedThisWeek = weeklyAcidUsage.get(weekNum)?.get(stepCategory) ?? 0;
+          if (usedThisWeek >= acidFrequency) {
+            logger.debug('Weekly exfoliant skipped: tier cap reached for this week', {
+              stepCategory, productId: selectedWeeklyProduct.id, weekNum, dayIndex,
+              usedThisWeek, acidFrequency, userId,
+            });
+            continue;
+          }
+          if (!weeklyAcidUsage.has(weekNum)) weeklyAcidUsage.set(weekNum, new Map());
+          weeklyAcidUsage.get(weekNum)!.set(stepCategory, usedThisWeek + 1);
+        }
+
         weeklyDaySteps.push({
           stepCategory: stepCategory,
           productId: String(selectedWeeklyProduct.id),
           alternatives,
+          ...(() => {
+            const labelFreq = getScheduledFrequency(selectedWeeklyProduct, stepCategory, weekNum);
+            return labelFreq !== null ? { frequencyLabel: formatWeeklyFrequencyLabel(labelFreq) } : {};
+          })(),
         });
       }
     }
@@ -3835,18 +4107,37 @@ export async function generate28DayPlan(
         })
         .filter((p): p is NonNullable<typeof p> => p !== null);
       
-      // Проверяем совместимость между morning и evening продуктами
+      // Кросс-время: separate_time как раз означает корректное разнесение morning/evening.
+      // Флагуем только то, что разнесением по времени не решается.
       for (const morningProduct of morningProducts) {
         for (const eveningProduct of eveningProducts) {
           const conflict = checkProductCompatibility(morningProduct, eveningProduct);
+          if (!conflict || conflict.solution === 'separate_time') continue;
           if (conflict && conflict.severity === 'high') {
             warnings.push(
-              `Day ${dayIndex + 1}: High-severity ingredient conflict between morning product "${morningProduct.name}" and evening product "${eveningProduct.name}": ${conflict.reason}. ${conflict.recommendation}`
+              `Day ${dayIndex + 1}: High-severity ingredient conflict between morning product "${morningProduct.name}" and evening product "${eveningProduct.name}" (not fixable by time separation): ${conflict.reason}. ${conflict.recommendation}`
             );
           } else if (conflict && conflict.severity === 'medium') {
             warnings.push(
               `Day ${dayIndex + 1}: Medium-severity ingredient conflict between morning product "${morningProduct.name}" and evening product "${eveningProduct.name}": ${conflict.reason}. ${conflict.recommendation}`
             );
+          }
+        }
+      }
+
+      for (const [routineName, routineProducts] of [
+        ['morning', morningProducts],
+        ['evening', eveningProducts],
+      ] as const) {
+        for (let i = 0; i < routineProducts.length; i++) {
+          for (let j = i + 1; j < routineProducts.length; j++) {
+            if (routineProducts[i].id === routineProducts[j].id) continue;
+            const conflict = checkProductCompatibility(routineProducts[i], routineProducts[j]);
+            if (conflict?.severity === 'high') {
+              warnings.push(
+                `Day ${dayIndex + 1} (${routineName}): High-severity ingredient conflict INSIDE one routine between "${routineProducts[i].name}" and "${routineProducts[j].name}": ${conflict.reason}. ${conflict.recommendation}`
+              );
+            }
           }
         }
       }
@@ -3995,6 +4286,39 @@ export async function generate28DayPlan(
 
   plan28.days.forEach((day: any, idx: number) => fixDuplicateProductsInDay(day, idx));
 
+  const invariantProductsMap = new Map<string, PlanInvariantProduct>(
+    selectedProducts.map(p => [
+      String(p.id),
+      { id: p.id, name: p.name, step: p.step, activeIngredients: p.activeIngredients ?? null },
+    ])
+  );
+
+  try {
+    const conflictResolution = resolveIntraRoutineConflicts(plan28, invariantProductsMap);
+    if (conflictResolution.resolutions.length > 0) {
+      logger.warn('intra_routine_conflicts_resolved', {
+        userId,
+        profileId: profile.id,
+        total: conflictResolution.resolutions.length,
+        actions: conflictResolution.resolutions.reduce<Record<string, number>>((acc, resolution) => {
+          acc[resolution.action] = (acc[resolution.action] ?? 0) + 1;
+          return acc;
+        }, {}),
+        samples: conflictResolution.warnings.slice(0, 10),
+      }, { userId, saveToDb: true });
+      warnings.push(...conflictResolution.warnings);
+    }
+    if (conflictResolution.mediumConflicts.length > 0) {
+      logger.info('intra_routine_conflicts_medium', {
+        userId,
+        total: conflictResolution.mediumConflicts.length,
+        samples: conflictResolution.mediumConflicts.slice(0, 10),
+      });
+    }
+  } catch (conflictError) {
+    logger.error('intra_routine_conflict_resolution_failed', conflictError, { userId });
+  }
+
   const invariantsCheck = await assertPlanInvariants(plan28);
   if (!invariantsCheck.isValid) {
     logger.warn('Plan generated with invariant violations, but continuing', {
@@ -4049,18 +4373,22 @@ export async function generate28DayPlan(
     }
   }
 
+  const survivingConflicts = findIntraRoutineConflicts(plan28, invariantProductsMap);
+  if (survivingConflicts.length > 0) {
+    logger.warn('intra_routine_conflict_survived', {
+      userId,
+      profileId: profile.id,
+      total: survivingConflicts.length,
+      samples: survivingConflicts.slice(0, 10).map(conflict => conflict.message),
+    }, { userId, saveToDb: true });
+  }
+
   // Маяк «слот ↔ продукт» (прод-аудит 20.07.2026): проверяем ФИНАЛЬНЫЙ план после всех
   // мутаций (fixDuplicateProductsInDay, recovery-marking) — то, что реально уйдёт в БД.
   // Нарушения не блокируют выдачу: warn с saveToDb, чтобы новые баги подбора были
   // видны в client_logs сразу. Периодический аудит по всем планам —
   // scripts/audit-plan-invariants.ts (та же логика в SQL).
   try {
-    const invariantProductsMap = new Map(
-      selectedProducts.map(p => [
-        String(p.id),
-        { id: p.id, name: p.name, step: p.step, activeIngredients: p.activeIngredients ?? null },
-      ])
-    );
     const slotProductViolations = validatePlanInvariants(plan28, invariantProductsMap);
     if (slotProductViolations.length > 0) {
       logger.warn('plan_invariant_violation_detected', {

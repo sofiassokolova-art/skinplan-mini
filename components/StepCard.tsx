@@ -114,6 +114,25 @@ export function StepCard({
           <div style={{ fontSize: '14px', fontWeight: '600', color: '#0A5F59' }}>
             {stepName}
           </div>
+          {/* Каденция: средство под титрацией применяется не каждый день. Без подписи
+              юзер видит, что купленный продукт исчезает из рутины, и не понимает почему. */}
+          {step.frequencyLabel && (
+            <span
+              style={{
+                fontSize: '10px',
+                padding: '2px 8px',
+                borderRadius: '8px',
+                backgroundColor: '#F1F5F9',
+                color: '#475569',
+                fontWeight: '500',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+                marginLeft: 'auto',
+              }}
+            >
+              {step.frequencyLabel}
+            </span>
+          )}
         </div>
         <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '6px', fontStyle: 'italic' }}>
           {stepSubtitle}

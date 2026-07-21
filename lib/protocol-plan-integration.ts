@@ -3,7 +3,7 @@
 // Использует протоколы для определения дней (active/barrier/recovery) и ограничения частоты активных ингредиентов
 
 import type { DermatologyProtocol } from './dermatology-protocols';
-import { getIngredientSchedule } from './dermatology-protocols';
+import { getIngredientSchedule, getEffectiveIngredientSchedule } from './dermatology-protocols';
 import type { PlanPhases } from './plan-types';
 import type { ActiveIngredient } from './ingredient-compatibility';
 import { logger } from './logger';
@@ -39,9 +39,13 @@ export function getApplicationDaysForWeek(
   ingredient: ActiveIngredient,
   protocol: DermatologyProtocol,
   week: number,
-  options?: { naiveCap?: number }
+  options?: { naiveCap?: number; sensitivityLevel?: string | null }
 ): number[] | null {
-  const schedule = getIngredientSchedule(ingredient, protocol, week);
+  // Используем sensitivity-aware резолвер: он добавляет частотные тиры конкретных кислот
+  // (glycolic/lactic/mandelic/pha/salicylic), которых нет в протокольных «зонтиках» aha/bha.
+  const schedule = getEffectiveIngredientSchedule(ingredient, protocol, week, {
+    sensitivityLevel: options?.sensitivityLevel,
+  });
 
   // Явные дни из cyclingRules — приоритет над частотой.
   if (schedule.days && schedule.days.length > 0) {
