@@ -22,7 +22,7 @@ import toast from 'react-hot-toast';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
 import { getPhaseForDay, getPhaseLabel } from '@/lib/plan-types';
 import { clientLogger } from '@/lib/client-logger';
-import { resolvePlanPaywall, hasWinbackOfferParam } from '@/lib/paywall-product';
+import { resolvePlanPaywall, resolvePlanRetakeHref, hasWinbackOfferParam } from '@/lib/paywall-product';
 
 interface PlanPageClientNewProps {
   plan28: Plan28;
@@ -596,11 +596,10 @@ export function PlanPageClientNew({
           const newSearch = q.toString();
           router.replace(newSearch ? `/plan?${newSearch}` : '/plan');
         }}
-        retakeCta={
-          planExpired
-            ? { text: 'Изменились цели? Перепройти анкету', href: '/quiz' }
-            : undefined
-        }
+        retakeCta={{
+          text: 'Изменились цели? Перепройти анкету',
+          href: resolvePlanRetakeHref(planExpired),
+        }}
       >
         {/* Контент внутри PaymentGate (показывается с блюром до оплаты, без блюра после оплаты) */}
         {/* Инфографика плана */}

@@ -13,7 +13,7 @@ import { invalidatePlanWarmCache } from '@/lib/plan-warm-cache';
 import toast from 'react-hot-toast';
 import { PaymentGate } from '@/components/PaymentGate';
 import { ReplaceProductModal } from '@/components/ReplaceProductModal';
-import { resolvePlanPaywall, hasWinbackOfferParam } from '@/lib/paywall-product';
+import { resolvePlanPaywall, resolvePlanRetakeHref, hasWinbackOfferParam } from '@/lib/paywall-product';
 import { useAddManyToCart, useAddToCart, useRemoveFromCart } from '@/hooks/useCart';
 import type {
   PlanPageContext,
@@ -256,7 +256,10 @@ export function PlanPageV2() {
           winbackOffer: hasWinbackOfferParam(searchParams?.toString()),
         })}
         isRetaking={isRetaking}
-        retakeCta={{ text: 'Изменились цели? Перепройти анкету', href: '/quiz?retake=1' }}
+        retakeCta={{
+          text: 'Изменились цели? Перепройти анкету',
+          href: resolvePlanRetakeHref(context.planExpired),
+        }}
         onPaymentComplete={() => {
           clientLogger.log('✅ Payment completed on plan page (V2)');
           const q = new URLSearchParams(searchParams?.toString() || '');
@@ -310,7 +313,9 @@ export function PlanPageV2() {
           notes={context.expertNotes}
           onRetakeQuiz={() => {
             invalidatePlanWarmCache();
-            router.push('/quiz?retake=1');
+            // Контент плана виден только после оплаты → это всегда «платил» ветка:
+            // экран выбора тем, а не рестарт анкеты с нуля.
+            router.push(resolvePlanRetakeHref(true));
           }}
         />
 

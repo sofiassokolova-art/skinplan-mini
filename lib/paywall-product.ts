@@ -35,6 +35,20 @@ export function resolvePlanPaywall(opts: {
   return { productCode: 'plan_access', price: 199 };
 }
 
+/**
+ * Куда вести «Перепройти анкету». Развилка одна — платил ли пользователь за план:
+ *  - НЕ платил (пейволл сразу после анкеты, `plan_access` 199₽): платный экран выбора тем
+ *    неуместен → `restart=1`, бесплатный полный рестарт анкеты с нуля.
+ *  - платил (активный план — «Что-то изменилось?»; или истёкший план на пейволле продления):
+ *    → `retakeFromHome=1`, экран выбора тем: точечная правка темы или полный ретейк за 99₽.
+ *
+ * На пейволле плана признак «платил» совпадает с `expired` — тем же, по которому
+ * resolvePlanPaywall выбирает продукт: первая покупка возможна только у неплативших.
+ */
+export function resolvePlanRetakeHref(hasPaidBefore: boolean): string {
+  return hasPaidBefore ? '/quiz?retakeFromHome=1' : '/quiz?restart=1';
+}
+
 /** Прочитать флаг win-back оффера из строки запроса (?offer=winback). */
 export function hasWinbackOfferParam(search: string | null | undefined): boolean {
   if (!search) return false;
