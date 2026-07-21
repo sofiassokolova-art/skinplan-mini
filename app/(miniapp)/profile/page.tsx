@@ -608,7 +608,7 @@ export default function PersonalCabinet() {
         .pf-rd .pf-avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px #fff,0 6px 18px rgba(10,10,10,0.12);}
         .pf-rd .pf-avatar-fallback{background:var(--ink);color:var(--accent);display:grid;place-items:center;font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:24px;font-weight:700;}
         .pf-rd .pf-avatar-wrap::after{content:"";position:absolute;right:2px;bottom:2px;width:14px;height:14px;border-radius:50%;background:var(--accent-deep,#C2F03C);border:3px solid var(--canvas);}
-        .pf-rd .pf-eyebrow{font-size:10.5px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-mute);}
+        .pf-rd .pf-eyebrow{font-family:var(--font-inter),-apple-system,BlinkMacSystemFont,sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-mute);}
         .pf-rd .pf-title{font-family:var(--font-unbounded),-apple-system,BlinkMacSystemFont,sans-serif;font-size:22px;font-weight:600;line-height:1.15;letter-spacing:-0.4px;color:var(--ink);margin:3px 0 0;overflow-wrap:anywhere;}
         .pf-rd .pf-username{margin-top:2px;font-size:13px;font-weight:500;color:var(--ink-soft);}
         /* Стек с группами */

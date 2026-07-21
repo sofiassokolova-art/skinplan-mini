@@ -165,7 +165,7 @@ function CartPageContent() {
   const loading = cartPending || (!cartError && cartData === undefined);
 
   if (loading) {
-    return <TabLoadingShell title="Корзина" background={bg} variant="cart-list" />;
+    return <TabLoadingShell eyebrow="Средства из плана" title="Корзина" background={bg} variant="cart-list" />;
   }
 
   return (
@@ -176,7 +176,8 @@ function CartPageContent() {
         .cart-rd .crd-avatar{position:relative;width:40px;height:40px;border:0;padding:0;border-radius:50%;background:linear-gradient(135deg,#2A2A2A,#0A0A0A);color:#D5FE61;display:grid;place-items:center;cursor:pointer;box-shadow:0 0 0 2px rgba(255,255,255,0.9),0 6px 18px rgba(10,10,10,0.18);font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:14px;font-weight:700;}
         .cart-rd .crd-avatar::after{content:"";position:absolute;bottom:1px;right:1px;width:10px;height:10px;border-radius:50%;background:#D5FE61;border:2px solid var(--canvas);}
         .cart-rd .crd-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:6px 2px 18px;}
-        .cart-rd .crd-title{margin:0;font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.6px;color:#0A0A0A;}
+        .cart-rd .crd-eyebrow{font-family:var(--font-inter),-apple-system,BlinkMacSystemFont,sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-mute);margin-bottom:7px;}
+        .cart-rd .crd-title{margin:0;font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:30px;font-weight:700;letter-spacing:-0.9px;line-height:1.08;color:#0A0A0A;}
         .cart-rd .crd-clear{border:0;background:transparent;color:#6B7280;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:-0.1px;}
         .cart-rd .crd-list{display:flex;flex-direction:column;gap:12px;}
         .cart-rd .crd-item{position:relative;padding:16px;border:1px solid var(--glass-border);border-radius:28px;background:#fff;box-shadow:var(--glass-shadow-lg);overflow:hidden;}
@@ -231,7 +232,10 @@ function CartPageContent() {
       </div>
 
       <div className="crd-header">
-        <h1 className="crd-title">Корзина</h1>
+        <div>
+          <div className="crd-eyebrow">Средства из плана</div>
+          <h1 className="crd-title">Корзина</h1>
+        </div>
         {cartItems.length > 0 && <button className="crd-clear" onClick={handleClearAll}>Очистить</button>}
       </div>
 
