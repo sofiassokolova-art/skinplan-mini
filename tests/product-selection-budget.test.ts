@@ -52,22 +52,23 @@ const profile: ProfileClassification = {
   budget: 'бюджетный',
 };
 
-describe('getProductsForStep: budget cap for recommendation generation', () => {
+describe('getProductsForStep: budget corridor for recommendation generation', () => {
   beforeEach(() => {
     mockFindMany.mockReset();
     mockFilterProductsBasic.mockReset();
     mockFilterProductsBasic.mockImplementation(async (products: ProductWithBrand[]) => products);
   });
 
-  it('treats user budget as an upper bound and lets it override premium step budget', () => {
+  it('treats user budget as the exact selected corridor', () => {
     expect(getAllowedPriceSegmentsForBudget(undefined, 'mass')).toEqual(['mass']);
-    expect(getAllowedPriceSegmentsForBudget(undefined, 'mid')).toEqual(['mass', 'mid']);
+    expect(getAllowedPriceSegmentsForBudget(undefined, 'mid')).toEqual(['mid']);
+    expect(getAllowedPriceSegmentsForBudget(undefined, 'premium')).toEqual(['premium']);
     expect(getAllowedPriceSegmentsForBudget('премиум', 'mass')).toEqual(['mass']);
-    expect(getAllowedPriceSegmentsForBudget('средний', undefined)).toEqual(['mass', 'mid']);
-    expect(getAllowedPriceSegmentsForBudget(undefined, 'premium')).toBeNull();
+    expect(getAllowedPriceSegmentsForBudget('средний', undefined)).toEqual(['mid']);
+    expect(getAllowedPriceSegmentsForBudget(undefined, 'any')).toBeNull();
   });
 
-  it('keeps budget cap in fallback query when strict category lookup is empty', async () => {
+  it('keeps budget corridor in fallback query when strict category lookup is empty', async () => {
     const massProduct = product({ id: 1, name: 'Mass serum', priceSegment: 'mass', price: 1200 });
     const premiumProduct = product({ id: 2, name: 'Premium serum', priceSegment: 'premium', price: 7000 });
 
@@ -99,7 +100,7 @@ describe('getProductsForStep: budget cap for recommendation generation', () => {
     expect(fallbackWhere).not.toContain('"premium"');
   });
 
-  it('uses user mass cap even if the matched rule step is marked premium', async () => {
+  it('uses user mass corridor even if the matched rule step is marked premium', async () => {
     const massProduct = product({ id: 10, name: 'Mass treatment', priceSegment: 'mass', price: 900 });
     mockFindMany.mockResolvedValueOnce([massProduct]);
 
@@ -112,6 +113,25 @@ describe('getProductsForStep: budget cap for recommendation generation', () => {
     expect(result.map(p => p.id)).toEqual([10]);
     const whereJson = JSON.stringify(mockFindMany.mock.calls[0][0].where);
     expect(whereJson).toContain('"mass"');
+    expect(whereJson).not.toContain('"premium"');
+  });
+
+  it('uses exact medium corridor instead of cheaper mass products', async () => {
+    const midProduct = product({ id: 20, name: 'Mid serum', priceSegment: 'mid', price: 3200 });
+    mockFindMany.mockResolvedValueOnce([midProduct]);
+
+    const result = await getProductsForStep(
+      { category: ['serum'], max_items: 1 },
+      'mid',
+      { ...profile, budget: 'средний' }
+    );
+
+    expect(result.map(p => p.id)).toEqual([20]);
+    const whereJson = JSON.stringify(mockFindMany.mock.calls[0][0].where);
+    expect(whereJson).toContain('"mid"');
+    expect(whereJson).toContain('"gte":2000');
+    expect(whereJson).toContain('"lt":5000');
+    expect(whereJson).not.toContain('"mass"');
     expect(whereJson).not.toContain('"premium"');
   });
 });

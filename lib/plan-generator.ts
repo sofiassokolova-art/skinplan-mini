@@ -43,6 +43,7 @@ import {
 import { getApplicationDaysForWeek } from '@/lib/protocol-plan-integration';
 import { productViolatesContraindications } from '@/lib/contraindication-product-filter';
 import { filterStepsForRxTopicals, isOnStrongRxTopicals } from '@/lib/rx-topicals';
+import { getBudgetCorridorSegments, getProductPriceSegment, normalizeBudgetLabel } from '@/lib/budget-corridor';
 import { applyPhaseRoutineVariation } from '@/lib/plan-routine-variation';
 import {
   validatePlanInvariants,
@@ -713,27 +714,8 @@ export async function generate28DayPlan(
     ? medicalMarkers.diagnoses
     : (Array.isArray(answers.diagnoses) ? answers.diagnoses : []);
   
-  // ИСПРАВЛЕНО: Маппинг значений бюджета из БД (budget_1, budget_2, budget_3) на читаемые
-  // Также поддерживаем старые значения для обратной совместимости
-  const budgetMapping: Record<string, 'бюджетный' | 'средний' | 'премиум' | 'любой'> = {
-    // Новые значения из БД
-    'budget_1': 'бюджетный',
-    'budget_2': 'средний',
-    'budget_3': 'премиум',
-    'budget_4': 'любой',
-    // Старые значения (для обратной совместимости)
-    'бюджетный': 'бюджетный',
-    'средний': 'средний',
-    'премиум': 'премиум',
-    'любой': 'любой',
-    'budget': 'бюджетный',
-    'medium': 'средний',
-    'premium': 'премиум',
-    'any': 'любой',
-  };
-
   const rawBudget = answers.budget || 'средний';
-  const normalizedBudget = budgetMapping[rawBudget] || rawBudget;
+  const normalizedBudget = normalizeBudgetLabel(rawBudget) || 'средний';
 
   // P0.1: Извлекаем флаги системной фармы из medicalMarkers (заполняется в /api/questionnaire/answers).
   // onIsotretinoin → hard-блок наружных активов; currentOralMeds → передаётся в determineProtocol.
@@ -1817,41 +1799,20 @@ export async function generate28DayPlan(
     }
   }
 
-  // P1c: Budget-preferred подбор. План фильтрует продукты в 'soft'-режиме, где фильтр
-  // бюджета (unified-product-filter) НЕ исключает дорогие товары — иначе шаг мог бы
-  // остаться пустым. А финальный выбор продукта (pickProductForProfileDiversity) берёт
-  // псевдослучайный индекс по всему списку — простой reorder бы не сработал. Поэтому,
-  // если для шага есть товары В ПРЕДЕЛАХ бюджета — оставляем в выборе только их (выбор
-  // дальше идёт уже среди доступных). Если в бюджете ничего нет — оставляем полный
-  // список (шаг не пустеет). Раньше пользователь «до 2000₽» стабильно получал premium.
+  // Бюджетный подбор. Выбранный вариант анкеты — это ценовой коридор одного
+  // средства, а не верхняя граница. Поэтому "средний 2 000–5 000" оставляет
+  // только mid-товары, а товар без проверяемой цены/priceSegment не проходит.
   {
-    // Допустимые ценовые сегменты для каждого уровня бюджета (свой + дешевле).
-    const allowedSegments: Record<string, Set<string>> = {
-      'бюджетный': new Set(['mass']),
-      'средний': new Set(['mass', 'mid']),
-      'премиум': new Set(['mass', 'mid', 'premium']),
-      'любой': new Set(['mass', 'mid', 'premium']),
-    };
-    const allowed = allowedSegments[profileClassification.budget || 'любой'];
-    // Применяем только когда бюджет реально ограничивает (не премиум/любой).
-    if (allowed && allowed.size < 3) {
-      // Сегмент товара: явный priceSegment, иначе выводим из цены (как в
-      // unified-product-filter: <2000 mass, <5000 mid, иначе premium). Без обоих — unknown.
-      const segmentOf = (p: ProductWithBrand): string | null => {
-        if (p.priceSegment) return p.priceSegment;
-        if (typeof p.price === 'number') return p.price < 2000 ? 'mass' : p.price < 5000 ? 'mid' : 'premium';
-        return null;
-      };
+    const allowed = getBudgetCorridorSegments(profileClassification.budget);
+    if (allowed) {
       for (const [stepCategory, products] of productsByStepMap.entries()) {
-        if (products.length <= 1) continue;
         const inBudget = products.filter((p) => {
-          const seg = segmentOf(p);
-          return seg !== null && allowed.has(seg);
+          const segment = getProductPriceSegment(p);
+          return segment !== null && allowed.includes(segment);
         });
-        // Оставляем только в-бюджетные, лишь если они есть; иначе не трогаем шаг.
-        if (inBudget.length > 0 && inBudget.length < products.length) {
+        if (inBudget.length < products.length) {
           productsByStepMap.set(stepCategory, inBudget);
-          logger.info('Budget-preferred filter applied to step', {
+          logger.info('Budget corridor filter applied to step', {
             userId,
             stepCategory,
             budget: profileClassification.budget,
