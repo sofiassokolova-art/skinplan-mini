@@ -211,11 +211,13 @@ export async function validatePlan(
         })
         .filter((p): p is NonNullable<typeof p> => p !== null);
 
-      // Проверяем совместимость между morning и evening продуктами
+      // Проверяем совместимость между morning и evening продуктами.
+      // separate_time между разными приемами уже выполнен самой раскладкой дня
+      // (например кислота утром, ретинол вечером), поэтому это не incompatibility.
       for (const morningProduct of morningProducts) {
         for (const eveningProduct of eveningProducts) {
           const conflict = checkProductCompatibility(morningProduct, eveningProduct);
-          if (conflict) {
+          if (conflict && conflict.solution !== 'separate_time') {
             hasIncompatibility = true;
             const message = `Day ${day.dayIndex}: ${conflict.reason}. ${conflict.recommendation}`;
             

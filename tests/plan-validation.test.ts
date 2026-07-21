@@ -203,3 +203,35 @@ describe('validatePlan: frequency and sequence warnings', () => {
     expect(result.warnings.some((w) => w.includes('Неправильная последовательность'))).toBe(false);
   });
 });
+
+describe('validatePlan: кросс-временные конфликты активов', () => {
+  it('не считает несовместимым день с кислотой утром и ретинолом вечером', async () => {
+    const plan = planWithRoutines(
+      [
+        step('cleanser_gentle', 1),
+        step('toner_exfoliant', 2),
+        step('spf_50_face', 4),
+      ],
+      [
+        step('cleanser_gentle', 1),
+        step('treatment_antiage', 5),
+        step('moisturizer_light', 3),
+      ]
+    );
+
+    const result = await validatePlan(
+      plan,
+      [
+        product(1, 'Cleanser'),
+        product(2, 'Glycolic Acid 7%', ['glycolic acid']),
+        product(3, 'Moisturizer'),
+        product(4, 'SPF'),
+        product(5, 'Retinol 0.3%', ['retinol']),
+      ],
+      { ingredientCompatibility: true, dermatologyProtocols: false, strictMode: true }
+    );
+
+    expect(result.incompatibleDays).toHaveLength(0);
+    expect(result.errors).toHaveLength(0);
+  });
+});
