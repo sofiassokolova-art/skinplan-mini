@@ -11,13 +11,19 @@
 //
 // ВАЖНО: та же логика продублирована в SQL в scripts/audit-plan-invariants.ts
 // (периодический прогон по всем планам в проде). При изменении правил здесь —
-// синхронизировать regex'ы/CASE там.
+// синхронизировать regex'ы/CASE там. Исключение — protocol_forbidden_ingredient:
+// протокол выводится из зашифрованных medical_markers, в SQL его не восстановить,
+// поэтому этот инвариант живёт только здесь (проверка на генерации).
 
 import type { Plan28 } from './plan-types';
+import type { StepCategory } from './step-category-rules';
+import type { DermatologyProtocol } from './dermatology-protocols';
+import { getProtocolForbiddenIngredients } from './dermatology-product-filter';
 
 export type PlanInvariantIssue =
   | 'base_mismatch'      // базовый тип слота != базовый тип продукта (serum в balm-слоте, SPF в cleanser)
   | 'acid_in_soft_slot'  // кислота/эксфолиант/ретиноид в soothing/hydrating/barrier/gentle-слоте
+  | 'protocol_forbidden_ingredient' // актив, запрещённый дерм-протоколом (AHA при розацеа и т.п.)
   | 'dup_in_routine'     // один productId дважды внутри morning/evening/weekly одного дня
   | 'empty_step';        // шаг без productId и без manualLabel — юзер видит пустую строку
 
@@ -125,10 +131,17 @@ function isCrossBaseAllowed(slotBase: string, productBase: string): boolean {
 /**
  * Проверяет финальный plan28 на инварианты «слот ↔ продукт».
  * Возвращает список нарушений; ничего не мутирует и не бросает.
+ *
+ * protocol (опционально): включает отдельный инвариант
+ * `protocol_forbidden_ingredient` — продукт с активом из protocol.forbiddenIngredients
+ * в любом шаге плана. Кейс Ольги (розацеа + Glycolic Acid 7% в toner_soothing) не ловился
+ * ни одной из прежних проверок: слот разрешён протоколом, а base_mismatch/acid_in_soft_slot
+ * покрывают только часть таких попаданий.
  */
 export function validatePlanInvariants(
   plan: Plan28,
-  productsMap: Map<string, PlanInvariantProduct>
+  productsMap: Map<string, PlanInvariantProduct>,
+  protocol?: DermatologyProtocol
 ): PlanInvariantViolation[] {
   const violations: PlanInvariantViolation[] = [];
   const routines = ['morning', 'evening', 'weekly'] as const;
@@ -175,6 +188,30 @@ export function validatePlanInvariants(
             productStep: product.step ?? undefined,
             detail: `слот ${slotBase} ← продукт ${productBase}`,
           });
+        }
+
+        if (protocol) {
+          const forbidden = getProtocolForbiddenIngredients(
+            {
+              activeIngredients: product.activeIngredients ?? undefined,
+              step: product.step ?? '',
+              category: null,
+            },
+            protocol,
+            stepCategory as StepCategory
+          );
+          if (forbidden.length > 0) {
+            violations.push({
+              issue: 'protocol_forbidden_ingredient',
+              dayIndex: day.dayIndex,
+              routine,
+              stepCategory,
+              productId,
+              productName: product.name ?? undefined,
+              productStep: product.step ?? undefined,
+              detail: `протокол ${protocol.condition}: запрещённые активы ${forbidden.join(', ')}`,
+            });
+          }
         }
 
         if (SOFT_SLOT_RE.test(stepCategory) && isAcidProduct(product)) {
