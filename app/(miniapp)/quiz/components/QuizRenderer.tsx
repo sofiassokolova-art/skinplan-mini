@@ -270,6 +270,31 @@ export const QuizRenderer = memo(function QuizRenderer({
     onSubmit,
   } = useQuizHandlers({ currentQuestion, screen });
 
+  // ПЕРЕЗАПУСК АНКЕТЫ С НУЛЯ: /quiz?restart=1
+  // Приходит с пейволла сразу после анкеты (план ещё не оплачен) — там платный экран выбора тем
+  // не имеет смысла. Делаем полный сброс прогресса (тот же путь, что «Начать заново» на резюм-экране),
+  // поэтому анкета стартует с первого инфо-экрана, а не с середины и не с резюм-экрана.
+  const restartHandledRef = useRef(false);
+  useEffect(() => {
+    if (restartHandledRef.current) return;
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('restart') !== '1') return;
+
+    restartHandledRef.current = true;
+    params.delete('restart');
+    const search = params.toString();
+    window.history.replaceState(
+      null,
+      '',
+      search ? `${window.location.pathname}?${search}` : window.location.pathname
+    );
+
+    handleStartOver().catch(() => {
+      // startOver уже показал ошибку пользователю через setError
+    });
+  }, [handleStartOver]);
+
   // Поэкранная телеметрия воронки. Считаем шаг «увиденным» здесь, потому что
   // это единственная точка, знающая и режим экрана, и конкретный экран/вопрос.
   // Хук объявлен до ранних return'ов ниже — иначе нарушим правила хуков.

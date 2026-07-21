@@ -13,6 +13,7 @@ import { MiniAppPageSkeleton } from '@/components/ui/SkeletonLoader';
 import { CareRemindersSettings } from '@/components/CareRemindersSettings';
 import toast from 'react-hot-toast';
 import { clientLogger } from '@/lib/client-logger';
+import { resolvePlanRetakeHref } from '@/lib/paywall-product';
 
 interface UserProfile {
   id: string;
@@ -684,7 +685,8 @@ export default function PersonalCabinet() {
           {/* Напоминания об уходе (утро/вечер в боте) */}
           <CareRemindersSettings />
 
-          <Link href="/quiz?retake=1" className="pf-link pf-link-dark">
+          {/* Личный кабинет доступен после оплаты → экран выбора тем, а не рестарт с нуля */}
+          <Link href={resolvePlanRetakeHref(true)} className="pf-link pf-link-dark">
             <span className="pf-link-ic">
               <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2"/><path d="M21 4v6h-6M3 20v-6h6"/></svg>
             </span>
