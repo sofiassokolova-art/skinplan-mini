@@ -7,7 +7,7 @@
 // — УДАЛЕНЫ полностью: general_info_intro, skin_features_intro, health_data,
 //   preferences_intro — были progress-step без UI и давали белую вспышку при переходе.
 //   Шаги (1..4) теперь показываются только в QUESTION_STEP_MAP над прогресс-баром вопросов;
-// — health_trust теперь анкорится на has_avoid_ingredients, а не на allergies/avoid_ingredients;
+// — health_trust удалён как отдельный экран и перенесён в информер medical_diagnoses;
 // — ai_comparison переанкорен на oral_medications.
 
 import { describe, it, expect } from 'vitest';
@@ -32,9 +32,10 @@ describe('Quiz info screens config & chains', () => {
   it('начальные инфо-экраны корректно определяются (нет showAfterQuestionCode/showAfterInfoScreenId)', () => {
     const initial = getInitialInfoScreens();
 
-    // Должны быть хотя бы welcome/how_it_works/personal_analysis
+    // welcome/how_it_works. personal_analysis удалён как третий подряд вводный
+    // экран до первого вопроса (дублировал how_it_works по смыслу).
     const initialIds = initial.map((s) => s.id);
-    expect(initialIds.length).toBeGreaterThanOrEqual(3);
+    expect(initialIds).toEqual(['welcome', 'how_it_works']);
 
     // Ни один начальный экран не должен иметь триггеры
     for (const screen of initial) {
@@ -57,27 +58,29 @@ describe('Quiz info screens config & chains', () => {
       'preferences_intro',
       // Удалённый филлер перед вопросом про цели:
       'goals_intro',
+      // Срез дублирующих по смыслу экранов:
+      'personal_analysis', // третий вводный экран до первого вопроса
+      'simple_care',       // буквальный дубликат ai_comparison
+      'health_trust',      // перенесён в информер первого медицинского вопроса
+      'recognize_yourself_2', // три tinder-экрана подряд
     ];
     for (const id of removed) {
       expect(INFO_SCREENS.find((s) => s.id === id)).toBeUndefined();
     }
   });
 
-  it('skin_preview идёт после fitzpatrick_type и тянет цепочку до simple_care (health_data удалён)', () => {
+  it('skin_preview идёт после fitzpatrick_type и цепочку дальше не тянет (simple_care удалён)', () => {
     const first = getInfoScreenAfterQuestion('fitzpatrick_type');
     expect(first?.id).toBe('skin_preview');
 
     const chain = first ? walkInfoScreenChain(first) : [];
     const ids = chain.map((s) => s.id);
-    expect(ids).toEqual(['skin_preview', 'simple_care']);
+    expect(ids).toEqual(['skin_preview']);
     expect(getInfoScreenAfterQuestion('seasonal_changes')).toBeUndefined();
   });
 
-  it('health_trust теперь анкорится на has_avoid_ingredients (был avoid_ingredients/allergies)', () => {
-    const first = getInfoScreenAfterQuestion('has_avoid_ingredients');
-    expect(first?.id).toBe('health_trust');
-
-    // А на старые якоря health_trust больше НЕ привязан
+  it('health_trust больше не показывается отдельным экраном после медицинского блока', () => {
+    expect(getInfoScreenAfterQuestion('has_avoid_ingredients')).toBeUndefined();
     expect(getInfoScreenAfterQuestion('allergies')).toBeUndefined();
     expect(getInfoScreenAfterQuestion('avoid_ingredients')).toBeUndefined();
   });
@@ -105,9 +108,9 @@ describe('Quiz info screens config & chains', () => {
     expect(stepScreens).toEqual([]);
   });
 
-  it('финальная цепочка после budget: no_mistakes → recognize_yourself_1 → recognize_yourself_2 → want_improve', () => {
+  it('финальная цепочка после budget: no_mistakes → recognize_yourself_1 → want_improve', () => {
     // ФИКС #5 (PR #75): skin_transformation объединён с want_improve в один финальный экран.
-    // want_improve теперь анкорится на recognize_yourself_2 напрямую и рендерится
+    // want_improve теперь анкорится на recognize_yourself_1 напрямую и рендерится
     // через ImproveSkinScreen (совмещает transformation-визуал и CTA «Получить план»).
     const first = getInfoScreenAfterQuestion('budget');
     expect(first?.id).toBe('no_mistakes');
@@ -117,7 +120,6 @@ describe('Quiz info screens config & chains', () => {
     expect(ids).toEqual([
       'no_mistakes',
       'recognize_yourself_1',
-      'recognize_yourself_2',
       'want_improve',
     ]);
 
@@ -140,12 +142,10 @@ describe('Quiz info screens config & chains', () => {
     const pairs: Array<{ originQuestionCode: string; midScreenId: string }> = [
       { originQuestionCode: 'skin_goals', midScreenId: 'testimonials' },
       { originQuestionCode: 'fitzpatrick_type', midScreenId: 'skin_preview' },
-      { originQuestionCode: 'fitzpatrick_type', midScreenId: 'simple_care' },
-      { originQuestionCode: 'has_avoid_ingredients', midScreenId: 'health_trust' },
       { originQuestionCode: 'oral_medications', midScreenId: 'ai_comparison' },
       { originQuestionCode: 'budget', midScreenId: 'no_mistakes' },
       { originQuestionCode: 'budget', midScreenId: 'recognize_yourself_1' },
-      { originQuestionCode: 'budget', midScreenId: 'recognize_yourself_2' },
+      { originQuestionCode: 'budget', midScreenId: 'want_improve' },
       // skin_transformation удалён в PR #75 (слит с want_improve в ImproveSkinScreen).
       { originQuestionCode: 'budget', midScreenId: 'want_improve' },
     ];

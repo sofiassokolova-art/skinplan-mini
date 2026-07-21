@@ -6,6 +6,7 @@ import React from 'react';
 import Image from 'next/image';
 import { FixedContinueButton } from '../buttons/FixedContinueButton';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
+import { Brand } from '../Brand';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 
 export interface WelcomeScreenProps {
@@ -77,7 +78,7 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
         onClick={onBack ?? (() => {})}
       />
 
-      {/* SkinIQ — логотип вверху экрана */}
+      {/* Логотип вверху экрана */}
       <div
         style={{
           position: 'absolute',
@@ -90,20 +91,7 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
           pointerEvents: 'none',
         }}
       >
-        <span
-          className="quiz-welcome-title"
-          style={{
-            fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 500,
-            fontSize: 'clamp(18px, 5vw, 24px)',
-            color: 'var(--canvas-white)',
-            letterSpacing: '0px',
-            textTransform: 'lowercase',
-            textShadow: '0 2px 16px rgba(0,0,0,0.48)',
-          }}
-        >
-          skiniq
-        </span>
+        <Brand variant="wordmark" className="quiz-welcome-title" />
       </div>
 
       {/* Стеклянный контейнер на всю ширину и до низа экрана */}

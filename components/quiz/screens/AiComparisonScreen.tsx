@@ -12,6 +12,7 @@ import React from 'react';
 import Image from 'next/image';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
 import { FixedContinueButton } from '../buttons/FixedContinueButton';
+import { Brand } from '../Brand';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 import { getQuizInfoBackgroundImage } from '@/app/(miniapp)/quiz/image-assets';
 
@@ -279,7 +280,7 @@ function AiComparisonScreenComponent({
               >
                 <path d="M14 2.5c1.6 7 4.5 9.9 11.5 11.5-7 1.6-9.9 4.5-11.5 11.5C12.4 18.5 9.5 15.6 2.5 14 9.5 12.4 12.4 9.5 14 2.5Z" />
               </svg>
-              skiniq
+              <Brand variant="inline" />
             </div>
             <div
               aria-hidden
@@ -317,7 +318,7 @@ function AiComparisonScreenComponent({
                 marginBottom: 13,
               }}
             >
-              Со skiniq
+              Со <Brand variant="inline" />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
               {skiniqItems.map((t) => (

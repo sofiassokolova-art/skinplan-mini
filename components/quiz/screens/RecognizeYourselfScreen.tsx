@@ -1,6 +1,6 @@
 // components/quiz/screens/RecognizeYourselfScreen.tsx
 // ФИКС #3: Редизайн tinder-экранов recognize_yourself_1/2 ("Вы узнаёте себя в этом?" / "Это похоже на вас?").
-// Стиль повторяет WelcomeScreen: полноэкранная фоновая картинка + SkinIQ-лого
+// Стиль повторяет WelcomeScreen: полноэкранная фоновая картинка + лого
 // сверху + затемнённый стеклянный контейнер снизу с вопросом и двумя кнопками
 // (Нет / Да). Оба ответа ведут в handleNext (commitment-device, не gating —
 // см. комментарий в info-screens.ts).
@@ -8,6 +8,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
+import { Brand } from '../Brand';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 
 export interface RecognizeYourselfScreenProps {
@@ -96,7 +97,7 @@ function RecognizeYourselfScreenComponent({
         color="var(--canvas-white)"
       />
 
-      {/* SkinIQ logo сверху */}
+      {/* Логотип сверху */}
       <div
         style={{
           position: 'absolute',
@@ -109,20 +110,7 @@ function RecognizeYourselfScreenComponent({
           pointerEvents: 'none',
         }}
       >
-        <span
-          style={{
-            fontFamily:
-              "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 500,
-            fontSize: 'clamp(18px, 5vw, 24px)',
-            color: 'var(--canvas-white)',
-            letterSpacing: '0px',
-            textTransform: 'lowercase',
-            textShadow: '0 2px 16px rgba(0,0,0,0.48)',
-          }}
-        >
-          skiniq
-        </span>
+        <Brand variant="wordmark" />
       </div>
 
       {/* Нижний стеклянный контейнер с вопросом и кнопками */}
