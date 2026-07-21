@@ -110,13 +110,9 @@ export function ReplaceProductModal({ product, isOpen, onClose, onReplace }: Rep
       >
         <div className="replace-modal-header">
           <div className="replace-modal-title-block">
-            <div className="replace-modal-eyebrow">skiniq подбор</div>
             <h2 id="replace-product-title" className="replace-modal-title">
               Подобрать замену
             </h2>
-            <p className="replace-modal-subtitle">
-              Выберите средство, которое лучше впишется в ваш план ухода.
-            </p>
           </div>
           <button
             type="button"
@@ -254,15 +250,14 @@ export function ReplaceProductModal({ product, isOpen, onClose, onReplace }: Rep
             display: grid;
             grid-template-columns: minmax(0, 1fr) 40px;
             gap: 14px;
-            align-items: start;
-            padding: 22px 20px 14px;
+            align-items: center;
+            padding: 22px 20px 16px;
           }
 
           .replace-modal-title-block {
             min-width: 0;
           }
 
-          .replace-modal-eyebrow,
           .replace-card-label {
             color: var(--ink-soft);
             font-size: 10px;
@@ -272,20 +267,13 @@ export function ReplaceProductModal({ product, isOpen, onClose, onReplace }: Rep
           }
 
           .replace-modal-title {
-            margin: 4px 0 6px;
+            margin: 0;
             color: var(--ink);
             font-family: var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif;
             font-size: 24px;
             font-weight: 700;
             line-height: 1.15;
             letter-spacing: 0;
-          }
-
-          .replace-modal-subtitle {
-            margin: 0;
-            color: var(--ink-soft);
-            font-size: 13px;
-            line-height: 1.45;
           }
 
           .replace-modal-close {
