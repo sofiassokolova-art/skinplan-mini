@@ -11,6 +11,7 @@ import type { ProfileClassification } from './plan-generation-helpers';
 import { productContainsStrongAcids } from './contraindication-product-filter';
 import { productViolatesProtocol } from './dermatology-product-filter';
 import type { DermatologyProtocol } from './dermatology-protocols';
+import { hasSerumAntiageSignal } from './step-matching';
 
 export interface ProductWithBrand {
   id: number;
@@ -83,9 +84,12 @@ export function isExfoliatingProduct(
  * только если состав не противоречит подтипу слота.
  */
 export function isProductCompatibleWithSlot(
-  product: Pick<ProductWithBrand, 'step' | 'category' | 'activeIngredients'>,
+  product: Pick<ProductWithBrand, 'step' | 'category' | 'activeIngredients' | 'name'>,
   slotStepCategory: string
 ): boolean {
+  if (slotStepCategory === 'serum_antiage') {
+    return hasSerumAntiageSignal(product);
+  }
   if (!isCalmingSlot(slotStepCategory)) return true;
   return !isExfoliatingProduct(product);
 }
@@ -329,6 +333,7 @@ export async function findFallbackProduct(
  * (Ранее эта логика жила в getSafeFallbackLookupStep в plan-generator.ts.)
  */
 const SUBTYPE_ONLY_BASE_STEPS = new Set(['treatment', 'serum', 'spot_treatment']);
+const SERUM_ANTIAGE_FALLBACK_STEPS: StepCategory[] = ['serum_peptide'];
 
 /**
  * Slot-aware fallback: сначала ищет продукт с точным step-подтипом слота
@@ -347,6 +352,12 @@ export async function findFallbackProductForSlot(
   if (slotStepCategory !== baseStep) {
     const bySubtype = await findFallbackProduct(slotStepCategory, profileClassification, commonOptions);
     if (bySubtype) return bySubtype;
+    if (slotStepCategory === 'serum_antiage') {
+      for (const fallbackStep of SERUM_ANTIAGE_FALLBACK_STEPS) {
+        const byAntiageSibling = await findFallbackProduct(fallbackStep, profileClassification, commonOptions);
+        if (byAntiageSibling) return byAntiageSibling;
+      }
+    }
     if (SUBTYPE_ONLY_BASE_STEPS.has(baseStep)) return null;
   }
 
@@ -737,4 +748,3 @@ export async function ensureRequiredProducts(
 
   return result;
 }
-
