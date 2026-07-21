@@ -16,6 +16,7 @@ import {
   type ProductSelectionResult,
 } from './dermatology-product-filter';
 import { logger } from './logger';
+import { getBudgetCorridorSegments, getProductPriceSegment } from './budget-corridor';
 
 export type FilterStrictness = 'hard' | 'soft';
 
@@ -135,23 +136,10 @@ export async function filterProducts(
     }
 
     // 2. Проверка бюджета
-    if (profileClassification.budget && profileClassification.budget !== 'любой') {
-      const budgetMapping: Record<string, string> = {
-        'бюджетный': 'mass',
-        'средний': 'mid',
-        'премиум': 'premium',
-      };
-      const expectedPriceSegment = budgetMapping[profileClassification.budget];
-      // Если у продукта не проставлен priceSegment, выводим его из цены — иначе
-      // дорогой продукт с пустым segment проскакивал бы бюджетный фильтр даже в hard.
-      // Пороги совпадают с getBudgetTier: <2000 mass, <5000 mid, иначе premium.
-      let productPriceSegment = (product as any).priceSegment as string | null | undefined;
-      if (!productPriceSegment && typeof (product as any).price === 'number') {
-        const price = (product as any).price as number;
-        productPriceSegment = price < 2000 ? 'mass' : price < 5000 ? 'mid' : 'premium';
-      }
-
-      if (expectedPriceSegment && productPriceSegment && productPriceSegment !== expectedPriceSegment) {
+    const allowedPriceSegments = getBudgetCorridorSegments(profileClassification.budget);
+    if (allowedPriceSegments) {
+      const productPriceSegment = getProductPriceSegment(product as any);
+      if (!productPriceSegment || !allowedPriceSegments.includes(productPriceSegment)) {
         if (strictness === 'hard') {
           return false;
         }
@@ -411,21 +399,15 @@ export async function filterProductsWithReasons(
     }
 
     // 2. Проверка бюджета
-    if (profileClassification.budget && profileClassification.budget !== 'любой') {
-      const budgetMapping: Record<string, string> = {
-        'бюджетный': 'mass',
-        'средний': 'mid',
-        'премиум': 'premium',
-      };
-      const expectedPriceSegment = budgetMapping[profileClassification.budget];
-      const productPriceSegment = (product as any).priceSegment;
-      
-      if (expectedPriceSegment && productPriceSegment && productPriceSegment !== expectedPriceSegment) {
+    const allowedPriceSegments = getBudgetCorridorSegments(profileClassification.budget);
+    if (allowedPriceSegments) {
+      const productPriceSegment = getProductPriceSegment(product as any);
+      if (!productPriceSegment || !allowedPriceSegments.includes(productPriceSegment)) {
         if (strictness === 'hard') {
           allowed = false;
-          reasons.push(`Бюджет не совпадает: требуется ${expectedPriceSegment}, продукт ${productPriceSegment}`);
+          reasons.push(`Бюджетный коридор не совпадает: требуется ${allowedPriceSegments.join('/')}, продукт ${productPriceSegment || 'без цены'}`);
         } else {
-          reasons.push(`Бюджет частично не совпадает: ${expectedPriceSegment} vs ${productPriceSegment}`);
+          reasons.push(`Бюджетный коридор частично не совпадает: требуется ${allowedPriceSegments.join('/')}, продукт ${productPriceSegment || 'без цены'}`);
         }
       }
     }
