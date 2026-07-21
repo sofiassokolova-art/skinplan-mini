@@ -29,6 +29,7 @@ import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
 import { getInitialInfoScreens, getInfoScreenAfterQuestion } from '@/app/(miniapp)/quiz/info-screens';
 import { useQuizHandlers } from '../hooks/useQuizHandlers';
 import { preloadQuizImages } from '../image-assets';
+import { trackQuizStep, type QuizStepKind } from '@/lib/quiz-telemetry';
 type Screen = 'LOADER' | 'ERROR' | 'RETAKE' | 'RESUME' | 'INFO' | 'INITIAL_INFO' | 'QUESTION';
 
 /** Откладывает рендер QuizResumeScreen до после монтирования — один и тот же вывод на сервере и при первом клиентском рендере (loader), устраняет hydration mismatch. */
@@ -268,6 +269,34 @@ export const QuizRenderer = memo(function QuizRenderer({
     onBack,
     onSubmit,
   } = useQuizHandlers({ currentQuestion, screen });
+
+  // Поэкранная телеметрия воронки. Считаем шаг «увиденным» здесь, потому что
+  // это единственная точка, знающая и режим экрана, и конкретный экран/вопрос.
+  // Хук объявлен до ранних return'ов ниже — иначе нарушим правила хуков.
+  const currentStep = useMemo<{ kind: QuizStepKind; id: string; index?: number } | null>(() => {
+    if (screen === 'INITIAL_INFO' && currentInitialInfoScreen?.id) {
+      return { kind: 'info', id: currentInitialInfoScreen.id, index: currentInfoScreenIndex };
+    }
+    if (screen === 'INFO' && pendingInfoScreen?.id) {
+      return { kind: 'info', id: pendingInfoScreen.id, index: currentInfoScreenIndex };
+    }
+    if (screen === 'QUESTION' && currentQuestion?.code) {
+      return { kind: 'question', id: currentQuestion.code, index: currentQuestionIndex };
+    }
+    return null;
+  }, [
+    screen,
+    currentInitialInfoScreen?.id,
+    pendingInfoScreen?.id,
+    currentQuestion?.code,
+    currentInfoScreenIndex,
+    currentQuestionIndex,
+  ]);
+
+  useEffect(() => {
+    if (!currentStep) return;
+    trackQuizStep(currentStep);
+  }, [currentStep]);
 
   // Используем memoized значения
 

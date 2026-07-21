@@ -68,6 +68,8 @@ describe('extractQuestionsFromQuestionnaire', () => {
     expect(steps).toContain('Q:seasonal_changes');
     expect(steps.indexOf('Q:seasonal_changes')).toBeLessThan(steps.indexOf('Q:fitzpatrick_type'));
     expect(steps.indexOf('Q:fitzpatrick_type')).toBeLessThan(steps.indexOf('I:skin_preview'));
-    expect(steps.indexOf('I:skin_preview')).toBeLessThan(steps.indexOf('I:simple_care'));
+    // simple_care удалён как дубликат ai_comparison, поэтому проверяем исходный
+    // смысл порядка: превью закрывает скин-блок до медицинских вопросов.
+    expect(steps.indexOf('I:skin_preview')).toBeLessThan(steps.indexOf('Q:medical_diagnoses'));
   });
 });

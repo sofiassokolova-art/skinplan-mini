@@ -1,5 +1,5 @@
 // components/quiz/screens/PersonalAnalysisScreen.tsx
-// Экран «Экспертный анализ от skiniq» — статичный (position: fixed, без скролла),
+// Экран «Ваш анализ кожи от skiniq» — статичный (position: fixed, без скролла),
 // фон — одна из back-картинок анкеты без цветных оверлеев.
 // Hero: 92% социального пруфа. Ниже — стеклянная карточка
 // «Что входит в программу» с тремя пунктами (Диагностика / Подбор средств /
@@ -9,6 +9,7 @@ import React from 'react';
 import Image from 'next/image';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
 import { FixedContinueButton } from '../buttons/FixedContinueButton';
+import { Brand } from '../Brand';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 
 export interface PersonalAnalysisScreenProps {
@@ -59,7 +60,7 @@ function PersonalAnalysisScreenComponent({
 }: PersonalAnalysisScreenProps) {
   const shouldShowBackButton =
     currentInfoScreenIndex > 0 && screen.id !== 'welcome' && !!onBack;
-  const backgroundImage = '/back6.jpg'; // текстура крема — «Экспертный анализ от skiniq»
+  const backgroundImage = '/back6.jpg'; // текстура крема — «Ваш анализ кожи от skiniq»
   const handleBackWithScroll = () => {
     const scrollTop =
       window.pageYOffset ||
@@ -141,9 +142,9 @@ function PersonalAnalysisScreenComponent({
               color: 'var(--ink)',
             }}
           >
-            Экспертный анализ
+            Ваш анализ кожи
             <br />
-            от skiniq
+            от <Brand variant="inline" />
           </h1>
 
           {/* HERO: 92% социальный пруф */}
@@ -177,7 +178,7 @@ function PersonalAnalysisScreenComponent({
                 borderRadius: '999px',
               }}
             >
-              по данным skiniq
+              по данным <Brand variant="inline" />
             </div>
             <div
               style={{

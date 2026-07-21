@@ -31,7 +31,7 @@ export const QUIZ_INFO_BACKGROUND_IMAGE_URLS = [
 ] as const;
 
 // Явная раскладка текстур по инфо-экранам в порядке их показа в анкете:
-// personal_analysis → skin_preview → simple_care → health_trust → ai_comparison → want_improve.
+// skin_preview → ai_comparison → want_improve.
 // Это заменяет прежний хеш по ключу, который давал коллизии (два экрана получали одну текстуру).
 //
 // Подбор по контенту и читаемости:
@@ -42,10 +42,7 @@ export const QUIZ_INFO_BACKGROUND_IMAGE_URLS = [
 //   экраны с «голым» фоном, а единственная серая back7 — на skin_preview, где есть светлый
 //   скрим (rgba(244,242,238,0.45→0.65)), который её осветляет и держит контраст текста.
 const QUIZ_INFO_BACKGROUND_BY_KEY: Record<string, (typeof QUIZ_INFO_BACKGROUND_IMAGE_URLS)[number]> = {
-  personal_analysis: '/back6.jpg', // текстура крема — «экспертный анализ»
   skin_preview: '/back10.jpg',     // кожа — «предварительный профиль»
-  simple_care: '/back5.jpg',       // пенка — «уход просто и понятно»
-  health_trust: '/back8.jpg',      // айвори-волны — «забота о здоровье»
   ai_comparison: '/back13.jpg',    // фон под «боль → решение»
   want_improve: '/back12.jpg',     // текстурный фон финального экрана «как меняется кожа»
 };
@@ -72,6 +69,10 @@ export const QUIZ_INFO_IMAGE_URLS = [
 export const QUIZ_TESTIMONIAL_IMAGE_URLS = [
   '/отзыв1до.webp',
   '/отзыв1после.webp',
+  '/отзыв2до.jpeg',
+  '/отзыв2после.jpeg',
+  '/отзыв3до.jpeg',
+  '/отзыв3после.jpeg',
   '/отзыв4до.webp',
   '/отзыв4после.webp',
 ] as const;

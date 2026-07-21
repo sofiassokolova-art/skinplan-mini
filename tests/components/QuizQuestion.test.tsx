@@ -275,6 +275,36 @@ describe('QuizQuestion', () => {
     expect(screen.getByText('Шаг 3: Данные о здоровье')).toBeInTheDocument();
   });
 
+  it('показывает информер о данных здоровья на первом медицинском вопросе', () => {
+    const medicalQuestion: Question = {
+      ...mockQuestion,
+      id: 14,
+      code: 'medical_diagnoses',
+      type: 'multi_choice',
+      text: 'Есть ли у вас диагностированные состояния кожи?',
+      options: [
+        { id: 1, label: 'Розацеа', value: 'rosacea' },
+        { id: 2, label: 'Нет', value: 'none' },
+      ],
+    };
+
+    render(
+      <QuizQuestion
+        question={medicalQuestion}
+        currentQuestionIndex={8}
+        allQuestionsLength={20}
+        answers={{}}
+        isRetakingQuiz={false}
+        isSubmitting={false}
+        {...mockHandlers}
+        showBackButton={false}
+      />
+    );
+
+    expect(screen.getByText(/исключить средства, которые вам не подходят/i)).toBeInTheDocument();
+    expect(screen.getByText(/зашифрованном виде/i)).toBeInTheDocument();
+  });
+
   it('не должен показывать прогресс-бар для вопроса user_name', () => {
     const nameQuestion: Question = {
       ...mockQuestion,

@@ -1,7 +1,6 @@
 // tests/components/StepCard.test.tsx
-// Подпись каденции на карточке шага. Без неё юзер видит, что купленное средство
-// просто исчезает из рутины в off-day, и не понимает почему — это и был UX-дефект,
-// а не сам факт частотного ограничения.
+// frequencyLabel может приходить в данных плана, но UI карточки шага его
+// не показывает: каденцию убрали с главной и остальных поверхностей.
 
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
@@ -24,10 +23,10 @@ const glycolic = {
   imageUrl: null,
 };
 
-describe('StepCard: подпись каденции', () => {
-  it('показывает каденцию, когда шаг под титрацией', () => {
+describe('StepCard: frequencyLabel', () => {
+  it('не показывает каденцию, когда шаг под титрацией', () => {
     render(<StepCard step={step({ frequencyLabel: 'до 3 раз в неделю' })} product={glycolic} />);
-    expect(screen.getByText('до 3 раз в неделю')).toBeInTheDocument();
+    expect(screen.queryByText('до 3 раз в неделю')).not.toBeInTheDocument();
   });
 
   it('не показывает ничего лишнего для ежедневного шага', () => {
@@ -35,14 +34,20 @@ describe('StepCard: подпись каденции', () => {
     expect(screen.queryByText(/в неделю/)).not.toBeInTheDocument();
   });
 
-  it('каденция не ломает карточку без продукта (шаг-инструкция)', () => {
+  it('frequencyLabel не ломает карточку без продукта (шаг-инструкция)', () => {
     render(
       <StepCard
-        step={step({ productId: null, manualLabel: 'Умывание тёплой водой', instruction: 'Без средства' })}
+        step={step({
+          productId: null,
+          manualLabel: 'Умывание тёплой водой',
+          instruction: 'Без средства',
+          frequencyLabel: '1 раз в неделю',
+        })}
         product={null}
       />
     );
     expect(screen.getByText('Умывание тёплой водой')).toBeInTheDocument();
+    expect(screen.queryByText('1 раз в неделю')).not.toBeInTheDocument();
   });
 
   it('legacy-план без frequencyLabel рендерится как раньше', () => {
@@ -51,9 +56,9 @@ describe('StepCard: подпись каденции', () => {
     expect(screen.getByText('Glycolic Acid 7% Toning Solution')).toBeInTheDocument();
   });
 
-  it('название продукта и каденция показываются одновременно', () => {
+  it('название продукта показывается, а каденция нет', () => {
     render(<StepCard step={step({ frequencyLabel: '1 раз в неделю' })} product={glycolic} />);
     expect(screen.getByText('Glycolic Acid 7% Toning Solution')).toBeInTheDocument();
-    expect(screen.getByText('1 раз в неделю')).toBeInTheDocument();
+    expect(screen.queryByText('1 раз в неделю')).not.toBeInTheDocument();
   });
 });
