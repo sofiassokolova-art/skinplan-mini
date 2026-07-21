@@ -272,7 +272,7 @@ describe('QuizQuestion', () => {
       />
     );
 
-    expect(screen.getByText('Шаг 3: Данные о здоровье')).toBeInTheDocument();
+    expect(screen.getByText('Шаг 3 · Данные о здоровье')).toBeInTheDocument();
   });
 
   it('показывает информер о данных здоровья на первом медицинском вопросе', () => {

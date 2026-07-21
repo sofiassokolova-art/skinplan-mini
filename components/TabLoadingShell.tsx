@@ -2,6 +2,8 @@
 
 interface TabLoadingShellProps {
   title?: string;
+  /** Надзаголовок-капитель над title — должен совпадать с реальным экраном, иначе титул прыгает после загрузки. */
+  eyebrow?: string;
   background?: string;
   className?: string;
   variant?: 'default' | 'cart-list';
@@ -9,6 +11,7 @@ interface TabLoadingShellProps {
 
 export function TabLoadingShell({
   title,
+  eyebrow,
   background = 'var(--canvas)',
   className,
   variant = 'default',
@@ -48,15 +51,31 @@ export function TabLoadingShell({
         </div>
       </div>
 
+      {eyebrow && (
+        <div
+          style={{
+            margin: '6px 2px 7px',
+            fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
+            fontSize: '11px',
+            fontWeight: 600,
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
+            color: 'var(--ink-mute)',
+          }}
+        >
+          {eyebrow}
+        </div>
+      )}
+
       {title && (
         <h1
           style={{
-            margin: '6px 2px 18px',
+            margin: eyebrow ? '0 2px 18px' : '6px 2px 18px',
             fontFamily: "var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif",
-            fontSize: '26px',
+            fontSize: '30px',
             fontWeight: 700,
-            lineHeight: 1.15,
-            letterSpacing: '-0.6px',
+            lineHeight: 1.08,
+            letterSpacing: '-0.9px',
             color: 'var(--ink)',
           }}
         >
