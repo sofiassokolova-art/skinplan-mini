@@ -10,6 +10,7 @@ import { normalizeSkinTypeForRules, normalizeSensitivityForRules } from './skin-
 import { getProductsForStep } from './product-selection';
 import { deriveFocusKeys, FOCUS_TO_GOAL } from './focus-keys';
 import type { ProfileClassification } from './plan-generation-helpers';
+import { getBudgetCorridorSegments, normalizeBudgetLabel } from './budget-corridor';
 
 export interface RecommendationGenerationResult {
   sessionId: string;
@@ -435,22 +436,13 @@ export async function generateRecommendationsForProfile(
       (profile as any).budgetSegment ||
       ((profile as any).medicalMarkers?.budget as string | undefined) ||
       null;
-    const budgetMappings: Record<string, { label: 'бюджетный' | 'средний' | 'премиум' | 'любой'; priceSegment?: 'mass' | 'mid' | 'premium' }> = {
-      budget: { label: 'бюджетный', priceSegment: 'mass' },
-      budget_1: { label: 'бюджетный', priceSegment: 'mass' },
-      low: { label: 'бюджетный', priceSegment: 'mass' },
-      medium: { label: 'средний', priceSegment: 'mid' },
-      budget_2: { label: 'средний', priceSegment: 'mid' },
-      premium: { label: 'премиум', priceSegment: 'premium' },
-      budget_3: { label: 'премиум', priceSegment: 'premium' },
-      any: { label: 'любой' },
-      budget_4: { label: 'любой' },
-      'бюджетный': { label: 'бюджетный', priceSegment: 'mass' },
-      'средний': { label: 'средний', priceSegment: 'mid' },
-      'премиум': { label: 'премиум', priceSegment: 'premium' },
-      'любой': { label: 'любой' },
-    };
-    const normalizedBudget = budgetSegment ? budgetMappings[budgetSegment] : undefined;
+    const normalizedBudgetLabel = normalizeBudgetLabel(budgetSegment);
+    const normalizedBudget = normalizedBudgetLabel
+      ? {
+          label: normalizedBudgetLabel,
+          priceSegment: getBudgetCorridorSegments(normalizedBudgetLabel)?.[0],
+        }
+      : undefined;
 
     // ИСПРАВЛЕНО: Строим ProfileClassification для unified-product-filter
     const profileClassification: ProfileClassification = {

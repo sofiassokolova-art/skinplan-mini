@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db';
 import { normalizeIngredient } from './ingredient-normalizer';
 import { filterProductsBasic, type ProductFilterContext } from './unified-product-filter';
 import type { ProfileClassification } from './plan-generation-helpers';
+import { getBudgetCorridorSegments, type PriceSegment } from './budget-corridor';
 
 export interface RuleStep {
   category?: string[];
@@ -18,8 +19,6 @@ export interface RuleStep {
   max_items?: number;
 }
 
-type PriceSegment = 'mass' | 'mid' | 'premium';
-
 function addAndCondition(where: any, condition: any): void {
   where.AND = Array.isArray(where.AND)
     ? [...where.AND, condition]
@@ -28,29 +27,11 @@ function addAndCondition(where: any, condition: any): void {
       : [condition];
 }
 
-function normalizePriceSegment(value?: string | null): PriceSegment | null {
-  return value === 'mass' || value === 'mid' || value === 'premium' ? value : null;
-}
-
-function getUserBudgetCapSegments(userPriceSegment?: string | null): PriceSegment[] | null {
-  const segment = normalizePriceSegment(userPriceSegment);
-  if (segment === 'mass') return ['mass'];
-  if (segment === 'mid') return ['mass', 'mid'];
-  // Premium/any не являются ограничивающей верхней границей.
-  return null;
-}
-
 export function getAllowedPriceSegmentsForBudget(
   stepBudget?: RuleStep['budget'],
   userPriceSegment?: string | null
 ): PriceSegment[] | null {
-  const userCap = getUserBudgetCapSegments(userPriceSegment);
-  if (userCap) return userCap;
-
-  if (stepBudget === 'бюджетный') return ['mass'];
-  if (stepBudget === 'средний') return ['mass', 'mid'];
-  if (stepBudget === 'премиум') return ['premium'];
-  return null;
+  return getBudgetCorridorSegments(userPriceSegment) ?? getBudgetCorridorSegments(stepBudget);
 }
 
 function buildPriceSegmentCondition(allowedSegments: PriceSegment[] | null): any | null {
@@ -64,11 +45,13 @@ function buildPriceSegmentCondition(allowedSegments: PriceSegment[] | null): any
 
   // У части продуктов priceSegment ещё null. Поддерживаем budget-aware подбор,
   // выводя тот же tier из price, что используют unified-product-filter и plan-generator.
-  if (allowedSegments.length === 1 && allowedSegments[0] === 'mass') {
+  if (allowedSegments.includes('mass')) {
     conditions.push({ AND: [{ priceSegment: null }, { price: { lt: 2000 } }] });
-  } else if (allowedSegments.includes('mass') && allowedSegments.includes('mid')) {
-    conditions.push({ AND: [{ priceSegment: null }, { price: { lt: 5000 } }] });
-  } else if (allowedSegments.length === 1 && allowedSegments[0] === 'premium') {
+  }
+  if (allowedSegments.includes('mid')) {
+    conditions.push({ AND: [{ priceSegment: null }, { price: { gte: 2000, lt: 5000 } }] });
+  }
+  if (allowedSegments.includes('premium')) {
     conditions.push({ AND: [{ priceSegment: null }, { price: { gte: 5000 } }] });
   }
 
@@ -230,10 +213,9 @@ export async function getProductsForStep(
     where.isFragranceFree = true;
   }
 
-  // P1c: бюджет пользователя — верхняя граница на этапе генерации RecommendationSession.
-  // Если правило шага просит premium, но пользователь выбрал "до 2000", пользовательский
-  // cap сильнее: иначе сессия сохраняла один premium-кандидат, и плану уже нечего было
-  // заменить. Средний бюджет допускает mass+mid; premium/любой не сужают подбор.
+  // Бюджет пользователя — выбранный ценовой коридор на этапе генерации
+  // RecommendationSession. Если пользователь выбрал "2 000–5 000", mass и premium
+  // не подходят так же, как и товар без проверяемой цены/сегмента.
   const allowedPriceSegments = getAllowedPriceSegmentsForBudget(step.budget, userPriceSegment);
   const priceSegmentCondition = buildPriceSegmentCondition(allowedPriceSegments);
   if (priceSegmentCondition) {

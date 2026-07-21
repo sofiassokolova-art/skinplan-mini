@@ -13,6 +13,7 @@ import { calculateSkinAxes, type QuestionnaireAnswers } from '@/lib/skin-analysi
 import { determineProtocol, getEffectiveIngredientSchedule } from '@/lib/dermatology-protocols';
 import { getIngredientsForProduct } from '@/lib/dermatology-product-filter';
 import type { StepCategory } from '@/lib/step-category-rules';
+import { normalizeBudgetLabel } from '@/lib/budget-corridor';
 
 interface RuleCondition {
   [key: string]: string[] | { gte?: number; lte?: number } | string;
@@ -906,38 +907,14 @@ export async function GET(request: NextRequest) {
       const answer = userAnswers[0];
       const answerValue = answer.answerValue;
       
-      // ИСПРАВЛЕНО: Маппинг значений из БД (budget_1, budget_2, budget_3, budget_4) на формат для фильтрации
-      // Также поддерживаем старые значения (budget, medium, premium, any) для обратной совместимости
-      const budgetMapping: Record<string, 'бюджетный' | 'средний' | 'премиум' | 'любой'> = {
-        // Новые значения из БД
-        'budget_1': 'бюджетный',
-        'budget_2': 'средний',
-        'budget_3': 'премиум',
-        'budget_4': 'любой',
-        // Старые значения (для обратной совместимости)
-        'budget': 'бюджетный',
-        'medium': 'средний',
-        'premium': 'премиум',
-        'any': 'любой',
-        'любой': 'любой',
-      };
-      
-      normalizedUserBudget = budgetMapping[answerValue || ''] || 'любой';
+      const normalizedAnswerBudget = normalizeBudgetLabel(answerValue);
+      normalizedUserBudget = normalizedAnswerBudget || 'любой';
       
       // Если маппинг не сработал, пробуем найти по label опции
-      if (normalizedUserBudget === 'любой' && answer.question?.answerOptions) {
+      if (!normalizedAnswerBudget && answer.question?.answerOptions) {
         const option = answer.question.answerOptions.find(opt => opt.value === answerValue);
         if (option) {
-          // Маппим по label опции
-          if (option.label.includes('Бюджетный') || option.label.includes('до 2 000')) {
-            normalizedUserBudget = 'бюджетный';
-          } else if (option.label.includes('Средний') || option.label.includes('2 000–5 000')) {
-            normalizedUserBudget = 'средний';
-          } else if (option.label.includes('Премиум') || option.label.includes('5 000+')) {
-            normalizedUserBudget = 'премиум';
-          } else if (option.label.includes('Без предпочтений') || option.label.includes('Любой')) {
-            normalizedUserBudget = 'любой';
-          }
+          normalizedUserBudget = normalizeBudgetLabel(option.label) || 'любой';
         }
       }
     }

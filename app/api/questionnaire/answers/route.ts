@@ -11,6 +11,7 @@ import { buildSkinProfileFromAnswers } from '@/lib/skinprofile-rules-engine';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { logDbFingerprint } from '@/lib/db-fingerprint';
 import { normalizeProfileData, normalizeMedicalMarkers } from '@/lib/profile-normalizer';
+import { normalizeBudgetLabel } from '@/lib/budget-corridor';
 
 export const dynamic = 'force-dynamic';
 
@@ -843,11 +844,11 @@ export async function POST(request: NextRequest) {
       const budgetAnswer = rawAnswers.find(a => a.questionCode === 'budget');
       const budgetLabel = budgetAnswer?.answerOptionLabels?.[0] ?? (typeof budgetAnswer?.answerValue === 'string' ? budgetAnswer.answerValue : '');
       if (budgetLabel) {
-        const b = budgetLabel.toLowerCase();
-        if (b.includes('бюджет') || b.includes('2 000') || b.includes('2000')) extractedData.budget = 'low';
-        else if (b.includes('средн')) extractedData.budget = 'medium';
-        else if (b.includes('премиум') || b.includes('5 000') || b.includes('5000')) extractedData.budget = 'premium';
-        else if (b.includes('без предпочтен') || b.includes('любой')) extractedData.budget = 'any';
+        const normalizedBudget = normalizeBudgetLabel(budgetLabel);
+        if (normalizedBudget === 'бюджетный') extractedData.budget = 'low';
+        else if (normalizedBudget === 'средний') extractedData.budget = 'medium';
+        else if (normalizedBudget === 'премиум') extractedData.budget = 'premium';
+        else if (normalizedBudget === 'любой') extractedData.budget = 'any';
       }
 
       // Режим ухода (care_steps): «Минимум (1–3 шага)» → preferences:['minimalist'].
