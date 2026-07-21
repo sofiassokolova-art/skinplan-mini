@@ -6,6 +6,9 @@ export type ActiveIngredient =
   | 'vitamin_c' | 'ascorbic_acid'
   | 'niacinamide'
   | 'aha' | 'bha' | 'pha' | 'salicylic_acid' | 'glycolic_acid' | 'lactic_acid'
+  // Миндальная кислота — AHA с крупной молекулой: проникает медленнее, переносится лучше
+  // гликолевой, поэтому у неё отдельный (более мягкий) частотный тир.
+  | 'mandelic_acid'
   | 'azelaic_acid'
   | 'benzoyl_peroxide'
   | 'peptides'
@@ -164,7 +167,7 @@ export const INGREDIENT_CONFLICTS: IngredientConflict[] = [
 // Группы ингредиентов для проверки дублирования
 export const INGREDIENT_GROUPS: Record<string, ActiveIngredient[]> = {
   retinoids: ['retinol', 'retinoid', 'adapalene', 'tretinoin'],
-  acids: ['aha', 'bha', 'pha', 'salicylic_acid', 'glycolic_acid', 'lactic_acid'],
+  acids: ['aha', 'bha', 'pha', 'salicylic_acid', 'glycolic_acid', 'lactic_acid', 'mandelic_acid'],
   vitamin_c: ['vitamin_c', 'ascorbic_acid'],
 };
 
@@ -177,7 +180,7 @@ export const INGREDIENT_GROUPS: Record<string, ActiveIngredient[]> = {
 // конфликтные правила (`ascorbic_acid + niacinamide` строже, чем `vitamin_c + niacinamide`).
 // Если раскрыть — более мягкое vitamin_c-правило перекроет специфичное ascorbic_acid-правило.
 const INGREDIENT_GROUP_MEMBERS: Partial<Record<ActiveIngredient, ActiveIngredient[]>> = {
-  aha: ['aha', 'glycolic_acid', 'lactic_acid'],
+  aha: ['aha', 'glycolic_acid', 'lactic_acid', 'mandelic_acid'],
   bha: ['bha', 'salicylic_acid'],
   retinoid: ['retinoid', 'retinol', 'adapalene', 'tretinoin'],
 };
@@ -189,6 +192,32 @@ const INGREDIENT_GROUP_MEMBERS: Partial<Record<ActiveIngredient, ActiveIngredien
  */
 export function expandIngredientForMatching(ingredient: ActiveIngredient): ActiveIngredient[] {
   return INGREDIENT_GROUP_MEMBERS[ingredient] ?? [ingredient];
+}
+
+/**
+ * `\b` в JS — ASCII-only: между началом строки и «с» границы нет, поэтому ВСЕ кириллические
+ * паттерны вида /\bретинол\b/ никогда не срабатывали, и русские составы молча давали
+ * пустой список активов (кислота теряла расписание, конфликты не ловились).
+ * Здесь границы \b на краях паттерна заменяются на юникод-безопасные lookaround.
+ */
+const unicodeBoundaryCache = new Map<string, RegExp>();
+
+function testWithUnicodeBoundaries(pattern: RegExp, text: string): boolean {
+  const cacheKey = `${pattern.source} ${pattern.flags}`;
+  let compiled = unicodeBoundaryCache.get(cacheKey);
+  if (!compiled) {
+    const source = pattern.source
+      .replace(/^\\b/, '(?<![\\p{L}\\p{N}])')
+      .replace(/\\b$/, '(?![\\p{L}\\p{N}])');
+    const flags = pattern.flags.includes('u') ? pattern.flags : `${pattern.flags}u`;
+    try {
+      compiled = new RegExp(source, flags);
+    } catch {
+      compiled = pattern; // на всякий случай не роняем извлечение активов
+    }
+    unicodeBoundaryCache.set(cacheKey, compiled);
+  }
+  return compiled.test(text);
 }
 
 /**
@@ -210,6 +239,15 @@ export function extractActiveIngredients(product: {
   
   // ИСПРАВЛЕНО: Используем composition только как fallback, если activeIngredients пустой
   const ingredientText = activeIngredientsText || compositionText;
+
+  // Разделители: в БД активы приходят и как `salicylic acid`, и как `salicylic_acid`/`salicylic-acid`.
+  // Паттерны ниже написаны через \s+, поэтому подчёркнутую форму они не ловили и кислота
+  // молча теряла расписание. Матчим по обоим вариантам текста.
+  const separatorNormalizedText = ingredientText.replace(/[_\-]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+  const matchesPattern = (pattern: RegExp): boolean =>
+    testWithUnicodeBoundaries(pattern, ingredientText) ||
+    testWithUnicodeBoundaries(pattern, separatorNormalizedText);
 
   // ИСПРАВЛЕНО: Маппинг с поддержкой границ слов для латиницы
   // Используем регулярные выражения для более точного поиска
@@ -258,6 +296,14 @@ export function extractActiveIngredients(product: {
     { pattern: /\bгликолевая\s+кислота\b/i, ingredient: 'glycolic_acid' },
     { pattern: /\blactic\s+acid\b/i, ingredient: 'lactic_acid' },
     { pattern: /\bмолочная\s+кислота\b/i, ingredient: 'lactic_acid' },
+    { pattern: /\bmandelic\s+acid\b/i, ingredient: 'mandelic_acid' },
+    { pattern: /\bминдальная\s+кислота\b/i, ingredient: 'mandelic_acid' },
+    // Конкретные PHA: переносятся мягче прочих кислот, отдельного ярлыка «pha» у продукта
+    // может не быть — распознаём по названию самой кислоты.
+    { pattern: /\bgluconolactone\b/i, ingredient: 'pha' },
+    { pattern: /\bглюконолактон\b/i, ingredient: 'pha' },
+    { pattern: /\blactobionic\s+acid\b/i, ingredient: 'pha' },
+    { pattern: /\bлактобионовая\s+кислота\b/i, ingredient: 'pha' },
     { pattern: /\bazelaic\s+acid\b/i, ingredient: 'azelaic_acid' },
     { pattern: /\bазелаиновая\s+кислота\b/i, ingredient: 'azelaic_acid' },
     // P0.2: транексамовая кислота — отдельный мягкий брайтенер, НЕ azelaic_acid.
@@ -290,7 +336,7 @@ export function extractActiveIngredients(product: {
   ];
 
   for (const { pattern, ingredient } of ingredientPatterns) {
-    if (pattern.test(ingredientText)) {
+    if (matchesPattern(pattern)) {
       ingredients.push(ingredient);
     }
   }

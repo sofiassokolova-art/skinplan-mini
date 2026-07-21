@@ -80,6 +80,17 @@ export const DERMATOLOGY_PROTOCOLS: Record<SkinCondition, DermatologyProtocol> =
         week3: 4,
         week4: 5,
       },
+      {
+        // Явная запись на конкретную кислоту: у продукта в activeIngredients обычно
+        // указана `salicylic acid`, а не ярлык `bha`. Без этой записи салициловая
+        // ушла бы в общий тир («допустимо ежедневно») и рампа BHA при акне сломалась бы.
+        // Держать синхронно с записью `bha` выше.
+        ingredient: 'salicylic_acid',
+        week1: 2,
+        week2: 3,
+        week3: 4,
+        week4: 5,
+      },
     ],
     // P2.7: фиксированные дни [2,5] для BHA убраны — они перекрывали titrationSchedule
     // и BHA навсегда оставался 2x/нед, не наращиваясь до 3→4→5. Теперь частоту BHA задаёт
@@ -596,6 +607,143 @@ export function isProductAllowedByProtocol(
  * ИСПРАВЛЕНО (P1): Возвращает frequency: null для "нет ограничений" вместо 0
  * ИСПРАВЛЕНО (P0): Приоритет cyclingRules.days над titrationSchedule для точных дней
  */
+/**
+ * Частотные тиры конкретных кислот для leave-on применения (недели 1-4, дней/нед).
+ *
+ * Зачем: протоколы расписывают только «зонтичные» `aha`/`bha`, поэтому у продукта с
+ * `glycolic_acid`/`lactic_acid`/`pha` расписания не находилось вовсе → frequency: null →
+ * кислота вставала ежедневно. Кислоты переносятся по-разному, поэтому тир per-ingredient,
+ * а не общий плоский кап.
+ *
+ * `null` = ограничений нет (допустимо ежедневно).
+ * ВАЖНО: концентрация и pH в модели Product отсутствуют, поэтому тир задан для типичного
+ * потребительского процента. 10% гликолевый раствор и 2% BHA-тоник структурно неразличимы —
+ * различать их можно только после миграции схемы (см. решение по scope).
+ */
+type AcidTier = { week1: number; week2: number; week3: number; week4: number } | null;
+
+const ACID_TITRATION_TIERS: Partial<Record<ActiveIngredient, AcidTier>> = {
+  // Гликолевая — самая мелкая молекула, самая агрессивная: старт 2/нед с рампом вверх.
+  glycolic_acid: { week1: 2, week2: 2, week3: 3, week4: 3 },
+  // Молочная — крупнее и увлажняет, переносится лучше: потолок выше.
+  lactic_acid: { week1: 3, week2: 3, week3: 4, week4: 4 },
+  // Миндальная — самая крупная молекула, самая мягкая AHA.
+  mandelic_acid: { week1: 3, week2: 4, week3: 4, week4: 5 },
+  // PHA (глюконолактон, лактобионовая) — не проникают глубоко, допустимы ежедневно,
+  // в т.ч. при чувствительной коже (для неё тир задан ниже отдельно).
+  pha: null,
+  // Салициловая в потребительском проценте — допустима ежедневно, особенно жирной/акне-коже.
+  // Если протокол (акне) расписывает BHA — протокольная запись строже и выигрывает.
+  salicylic_acid: null,
+};
+
+/** Более строгие тиры для чувствительной кожи (sensitivityLevel high/very_high). */
+const ACID_TITRATION_TIERS_SENSITIVE: Partial<Record<ActiveIngredient, AcidTier>> = {
+  glycolic_acid: { week1: 1, week2: 1, week3: 2, week4: 2 },
+  lactic_acid: { week1: 1, week2: 2, week3: 2, week4: 3 },
+  mandelic_acid: { week1: 2, week2: 2, week3: 3, week4: 3 },
+  // PHA остаётся ежедневным даже для чувствительной кожи — это его клиническая ниша.
+  pha: null,
+  salicylic_acid: { week1: 2, week2: 3, week3: 3, week4: 4 },
+};
+
+/** Прецедент маппинга — `['high','very_high'].includes(...)` в findFallbackProduct. */
+export function isHighSensitivity(sensitivityLevel?: string | null): boolean {
+  return ['high', 'very_high'].includes(String(sensitivityLevel || '').toLowerCase());
+}
+
+/** Отшелушивающие кислоты. Азелаиновая/транексамовая/койевая — брайтенеры, сюда не входят. */
+export const EXFOLIATING_ACIDS: ActiveIngredient[] = [
+  'aha', 'bha', 'pha',
+  'glycolic_acid', 'lactic_acid', 'salicylic_acid', 'mandelic_acid',
+];
+
+export function isExfoliatingAcid(ingredient: ActiveIngredient): boolean {
+  return EXFOLIATING_ACIDS.includes(ingredient);
+}
+
+/**
+ * Максимальная частота применения актива за 4 недели (дней/нед).
+ * `null` = ограничений нет (допустимо ежедневно).
+ *
+ * Нужна для маршрутизации: кислота с потолком ≤3 дн/нед — это ПЕРИОДИЧЕСКИЙ уход,
+ * его место в недельном блоке, а не в ежедневном слоте. Кислота с потолком 4-5
+ * (напр. BHA при акне) — почти ежедневная, её оставляем в обычной рутине под титрацией.
+ */
+export function getMaxWeeklyFrequency(
+  ingredient: ActiveIngredient,
+  protocol: DermatologyProtocol,
+  options?: { sensitivityLevel?: string | null }
+): number | null {
+  let max = 0;
+  for (const week of [1, 2, 3, 4]) {
+    const { frequency } = getEffectiveIngredientSchedule(ingredient, protocol, week, options);
+    if (frequency === null || frequency === undefined) return null; // без ограничений
+    max = Math.max(max, frequency);
+  }
+  return max;
+}
+
+/** «Зонтик» кислоты: под какую протокольную запись она подпадает. */
+const ACID_UMBRELLA: Partial<Record<ActiveIngredient, ActiveIngredient>> = {
+  glycolic_acid: 'aha',
+  lactic_acid: 'aha',
+  mandelic_acid: 'aha',
+  salicylic_acid: 'bha',
+};
+
+function hasProtocolEntry(ingredient: ActiveIngredient, protocol: DermatologyProtocol): boolean {
+  return Boolean(
+    protocol.cyclingRules?.some(c => c.ingredient === ingredient) ||
+    protocol.titrationSchedule?.some(s => s.ingredient === ingredient)
+  );
+}
+
+/**
+ * Расписание конкретной кислоты с учётом тиров и чувствительности.
+ *
+ * Приоритет (от сильного к слабому):
+ *  1. явная запись протокола на САМ ингредиент (медицинский протокол — авторитет);
+ *  2. тир конкретной кислоты (sensitivity-aware);
+ *  3. запись протокола на «зонтик» (aha/bha);
+ *  4. без ограничений.
+ *
+ * Такой порядок нужен, чтобы (а) acne-протокол с расписанным BHA продолжал вести
+ * салициловую по своей рампе, и (б) молочная/миндальная не схлопывались до строгого
+ * generic-`aha` из базового протокола, теряя смысл тиров.
+ */
+export function getEffectiveIngredientSchedule(
+  ingredient: ActiveIngredient,
+  protocol: DermatologyProtocol,
+  week: number,
+  options?: { sensitivityLevel?: string | null }
+): { frequency: number | null; days?: number[] } {
+  // 1. Явная запись протокола на сам ингредиент.
+  if (hasProtocolEntry(ingredient, protocol)) {
+    return getIngredientSchedule(ingredient, protocol, week);
+  }
+
+  // 2. Тир конкретной кислоты.
+  const tiers = isHighSensitivity(options?.sensitivityLevel)
+    ? ACID_TITRATION_TIERS_SENSITIVE
+    : ACID_TITRATION_TIERS;
+  if (Object.prototype.hasOwnProperty.call(tiers, ingredient)) {
+    const tier = tiers[ingredient];
+    if (tier === null) return { frequency: null }; // допустимо ежедневно
+    const weekFreq = week === 1 ? tier!.week1 : week === 2 ? tier!.week2 : week === 3 ? tier!.week3 : tier!.week4;
+    return { frequency: weekFreq };
+  }
+
+  // 3. Запись протокола на «зонтик» кислоты.
+  const umbrella = ACID_UMBRELLA[ingredient];
+  if (umbrella && hasProtocolEntry(umbrella, protocol)) {
+    return getIngredientSchedule(umbrella, protocol, week);
+  }
+
+  // 4. Обычный путь (ретинол, витамин C и всё остальное).
+  return getIngredientSchedule(ingredient, protocol, week);
+}
+
 export function getIngredientSchedule(
   ingredient: ActiveIngredient,
   protocol: DermatologyProtocol,
