@@ -142,7 +142,7 @@ export default function FavoritesPage() {
   const bg = 'var(--canvas)';
 
   if (loading) {
-    return <TabLoadingShell title="Избранное" background={bg} />;
+    return <TabLoadingShell eyebrow="Сохранённые средства" title="Избранное" background={bg} />;
   }
 
   return (
@@ -152,7 +152,8 @@ export default function FavoritesPage() {
         .fav-rd .fv-logo{font-family:var(--font-inter),-apple-system,BlinkMacSystemFont,sans-serif;font-size:18px;font-weight:500;letter-spacing:0;color:#0A0A0A;text-transform:lowercase;}
         .fav-rd .fv-avatar{position:relative;width:40px;height:40px;border:0;padding:0;border-radius:50%;background:linear-gradient(135deg,#2A2A2A,#0A0A0A);color:#D5FE61;display:grid;place-items:center;cursor:pointer;box-shadow:0 0 0 2px rgba(255,255,255,0.9),0 6px 18px rgba(10,10,10,0.18);font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:14px;font-weight:700;}
         .fav-rd .fv-avatar::after{content:"";position:absolute;bottom:1px;right:1px;width:10px;height:10px;border-radius:50%;background:#D5FE61;border:2px solid var(--canvas);}
-        .fav-rd .fv-title{margin:6px 2px 18px;font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.6px;color:#0A0A0A;}
+        .fav-rd .fv-eyebrow{margin:6px 2px 7px;font-family:var(--font-inter),-apple-system,BlinkMacSystemFont,sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-mute);}
+        .fav-rd .fv-title{margin:0 2px 18px;font-family:var(--font-unbounded),'Unbounded',sans-serif;font-size:30px;font-weight:700;letter-spacing:-0.9px;line-height:1.08;color:#0A0A0A;}
         .fav-rd .fv-list{display:flex;flex-direction:column;gap:10px;}
         .fav-rd .fv-item{position:relative;padding:14px;border:1px solid var(--glass-border);border-radius:22px;background:#fff;box-shadow:var(--glass-shadow);overflow:hidden;}
         .fav-rd .fv-del{position:absolute;top:10px;right:10px;z-index:3;width:28px;height:28px;border:0;border-radius:50%;background:rgba(10,10,10,0.06);color:#0A0A0A;display:grid;place-items:center;cursor:pointer;}
@@ -190,6 +191,7 @@ export default function FavoritesPage() {
         <ProfileAvatarButton className="fv-avatar" />
       </div>
 
+      <div className="fv-eyebrow">Сохранённые средства</div>
       <h1 className="fv-title">Избранное</h1>
 
       {wishlist.length === 0 ? (
