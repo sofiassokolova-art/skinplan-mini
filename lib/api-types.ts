@@ -371,6 +371,7 @@ export interface RecommendationsResponse {
     description: string;
     marketLinks?: MarketLinks;
     imageUrl: string | null;
+    frequencyLabel?: string;
   }>>;
 }
 
