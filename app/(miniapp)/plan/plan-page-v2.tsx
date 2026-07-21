@@ -1503,8 +1503,8 @@ function PlanV2Styles() {
       .pv2-icon-heart.pv2-icon-active svg { fill: var(--ink); stroke: var(--ink); }
       .pv2-cart-cta {
         grid-column: 1 / -1;
-        background: var(--accent);
-        color: var(--ink);
+        background: var(--ink);
+        color: #fff;
         border: none;
         border-radius: 999px;
         width: 100%;
@@ -1523,7 +1523,7 @@ function PlanV2Styles() {
       }
       .pv2-cart-cta svg { width: 16px; height: 16px; flex-shrink: 0; }
       .pv2-cart-cta:disabled { opacity: 0.6; cursor: not-allowed; }
-      .pv2-cart-cta.pv2-in-cart { background: var(--ink); color: var(--accent); }
+      .pv2-cart-cta.pv2-in-cart { background: var(--accent); color: var(--ink); }
 
       .pv2-expert-card {
         background: rgba(10,10,10,0.86);
