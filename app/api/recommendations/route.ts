@@ -10,6 +10,9 @@ import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { getProductsForStep, type RuleStep } from '@/lib/product-selection';
 import { normalizeIngredientSimple } from '@/lib/ingredient-normalizer';
 import { calculateSkinAxes, type QuestionnaireAnswers } from '@/lib/skin-analysis-engine';
+import { determineProtocol, getEffectiveIngredientSchedule } from '@/lib/dermatology-protocols';
+import { getIngredientsForProduct } from '@/lib/dermatology-product-filter';
+import type { StepCategory } from '@/lib/step-category-rules';
 
 interface RuleCondition {
   [key: string]: string[] | { gte?: number; lte?: number } | string;
@@ -23,6 +26,64 @@ interface Rule {
   conditionsJson: RuleCondition;
   stepsJson: Record<string, RuleStep>;
   priority: number;
+}
+
+function formatWeeklyFrequencyLabel(frequency: number): string {
+  if (frequency <= 1) return '1 раз в неделю';
+  return `до ${frequency} раз в неделю`;
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+}
+
+function inferFrequencyLabelFromStep(
+  step: any,
+  product: {
+    activeIngredients?: string[] | null;
+    step?: string | null;
+    category?: string | null;
+  },
+  profile: any,
+  planMainGoals: unknown,
+  week: number
+): string | undefined {
+  if (typeof step?.frequencyLabel === 'string' && step.frequencyLabel.trim()) {
+    return step.frequencyLabel.trim();
+  }
+
+  const medicalMarkers = (profile?.medicalMarkers as Record<string, any> | null) || {};
+  const protocol = determineProtocol({
+    skinType: profile?.skinType || undefined,
+    sensitivityLevel: profile?.sensitivityLevel || undefined,
+    rosaceaRisk: profile?.rosaceaRisk || medicalMarkers.rosaceaRisk || null,
+    diagnoses: stringArray(medicalMarkers.diagnoses),
+    concerns: [
+      ...stringArray(planMainGoals),
+      ...stringArray(medicalMarkers.mainGoals),
+      ...stringArray(medicalMarkers.concerns),
+    ],
+    onIsotretinoin: medicalMarkers.onIsotretinoin === true,
+    currentOralMeds: stringArray(medicalMarkers.currentOralMeds),
+    fitzpatrickType: medicalMarkers.fitzpatrickType,
+  });
+
+  let strictest: number | null = null;
+  const ingredients = getIngredientsForProduct({
+    ...product,
+    activeIngredients: product.activeIngredients ?? undefined,
+    step: product.step ?? '',
+    category: product.category ?? '',
+  }, step?.stepCategory as StepCategory | undefined);
+  for (const ingredient of ingredients) {
+    const { frequency } = getEffectiveIngredientSchedule(ingredient, protocol, week, {
+      sensitivityLevel: profile?.sensitivityLevel,
+    });
+    if (frequency === null || frequency === undefined) continue;
+    strictest = strictest === null ? frequency : Math.min(strictest, frequency);
+  }
+
+  return strictest === null ? undefined : formatWeeklyFrequencyLabel(strictest);
 }
 
 /**
@@ -189,17 +250,14 @@ export async function GET(request: NextRequest) {
           });
           
           // Собираем продукты из текущего дня плана
+          const daySteps = [
+            ...(Array.isArray(dayData.morning) ? dayData.morning : []),
+            ...(Array.isArray(dayData.evening) ? dayData.evening : []),
+          ];
           const productIds = new Set<number>();
-          if (dayData.morning) {
-            dayData.morning.forEach((step: any) => {
-              if (step.productId) productIds.add(Number(step.productId));
-            });
-          }
-          if (dayData.evening) {
-            dayData.evening.forEach((step: any) => {
-              if (step.productId) productIds.add(Number(step.productId));
-            });
-          }
+          daySteps.forEach((step: any) => {
+            if (step.productId) productIds.add(Number(step.productId));
+          });
           
           if (productIds.size > 0) {
             const planProducts = await prisma.product.findMany({
@@ -218,7 +276,13 @@ export async function GET(request: NextRequest) {
             const steps: Record<string, any[]> = {};
             const lipBalms: any[] = []; // Собираем бальзамы для губ отдельно
             
+            const week = Math.ceil(currentDay / 7);
+
             for (const product of planProducts) {
+              const planStep = daySteps.find((step: any) => Number(step.productId) === product.id);
+              const frequencyLabel = planStep
+                ? inferFrequencyLabelFromStep(planStep, product, profile, planData.mainGoals, week)
+                : undefined;
               const productStep = product.step || '';
               const productCategory = product.category || '';
               const productName = product.name.toLowerCase();
@@ -239,6 +303,7 @@ export async function GET(request: NextRequest) {
                   description: product.descriptionUser,
                   marketLinks: product.marketLinks,
                   imageUrl: product.imageUrl,
+                  frequencyLabel,
                 });
                 continue; // Пропускаем добавление в основные шаги
               }
@@ -284,6 +349,7 @@ export async function GET(request: NextRequest) {
                 description: product.descriptionUser,
                 marketLinks: product.marketLinks,
                 imageUrl: product.imageUrl,
+                frequencyLabel,
               });
             }
             
