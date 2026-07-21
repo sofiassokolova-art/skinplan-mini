@@ -20,6 +20,7 @@ export enum StepType {
   EYE_CREAM = 'eye_cream',
   SPOT_TREATMENT = 'spot_treatment',
   LIP_CARE = 'lip_care',
+  BALM = 'balm',
 }
 
 /**
@@ -59,7 +60,13 @@ export function getStepTypeFromCategory(stepCategory: StepCategory): StepType {
   if (categoryStr.startsWith('lip_care')) {
     return StepType.LIP_CARE;
   }
-  
+  // ВАЖНО: balm_barrier_repair должен иметь свой базовый тип. Раньше он проваливался
+  // в дефолтный SERUM ниже, из-за чего все fallback-пути искали для balm-слота
+  // сыворотку: в план попадал дубль serum_hydrating или витамин C вместо бальзама.
+  if (categoryStr.startsWith('balm')) {
+    return StepType.BALM;
+  }
+
   // Fallback: пытаемся определить по базовому шагу
   if (categoryStr.includes('cleanser')) return StepType.CLEANSER;
   if (categoryStr.includes('toner')) return StepType.TONER;
@@ -68,7 +75,8 @@ export function getStepTypeFromCategory(stepCategory: StepCategory): StepType {
   if (categoryStr.includes('moisturizer') || categoryStr.includes('cream')) return StepType.MOISTURIZER;
   if (categoryStr.includes('spf') || categoryStr.includes('sunscreen')) return StepType.SPF;
   if (categoryStr.includes('mask')) return StepType.MASK;
-  
+  if (categoryStr.includes('balm')) return StepType.BALM;
+
   // Если не удалось определить, возвращаем SERUM как наиболее общий тип
   return StepType.SERUM;
 }
@@ -113,7 +121,10 @@ export function normalizeStepToStepType(step: string | null | undefined): StepTy
   if (stepStr === 'lip_care' || stepStr.includes('lip')) {
     return StepType.LIP_CARE;
   }
-  
+  if (stepStr === 'balm' || stepStr.startsWith('balm')) {
+    return StepType.BALM;
+  }
+
   return null;
 }
 
