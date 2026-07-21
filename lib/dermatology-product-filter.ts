@@ -79,34 +79,34 @@ export function getActiveIngredientsFromStepCategory(stepCategory?: StepCategory
  * 2. getActiveIngredientsFromStepCategory из context.stepCategory (если есть)
  * 3. extractActiveIngredients из product.step/category (fallback)
  */
-function getIngredientsForProduct(
-  product: ProductWithBrand,
-  context: ProductSelectionContext
+export function getIngredientsForProduct(
+  product: Pick<ProductWithBrand, 'activeIngredients' | 'step' | 'category'>,
+  stepCategory?: StepCategory
 ): ActiveIngredient[] {
   // 1. Пытаемся извлечь из реальных activeIngredients
   const extractedFromActives = extractActiveIngredients({
     activeIngredients: product.activeIngredients || [],
     composition: undefined, // ProductWithBrand не имеет composition
   });
-  
+
   if (extractedFromActives.length > 0) {
     return extractedFromActives;
   }
-  
+
   // 2. Если activeIngredients пусто, используем stepCategory как источник истины
-  if (context.stepCategory) {
-    const fromStepCategory = getActiveIngredientsFromStepCategory(context.stepCategory);
+  if (stepCategory) {
+    const fromStepCategory = getActiveIngredientsFromStepCategory(stepCategory);
     if (fromStepCategory.length > 0) {
       return fromStepCategory;
     }
   }
-  
+
   // 3. Fallback: пытаемся извлечь из step/category (старая логика)
   const extractedFromStep = extractActiveIngredients({
     activeIngredients: [],
     composition: `${product.step || ''} ${product.category || ''}`.trim() || undefined,
   });
-  
+
   return extractedFromStep;
 }
 import {
@@ -149,7 +149,7 @@ export function filterByProtocol(
 ): ProductSelectionResult[] {
   return products.map(product => {
     // ИСПРАВЛЕНО: Используем единую функцию для определения активов
-    const ingredients = getIngredientsForProduct(product, context);
+    const ingredients = getIngredientsForProduct(product, context.stepCategory);
     
     const productForCheck = {
       activeIngredients: ingredients.map(ing => String(ing)), // Преобразуем ActiveIngredient[] в string[]
@@ -214,7 +214,7 @@ export function checkCompatibilityWithSelected(
       // Если конфликт можно решить разделением по времени
       if (conflict.solution === 'separate_time') {
         // ИСПРАВЛЕНО (P0): Передаем реальные активы в getOptimalTimeOfDay
-        const ingredients = getIngredientsForProduct(product, context);
+        const ingredients = getIngredientsForProduct(product, context.stepCategory);
         const productForTimeCheck = {
           activeIngredients: ingredients.map(ing => String(ing)),
           composition: undefined as string | undefined,
@@ -284,7 +284,7 @@ export function checkForDuplication(
       ...context,
       stepCategory,
     };
-    const ingredients = getIngredientsForProduct(p, tempContext);
+    const ingredients = getIngredientsForProduct(p, tempContext.stepCategory);
     
     return {
       activeIngredients: ingredients.map(ing => String(ing)), // Преобразуем ActiveIngredient[] в string[]
@@ -332,7 +332,7 @@ export function checkTitrationSchedule(
 ): ProductSelectionResult {
   // ИСПРАВЛЕНО (P0): Используем единую функцию для определения активов
   // Это гарантирует использование реальных activeIngredients и stepCategory как fallback
-  const ingredients = getIngredientsForProduct(product, context);
+  const ingredients = getIngredientsForProduct(product, context.stepCategory);
   const schedule = context.protocol.titrationSchedule || [];
   // P0.2: для retinoid-naive держим самый строгий старт даже если протокол позволяет больше.
   const retinoidNaive = context.profileClassification.retinoidExperience === 'naive';
