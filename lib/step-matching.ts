@@ -9,6 +9,11 @@
 
 import type { StepCategory } from './step-category-rules';
 
+export interface StepMatchingSignals {
+  name?: string | null;
+  activeIngredients?: string[] | null;
+}
+
 /**
  * ИСПРАВЛЕНО (P0): Нормализует входные строки к каноническому формату
  * Убирает пробелы, приводит к нижнему регистру, заменяет дефисы на подчеркивания
@@ -22,14 +27,76 @@ function normalizeStepString(input: string | null | undefined): string {
     .replace(/-/g, '_'); // Заменяем дефисы на подчеркивания
 }
 
+function buildSignalText(
+  step: string | null | undefined,
+  category: string | null | undefined,
+  signals?: StepMatchingSignals
+): string {
+  const parts = [
+    step,
+    category,
+    signals?.name,
+    ...(Array.isArray(signals?.activeIngredients) ? signals.activeIngredients : []),
+  ];
+  return parts.filter(Boolean).join(' ').toLowerCase();
+}
+
+function signalIncludes(signalText: string, ...needles: string[]): boolean {
+  const normalizedSignal = normalizeStepString(signalText);
+  return needles.some((needle) => {
+    const lowerNeedle = needle.toLowerCase();
+    return signalText.includes(lowerNeedle) || normalizedSignal.includes(normalizeStepString(lowerNeedle));
+  });
+}
+
+export function hasSerumAntiageSignal(input: {
+  step?: string | null;
+  category?: string | null;
+  name?: string | null;
+  activeIngredients?: string[] | null;
+}): boolean {
+  const signalText = buildSignalText(input.step, input.category, {
+    name: input.name,
+    activeIngredients: input.activeIngredients,
+  });
+
+  return signalIncludes(
+    signalText,
+    'serum_antiage',
+    'antiage',
+    'anti age',
+    'anti-aging',
+    'anti ageing',
+    'wrinkle',
+    'wrinkles',
+    'firming',
+    'lifting',
+    'морщ',
+    'возраст',
+    'антиэйдж',
+    'лифтинг',
+    'упруг',
+    'peptide',
+    'peptides',
+    'copper peptide',
+    'matrixyl',
+    'argireline',
+    'пептид',
+    'bakuchiol',
+    'бакучиол'
+  );
+}
+
 export function mapStepToStepCategory(
   step: string | null | undefined,
   category: string | null | undefined,
-  skinType?: string | null
+  skinType?: string | null,
+  signals?: StepMatchingSignals
 ): StepCategory[] {
   // ИСПРАВЛЕНО (P0): Нормализуем входные строки перед сравнением
   const stepStr = normalizeStepString(step || category);
   const categoryStr = normalizeStepString(category);
+  const signalText = buildSignalText(step, category, signals);
   const categories: StepCategory[] = [];
 
   const isCleanserContext = stepStr.includes('cleanser') || categoryStr === 'cleanser';
@@ -108,29 +175,47 @@ export function mapStepToStepCategory(
   // ВАЖНО: vitamin c не должен попадать в serum_hydrating.
   const looksLikeVitC =
     stepStr.startsWith('serum_vitc') ||
-    (isSerumContext && (stepStr.includes('vitamin c') || stepStr.includes('vitc') || stepStr.includes('ascorb') || stepStr.includes('ce ferulic')));
+    categoryStr === 'serum_vitc' ||
+    (isSerumContext && signalIncludes(signalText, 'vitamin c', 'vitamin_c', 'vitc', 'ascorb', 'ce ferulic', 'витамин c', 'витамин с'));
   const looksLikeHydrating =
     stepStr.startsWith('serum_hydrating') ||
-    (isSerumContext && (stepStr.includes('hydrating') || stepStr.includes('hyalur') || stepStr.includes('hyaluron') || stepStr.includes('ha ')));
+    categoryStr === 'serum_hydrating' ||
+    (isSerumContext && signalIncludes(signalText, 'hydrating', 'hyalur', 'hyaluron', 'hyaluronic', 'гиалур', 'увлажн'));
+  const looksLikePeptide =
+    stepStr.startsWith('serum_peptide') ||
+    categoryStr === 'serum_peptide' ||
+    (isSerumContext && signalIncludes(signalText, 'peptide', 'peptides', 'copper peptide', 'matrixyl', 'argireline', 'пептид'));
+  const looksLikeAntiage = isSerumContext && hasSerumAntiageSignal({
+    step,
+    category,
+    name: signals?.name,
+    activeIngredients: signals?.activeIngredients,
+  });
 
   if (looksLikeVitC) {
     categories.push('serum_vitc');
+  } else if (looksLikePeptide) {
+    categories.push('serum_peptide', 'serum_antiage');
+  } else if (stepStr.startsWith('serum_antiage') || categoryStr === 'serum_antiage' || looksLikeAntiage) {
+    categories.push('serum_antiage');
+  } else if (
+    stepStr.startsWith('serum_niacinamide') ||
+    categoryStr === 'serum_niacinamide' ||
+    (isSerumContext && signalIncludes(signalText, 'niacinamide', 'ниацинамид'))
+  ) {
+    categories.push('serum_niacinamide');
+  } else if (stepStr.startsWith('serum_anti_redness') || categoryStr === 'serum_anti_redness' || (isSerumContext && signalIncludes(signalText, 'anti-redness', 'anti redness'))) {
+    categories.push('serum_anti_redness');
+  } else if (stepStr.startsWith('serum_brightening') || categoryStr === 'serum_brightening_soft' || (isSerumContext && signalIncludes(signalText, 'brightening'))) {
+    categories.push('serum_brightening_soft');
+  } else if (stepStr.startsWith('serum_exfoliant') || categoryStr === 'serum_exfoliant' || (isSerumContext && signalIncludes(signalText, 'lactic', 'mandelic', 'exfoliant'))) {
+    categories.push('serum_exfoliant');
   } else if (looksLikeHydrating) {
     categories.push('serum_hydrating');
-  } else if (stepStr.startsWith('serum_niacinamide') || (isSerumContext && stepStr.includes('niacinamide'))) {
-    categories.push('serum_niacinamide');
-  } else if (stepStr.startsWith('serum_anti_redness') || (isSerumContext && stepStr.includes('anti-redness'))) {
-    categories.push('serum_anti_redness');
-  } else if (stepStr.startsWith('serum_brightening') || (isSerumContext && stepStr.includes('brightening'))) {
-    categories.push('serum_brightening_soft');
-  } else if (stepStr.startsWith('serum_peptide') || (isSerumContext && (stepStr.includes('peptide') || stepStr.includes('copper peptide')))) {
-    categories.push('serum_peptide');
-  } else if (stepStr.startsWith('serum_antiage') || (isSerumContext && (stepStr.includes('antiage') || stepStr.includes('anti-age')))) {
-    categories.push('serum_antiage');
-  } else if (stepStr.startsWith('serum_exfoliant') || (isSerumContext && (stepStr.includes('lactic') || stepStr.includes('mandelic') || stepStr.includes('exfoliant')))) {
-    categories.push('serum_exfoliant');
   } else if (stepStr === 'serum' || categoryStr === 'serum') {
-    categories.push('serum_hydrating', 'serum_niacinamide', 'serum_vitc', 'serum_brightening_soft', 'serum_peptide', 'serum_antiage');
+    // Generic serum is safe only as a neutral serum. Goal-specific serum slots
+    // require step/category or ingredient signals above.
+    categories.push('serum_hydrating');
   }
 
   // --- Treatment / spot ---
@@ -237,4 +322,3 @@ export function mapStepToStepCategory(
 
   return categories;
 }
-

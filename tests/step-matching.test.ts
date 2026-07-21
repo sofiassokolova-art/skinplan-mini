@@ -30,6 +30,47 @@ describe('step matching: product.step/category -> StepCategory', () => {
     expect(mapped).not.toContain('serum_hydrating');
   });
 
+  it('does not register generic serum into targeted serum slots without product signals', () => {
+    const mapped = mapStepToStepCategory('serum', 'serum');
+
+    expect(mapped).toEqual(['serum_hydrating']);
+    expect(mapped).not.toContain('serum_antiage');
+    expect(mapped).not.toContain('serum_vitc');
+    expect(mapped).not.toContain('serum_niacinamide');
+    expect(mapped).not.toContain('serum_peptide');
+  });
+
+  it('maps generic niacinamide/hyaluronic serum without filling serum_antiage', () => {
+    const niacinamide = mapStepToStepCategory('serum', 'serum', null, {
+      name: 'Niacinamide 10% + Zinc',
+      activeIngredients: ['niacinamide', 'zinc'],
+    });
+    const hyaluronic = mapStepToStepCategory('serum', 'serum', null, {
+      name: 'Hyaluronic Serum',
+      activeIngredients: ['hyaluronic acid'],
+    });
+
+    expect(niacinamide).toContain('serum_niacinamide');
+    expect(niacinamide).not.toContain('serum_antiage');
+    expect(hyaluronic).toContain('serum_hydrating');
+    expect(hyaluronic).not.toContain('serum_antiage');
+  });
+
+  it('maps peptide/bakuchiol serum to serum_antiage', () => {
+    const peptide = mapStepToStepCategory('serum', 'serum', null, {
+      name: 'Copper Peptide Serum',
+      activeIngredients: ['copper peptide', 'hyaluronic acid'],
+    });
+    const bakuchiol = mapStepToStepCategory('serum', 'serum', null, {
+      name: 'Bakuchiol Serum',
+      activeIngredients: ['bakuchiol'],
+    });
+
+    expect(peptide).toContain('serum_peptide');
+    expect(peptide).toContain('serum_antiage');
+    expect(bakuchiol).toContain('serum_antiage');
+  });
+
   it('maps SPF variants correctly', () => {
     expect(mapStepToStepCategory('spf_50_sensitive', 'spf')).toContain('spf_50_sensitive');
     expect(mapStepToStepCategory('spf_50_oily', 'spf')).toContain('spf_50_oily');
@@ -79,4 +120,3 @@ describe('step matching: product.step/category -> StepCategory', () => {
     });
   });
 });
-

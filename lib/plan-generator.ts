@@ -19,6 +19,7 @@ import {
   ensureRequiredProducts,
   findFallbackProduct,
   findFallbackProductForSlot,
+  isProductCompatibleWithSlot,
   type ProductWithBrand
 } from '@/lib/product-fallback';
 import { mapStepToStepCategory } from '@/lib/step-matching';
@@ -429,6 +430,17 @@ function getFallbackStep(step: string): StepCategory | undefined {
   if (step.startsWith('moisturizer')) return 'moisturizer_light';
   if (step.startsWith('spf') || step === 'spf') return 'spf_50_face';
   return undefined;
+}
+
+const SERUM_VARIANT_FALLBACKS: Partial<Record<StepCategory, StepCategory[]>> = {
+  serum_hydrating: ['serum_hydrating', 'serum_anti_redness', 'serum_niacinamide'],
+  serum_antiage: ['serum_antiage', 'serum_peptide'],
+};
+
+function canUseSerumVariantForStep(mapStep: string, targetStep: StepCategory): boolean {
+  const allowed = SERUM_VARIANT_FALLBACKS[targetStep];
+  if (allowed) return allowed.includes(mapStep as StepCategory);
+  return mapStep === targetStep;
 }
 
 function getRoutineOrder(stepCategory: string): number {
@@ -1590,6 +1602,18 @@ export async function generate28DayPlan(
       return false;
     }
     const category = stepKey as StepCategory;
+    if (!isProductCompatibleWithSlot(product, category)) {
+      logger.info('Product rejected by slot compatibility at registration', {
+        userId,
+        stepKey,
+        productId: product.id,
+        productName: product.name,
+        originalStep: product.step,
+        originalCategory: product.category,
+        activeIngredients: product.activeIngredients,
+      });
+      return false;
+    }
     const existing = productsByStepMap.get(category) || [];
     if (!existing.some(p => p.id === product.id)) {
       productsByStepMap.set(category, [...existing, product]);
@@ -1606,8 +1630,13 @@ export async function generate28DayPlan(
     return true;
   };
 
-  const mapProductToStepCategories = (step: string | null | undefined, category: string | null | undefined): StepCategory[] => {
-    return mapStepToStepCategory(step, category, profile.skinType);
+  const mapProductToStepCategories = (
+    product: Pick<ProductWithBrand, 'step' | 'category' | 'name' | 'activeIngredients'>
+  ): StepCategory[] => {
+    return mapStepToStepCategory(product.step, product.category, profile.skinType, {
+      name: product.name,
+      activeIngredients: product.activeIngredients,
+    });
   };
   
   // Логируем начальное состояние selectedProducts для диагностики
@@ -1647,7 +1676,7 @@ export async function generate28DayPlan(
     };
     
     // Преобразуем старый формат step/category в StepCategory
-    const stepCategories = mapProductToStepCategories(product.step, product.category);
+    const stepCategories = mapProductToStepCategories(productWithBrand);
     
     // Детальное логирование для диагностики (особенно для пользователя 643160759)
     if (userId === '643160759' || process.env.NODE_ENV === 'development') {
@@ -1911,14 +1940,9 @@ export async function generate28DayPlan(
       // иначе "увлажняющая" сыворотка заменяется на витамин C и план выглядит неправильным.
       const allVariants: ProductWithBrand[] = [];
       for (const [mapStep, products] of productsByStepMap.entries()) {
-        if (baseStep === 'serum' && step === 'serum_hydrating') {
-          const allowedSerumFallback = new Set<string>([
-            'serum_hydrating',
-            'serum_anti_redness',
-            'serum_niacinamide',
-          ]);
-          if (allowedSerumFallback.has(mapStep)) {
-            allVariants.push(...products);
+        if (baseStep === 'serum') {
+          if (canUseSerumVariantForStep(mapStep, step)) {
+            allVariants.push(...products.filter((p) => isProductCompatibleWithSlot(p, step)));
           }
           continue;
         }
@@ -1994,12 +2018,13 @@ export async function generate28DayPlan(
       }
     }
     
-    // ИСПРАВЛЕНО: Аналогично для serum - если ищем serum_hydrating, но нашли только serum_niacinamide, используем его
+    // ИСПРАВЛЕНО: Аналогично для serum, но только по безопасной матрице fallback.
+    // serum_antiage не может брать hydrating/niacinamide без antiage-сигнала.
     if (step.startsWith('serum_')) {
       const serumVariants: ProductWithBrand[] = [];
       for (const [mapStep, products] of productsByStepMap.entries()) {
-        if (mapStep.startsWith('serum_')) {
-          serumVariants.push(...products);
+        if (mapStep.startsWith('serum_') && canUseSerumVariantForStep(mapStep, step)) {
+          serumVariants.push(...products.filter((p) => isProductCompatibleWithSlot(p, step)));
         }
       }
       
@@ -2605,12 +2630,28 @@ export async function generate28DayPlan(
               step: anyProduct.step || '',
               category: anyProduct.category,
               price: anyProduct.price,
+              priceSegment: (anyProduct as any).priceSegment ?? null,
               imageUrl: anyProduct.imageUrl,
               isHero: (anyProduct as any).isHero || false,
               priority: (anyProduct as any).priority || 0,
               skinTypes: (anyProduct.skinTypes as string[]) || [],
               published: anyProduct.published || false,
+              activeIngredients: (anyProduct.activeIngredients as string[]) || [],
             };
+
+            if (!isProductCompatibleWithSlot(anyProductWithBrand, missingStep)) {
+              logger.warn('Last resort fallback product rejected by slot compatibility', {
+                missingStep,
+                baseStep,
+                productId: anyProduct.id,
+                productName: anyProduct.name,
+                step: anyProduct.step,
+                category: anyProduct.category,
+                activeIngredients: anyProduct.activeIngredients,
+                userId,
+              });
+              continue;
+            }
             
             registerProductForStep(missingStep, anyProductWithBrand);
             logger.info('Last resort fallback product found for missing step', {

@@ -73,6 +73,34 @@ const bhaToner = product({
   step: 'toner_bha',
   activeIngredients: ['bha'],
 });
+const genericNiacinamideSerum = product({
+  id: 646,
+  name: 'Niacinamide 10% + Zinc',
+  step: 'serum',
+  category: 'serum',
+  activeIngredients: ['niacinamide', 'zinc'],
+});
+const hyaluronicSerum = product({
+  id: 901,
+  name: 'Hyaluronic Serum',
+  step: 'serum',
+  category: 'serum',
+  activeIngredients: ['hyaluronic acid'],
+});
+const peptideSerum = product({
+  id: 902,
+  name: 'Copper Peptide Serum',
+  step: 'serum_peptide',
+  category: 'serum_peptide',
+  activeIngredients: ['copper peptide', 'hyaluronic acid'],
+});
+const antiageSerum = product({
+  id: 903,
+  name: 'Bakuchiol Antiage Serum',
+  step: 'serum_antiage',
+  category: 'serum_antiage',
+  activeIngredients: ['bakuchiol'],
+});
 
 const profile: ProfileClassification = {
   skinType: 'oily',
@@ -85,7 +113,7 @@ const profile: ProfileClassification = {
 function mockCatalog(catalog: ProductWithBrand[]) {
   mockFindMany.mockImplementation(async (args: any) => {
     const whereJson = JSON.stringify(args.where);
-    for (const subtype of ['toner_soothing', 'toner_hydrating', 'toner_bha', 'serum_vitc']) {
+    for (const subtype of ['toner_soothing', 'toner_hydrating', 'toner_bha', 'serum_vitc', 'serum_antiage', 'serum_peptide']) {
       if (whereJson.includes(subtype)) {
         return catalog.filter(
           (p) => (p.step || '').startsWith(subtype) || (p.category || '') === subtype
@@ -117,6 +145,13 @@ describe('isExfoliatingProduct / isProductCompatibleWithSlot', () => {
     expect(isProductCompatibleWithSlot(glycolicToner, 'toner_hydrating')).toBe(false);
     expect(isProductCompatibleWithSlot(glycolicToner, 'toner_acid')).toBe(true);
     expect(isProductCompatibleWithSlot(centellaToner, 'toner_soothing')).toBe(true);
+  });
+
+  it('запрещает serum_antiage без antiage-актива/разметки', () => {
+    expect(isProductCompatibleWithSlot(genericNiacinamideSerum, 'serum_antiage')).toBe(false);
+    expect(isProductCompatibleWithSlot(hyaluronicSerum, 'serum_antiage')).toBe(false);
+    expect(isProductCompatibleWithSlot(peptideSerum, 'serum_antiage')).toBe(true);
+    expect(isProductCompatibleWithSlot(antiageSerum, 'serum_antiage')).toBe(true);
   });
 });
 
@@ -171,5 +206,33 @@ describe('findFallbackProductForSlot: slot-aware подбор тонера', () 
     const result = await findFallbackProductForSlot('serum_vitc', profile);
 
     expect(result).toBeNull();
+  });
+
+  it('для serum_antiage не берёт generic niacinamide/hyaluronic serum', async () => {
+    mockCatalog([genericNiacinamideSerum, hyaluronicSerum]);
+
+    const result = await findFallbackProductForSlot('serum_antiage', profile, {
+      userId: 'cmrp6kr01000004jui674wjgk',
+    });
+
+    expect(result).toBeNull();
+  });
+
+  it('для serum_antiage предпочитает exact antiage-средство', async () => {
+    mockCatalog([genericNiacinamideSerum, peptideSerum, antiageSerum]);
+
+    const result = await findFallbackProductForSlot('serum_antiage', profile);
+
+    expect(result).not.toBeNull();
+    expect(result!.id).toBe(antiageSerum.id);
+  });
+
+  it('для serum_antiage допускает peptide-соседа как мягкий antiage fallback', async () => {
+    mockCatalog([genericNiacinamideSerum, peptideSerum]);
+
+    const result = await findFallbackProductForSlot('serum_antiage', profile);
+
+    expect(result).not.toBeNull();
+    expect(result!.id).toBe(peptideSerum.id);
   });
 });
