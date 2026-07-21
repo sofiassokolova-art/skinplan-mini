@@ -532,11 +532,6 @@ function PlanPhasesProductsSection(props: {
               {isOpen && (
                 <div className="pv2-phase-panel">
                   <div className="pv2-phase-text">{phase.description}</div>
-                  {phase.tags.length > 0 && (
-                    <div className="pv2-phase-tags">
-                      {phase.tags.map((tag) => <span className="pv2-phase-tag" key={tag}>{tag}</span>)}
-                    </div>
-                  )}
 
                   {phaseProducts.length > 0 ? (
                     <div className="pv2-product-list">
@@ -1267,21 +1262,6 @@ function PlanV2Styles() {
       }
       .pv2-phase-days { font-size: 13px; color: var(--ink-soft); }
       .pv2-phase-text { font-size: 13px; color: #475467; line-height: 1.5; margin-bottom: 14px; }
-      .pv2-phase-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-      .pv2-phase-tag {
-        background: rgba(10,10,10,0.065);
-        border: 1px solid rgba(10,10,10,0.11);
-        border-radius: 999px;
-        padding: 5px 12px;
-        font-size: 12px;
-        font-weight: 650;
-        color: var(--ink);
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.42);
-      }
-      .pv2-phase-accordion-current .pv2-phase-tag {
-        background: #fff;
-        border-color: rgba(10,10,10,0.12);
-      }
       .pv2-phase-panel .pv2-product-list {
         margin-top: 12px;
       }
