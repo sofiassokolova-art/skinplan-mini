@@ -15,10 +15,15 @@ interface AggregatedScores {
   acne?: number;
   rosacea?: number;
   pigmentation?: number;
+  skinType?: string;
+  skin_type?: string;
+  skinTypeHint?: string;
   [key: string]: number | string | boolean | undefined;
 }
 
 const EMPTY_SCORE_KEYS = 0;
+const EXPLICIT_SKIN_TYPE_KEYS = ['skinType', 'skin_type', 'skinTypeHint'] as const;
+const COMBINATION_SKIN_TYPES = new Set<SkinTypeKey>(['combination_dry', 'combination_oily']);
 
 function hasScoreValues(scoreJson: Prisma.JsonValue | null): scoreJson is Prisma.JsonObject {
   return !!scoreJson &&
@@ -38,20 +43,28 @@ export function inferAnswerScore(questionCode: string, optionLabel: string): Ans
   const label = optionLabel.toLowerCase();
 
   if (code === 'skin_type') {
-    if ((label.includes('тип 1') || label.includes('сухая')) && !label.includes('комбинированная')) {
-      return { oiliness: 0, dehydration: 5 };
+    const isCombination = label.includes('комбинированн') || label.includes('combination') || label.includes('combo');
+    const isDry = label.includes('сухая') || label.includes('сухой') || label.includes('dry');
+    const isOily = label.includes('жирная') || label.includes('жирной') || label.includes('oily');
+
+    if (isCombination && isDry) {
+      return { skinType: 'combination_dry', oiliness: 2, dehydration: 3 };
     }
-    if (label.includes('тип 2') || label.includes('комбинированная (сухая)')) {
-      return { oiliness: 2, dehydration: 3 };
+    if (isCombination && isOily) {
+      return { skinType: 'combination_oily', oiliness: 3, dehydration: 1 };
     }
-    if ((label.includes('тип 3') || label.includes('нормальная')) && !label.includes('жирная')) {
-      return { oiliness: 1, dehydration: 1 };
+
+    if (label.includes('тип 1') || isDry) {
+      return { skinType: 'dry', oiliness: 0, dehydration: 5 };
     }
-    if (label.includes('комбинированная (жирная)') || label.includes('тип 4')) {
-      return { oiliness: 3, dehydration: 1 };
+    if (label.includes('тип 2')) {
+      return { skinType: 'combination_dry', oiliness: 2, dehydration: 3 };
     }
-    if (label.includes('жирная') || label.includes('тип 5')) {
-      return { oiliness: 5, dehydration: 0 };
+    if (label.includes('нормальная') || (label.includes('тип 3') && !isOily)) {
+      return { skinType: 'normal', oiliness: 1, dehydration: 1 };
+    }
+    if (label.includes('тип 5') || isOily || label.includes('тип 4')) {
+      return { skinType: 'oily', oiliness: 5, dehydration: 0 };
     }
   }
 
@@ -162,6 +175,51 @@ export function aggregateAnswerScores(
   return aggregated;
 }
 
+function normalizeExplicitSkinType(
+  rawSkinType: unknown,
+  scores: AggregatedScores,
+  context?: { userId?: string }
+): SkinTypeKey | null {
+  if (typeof rawSkinType !== 'string') return null;
+
+  const raw = rawSkinType.trim().toLowerCase();
+  const aliases: Record<string, string> = {
+    dry: 'dry',
+    oily: 'oily',
+    normal: 'normal',
+    combo: 'combo',
+    combination_dry: 'combination_dry',
+    combination_oily: 'combination_oily',
+    combo_dry: 'combination_dry',
+    combo_oily: 'combination_oily',
+  };
+  const normalizedInput = aliases[raw];
+  if (!normalizedInput) return null;
+
+  const hasSkinAxisScore =
+    (typeof scores.oiliness === 'number' && scores.oiliness > 0) ||
+    (typeof scores.dehydration === 'number' && scores.dehydration > 0);
+  return normalizeSkinTypeForRules(
+    normalizedInput,
+    hasSkinAxisScore
+      ? {
+          oiliness: typeof scores.oiliness === 'number' ? scores.oiliness : 0,
+          dehydration: typeof scores.dehydration === 'number' ? scores.dehydration : 0,
+          userId: context?.userId,
+        }
+      : { userId: context?.userId }
+  );
+}
+
+function getExplicitSkinType(scores: AggregatedScores, context?: { userId?: string }): SkinTypeKey | null {
+  for (const key of EXPLICIT_SKIN_TYPE_KEYS) {
+    const skinType = normalizeExplicitSkinType(scores[key], scores, context);
+    if (skinType) return skinType;
+  }
+
+  return null;
+}
+
 /**
  * ИСПРАВЛЕНО: Определяет тип кожи на основе агрегированных баллов
  * Использует единую точку нормализации через normalizeSkinTypeForRules
@@ -170,12 +228,23 @@ export function aggregateAnswerScores(
 export function determineSkinType(scores: AggregatedScores, context?: { userId?: string }): SkinTypeKey {
   const oiliness = typeof scores.oiliness === 'number' ? scores.oiliness : 0;
   const dehydration = typeof scores.dehydration === 'number' ? scores.dehydration : 0;
+  const explicitSkinType = getExplicitSkinType(scores, context);
+  const hasSkinAxisScore = typeof scores.oiliness === 'number' || typeof scores.dehydration === 'number';
+
+  if (explicitSkinType && COMBINATION_SKIN_TYPES.has(explicitSkinType)) {
+    return explicitSkinType;
+  }
+
+  if (explicitSkinType && !hasSkinAxisScore) {
+    return explicitSkinType;
+  }
 
   // ИСПРАВЛЕНО: Определяем предварительный тип на основе баллов
   let preliminaryType: string;
-  if (oiliness >= 4 && dehydration >= 3) {
-    // Комбинированная: определяем направление на основе преобладающего признака
-    preliminaryType = oiliness > dehydration ? 'combination_oily' : 'combination_dry';
+  if (oiliness >= 4 && dehydration > 0) {
+    // Комбинированная жирная: слабый второй сигнал здесь означает региональную разницу,
+    // а не обязательно обезвоженность. Чистая жирная кожа остаётся oiliness >= 4 && dehydration === 0.
+    preliminaryType = 'combination_oily';
   } else if (oiliness >= 4) {
     preliminaryType = 'oily';
   } else if (dehydration >= 4) {
