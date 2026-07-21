@@ -18,6 +18,9 @@
     "app/api/cron/winback/route.ts": {
       "maxDuration": 60
     },
+    "app/api/cron/access-expired/route.ts": {
+      "maxDuration": 60
+    },
     "app/api/cron/funnel-nudges/route.ts": {
       "maxDuration": 60
     },

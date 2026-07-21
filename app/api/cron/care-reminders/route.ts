@@ -55,7 +55,7 @@ async function sendReminder(
         text,
         parse_mode: 'HTML',
         reply_markup: {
-          inline_keyboard: [[{ text: 'Открыть план', web_app: { url: buttonUrl } }]],
+          inline_keyboard: [[{ text: 'Открыть skiniq', web_app: { url: buttonUrl } }]],
         },
       }),
     });
@@ -176,16 +176,17 @@ async function sendDueSetupPrompts(now: Date): Promise<{ setupPrompts: number; s
 function morningText(firstName: string | null, currentDay: number | null): string {
   const name = (firstName || '').trim();
   const hello = name ? `Доброе утро, ${name}!` : 'Доброе утро!';
-  const dayLine = currentDay ? `\n\nДень ${currentDay} из 28 — вы отлично держитесь.` : '';
+  // День показываем только с 3-го дня (в начале плана «День 1 из 28 — держитесь» звучит странно).
+  const dayLine = currentDay && currentDay >= 3 ? `\n\nДень ${currentDay} из 28 — вы отлично держитесь.` : '';
   return (
     `☀️ ${hello}\n\n` +
-    'Пара минут на утренний уход — очищение, крем и SPF, и кожа готова к дню.' +
+    'Пара минут на утренний уход: очищение, крем и SPF, и кожа готова к дню.' +
     dayLine
   );
 }
 
 function eveningText(firstName: string | null, currentDay: number | null): string {
-  const dayLine = currentDay ? ` Сегодня день ${currentDay} из 28.` : '';
+  const dayLine = currentDay && currentDay >= 3 ? ` Сегодня день ${currentDay} из 28.` : '';
   return (
     '🌙 Время вечернего ухода.\n\n' +
     'Вечер — самое важное окно для кожи: за ночь она восстанавливается активнее всего. ' +
@@ -210,7 +211,8 @@ export async function GET(request: NextRequest) {
     }
 
     const miniAppUrl = process.env.NEXT_PUBLIC_MINI_APP_URL || 'https://www.proskiniq.ru';
-    const planUrl = `${miniAppUrl}/plan`;
+    // Напоминалки ведут на главную (не на /plan) — оттуда пользователь заходит в уход.
+    const homeUrl = `${miniAppUrl}/home`;
 
     // Кандидаты: активный paid_access (не истёк) + есть telegramId.
     const entitlements = await prisma.entitlement.findMany({
@@ -278,7 +280,7 @@ export async function GET(request: NextRequest) {
         ? morningText(ent.user?.firstName ?? null, clampedDay)
         : eveningText(ent.user?.firstName ?? null, clampedDay);
 
-      const ok = await sendReminder(telegramId, text, planUrl);
+      const ok = await sendReminder(telegramId, text, homeUrl);
       if (!ok) { result.failed += 1; continue; }
 
       // Отметка «отправлено сегодня» — и заодно история сообщений бота.
