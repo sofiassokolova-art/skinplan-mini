@@ -176,10 +176,7 @@ export function ReplaceProductModal({ product, isOpen, onClose, onReplace }: Rep
                     <div className="replace-option-copy">
                       <div className="replace-product-brand">{alt.brand.name}</div>
                       <div className="replace-product-name">{alt.name}</div>
-                      <div className="replace-why">
-                        <span>Почему лучше</span>
-                        {alt.whyBetter}
-                      </div>
+                      <div className="replace-why">{alt.whyBetter}</div>
                     </div>
                     <span className="replace-select-mark" aria-hidden="true">
                       {isSelected && <Check strokeWidth={2.4} />}
@@ -460,17 +457,6 @@ export function ReplaceProductModal({ product, isOpen, onClose, onReplace }: Rep
             color: var(--ink-soft);
             font-size: 12px;
             line-height: 1.42;
-          }
-
-          .replace-why span {
-            display: block;
-            margin-bottom: 2px;
-            color: var(--ink);
-            font-size: 10px;
-            font-weight: 800;
-            letter-spacing: 0;
-            text-transform: uppercase;
-            opacity: 0.62;
           }
 
           .replace-select-mark {
