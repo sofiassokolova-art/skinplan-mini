@@ -3,13 +3,13 @@
 // Используется только в development/test окружении
 
 import { NextRequest } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 
-import { entitlementCodeForProduct, calculateValidUntil, isRenewalProduct, WINBACK_OFFER_TAG } from '@/lib/payment-helpers';
-import { invalidateAllUserCache } from '@/lib/cache';
+import { afterSuccessfulPayment, applyPaymentStatusTransition } from '@/lib/payment-finalization';
 import { isExplicitNonProd } from '@/lib/deployment-env';
 
 /**
@@ -94,81 +94,16 @@ export async function POST(request: NextRequest) {
       userId: payment.userId,
     });
 
-    // Обрабатываем вебхук (используем ту же логику, что и в основном вебхуке)
-    const newStatus = 'succeeded';
+    const transitioned = await prisma.$transaction((tx) =>
+      applyPaymentStatusTransition(tx, {
+        payment,
+        newStatus: 'succeeded',
+        providerPayload: webhookBody as Prisma.InputJsonValue,
+      }),
+    );
 
-    // Транзакция: обновляем Payment и создаем/обновляем Entitlement
-    await prisma.$transaction(async (tx) => {
-      // Обновляем статус платежа
-      await tx.payment.update({
-        where: { id: payment.id },
-        data: {
-          status: newStatus,
-          providerPayload: webhookBody, // Сохраняем полные данные от провайдера
-          updatedAt: new Date(),
-        },
-      });
-
-      // Создаем или обновляем Entitlement
-      const entitlementCode = entitlementCodeForProduct(payment.productCode);
-      const validUntil = calculateValidUntil(payment.productCode);
-
-      await tx.entitlement.upsert({
-        where: {
-          userId_code: {
-            userId: payment.userId,
-            code: entitlementCode,
-          },
-        },
-        update: {
-          active: true,
-          validUntil,
-          lastPaymentId: payment.id,
-          updatedAt: new Date(),
-        },
-        create: {
-          userId: payment.userId,
-          code: entitlementCode,
-          active: true,
-          validUntil,
-          lastPaymentId: payment.id,
-        },
-      });
-
-      logger.info('Entitlement created/updated via test webhook', {
-        userId: payment.userId,
-        paymentId: payment.id,
-        validUntil: validUntil.toISOString(),
-      });
-
-      // Продление: сбрасываем счётчик плана и снимаем win-back тег (как в проде).
-      if (isRenewalProduct(payment.productCode)) {
-        const latestPlan = await tx.plan28.findFirst({
-          where: { userId: payment.userId },
-          orderBy: { createdAt: 'desc' },
-          select: { id: true },
-        });
-        if (latestPlan) {
-          await tx.plan28.update({
-            where: { id: latestPlan.id },
-            data: { createdAt: new Date() },
-          });
-        }
-        const userTags = await tx.user.findUnique({
-          where: { id: payment.userId },
-          select: { tags: true },
-        });
-        if (userTags?.tags?.includes(WINBACK_OFFER_TAG)) {
-          await tx.user.update({
-            where: { id: payment.userId },
-            data: { tags: { set: userTags.tags.filter((t) => t !== WINBACK_OFFER_TAG) } },
-          });
-        }
-      }
-    });
-
-    if (isRenewalProduct(payment.productCode)) {
-      await invalidateAllUserCache(payment.userId).catch(() => {});
+    if (transitioned) {
+      await afterSuccessfulPayment(payment);
     }
 
     return NextResponse.json({ 

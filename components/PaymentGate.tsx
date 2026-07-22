@@ -39,6 +39,31 @@ const PRODUCT_PRICES: Record<string, number> = {
   plan_renewal_discount: 99, // Win-back продление со скидкой
 };
 
+const ENTITLEMENTS_CHECK_TIMEOUT_MS =
+  process.env.NODE_ENV === 'development' ? 500 : 8000;
+
+type PromoPreview = {
+  code: string;
+  amount: number;
+  originalAmount: number;
+  discountAmount: number;
+};
+
+function formatKopecksAsRubles(amountKopecks: number): string {
+  const rubles = amountKopecks / 100;
+  return rubles.toLocaleString('ru-RU', {
+    minimumFractionDigits: amountKopecks % 100 === 0 ? 0 : 2,
+    maximumFractionDigits: amountKopecks % 100 === 0 ? 0 : 2,
+  });
+}
+
+function formatRubles(amount: number): string {
+  return amount.toLocaleString('ru-RU', {
+    minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+    maximumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+  });
+}
+
 function shouldMockTelegramInitData(): boolean {
   if (process.env.NODE_ENV === 'development') return true;
   if (process.env.NEXT_PUBLIC_ALLOW_TEST_INIT_DATA === 'true') return true;
@@ -235,7 +260,13 @@ export function PaymentGate({
   const [providerPaymentId, setProviderPaymentId] = useState<string | null>(null);
   // URL страницы оплаты, открытой во внешнем браузере — чтобы юзер мог открыть её повторно
   const [externalPaymentUrl, setExternalPaymentUrl] = useState<string | null>(null);
+  const [promoCodeInput, setPromoCodeInput] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<PromoPreview | null>(null);
+  const [promoMessage, setPromoMessage] = useState<string | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [isCheckingPromo, setIsCheckingPromo] = useState(false);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const checkingDbPaymentRef = useRef(false);
 
   // hasPaid = "уверены, что оплата есть" (проверяется через Entitlement).
   // Инициализируем из глобального/persisted кеша, чтобы при навигации между
@@ -257,6 +288,13 @@ export function PaymentGate({
     setPaywallVisible(!hasPaid);
     return () => setPaywallVisible(false);
   }, [hasPaid, setPaywallVisible]);
+
+  useEffect(() => {
+    setPromoCodeInput('');
+    setAppliedPromo(null);
+    setPromoMessage(null);
+    setPromoError(null);
+  }, [productCode]);
 
   // Ждем появления Telegram initData (иначе paywall может "мигать" при повторном входе в приложение)
   useEffect(() => {
@@ -297,6 +335,7 @@ export function PaymentGate({
   // Когда initDataReady становится true, сбрасываем checkingDbPayment чтобы перепроверить entitlements
   useEffect(() => {
     if (initDataReady && !checkedOnce) {
+      checkingDbPaymentRef.current = false;
       setCheckingDbPayment(false);
     }
   }, [initDataReady, checkedOnce]);
@@ -323,18 +362,16 @@ export function PaymentGate({
   // ПРАВИЛЬНАЯ ЛОГИКА: источник правды — БД через /api/me/entitlements
   // Проверяем Entitlement, а не теги пользователя
   // В dev короткий таймаут, чтобы на локальном сервере не ждать на главной/плане
-  const ENTITLEMENTS_CHECK_TIMEOUT_MS =
-    process.env.NODE_ENV === 'development' ? 500 : 8000;
-
   useEffect(() => {
     let isMounted = true;
     let timeoutId: NodeJS.Timeout | null = null;
     let fallbackTimeoutId: NodeJS.Timeout | null = null;
 
     const checkEntitlements = async () => {
-      if (checkingDbPayment) return;
+      if (checkingDbPaymentRef.current) return;
 
       try {
+        checkingDbPaymentRef.current = true;
         setCheckingDbPayment(true);
 
         const initData = getInitDataForClient();
@@ -379,6 +416,7 @@ export function PaymentGate({
           setCheckedOnce(true);
         }
       } finally {
+        checkingDbPaymentRef.current = false;
         if (isMounted) {
           setCheckingDbPayment(false);
         }
@@ -470,6 +508,82 @@ export function PaymentGate({
     };
   }, [paymentId, onPaymentComplete, productCode]);
 
+  const handleApplyPromo = async () => {
+    const code = promoCodeInput.trim();
+    if (!code) {
+      setAppliedPromo(null);
+      setPromoMessage(null);
+      setPromoError('Введите промокод');
+      return;
+    }
+
+    const initData = getInitDataForClient();
+    if (!initData) {
+      setPromoError('Откройте приложение через Telegram Mini App');
+      return;
+    }
+
+    setIsCheckingPromo(true);
+    setPromoError(null);
+    setPromoMessage(null);
+
+    try {
+      const response = await fetch('/api/payments/promo/validate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Telegram-Init-Data': initData,
+        },
+        body: JSON.stringify({ productCode, promoCode: code }),
+      });
+
+      const data = await response.json().catch(() => null);
+      const promoData = data?.data || data;
+
+      if (!response.ok) {
+        const message =
+          typeof promoData?.error === 'string' && promoData.error.trim()
+            ? promoData.error
+            : 'Не удалось применить промокод';
+        setAppliedPromo(null);
+        setPromoError(message);
+        return;
+      }
+
+      if (
+        typeof promoData?.promoCode !== 'string' ||
+        typeof promoData?.amount !== 'number' ||
+        typeof promoData?.originalAmount !== 'number' ||
+        typeof promoData?.discountAmount !== 'number'
+      ) {
+        setAppliedPromo(null);
+        setPromoError('Неверный ответ от сервера');
+        return;
+      }
+
+      const promo: PromoPreview = {
+        code: promoData.promoCode,
+        amount: promoData.amount,
+        originalAmount: promoData.originalAmount,
+        discountAmount: promoData.discountAmount,
+      };
+
+      setPromoCodeInput(promo.code);
+      setAppliedPromo(promo);
+      setPromoMessage(
+        promo.amount === 0
+          ? 'Промокод применён: доступ откроется бесплатно'
+          : `Промокод применён: скидка ${formatKopecksAsRubles(promo.discountAmount)} ₽`,
+      );
+    } catch (error) {
+      console.warn('Promo validation failed:', error);
+      setAppliedPromo(null);
+      setPromoError('Не удалось проверить промокод. Попробуйте ещё раз.');
+    } finally {
+      setIsCheckingPromo(false);
+    }
+  };
+
   const handlePayment = async () => {
     if (!agreedToTerms || !agreedToHealth) {
       toast.error('Необходимо согласиться с обработкой персональных данных');
@@ -485,6 +599,7 @@ export function PaymentGate({
         setIsProcessing(false);
         return;
       }
+      const promoCodeForPayment = appliedPromo?.code || promoCodeInput.trim();
 
       // Фиксируем согласие на обработку ПДн (152-ФЗ). Не блокируем оплату,
       // если запись согласия не удалась — сами чекбоксы уже подтверждают согласие.
@@ -507,6 +622,7 @@ export function PaymentGate({
         },
         body: JSON.stringify({
           productCode,
+          promoCode: promoCodeForPayment || undefined,
         }),
       });
 
@@ -541,6 +657,20 @@ export function PaymentGate({
 
       // Если платеж уже успешен (идемпотентность)
       if (paymentData.status === 'succeeded' && paymentData.hasAccess) {
+        if (typeof paymentData.promoCode === 'string' && typeof paymentData.amount === 'number') {
+          setAppliedPromo({
+            code: paymentData.promoCode,
+            amount: paymentData.amount,
+            originalAmount:
+              typeof paymentData.originalAmount === 'number'
+                ? paymentData.originalAmount
+                : paymentData.amount,
+            discountAmount:
+              typeof paymentData.discountAmount === 'number'
+                ? paymentData.discountAmount
+                : 0,
+          });
+        }
         setHasPaid(true);
         setEntitlementsCache([requiredEntitlementCode(productCode)]);
         toast.success('Оплата успешно обработана!');
@@ -634,6 +764,23 @@ export function PaymentGate({
     typeof originalPrice === 'number' && Number.isFinite(originalPrice) && originalPrice > displayPrice
       ? originalPrice
       : displayPrice * 2;
+
+  const effectivePriceKopecks = appliedPromo?.amount ?? Math.round(displayPrice * 100);
+  const effectivePriceText = appliedPromo
+    ? formatKopecksAsRubles(appliedPromo.amount)
+    : formatRubles(displayPrice);
+  const strikePriceText = appliedPromo
+    ? formatKopecksAsRubles(appliedPromo.originalAmount)
+    : formatRubles(strikePrice);
+  const paymentButtonText = paymentId
+    ? 'Ожидаем подтверждения...'
+    : isProcessing
+      ? effectivePriceKopecks === 0
+        ? 'Открываем доступ...'
+        : 'Создание платежа...'
+      : effectivePriceKopecks === 0
+        ? 'Получить доступ'
+        : `Оплатить ${effectivePriceText} ₽`;
 
   const isRenewal = productCode === 'subscription_month' || productCode === 'plan_renewal_discount';
   const priceCaption = isRenewal ? 'Продление на 28 дней' : 'Доступ на 28 дней';
@@ -842,7 +989,7 @@ export function PaymentGate({
               textDecoration: 'line-through',
               marginBottom: '2px',
             }}>
-              {strikePrice} ₽
+              {strikePriceText} ₽
             </div>
             <div style={{
               fontFamily: "var(--font-inter), 'Inter', sans-serif",
@@ -859,8 +1006,96 @@ export function PaymentGate({
             color: '#000',
             letterSpacing: '-1px',
           }}>
-            {displayPrice}<sup style={{ fontSize: '50%', verticalAlign: 'super', letterSpacing: 0 }}>₽</sup>
+            {effectivePriceText}<sup style={{ fontSize: '50%', verticalAlign: 'super', letterSpacing: 0 }}>₽</sup>
           </div>
+        </div>
+
+        {/* Промокод */}
+        <div style={{ ...glassStyle, padding: '12px', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <input
+              value={promoCodeInput}
+              onChange={(event) => {
+                const nextValue = event.target.value.toUpperCase();
+                setPromoCodeInput(nextValue);
+                if (appliedPromo && nextValue.trim() !== appliedPromo.code) {
+                  setAppliedPromo(null);
+                  setPromoMessage(null);
+                }
+                if (promoError) setPromoError(null);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  void handleApplyPromo();
+                }
+              }}
+              placeholder="Промокод"
+              disabled={isProcessing || !!paymentId}
+              inputMode="text"
+              autoCapitalize="characters"
+              style={{
+                minWidth: 0,
+                flex: 1,
+                height: '42px',
+                border: '1px solid rgba(10,10,10,0.14)',
+                borderRadius: '999px',
+                background: 'rgba(255,255,255,0.64)',
+                padding: '0 14px',
+                color: '#111',
+                fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                fontSize: '14px',
+                fontWeight: 650,
+                letterSpacing: 0,
+                outline: 'none',
+                textTransform: 'uppercase',
+              }}
+            />
+            <button
+              type="button"
+              onClick={handleApplyPromo}
+              disabled={isCheckingPromo || isProcessing || !!paymentId || !promoCodeInput.trim()}
+              style={{
+                width: '112px',
+                height: '42px',
+                border: 'none',
+                borderRadius: '999px',
+                background:
+                  !isCheckingPromo && !isProcessing && !paymentId && promoCodeInput.trim()
+                    ? '#0A0A0A'
+                    : 'rgba(10,10,10,0.08)',
+                color:
+                  !isCheckingPromo && !isProcessing && !paymentId && promoCodeInput.trim()
+                    ? '#FFFFFF'
+                    : '#9CA3AF',
+                cursor:
+                  !isCheckingPromo && !isProcessing && !paymentId && promoCodeInput.trim()
+                    ? 'pointer'
+                    : 'not-allowed',
+                fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                fontSize: '13px',
+                fontWeight: 800,
+                letterSpacing: 0,
+                flexShrink: 0,
+              }}
+            >
+              {isCheckingPromo ? 'Проверка' : 'Применить'}
+            </button>
+          </div>
+          {(promoMessage || promoError) && (
+            <p
+              role="status"
+              style={{
+                margin: '8px 4px 0',
+                color: promoError ? '#B42318' : '#146C43',
+                fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                fontSize: '12px',
+                lineHeight: 1.35,
+              }}
+            >
+              {promoError || promoMessage}
+            </p>
+          )}
         </div>
 
         {/* Чекбоксы согласия + кнопка */}
@@ -980,12 +1215,12 @@ export function PaymentGate({
           {/* Кнопка в общем стиле основных CTA */}
           <button
             onClick={handlePayment}
-            disabled={!agreedToTerms || !agreedToHealth || isProcessing || !!paymentId}
+            disabled={!agreedToTerms || !agreedToHealth || isProcessing || isCheckingPromo || !!paymentId}
             style={{
               width: '100%',
               height: '48px',
-              background: agreedToTerms && agreedToHealth && !isProcessing && !paymentId ? '#0A0A0A' : 'rgba(10,10,10,0.08)',
-              color: agreedToTerms && agreedToHealth && !isProcessing && !paymentId ? '#FFFFFF' : '#9CA3AF',
+              background: agreedToTerms && agreedToHealth && !isProcessing && !isCheckingPromo && !paymentId ? '#0A0A0A' : 'rgba(10,10,10,0.08)',
+              color: agreedToTerms && agreedToHealth && !isProcessing && !isCheckingPromo && !paymentId ? '#FFFFFF' : '#9CA3AF',
               fontFamily: "var(--font-inter), 'Inter', sans-serif",
               fontWeight: 800,
               fontSize: '14px',
@@ -993,16 +1228,12 @@ export function PaymentGate({
               textTransform: 'none',
               border: 'none',
               borderRadius: '999px',
-              cursor: agreedToTerms && agreedToHealth && !isProcessing && !paymentId ? 'pointer' : 'not-allowed',
-              boxShadow: agreedToTerms && agreedToHealth && !isProcessing && !paymentId ? '0 10px 24px rgba(10,10,10,0.18)' : 'none',
+              cursor: agreedToTerms && agreedToHealth && !isProcessing && !isCheckingPromo && !paymentId ? 'pointer' : 'not-allowed',
+              boxShadow: agreedToTerms && agreedToHealth && !isProcessing && !isCheckingPromo && !paymentId ? '0 10px 24px rgba(10,10,10,0.18)' : 'none',
               transition: 'background .14s ease, color .14s ease, transform .14s ease',
             }}
           >
-            {paymentId
-              ? 'Ожидаем подтверждения...'
-              : isProcessing
-                ? 'Создание платежа...'
-                : `Оплатить ${displayPrice} ₽`}
+            {paymentButtonText}
           </button>
 
           {paymentId && (
