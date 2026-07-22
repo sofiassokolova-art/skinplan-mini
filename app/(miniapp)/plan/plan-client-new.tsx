@@ -39,6 +39,7 @@ interface PlanPageClientNewProps {
   completedDays: number[];
   planExpired?: boolean; // Флаг истечения плана (28+ дней)
   hasPaidBefore?: boolean;
+  hasActivePaidAccess?: boolean;
 }
 
 function getAnswerText(answer: any): string | null {
@@ -78,6 +79,7 @@ export function PlanPageClientNew({
   completedDays: initialCompletedDays,
   planExpired = false,
   hasPaidBefore = false,
+  hasActivePaidAccess = false,
 }: PlanPageClientNewProps) {
   // Защита от undefined products
   const products = productsProp || new Map();
@@ -601,7 +603,7 @@ export function PlanPageClientNew({
         }}
         retakeCta={{
           text: 'Изменились цели? Перепройти анкету',
-          href: resolvePlanRetakeHref(hasPaidBefore),
+          href: resolvePlanRetakeHref(hasPaidBefore, hasActivePaidAccess),
         }}
       >
         {/* Контент внутри PaymentGate (показывается с блюром до оплаты, без блюра после оплаты) */}

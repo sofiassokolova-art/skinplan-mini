@@ -40,14 +40,16 @@ export function resolvePlanPaywall(opts: {
 }
 
 /**
- * Куда вести «Перепройти анкету». Развилка одна — платил ли пользователь за план:
+ * Куда вести «Перепройти анкету».
  *  - НЕ платил (пейволл сразу после анкеты, `plan_access` 199₽): платный экран выбора тем
  *    неуместен → `restart=1`, бесплатный полный рестарт анкеты с нуля.
- *  - платил (активный план — «Что-то изменилось?»; или истёкший план на пейволле продления):
+ *  - платил, но доступ истёк: тоже `restart=1`, бесплатно перепройти полную анкету,
+ *    затем один пейвол продления `subscription_month` 499₽.
+ *  - платил и доступ активен (план открыт, «Что-то изменилось?»):
  *    → `retakeFromHome=1`, экран выбора тем: точечная правка темы или полный ретейк за 99₽.
  */
-export function resolvePlanRetakeHref(hasPaidBefore: boolean): string {
-  return hasPaidBefore ? '/quiz?retakeFromHome=1' : '/quiz?restart=1';
+export function resolvePlanRetakeHref(hasPaidBefore: boolean, hasActivePaidAccess = hasPaidBefore): string {
+  return hasPaidBefore && hasActivePaidAccess ? '/quiz?retakeFromHome=1' : '/quiz?restart=1';
 }
 
 /** Прочитать флаг win-back оффера из строки запроса (?offer=winback). */

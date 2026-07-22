@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
     const planAccessState = await getPlanAccessState(userId);
     const context = await buildPlanPageContext(userId, {
       hasPaidBefore: planAccessState.hasPaidBefore,
+      hasActivePaidAccess: planAccessState.hasActivePaidAccess,
     });
     const duration = Date.now() - startTime;
 
