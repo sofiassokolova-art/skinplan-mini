@@ -10,6 +10,7 @@ import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { getCurrentProfile } from '@/lib/get-current-profile';
 import type { Plan28 } from '@/lib/plan-types';
 import type { PlanResponse } from '@/lib/api-types';
+import { attachPlanAccessState, getPlanAccessState } from '@/lib/plan-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +30,7 @@ export async function GET(request: NextRequest) {
     userId = auth.ctx.userId;
 
     logger.info('User identified from initData', { userId });
+    const planAccessStatePromise = getPlanAccessState(userId);
     
     // ИСПРАВЛЕНО: Поддержка read-your-write через ?profileId= параметр
     // Это решает проблему read-after-write неконсистентности при использовании реплик/accelerate
@@ -147,11 +149,11 @@ export async function GET(request: NextRequest) {
           });
           
           logApiRequest(method, path, 200, duration, userId);
-          return ApiResponse.success({
+          return ApiResponse.success(attachPlanAccessState({
             ...planResponse,
             state: 'plan_found_without_profile',
             profileVersion: latestPlanAnyVersion.profileVersion,
-          } as any);
+          } as any, await planAccessStatePromise));
         }
       } catch (fallbackErr: any) {
         logger.warn('Failed to load latest plan without profile (non-critical)', {
@@ -164,10 +166,10 @@ export async function GET(request: NextRequest) {
       // Отсутствие профиля - это не ошибка сервера, а нормальное состояние (пользователь еще не прошел анкету)
       // Это предотвращает проблемы с кэшированием 404 и улучшает UX
       logApiRequest(method, path, 200, duration, userId);
-      return ApiResponse.success({
+      return ApiResponse.success(attachPlanAccessState({
         plan28: null,
         state: 'no_profile',
-      });
+      }, await planAccessStatePromise));
     }
 
     // ИСПРАВЛЕНО: Сначала проверяем кэш для быстрой загрузки
@@ -184,7 +186,7 @@ export async function GET(request: NextRequest) {
         duration,
       });
       logApiRequest(method, path, 200, duration, userId);
-      return ApiResponse.success(cachedPlan);
+      return ApiResponse.success(attachPlanAccessState(cachedPlan, await planAccessStatePromise));
     }
     
     // План не найден в кэше - проверяем БД
@@ -275,7 +277,7 @@ export async function GET(request: NextRequest) {
         
         const duration = Date.now() - startTime;
         logApiRequest(method, path, 200, duration, userId);
-        return ApiResponse.success(planResponse);
+        return ApiResponse.success(attachPlanAccessState(planResponse as any, await planAccessStatePromise));
       } else {
         // План есть в БД, но структура некорректна
         logger.warn('Plan found in DB but structure is invalid', {
@@ -335,4 +337,3 @@ export async function GET(request: NextRequest) {
     return ApiResponse.internalError(error, { userId, method, path, duration });
   }
 }
-

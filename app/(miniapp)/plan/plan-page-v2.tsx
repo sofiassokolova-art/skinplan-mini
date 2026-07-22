@@ -253,12 +253,13 @@ export function PlanPageV2() {
       <PaymentGate
         {...resolvePlanPaywall({
           expired: context.planExpired,
+          hasPaidBefore: context.hasPaidBefore,
           winbackOffer: hasWinbackOfferParam(searchParams?.toString()),
         })}
         isRetaking={isRetaking}
         retakeCta={{
           text: 'Изменились цели? Перепройти анкету',
-          href: resolvePlanRetakeHref(context.planExpired),
+          href: resolvePlanRetakeHref(context.hasPaidBefore),
         }}
         onPaymentComplete={() => {
           clientLogger.log('✅ Payment completed on plan page (V2)');

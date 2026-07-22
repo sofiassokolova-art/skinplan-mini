@@ -14,6 +14,7 @@ import { determineProtocol, getEffectiveIngredientSchedule } from '@/lib/dermato
 import { getIngredientsForProduct } from '@/lib/dermatology-product-filter';
 import type { StepCategory } from '@/lib/step-category-rules';
 import { normalizeBudgetLabel } from '@/lib/budget-corridor';
+import { attachPlanAccessState, getPlanAccessState } from '@/lib/plan-access';
 
 interface RuleCondition {
   [key: string]: string[] | { gte?: number; lte?: number } | string;
@@ -167,6 +168,9 @@ export async function GET(request: NextRequest) {
     userId = auth.ctx.userId;
     
     logger.info('User identified for recommendations', { userId });
+    const planAccessState = await getPlanAccessState(userId);
+    const withPlanAccess = <T extends object>(payload: T) =>
+      attachPlanAccessState(payload, planAccessState);
 
     // Получаем последний профиль пользователя
     const profile = await prisma.skinProfile.findFirst({
@@ -225,11 +229,11 @@ export async function GET(request: NextRequest) {
             profileVersion: profile.version,
             daysSinceCreation,
           });
-          return ApiResponse.success({
+          return ApiResponse.success(withPlanAccess({
             expired: true,
             daysSinceCreation,
             message: 'План завершен. Оформите новый план для продолжения.',
-          });
+          }));
         }
         
         // Получаем текущий день из PlanProgress
@@ -383,7 +387,7 @@ export async function GET(request: NextRequest) {
               stepsCount: Object.keys(steps).length,
             });
             
-            return ApiResponse.success(recommendations);
+            return ApiResponse.success(withPlanAccess(recommendations));
           }
         }
       }
@@ -393,7 +397,7 @@ export async function GET(request: NextRequest) {
     const cachedRecommendations = await getCachedRecommendations(userId, profile.version);
     if (cachedRecommendations) {
       logger.info('Recommendations retrieved from cache', { userId, profileVersion: profile.version });
-      return ApiResponse.success(cachedRecommendations);
+      return ApiResponse.success(withPlanAccess(cachedRecommendations));
     }
 
     // Проверяем, есть ли уже сессия рекомендаций для этого профиля
@@ -652,7 +656,7 @@ export async function GET(request: NextRequest) {
       // Сохраняем в кэш
       await setCachedRecommendations(userId, profile.version, response);
       
-      return ApiResponse.success(response);
+      return ApiResponse.success(withPlanAccess(response));
     }
 
     // ИСПРАВЛЕНО: Вычисляем skin scores перед проверкой правил
@@ -864,11 +868,11 @@ export async function GET(request: NextRequest) {
         // Сохраняем в кэш
         await setCachedRecommendations(userId, profile.version, response);
         
-        return ApiResponse.success(response);
+        return ApiResponse.success(withPlanAccess(response));
       }
       
       // Если даже fallback не сработал, возвращаем пустой ответ, но не ошибку
-      return ApiResponse.success({
+      return ApiResponse.success(withPlanAccess({
         profile_summary: {
           skinType: profile.skinType,
           sensitivityLevel: profile.sensitivityLevel,
@@ -879,7 +883,7 @@ export async function GET(request: NextRequest) {
           name: 'Рекомендации',
         },
         steps: {},
-      });
+      }));
     }
 
     // Получаем бюджет пользователя из ответов (если есть)
@@ -1019,7 +1023,7 @@ export async function GET(request: NextRequest) {
     });
     logApiRequest(method, path, 200, duration, userId);
 
-    return ApiResponse.success(response);
+    return ApiResponse.success(withPlanAccess(response));
   } catch (error: unknown) {
     const duration = Date.now() - startTime;
     logger.error('❌ Error fetching recommendations', error, {
