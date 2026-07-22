@@ -25,6 +25,8 @@ interface BuildOpts {
   planExpired?: boolean;
   /** Был ли когда-либо выдан paid_access. Отдельно от возраста плана. */
   hasPaidBefore?: boolean;
+  /** Активен ли paid_access прямо сейчас. Отдельно от возраста плана. */
+  hasActivePaidAccess?: boolean;
 }
 
 /**
@@ -150,6 +152,7 @@ export async function buildPlanPageContext(
     expertNotes,
     planExpired: opts.planExpired ?? daysSinceCreation >= 28,
     hasPaidBefore: opts.hasPaidBefore ?? false,
+    hasActivePaidAccess: opts.hasActivePaidAccess ?? false,
   };
 }
 

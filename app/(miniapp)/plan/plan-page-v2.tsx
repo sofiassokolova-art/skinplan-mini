@@ -259,7 +259,7 @@ export function PlanPageV2() {
         isRetaking={isRetaking}
         retakeCta={{
           text: 'Изменились цели? Перепройти анкету',
-          href: resolvePlanRetakeHref(context.hasPaidBefore),
+          href: resolvePlanRetakeHref(context.hasPaidBefore, context.hasActivePaidAccess),
         }}
         onPaymentComplete={() => {
           clientLogger.log('✅ Payment completed on plan page (V2)');

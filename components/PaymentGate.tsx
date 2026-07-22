@@ -1089,7 +1089,7 @@ export function PaymentGate({
                 if (typeof window !== 'undefined') {
                   try {
                     const { setIsRetakingQuiz } = await import('@/lib/user-preferences');
-                    await setIsRetakingQuiz(true);
+                    await setIsRetakingQuiz(retakeCta.href.includes('retakeFromHome=1'));
                   } catch {
                     // ignore
                   }
