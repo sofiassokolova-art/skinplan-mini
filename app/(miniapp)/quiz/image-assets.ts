@@ -43,7 +43,8 @@ export const QUIZ_INFO_BACKGROUND_IMAGE_URLS = [
 //   скрим (rgba(244,242,238,0.45→0.65)), который её осветляет и держит контраст текста.
 const QUIZ_INFO_BACKGROUND_BY_KEY: Record<string, (typeof QUIZ_INFO_BACKGROUND_IMAGE_URLS)[number]> = {
   skin_preview: '/back10.jpg',     // кожа — «предварительный профиль»
-  ai_comparison: '/back13.jpg',    // фон под «боль → решение»
+  // ai_comparison здесь больше нет: экран стал полноэкранным фото по цели ухода,
+  // и картинка приходит из БД (quiz_screen_variants), а не из этой раскладки.
   want_improve: '/back12.jpg',     // текстурный фон финального экрана «как меняется кожа»
 };
 
@@ -63,6 +64,7 @@ export function getQuizInfoBackgroundImage(key: string): string {
 export const QUIZ_INFO_IMAGE_URLS = [
   '/onboarding/welcome.jpg',
   '/onboarding/how-it-works.webp',
+  '/ai-comparison-mirror.jpg',
   ...QUIZ_INFO_BACKGROUND_IMAGE_URLS,
 ] as const;
 
