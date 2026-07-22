@@ -10,6 +10,7 @@ import { ApiResponse } from '@/lib/api-response';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { getCurrentProfile } from '@/lib/get-current-profile';
 import { stripPrices } from '@/lib/strip-prices';
+import { attachPlanAccessState, getPlanAccessState } from '@/lib/plan-access';
 
 // Генерация может занимать десятки секунд: внутри стоит собственный таймаут 60s,
 // поэтому лимит функции должен быть не меньше (дефолт Vercel может быть ниже).
@@ -38,6 +39,7 @@ export async function GET(request: NextRequest) {
       userId,
       timestamp: new Date().toISOString(),
     });
+    const planAccessStatePromise = getPlanAccessState(userId);
     
     // ИСПРАВЛЕНО: Поддержка read-your-write через ?profileId= параметр
     // Это решает проблему read-after-write неконсистентности при использовании реплик/accelerate
@@ -155,10 +157,10 @@ export async function GET(request: NextRequest) {
 
         // Для обычных случаев без profileId возвращаем no_profile
         logApiRequest(method, path, 200, duration, userId);
-        return ApiResponse.success({
+        return ApiResponse.success(attachPlanAccessState({
           plan28: null,
           state: 'no_profile',
-        });
+        }, await planAccessStatePromise));
       }
     }
 
@@ -716,7 +718,7 @@ export async function GET(request: NextRequest) {
     logApiRequest(method, path, 200, duration, userId);
 
     // Политика: цена продукта не должна уходить на клиент (см. lib/strip-prices).
-    return ApiResponse.success(stripPrices(plan));
+    return ApiResponse.success(stripPrices(attachPlanAccessState(plan, await planAccessStatePromise)));
   } catch (error: unknown) {
     const duration = Date.now() - startTime;
     
