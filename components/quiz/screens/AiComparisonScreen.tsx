@@ -1,20 +1,28 @@
 // components/quiz/screens/AiComparisonScreen.tsx
-// Экран ai_comparison («AI подберёт уход быстро и точно»). Появляется после
-// oral_medications, перед блоком «Предпочтения» (первый вопрос — makeup_frequency).
+// Экран ai_comparison («Зеркало»). Появляется после oral_medications, перед блоком
+// «Предпочтения» (первый вопрос — makeup_frequency).
 //
-// Композиция «боль → решение»: сверху приглушённая карточка «Как обычно»
-// (хаос, догадки, лишние траты), ниже коннектор skiniq, снизу акцентная
-// лаймовая карточка «Со skiniq» (точный план за секунды). Спокойный продающий
-// контраст без кричащего VS-бейджа и красных крестов; стиль общий с остальными
-// инфо-экранами анкеты (фон-текстура + нейтральный скрим, заголовок слева, стекло).
+// Задача экрана — узнавание, а не аргументация: полноэкранное фото по цели
+// пользователя, фраза от первого лица про его утро, и только внизу — короткое
+// объяснение, что дело не в силе воли, а в способе подбора. Прежняя версия
+// сравнивала два списка «как обычно / со skiniq» на фоне-предметке и выпадала
+// из ряда остальных инфо-экранов.
+//
+// Тексты лежат в БД (quiz_screen_variants) и различаются по цели ухода, а фото
+// единое для всех вариантов: mirror-кадр держит экран визуально стабильным.
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
 import { FixedContinueButton } from '../buttons/FixedContinueButton';
-import { Brand } from '../Brand';
 import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
-import { getQuizInfoBackgroundImage } from '@/app/(miniapp)/quiz/image-assets';
+import {
+  AI_COMPARISON_FALLBACK,
+  AI_COMPARISON_MIRROR_IMAGE,
+  fetchScreenVariants,
+  pickScreenVariant,
+  type QuizScreenVariant,
+} from '@/lib/quiz/screen-variants';
 
 export interface AiComparisonScreenProps {
   screen: InfoScreen;
@@ -22,42 +30,18 @@ export interface AiComparisonScreenProps {
   onContinue: () => void;
   onBack?: () => void;
   isHandlingNext?: boolean;
+  /** Лейблы целей и беспокойств пользователя — по ним выбирается вариант экрана. */
+  goalLabels?: string[];
 }
 
-const TRADITIONAL_ITEMS = [
-  'Часы поиска советов в интернете',
-  'Деньги на средства, которые не подошли',
-  'Непонятно, с чего начать',
-];
+const TITLE_FONT =
+  "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif";
 
-const SKINIQ_ITEMS = [
-  'Точный план под вашу кожу',
-  'Готово за секунды',
-  'Учитываем цели и бюджет',
-];
-
-interface AiComparisonContent {
-  traditionalItems?: string[];
-  skiniqItems?: string[];
-}
-
-function CheckIcon() {
-  return (
-    <svg
-      width="13"
-      height="13"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="var(--ink)"
-      strokeWidth="3.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
-}
+// Строка доверия — общая для всех целей, поэтому константа, а не поле варианта.
+// Формулировка про выгоду и от лица бренда (skiniq, не «AI»), опирается на то, что
+// движок реально делает — отбор по совместимости составов и противопоказаниям, —
+// без непроверяемых чисел вроде «40+ параметров».
+const AUTHORITY_TEXT = 'skiniq проверяет каждое средство на совместимость с вашей кожей';
 
 function AiComparisonScreenComponent({
   screen,
@@ -65,64 +49,88 @@ function AiComparisonScreenComponent({
   onContinue,
   onBack,
   isHandlingNext = false,
+  goalLabels = [],
 }: AiComparisonScreenProps) {
   const shouldShowBackButton = currentInfoScreenIndex > 0 && !!onBack;
-  const content = (screen.content as AiComparisonContent | undefined) || {};
-  const traditionalItems = content.traditionalItems || TRADITIONAL_ITEMS;
-  const skiniqItems = content.skiniqItems || SKINIQ_ITEMS;
-  const backgroundImage = screen.image || getQuizInfoBackgroundImage(screen.id);
+  const goalLabelsKey = goalLabels.join('\u001f');
 
-  const titleFont =
-    "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif";
+  // Стартуем с вшитого дефолта, чтобы экран отрисовался сразу и без скелетона:
+  // фото и текст подменятся, как только приедут варианты.
+  const [variant, setVariant] = useState<QuizScreenVariant>(AI_COMPARISON_FALLBACK);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchScreenVariants(screen.id).then((variants) => {
+      if (cancelled || !variants.length) return;
+      setVariant(pickScreenVariant(variants, goalLabelsKey ? goalLabelsKey.split('\u001f') : []));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [screen.id, goalLabelsKey]);
 
   const handleBackWithScroll = () => {
     const scrollTop =
-      window.pageYOffset ||
-      document.documentElement.scrollTop ||
-      document.body.scrollTop ||
-      0;
+      window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
     const scrollLeft =
-      window.pageXOffset ||
-      document.documentElement.scrollLeft ||
-      document.body.scrollLeft ||
-      0;
+      window.pageXOffset || document.documentElement.scrollLeft || document.body.scrollLeft || 0;
     onBack?.();
     setTimeout(() => window.scrollTo(scrollLeft, scrollTop), 0);
   };
 
+  const isLongQuote = variant.quote.length > 44;
+
   return (
     <>
-      <BackButtonFixed show={shouldShowBackButton} onClick={handleBackWithScroll} />
+      <BackButtonFixed
+        show={shouldShowBackButton}
+        onClick={handleBackWithScroll}
+        color="var(--ink)"
+      />
       <div
         className="qz-mobile-fullscreen"
         style={{
           position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
+          inset: 0,
           width: '100%',
           overflow: 'hidden',
-          backgroundColor: 'var(--canvas)',
-          fontFamily:
-            "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-          color: 'var(--ink)',
+          backgroundColor: 'var(--ink)',
+          fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
         }}
       >
-        {/* Фон-текстура */}
+        {/* Единый mirror-кадр — во весь экран */}
         <Image
-          className="qz-fullscreen-bg"
-          src={backgroundImage}
+          key={AI_COMPARISON_MIRROR_IMAGE}
+          className="qz-fullscreen-bg animate-fade-in"
+          src={AI_COMPARISON_MIRROR_IMAGE}
           alt=""
           aria-hidden
           fill
-          quality={95}
+          priority
+          quality={92}
           sizes="100vw"
-          style={{ objectPosition: 'center', pointerEvents: 'none' }}
+          style={{
+            objectPosition: 'center',
+            pointerEvents: 'none',
+            transform: 'scale(1.5)',
+            transformOrigin: 'center top',
+          }}
+        />
+
+        {/* Скрим: кадр светлый, поэтому осветляем верх (под тёмный заголовок) и низ
+            (под светлую карточку), середину с кожей оставляем чистой. */}
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background:
+              'linear-gradient(180deg, rgba(252,252,251,0.55) 0%, rgba(252,252,251,0) 24%, rgba(0,0,0,0) 52%, rgba(0,0,0,0.5) 100%)',
+            pointerEvents: 'none',
+          }}
         />
 
         <div
-          className="animate-fade-in"
           style={{
             position: 'relative',
             zIndex: 2,
@@ -131,227 +139,125 @@ function AiComparisonScreenComponent({
             maxWidth: '420px',
             margin: '0 auto',
             padding:
-              'calc(64px + env(safe-area-inset-top, 0px)) 20px var(--quiz-fixed-cta-clearance, calc(96px + env(safe-area-inset-bottom, 0px)))',
+              'calc(96px + env(safe-area-inset-top, 0px)) 20px var(--quiz-fixed-cta-clearance, calc(96px + env(safe-area-inset-bottom, 0px)))',
             boxSizing: 'border-box',
             display: 'flex',
             flexDirection: 'column',
-            justifyContent: 'center',
-            overflowY: 'auto',
-            WebkitOverflowScrolling: 'touch',
           }}
         >
-          {/* HEADER */}
-          <h1
-            style={{
-              fontFamily: titleFont,
-              fontWeight: 700,
-              fontSize: '25px',
-              lineHeight: '114%',
-              letterSpacing: '-0.5px',
-              textAlign: 'left',
-              margin: '0 0 20px 4px',
-              color: 'var(--ink)',
-            }}
-          >
-            AI подберёт уход
-            <br />
+          <div className="animate-fade-in">
             <span
               style={{
-                color: 'var(--ink)',
-                background:
-                  'linear-gradient(180deg, transparent 60%, var(--accent) 60%)',
-                padding: '0 4px',
-                borderRadius: 4,
-              }}
-            >
-              быстро и точно
-            </span>
-          </h1>
-
-          {/* CARD A — «Как обычно»: приглушённая, без тени, нейтральные маркеры */}
-          <div
-            style={{
-              background: 'rgba(255,255,255,0.32)',
-              backdropFilter: 'blur(18px) saturate(140%)',
-              WebkitBackdropFilter: 'blur(18px) saturate(140%)',
-              border: '1px solid rgba(255,255,255,0.5)',
-              borderRadius: '20px',
-              padding: '16px 18px',
-            }}
-          >
-            <div
-              style={{
+                display: 'inline-block',
                 fontSize: '11px',
                 fontWeight: 700,
-                letterSpacing: '0.5px',
+                letterSpacing: 0,
                 textTransform: 'uppercase',
-                color: '#9097A1',
-                marginBottom: 12,
+                padding: '5px 10px',
+                borderRadius: 999,
+                background: 'var(--accent)',
+                color: 'var(--ink)',
+                marginBottom: 14,
               }}
             >
-              Как обычно
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-              {traditionalItems.map((t) => (
-                <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
-                  <span
-                    aria-hidden
-                    style={{
-                      width: 18,
-                      height: 18,
-                      flexShrink: 0,
-                      borderRadius: '50%',
-                      background: 'rgba(var(--ink-rgb),0.07)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: 8,
-                        height: 2,
-                        borderRadius: 2,
-                        background: '#A2A8B0',
-                      }}
-                    />
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 14,
-                      lineHeight: 1.35,
-                      color: '#7B818B',
-                    }}
-                  >
-                    {t}
-                  </span>
-                </div>
-              ))}
-            </div>
+              {variant.eyebrow}
+            </span>
+
+            <h1
+              style={{
+                fontFamily: TITLE_FONT,
+                fontWeight: 700,
+                fontSize: isLongQuote ? '20px' : '24px',
+                lineHeight: '118%',
+                letterSpacing: 0,
+                color: 'var(--ink)',
+                textShadow: '0 1px 12px rgba(255,255,255,0.7)',
+                margin: 0,
+              }}
+            >
+              {variant.quote}
+            </h1>
           </div>
 
-          {/* CONNECTOR — линия + лаймовый чип skiniq */}
+          {/* Объяснение + авторитет — в одной стеклянной карточке. Стекло того же
+              цвета, что на первых двух экранах (welcome/how_it_works): тёмное лёгкое
+              (--glass-dark-bg, blur 8px, светлая рамка), белый текст. Низ кадра
+              затемнён скримом, чтобы белый текст читался. */}
           <div
+            className="animate-fade-in"
             style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 0,
-              margin: '2px 0',
+              marginTop: 'auto',
+              borderRadius: 22,
+              padding: '16px 18px',
+              background: 'var(--glass-dark-bg)',
+              border: '1px solid var(--glass-dark-border)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
             }}
           >
-            <div
-              aria-hidden
+            <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.4, fontWeight: 600, color: 'var(--canvas-white)' }}>
+              {variant.bodyTitle}
+            </p>
+            <p
               style={{
-                width: 2,
-                height: 12,
-                background: 'rgba(var(--ink-rgb),0.16)',
-                borderRadius: 2,
+                margin: '7px 0 0',
+                fontSize: 13,
+                lineHeight: 1.45,
+                color: 'rgba(var(--canvas-white-rgb),0.72)',
               }}
-            />
+            >
+              {variant.bodyText}
+            </p>
+
+            {/* Строка авторитета — внутри той же карточки, отделена линией */}
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 6,
-                padding: '5px 12px',
-                borderRadius: 999,
-                background: 'var(--accent)',
-                boxShadow: '0 6px 16px rgba(var(--accent-rgb),0.32)',
-                fontSize: 11.5,
-                fontWeight: 500,
-                letterSpacing: 0,
-                color: 'var(--ink)',
-                fontFamily:
-                  "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                zIndex: 1,
+                gap: 8,
+                marginTop: 13,
+                paddingTop: 12,
+                borderTop: '1px solid rgba(var(--canvas-white-rgb),0.16)',
               }}
             >
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 28 28"
-                fill="none"
-                stroke="var(--ink)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+              <span
                 aria-hidden
+                style={{
+                  width: 21,
+                  height: 21,
+                  flexShrink: 0,
+                  borderRadius: '50%',
+                  background: 'var(--accent)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
               >
-                <path d="M14 2.5c1.6 7 4.5 9.9 11.5 11.5-7 1.6-9.9 4.5-11.5 11.5C12.4 18.5 9.5 15.6 2.5 14 9.5 12.4 12.4 9.5 14 2.5Z" />
-              </svg>
-              <Brand variant="inline" />
-            </div>
-            <div
-              aria-hidden
-              style={{
-                width: 2,
-                height: 12,
-                background:
-                  'linear-gradient(180deg, rgba(var(--accent-rgb),0.7), rgba(var(--accent-rgb),0.2))',
-                borderRadius: 2,
-              }}
-            />
-          </div>
-
-          {/* CARD B — «Со skiniq»: акцентная, лаймовая рамка, чек-маркеры, тень */}
-          <div
-            style={{
-              position: 'relative',
-              background: 'var(--glass-bg-strong)',
-              backdropFilter: 'blur(28px) saturate(160%)',
-              WebkitBackdropFilter: 'blur(28px) saturate(160%)',
-              border: '1.5px solid var(--accent)',
-              borderRadius: '22px',
-              padding: '18px 18px 20px',
-              boxShadow: '0 16px 38px rgba(var(--accent-rgb),0.26)',
-            }}
-          >
-            <div
-              style={{
-                fontSize: '11px',
-                fontWeight: 500,
-                letterSpacing: 0,
-                color: 'var(--ink)',
-                fontFamily:
-                  "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                marginBottom: 13,
-              }}
-            >
-              Со <Brand variant="inline" />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
-              {skiniqItems.map((t) => (
-                <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
-                  <span
-                    style={{
-                      width: 22,
-                      height: 22,
-                      flexShrink: 0,
-                      borderRadius: '50%',
-                      background: 'var(--accent)',
-                      border: '1px solid rgba(0,0,0,0.08)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      boxShadow: '0 2px 6px rgba(var(--accent-rgb),0.4)',
-                    }}
-                  >
-                    <CheckIcon />
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 15,
-                      fontWeight: 600,
-                      lineHeight: 1.3,
-                      letterSpacing: '-0.2px',
-                      color: 'var(--ink)',
-                    }}
-                  >
-                    {t}
-                  </span>
-                </div>
-              ))}
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="var(--ink)"
+                  strokeWidth="2.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden
+                >
+                  <path d="M12 3l7 3v5c0 4.4-3 8.3-7 9.5-4-1.2-7-5.1-7-9.5V6l7-3Z" />
+                  <path d="m9 11.5 2 2 4-4.5" />
+                </svg>
+              </span>
+              <span
+                style={{
+                  fontSize: 11.5,
+                  lineHeight: 1.3,
+                  fontWeight: 600,
+                  color: 'var(--canvas-white)',
+                }}
+              >
+                {AUTHORITY_TEXT}
+              </span>
             </div>
           </div>
         </div>
