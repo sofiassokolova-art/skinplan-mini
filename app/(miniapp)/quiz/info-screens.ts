@@ -213,24 +213,11 @@ export const INFO_SCREENS: InfoScreen[] = [
   
   // motivation_focus УДАЛЁН: чистый мотивационный текст без информационной ценности.
 
-  // 37) Вы узнаёте себя в этом? (Tinder-экран 1)
-  // ПЕРЕАНКОРИРОВАН: было после motivation_focus (удалён) — теперь напрямую после no_mistakes.
-  // Фон: отдельные портретные изображения для двух подряд tinder-экранов создают эффект
-  // «это про вас» перед финальной генерацией плана.
-  {
-    id: 'recognize_yourself_1',
-    title: 'Вы узнаёте себя в этом?',
-    subtitle: '«Я часто чувствую недовольство своей кожей, когда смотрю в зеркало»',
-    image: '/tinder1.webp',
-    type: 'tinder',
-    showAfterInfoScreenId: 'no_mistakes',
-    ctaText: '', // Кнопки будут отдельными (Нет/Да)
-  },
+  // recognize_yourself_1/2 УДАЛЕНЫ: tinder-экраны «Вы узнаёте себя в этом?» (свайп
+  // Нет/Да) убраны целиком — приём «это про вас» уже несёт экран ai_comparison
+  // («Зеркало»). Оставлен только финальный want_improve перед генерацией плана,
+  // перецеплен напрямую на no_mistakes.
 
-  // recognize_yourself_2 УДАЛЁН: три tinder-экрана подряд
-  // (recognize_yourself_1 → recognize_yourself_2 → want_improve) — один и тот же
-  // приём «узнаёте себя?» три раза. Оставлены первый и финальный want_improve.
-  
   // created_for_you УДАЛЁН: повтор соц-прува (есть уже на экране testimonials).
 
   // ФИКС #5: skin_transformation объединён с want_improve в один финальный экран.
@@ -242,7 +229,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     title: 'Хотите улучшить состояние кожи?',
     subtitle: 'Первые изменения обычно заметны через 28 дней регулярного ухода. Отслеживайте прогресс и подкручивайте план под себя.',
     type: 'tinder',
-    showAfterInfoScreenId: 'recognize_yourself_1', // после удаления recognize_yourself_2
+    showAfterInfoScreenId: 'no_mistakes', // recognize_yourself_1 удалён — цепляемся на no_mistakes
     ctaText: '', // Кнопки рендерятся внутри ImproveSkinScreen
     content: {
       from: 'Сейчас',

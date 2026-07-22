@@ -62,7 +62,8 @@ describe('Quiz info screens config & chains', () => {
       'personal_analysis', // третий вводный экран до первого вопроса
       'simple_care',       // буквальный дубликат ai_comparison
       'health_trust',      // перенесён в информер первого медицинского вопроса
-      'recognize_yourself_2', // три tinder-экрана подряд
+      'recognize_yourself_1', // tinder «Вы узнаёте себя?» — удалён
+      'recognize_yourself_2', // tinder-экраны убраны целиком
     ];
     for (const id of removed) {
       expect(INFO_SCREENS.find((s) => s.id === id)).toBeUndefined();
@@ -108,10 +109,10 @@ describe('Quiz info screens config & chains', () => {
     expect(stepScreens).toEqual([]);
   });
 
-  it('финальная цепочка после budget: no_mistakes → recognize_yourself_1 → want_improve', () => {
-    // ФИКС #5 (PR #75): skin_transformation объединён с want_improve в один финальный экран.
-    // want_improve теперь анкорится на recognize_yourself_1 напрямую и рендерится
-    // через ImproveSkinScreen (совмещает transformation-визуал и CTA «Получить план»).
+  it('финальная цепочка после budget: no_mistakes → want_improve', () => {
+    // tinder-экраны recognize_yourself_1/2 удалены целиком; want_improve перецеплен
+    // напрямую на no_mistakes и рендерится через ImproveSkinScreen (transformation-визуал
+    // и CTA «Получить план»).
     const first = getInfoScreenAfterQuestion('budget');
     expect(first?.id).toBe('no_mistakes');
 
@@ -119,9 +120,12 @@ describe('Quiz info screens config & chains', () => {
     const ids = chain.map((s) => s.id);
     expect(ids).toEqual([
       'no_mistakes',
-      'recognize_yourself_1',
       'want_improve',
     ]);
+
+    // tinder-экраны «Вы узнаёте себя?» больше не существуют.
+    expect(INFO_SCREENS.find((s) => s.id === 'recognize_yourself_1')).toBeUndefined();
+    expect(INFO_SCREENS.find((s) => s.id === 'recognize_yourself_2')).toBeUndefined();
 
     // И гарантируем, что старый отдельный skin_transformation больше не существует.
     expect(INFO_SCREENS.find((s) => s.id === 'skin_transformation')).toBeUndefined();
@@ -144,9 +148,7 @@ describe('Quiz info screens config & chains', () => {
       { originQuestionCode: 'fitzpatrick_type', midScreenId: 'skin_preview' },
       { originQuestionCode: 'oral_medications', midScreenId: 'ai_comparison' },
       { originQuestionCode: 'budget', midScreenId: 'no_mistakes' },
-      { originQuestionCode: 'budget', midScreenId: 'recognize_yourself_1' },
-      { originQuestionCode: 'budget', midScreenId: 'want_improve' },
-      // skin_transformation удалён в PR #75 (слит с want_improve в ImproveSkinScreen).
+      // recognize_yourself_1 удалён; skin_transformation слит с want_improve.
       { originQuestionCode: 'budget', midScreenId: 'want_improve' },
     ];
 

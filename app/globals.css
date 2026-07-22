@@ -512,8 +512,11 @@ html, body {
   --glass-bg: #FFFFFF;
   --glass-bg-strong: #FFFFFF;
   --glass-border: rgba(10, 10, 10, 0.08);
-  --glass-dark-bg: rgba(10, 10, 10, 0.92);
-  --glass-dark-border: rgba(255, 255, 255, 0.10);
+  /* Тёмное стекло живёт только поверх фотофонов квиза (welcome / how_it_works),
+     где контейнер должен просвечивать. Плотные карточки плана используют
+     --glass-bg, поэтому непрозрачность сюда переносить нельзя. */
+  --glass-dark-bg: rgba(10, 10, 10, 0.12);
+  --glass-dark-border: rgba(255, 255, 255, 0.15);
   --glass-shadow: 0 1px 2px rgba(10, 10, 10, 0.03), 0 10px 24px rgba(10, 10, 10, 0.04);
   --glass-shadow-lg: 0 1px 2px rgba(10, 10, 10, 0.03), 0 14px 30px rgba(10, 10, 10, 0.05);
   --blur: none;

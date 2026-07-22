@@ -260,14 +260,14 @@ model Product {
 }
 
 model RecommendationRule {
-  id                     Int                     @id @default(autoincrement())
+  id                     Int                         @id @default(autoincrement())
   name                   String
-  conditionsJson         Json                    @map("conditions_json")
-  stepsJson              Json                    @map("steps_json")
-  priority               Int                     @default(0)
-  isActive               Boolean                 @default(true) @map("is_active")
-  createdAt              DateTime                @default(now()) @map("created_at")
-  updatedAt              DateTime                @updatedAt @map("updated_at")
+  conditionsJson         Json                        @map("conditions_json")
+  stepsJson              Json                        @map("steps_json")
+  priority               Int                         @default(0)
+  isActive               Boolean                     @default(true) @map("is_active")
+  createdAt              DateTime                    @default(now()) @map("created_at")
+  updatedAt              DateTime                    @updatedAt @map("updated_at")
   recommendationSessions RecommendationSession[]
   history                RecommendationRuleHistory[]
 
@@ -716,4 +716,29 @@ model AdvcakeOrderItem {
   @@index([orderRef])
   @@index([pid])
   @@map("advcake_order_items")
+}
+
+/// Варианты текста и фона инфо-экранов анкеты под цель ухода пользователя.
+/// Ключ варианта — focusKey из lib/focus-keys.ts (acne / pores / wrinkles / …),
+/// то есть тот же словарь, по которому движок плана нормализует лейблы целей и
+/// беспокойств. Отдельный словарь заводить нельзя: разъедется с планом.
+/// Строка с focusKey = "default" обязательна — на неё падаем, если цель не
+/// распознана или в БД нет варианта под конкретный фокус.
+model QuizScreenVariant {
+  id        Int      @id @default(autoincrement())
+  screenId  String   @map("screen_id")
+  focusKey  String   @map("focus_key")
+  imageUrl  String   @map("image_url")
+  eyebrow   String
+  quote     String
+  bodyTitle String   @map("body_title")
+  bodyText  String   @map("body_text")
+  priority  Int      @default(0)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([screenId, focusKey])
+  @@index([screenId, isActive])
+  @@map("quiz_screen_variants")
 }
