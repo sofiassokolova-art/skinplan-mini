@@ -91,7 +91,9 @@ function WelcomeScreenComponent({ screen, onContinue, isHandlingNext, currentInf
           pointerEvents: 'none',
         }}
       >
-        <Brand variant="wordmark" className="quiz-welcome-title" />
+        {/* Без quiz-welcome-title: этот класс в globals.css форсит Unbounded через
+            !important и перебивает Inter из Brand. Лого бренда везде (план, квиз) — Inter. */}
+        <Brand variant="wordmark" />
       </div>
 
       {/* Стеклянный контейнер на всю ширину и до низа экрана */}
