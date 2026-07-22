@@ -8,6 +8,7 @@ import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { buildPlanPageContext } from '@/lib/plan-page';
 import { stripPrices } from '@/lib/strip-prices';
+import { getPlanAccessState } from '@/lib/plan-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +26,10 @@ export async function GET(request: NextRequest) {
     }
     userId = auth.ctx.userId;
 
-    const context = await buildPlanPageContext(userId);
+    const planAccessState = await getPlanAccessState(userId);
+    const context = await buildPlanPageContext(userId, {
+      hasPaidBefore: planAccessState.hasPaidBefore,
+    });
     const duration = Date.now() - startTime;
 
     if (!context) {

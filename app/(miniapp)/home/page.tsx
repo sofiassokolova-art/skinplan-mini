@@ -15,7 +15,7 @@ import { HomeEmptyState } from '@/components/HomeEmptyState';
 import { ProfileAvatarButton } from '@/components/ProfileAvatarButton';
 import { getStepMeta, STEP_ICONS } from '@/lib/routine-step-meta';
 import { getClientUserScope } from '@/lib/client-user-scope';
-import { resolvePlanPaywall, hasWinbackOfferParam } from '@/lib/paywall-product';
+import { resolvePlanPaywall, resolvePlanRetakeHref, hasWinbackOfferParam } from '@/lib/paywall-product';
 interface RoutineItem {
   id: string;
   title: string;
@@ -132,7 +132,8 @@ export default function HomePage() {
   const [tab, setTab] = useState<'AM' | 'PM'>('AM');
   const [error, setError] = useState<unknown>(null);
   const [userName, setUserName] = useState<string | null>(null); // Имя пользователя для приветствия
-  const [planExpired, setPlanExpired] = useState(false); // План истёк (28+ дней) → paywall продления
+  const [planExpired, setPlanExpired] = useState(false); // Плану 28+ дней; цену выбираем отдельно по hasPaidBefore
+  const [hasPaidBefore, setHasPaidBefore] = useState(false);
   const [howtoItem, setHowtoItem] = useState<RoutineItem | null>(null); // Bottom-sheet «как наносить»
   const searchParams = useSearchParams();
   const progressSyncInFlightRef = useRef(false);
@@ -209,6 +210,9 @@ export default function HomePage() {
           const hasWeeks = plan && Array.isArray(plan.weeks) && plan.weeks.length > 0;
           const exists = !!hasPlan28 || !!hasWeeks;
           setHasPlan(exists);
+          if (plan?.hasPaidBefore === true) {
+            setHasPaidBefore(true);
+          }
           
           // ИСПРАВЛЕНО: Детальное логирование для диагностики редиректа на /quiz
           if (hasPlan28 || hasWeeks) {
@@ -280,6 +284,7 @@ export default function HomePage() {
         clientLogger.warn('Fallback plan: plan is empty');
         return;
       }
+      setHasPaidBefore(plan?.hasPaidBefore === true);
 
       // Определяем текущий день из БД
       let currentDay = 1;
@@ -438,12 +443,13 @@ export default function HomePage() {
     setError(null); // ИСПРАВЛЕНО: Очищаем ошибку перед началом новой загрузки
     try {
       const data = await api.getRecommendations() as any;
+      setHasPaidBefore(data?.hasPaidBefore === true);
       
       // Если план истёк (28+ дней) — показываем понятный экран с предложением перепройти анкету
       // (после перепрохождения в конце снова будет оплата/гейт).
       if (data?.expired === true) {
         // План истёк: оставляем UX на месте (не редиректим),
-        // строим рутину из plan28 и показываем блюр через PaymentGate (продление 499₽).
+        // строим рутину из plan28 и показываем блюр через PaymentGate.
         setPlanExpired(true);
         setRecommendations(null as any);
         setError(null);
@@ -701,10 +707,11 @@ export default function HomePage() {
     <PaymentGate
       {...resolvePlanPaywall({
         expired: planExpired,
+        hasPaidBefore,
         winbackOffer: hasWinbackOfferParam(searchParams?.toString()),
       })}
       isRetaking={false}
-      retakeCta={{ text: 'Изменились цели? Перепройти анкету', href: '/quiz?retakeFromHome=1' }}
+      retakeCta={{ text: 'Изменились цели? Перепройти анкету', href: resolvePlanRetakeHref(hasPaidBefore) }}
       onPaymentComplete={() => {
         clientLogger.log('✅ Payment completed on homepage');
         void loadRecommendations();

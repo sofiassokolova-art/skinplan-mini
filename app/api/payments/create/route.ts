@@ -143,6 +143,7 @@ const PRODUCTS: Record<string, { amount: number; currency: string }> = {
 // ИСПРАВЛЕНО: Используем единую функцию из shared модуля
 import { entitlementCodeForProduct, WINBACK_OFFER_TAG } from '@/lib/payment-helpers';
 import { isExplicitNonProd } from '@/lib/deployment-env';
+import { getPlanAccessState } from '@/lib/plan-access';
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
@@ -201,6 +202,30 @@ export async function POST(request: NextRequest) {
       const duration = Date.now() - startTime;
       logApiRequest(method, path, 400, duration, userId);
       return ApiResponse.error(`Unknown productCode: ${productCode}`, 400);
+    }
+
+    const planAccessState = await getPlanAccessState(userId);
+
+    // SECURITY/BILLING: 199 ₽ — только первая покупка. Если paid_access уже
+    // когда-либо выдавался, клиент должен создавать продление subscription_month.
+    // Не апгрейдим сумму автоматически: пользователь должен видеть 499 ₽ до оплаты.
+    if (productCode === 'plan_access' && planAccessState.hasPaidBefore) {
+      const duration = Date.now() - startTime;
+      logApiRequest(method, path, planAccessState.hasActivePaidAccess ? 200 : 409, duration, userId);
+
+      if (planAccessState.hasActivePaidAccess) {
+        return ApiResponse.success({
+          status: 'succeeded',
+          hasAccess: true,
+          message: 'У вас уже есть активный доступ',
+        });
+      }
+
+      return ApiResponse.error(
+        'Для вашего аккаунта доступно продление плана за 499 ₽. Обновите страницу и попробуйте ещё раз.',
+        409,
+        { expectedProductCode: 'subscription_month' },
+      );
     }
 
     // SECURITY: скидочное продление (99₽) доступно ТОЛЬКО пользователям, которым
@@ -403,4 +428,3 @@ export async function POST(request: NextRequest) {
     return ApiResponse.internalError(error, { userId, method, path, duration });
   }
 }
-

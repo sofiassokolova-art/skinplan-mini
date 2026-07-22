@@ -540,6 +540,8 @@ export const api = {
   // Получение entitlements пользователя
   async getEntitlements(): Promise<{
     paid: boolean;
+    hasPaidBefore: boolean;
+    hasActivePaidAccess: boolean;
     validUntil: string | null;
     entitlements: Array<{
       code: string;
