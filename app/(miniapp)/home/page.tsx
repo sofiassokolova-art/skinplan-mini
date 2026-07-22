@@ -134,6 +134,7 @@ export default function HomePage() {
   const [userName, setUserName] = useState<string | null>(null); // Имя пользователя для приветствия
   const [planExpired, setPlanExpired] = useState(false); // Плану 28+ дней; цену выбираем отдельно по hasPaidBefore
   const [hasPaidBefore, setHasPaidBefore] = useState(false);
+  const [hasActivePaidAccess, setHasActivePaidAccess] = useState(false);
   const [howtoItem, setHowtoItem] = useState<RoutineItem | null>(null); // Bottom-sheet «как наносить»
   const searchParams = useSearchParams();
   const progressSyncInFlightRef = useRef(false);
@@ -210,9 +211,8 @@ export default function HomePage() {
           const hasWeeks = plan && Array.isArray(plan.weeks) && plan.weeks.length > 0;
           const exists = !!hasPlan28 || !!hasWeeks;
           setHasPlan(exists);
-          if (plan?.hasPaidBefore === true) {
-            setHasPaidBefore(true);
-          }
+          setHasPaidBefore(plan?.hasPaidBefore === true);
+          setHasActivePaidAccess(plan?.hasActivePaidAccess === true);
           
           // ИСПРАВЛЕНО: Детальное логирование для диагностики редиректа на /quiz
           if (hasPlan28 || hasWeeks) {
@@ -285,6 +285,7 @@ export default function HomePage() {
         return;
       }
       setHasPaidBefore(plan?.hasPaidBefore === true);
+      setHasActivePaidAccess(plan?.hasActivePaidAccess === true);
 
       // Определяем текущий день из БД
       let currentDay = 1;
@@ -444,6 +445,7 @@ export default function HomePage() {
     try {
       const data = await api.getRecommendations() as any;
       setHasPaidBefore(data?.hasPaidBefore === true);
+      setHasActivePaidAccess(data?.hasActivePaidAccess === true);
       
       // Если план истёк (28+ дней) — показываем понятный экран с предложением перепройти анкету
       // (после перепрохождения в конце снова будет оплата/гейт).
@@ -711,7 +713,7 @@ export default function HomePage() {
         winbackOffer: hasWinbackOfferParam(searchParams?.toString()),
       })}
       isRetaking={false}
-      retakeCta={{ text: 'Изменились цели? Перепройти анкету', href: resolvePlanRetakeHref(hasPaidBefore) }}
+      retakeCta={{ text: 'Изменились цели? Перепройти анкету', href: resolvePlanRetakeHref(hasPaidBefore, hasActivePaidAccess) }}
       onPaymentComplete={() => {
         clientLogger.log('✅ Payment completed on homepage');
         void loadRecommendations();
