@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { BackButtonFixed } from '@/components/BackButtonFixed';
 import { ButtonSkeleton, SkeletonLoader } from '@/components/ui/SkeletonLoader';
@@ -12,7 +12,7 @@ import type { Questionnaire } from '@/lib/quiz/types';
 import type { InfoScreen } from '../info-screens';
 import { getNextInfoScreenAfterScreen } from '../info-screens';
 import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
-import { WelcomeScreen, PersonalAnalysisScreen, HowItWorksScreen, NoMistakesScreen, RecognizeYourselfScreen, ImproveSkinScreen, AiComparisonScreen } from '@/components/quiz/screens';
+import { WelcomeScreen, PersonalAnalysisScreen, HowItWorksScreen, NoMistakesScreen, ImproveSkinScreen, AiComparisonScreen } from '@/components/quiz/screens';
 import { FixedContinueButton, TinderButtons } from '@/components/quiz/buttons';
 import { Brand } from '@/components/quiz/Brand';
 import { TestimonialsCarousel, ProductsGrid } from '@/components/quiz/content';
@@ -199,6 +199,33 @@ export function QuizInfoScreen({
     preloadQuizImages([nextScreen1?.image, nextScreen2?.image].filter(Boolean) as string[]);
   }, [screenId]);
 
+  // Лейблы целей и беспокойств пользователя — по ним ai_comparison выбирает вариант
+  // экрана из БД. Резолвим коды опций ("skin_goals_1") в человекочитаемые лейблы:
+  // focus-keys матчит именно по лейблам, коды ему ничего не говорят.
+  const goalLabels = useMemo(() => {
+    if (!answers || !questionnaire) return [];
+    const allQuestions = extractQuestionsFromQuestionnaire(questionnaire);
+    const labels: string[] = [];
+
+    for (const code of ['skin_goals', 'skin_concerns']) {
+      const q = allQuestions.find((qq: any) => qq?.code === code);
+      if (!q) continue;
+      const raw = (answers as any)[q.id];
+      if (raw === undefined || raw === null) continue;
+
+      const options = (q as any).options || (q as any).answerOptions || [];
+      const resolveOne = (v: string): string => {
+        const opt = options.find(
+          (o: any) => String(o.id) === String(v) || o.value === v || o.label === v
+        );
+        return opt?.label || v;
+      };
+      labels.push(...(Array.isArray(raw) ? raw.map(resolveOne) : [resolveOne(raw)]));
+    }
+
+    return labels;
+  }, [answers, questionnaire]);
+
   // ФИКС: Проверяем что screen существует
   if (!screen) {
     console.error('❌ [QuizInfoScreen] screen is null or undefined');
@@ -295,24 +322,12 @@ export function QuizInfoScreen({
     );
   }
 
-  // ФИКС #3: редизайн tinder-экранов recognize_yourself_1/2.
-  // Полноэкранная картинка + затемнённый стеклянный нижний контейнер с вопросом
-  // и кнопками Нет/Да (оба варианта ведут handleNext, commitment-device).
-  if (screen.id === 'recognize_yourself_1' || screen.id === 'recognize_yourself_2') {
-    return (
-      <RecognizeYourselfScreen
-        screen={screen}
-        currentInfoScreenIndex={currentInfoScreenIndex}
-        onChoose={handleNext}
-        onBack={handleBack}
-        isHandlingNext={isHandlingNext}
-      />
-    );
-  }
+  // tinder-экраны recognize_yourself_1/2 удалены (см. info-screens.ts) — обработчик
+  // и RecognizeYourselfScreen больше не нужны.
 
-  // ФИКС #2: редизайн экрана ai_comparison ("Больше никакой путаницы").
-  // Показывается после oral_medications, перед makeup_frequency (вопрос про
-  // декоративную косметику) — это и есть нужная позиция по логике приложения.
+  // Экран «Зеркало» (ai_comparison). Показывается после oral_medications, перед
+  // makeup_frequency. Тексты приходят из quiz_screen_variants и различаются по
+  // цели ухода — поэтому сюда передаются лейблы целей. Фото у экрана общее.
   if (screen.id === 'ai_comparison') {
     return (
       <AiComparisonScreen
@@ -321,14 +336,14 @@ export function QuizInfoScreen({
         onContinue={handleNext}
         onBack={handleBack}
         isHandlingNext={isHandlingNext}
+        goalLabels={goalLabels}
       />
     );
   }
 
-  // ФИКС #5: финальный объединённый экран want_improve (раньше шёл после
-  // отдельного skin_transformation, теперь сразу после recognize_yourself_1).
-  // Совмещает transformation-визуал и CTA "Получить план ухода" — запускает
-  // submitAnswers (генерация плана) через handleGetPlan.
+  // Финальный объединённый экран want_improve — теперь сразу после no_mistakes
+  // (tinder-экраны recognize_yourself удалены). Совмещает transformation-визуал и
+  // CTA "Получить план ухода" — запускает submitAnswers (генерация плана) через handleGetPlan.
   if (screen.id === 'want_improve') {
     return (
       <ImproveSkinScreen
@@ -357,42 +372,21 @@ export function QuizInfoScreen({
       <>
         {backButton}
       <div
-        style={
-          isWelcomeScreen
-            ? {
-                padding: 0,
-                margin: 0,
-                height: '100vh',
-                background: `
-                  radial-gradient(60% 30% at 100% 0%, rgba(213,254,97,0.55) 0%, transparent 65%),
-                  radial-gradient(70% 30% at 0% 35%, rgba(255,231,200,0.6) 0%, transparent 65%),
-                  radial-gradient(80% 25% at 100% 70%, rgba(213,254,97,0.35) 0%, transparent 65%),
-                  radial-gradient(80% 30% at 0% 100%, rgba(220,210,196,0.6) 0%, transparent 60%),
-                  #F4F2EE`,
-                display: 'flex',
-                flexDirection: 'column',
-                position: 'relative',
-                width: '100%',
-                overflow: 'hidden',
-              }
-            : {
-                padding: 0,
-                margin: 0,
-                minHeight: '100vh',
-                maxHeight: '100vh',
-                background: `
-                  radial-gradient(60% 30% at 100% 0%, rgba(213,254,97,0.55) 0%, transparent 65%),
-                  radial-gradient(70% 30% at 0% 35%, rgba(255,231,200,0.6) 0%, transparent 65%),
-                  radial-gradient(80% 25% at 100% 70%, rgba(213,254,97,0.35) 0%, transparent 65%),
-                  radial-gradient(80% 30% at 0% 100%, rgba(220,210,196,0.6) 0%, transparent 60%),
-                  #F4F2EE`,
-                display: 'flex',
-                flexDirection: 'column',
-                position: 'relative',
-                width: '100%',
-                overflow: 'hidden',
-              }
-        }
+        style={{
+          padding: 0,
+          margin: 0,
+          // Экран отзывов — чистый белый фон (бежевый градиент убран),
+          // карточки отзывов держат контраст сами.
+          background: 'var(--canvas-white)',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
+          width: '100%',
+          overflow: 'hidden',
+          ...(isWelcomeScreen
+            ? { height: '100vh' }
+            : { minHeight: '100vh', maxHeight: '100vh' }),
+        }}
       >
 
         {/* Фиксированная шапка с заголовком и анимацией */}

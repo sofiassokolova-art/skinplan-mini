@@ -174,12 +174,12 @@ function TestimonialsCarouselInner({ testimonials, fullWidth }: TestimonialsCaro
                     padding: '16px 18px 18px',
                     display: 'flex',
                     flexDirection: 'column',
-                    background: 'rgba(255,255,255,0.55)',
-                    backdropFilter: 'blur(24px) saturate(160%)',
-                    WebkitBackdropFilter: 'blur(24px) saturate(160%)',
-                    border: '1px solid rgba(255,255,255,0.75)',
+                    // Экран отзывов теперь на белом фоне: полупрозрачное стекло с белой
+                    // рамкой на нём не читается, поэтому карточка — белая с тонкой тёмной рамкой.
+                    background: 'var(--canvas-white)',
+                    border: '1px solid var(--glass-border)',
                     borderRadius: '22px',
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.05)',
+                    boxShadow: 'var(--glass-shadow)',
                   }}>
                     {/* Звёзды */}
                     <div style={{ display: 'flex', gap: '3px', marginBottom: '10px' }}>
@@ -205,12 +205,10 @@ function TestimonialsCarouselInner({ testimonials, fullWidth }: TestimonialsCaro
           margin: '12px auto 0',
           padding: '8px 18px',
           width: 'fit-content',
-          background: 'rgba(255,255,255,0.55)',
-          backdropFilter: 'blur(12px) saturate(140%)',
-          WebkitBackdropFilter: 'blur(12px) saturate(140%)',
-          border: '1px solid rgba(255,255,255,0.75)',
+          background: 'var(--canvas-white)',
+          border: '1px solid var(--glass-border)',
           borderRadius: '20px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.04)',
+          boxShadow: 'var(--glass-shadow)',
         }}>
           {testimonials.map((_, idx) => (
             <button
