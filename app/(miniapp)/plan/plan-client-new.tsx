@@ -38,6 +38,7 @@ interface PlanPageClientNewProps {
   currentDay: number;
   completedDays: number[];
   planExpired?: boolean; // Флаг истечения плана (28+ дней)
+  hasPaidBefore?: boolean;
 }
 
 function getAnswerText(answer: any): string | null {
@@ -76,6 +77,7 @@ export function PlanPageClientNew({
   currentDay: initialCurrentDay,
   completedDays: initialCompletedDays,
   planExpired = false,
+  hasPaidBefore = false,
 }: PlanPageClientNewProps) {
   // Защита от undefined products
   const products = productsProp || new Map();
@@ -578,11 +580,12 @@ export function PlanPageClientNew({
       />
 
       {/* PaymentGate оборачивает платный контент.
-          Первая покупка — 199₽; продление (план истёк) — 499₽;
+          Первая покупка — 199₽; повторный доступ после paid_access — 499₽;
           win-back по офферу из бота (?offer=winback) — 99₽. */}
       <PaymentGate
         {...resolvePlanPaywall({
           expired: planExpired,
+          hasPaidBefore,
           winbackOffer: hasWinbackOfferParam(searchParams?.toString()),
         })}
         isRetaking={isRetaking}
@@ -598,7 +601,7 @@ export function PlanPageClientNew({
         }}
         retakeCta={{
           text: 'Изменились цели? Перепройти анкету',
-          href: resolvePlanRetakeHref(planExpired),
+          href: resolvePlanRetakeHref(hasPaidBefore),
         }}
       >
         {/* Контент внутри PaymentGate (показывается с блюром до оплаты, без блюра после оплаты) */}
