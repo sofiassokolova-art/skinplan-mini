@@ -145,6 +145,7 @@ export interface PlanPageData {
   productsMap?: Map<number, PlanProductInfo>;
   planExpired?: boolean;
   hasPaidBefore?: boolean;
+  hasActivePaidAccess?: boolean;
   
   // Legacy формат (для обратной совместимости)
   user?: PlanUserInfo;

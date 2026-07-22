@@ -28,8 +28,9 @@ describe('plan paywall product selection', () => {
     });
   });
 
-  it('routes retake CTA by payment history, not plan age', () => {
+  it('routes expired users to a free full questionnaire before renewal', () => {
     expect(resolvePlanRetakeHref(false)).toBe('/quiz?restart=1');
-    expect(resolvePlanRetakeHref(true)).toBe('/quiz?retakeFromHome=1');
+    expect(resolvePlanRetakeHref(true, false)).toBe('/quiz?restart=1');
+    expect(resolvePlanRetakeHref(true, true)).toBe('/quiz?retakeFromHome=1');
   });
 });

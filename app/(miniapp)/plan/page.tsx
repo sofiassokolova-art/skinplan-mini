@@ -45,6 +45,7 @@ interface PlanData {
   }>;
   planExpired?: boolean;
   hasPaidBefore?: boolean;
+  hasActivePaidAccess?: boolean;
   // Старый формат (для обратной совместимости)
   user?: {
     id: string;
@@ -1391,6 +1392,7 @@ export default function PlanPage() {
       const planResponse = plan as any;
       const planExpired = planResponse?.expired === true;
       const hasPaidBefore = planResponse?.hasPaidBefore === true;
+      const hasActivePaidAccess = planResponse?.hasActivePaidAccess === true;
       
       // ИСПРАВЛЕНО: Устанавливаем hasPlanProgress = true после успешной обработки плана
       // Это гарантирует, что пользователь не будет редиректиться на /quiz при следующем заходе
@@ -1449,6 +1451,7 @@ export default function PlanPage() {
         todayEvening,
         planExpired, // Сохраняем флаг истечения плана
         hasPaidBefore,
+        hasActivePaidAccess,
       };
       // Следующий заход на /plan сможет отрисовать первый кадр мгновенно,
       // но всё равно перепроверит данные на сервере.
@@ -1659,6 +1662,7 @@ export default function PlanPage() {
             completedDays={planData.progress?.completedDays || []}
             planExpired={planData.planExpired || false}
             hasPaidBefore={planData.hasPaidBefore || false}
+            hasActivePaidAccess={planData.hasActivePaidAccess || false}
           />
         </Suspense>
       </ErrorBoundary>

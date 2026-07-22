@@ -117,4 +117,6 @@ export interface PlanPageContext {
   planExpired: boolean;
   /** Пользователю когда-либо выдавался paid_access. Используется для цены продления. */
   hasPaidBefore: boolean;
+  /** paid_access активен прямо сейчас. Используется для выбора платного/бесплатного ретейка. */
+  hasActivePaidAccess: boolean;
 }
