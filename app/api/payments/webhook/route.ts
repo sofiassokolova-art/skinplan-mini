@@ -2,81 +2,16 @@
 // Обработка вебхуков от платежного провайдера
 
 import { NextRequest } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
+import { afterSuccessfulPayment, applyPaymentStatusTransition } from '@/lib/payment-finalization';
 
 // Self-healing генерация плана может занять до ~30 с (Vercel default 10-15 c мало).
 export const maxDuration = 60;
 
 const YOOKASSA_API = 'https://api.yookassa.ru/v3/payments';
-
-/**
- * Страховка «оплатил → план обязан существовать».
- *
- * Кейс Галимат/Динары (июль 2026): клиентский кикофф генерации на
- * /plan?state=generating молча падал (warn не попадает в прод-логи), поллинг
- * не дожидался плана, но пейволл всё равно пускал к оплате → succeeded-платёж
- * и активный paid_access у юзера БЕЗ plan28. Вебхук — последняя серверная
- * точка, где это можно гарантированно починить: тут есть PII-ключ и ответы
- * анкеты, генерируем недостающий план прямо здесь.
- *
- * Ошибка генерации НЕ должна валить вебхук: платёж обработан, доступ выдан,
- * ЮKassa обязана получить 200 (иначе будет ретраить и плодить дубли side-эффектов).
- */
-async function ensurePlanExists(userId: string): Promise<void> {
-  try {
-    const profile = await prisma.skinProfile.findFirst({
-      where: { userId },
-      orderBy: { version: 'desc' },
-      select: { id: true, version: true },
-    });
-    if (!profile) {
-      // Оплата без анкеты (теоретически возможна через прямую ссылку) — чинить нечего.
-      logger.warn('ensurePlanExists: user paid but has no skin profile', { userId });
-      return;
-    }
-
-    const existing = await prisma.plan28.findUnique({
-      where: { userId_profileVersion: { userId, profileVersion: profile.version } },
-      select: { id: true },
-    });
-    if (existing) return; // Штатный случай: план уже есть.
-
-    logger.error('ensurePlanExists: PAID USER WITHOUT PLAN — self-healing generation', {
-      userId,
-      profileVersion: profile.version,
-    });
-
-    const { generate28DayPlan } = await import('@/lib/plan-generator');
-    const generated = await generate28DayPlan(userId);
-    const plan = generated?.plan28;
-    if (!plan || !Array.isArray(plan.days) || plan.days.length === 0) {
-      logger.error('ensurePlanExists: generation returned empty plan', { userId });
-      return;
-    }
-
-    await prisma.plan28.upsert({
-      where: { userId_profileVersion: { userId, profileVersion: profile.version } },
-      update: { planData: plan as unknown as object, updatedAt: new Date() },
-      create: {
-        userId,
-        skinProfileId: profile.id,
-        profileVersion: profile.version,
-        planData: plan as unknown as object,
-      },
-    });
-    logger.info('ensurePlanExists: plan generated and saved after payment', {
-      userId,
-      profileVersion: profile.version,
-      days: plan.days.length,
-    });
-  } catch (e) {
-    logger.error('ensurePlanExists: self-healing failed (payment still processed)', e as Error, {
-      userId,
-    });
-  }
-}
 
 /**
  * Независимая ре-верификация платежа напрямую в ЮKassa API.
@@ -203,9 +138,6 @@ function mapProviderStatus(provider: string, providerStatus: string): string {
 
   return statusMap[provider]?.[providerStatus] || 'pending';
 }
-
-import { entitlementCodeForProduct, calculateValidUntil, isRenewalProduct, WINBACK_OFFER_TAG } from '@/lib/payment-helpers';
-import { invalidateAllUserCache } from '@/lib/cache';
 
 export async function POST(request: NextRequest) {
   try {
@@ -364,91 +296,13 @@ export async function POST(request: NextRequest) {
     // Транзакция: атомарно переводим статус и создаём/обновляем Entitlement.
     // updateMany с guard `status != succeeded` исключает гонку двух параллельных
     // succeeded-вебхуков (повтор от ЮKassa): только один реально совершит переход.
-    const transitioned = await prisma.$transaction(async (tx) => {
-      const upd = await tx.payment.updateMany({
-        where: { id: payment.id, status: { not: 'succeeded' } },
-        data: {
-          status: newStatus,
-          providerPayload: body, // Сохраняем полные данные от провайдера
-          updatedAt: new Date(),
-        },
-      });
-
-      // Уже финализирован другим конкурентным вебхуком — выходим без побочных эффектов.
-      if (upd.count === 0) {
-        return false;
-      }
-
-      // Если платеж успешен - создаем/обновляем Entitlement
-      if (newStatus === 'succeeded') {
-        const entitlementCode = entitlementCodeForProduct(payment.productCode);
-
-        const validUntil = calculateValidUntil(payment.productCode);
-
-        // Создаем или обновляем Entitlement
-        await tx.entitlement.upsert({
-          where: {
-            userId_code: {
-              userId: payment.userId,
-              code: entitlementCode,
-            },
-          },
-          update: {
-            active: true,
-            validUntil,
-            lastPaymentId: payment.id,
-            updatedAt: new Date(),
-          },
-          create: {
-            userId: payment.userId,
-            code: entitlementCode,
-            active: true,
-            validUntil,
-            lastPaymentId: payment.id,
-          },
-        });
-
-        logger.info('Entitlement created/updated', {
-          userId: payment.userId,
-          paymentId: payment.id,
-          validUntil: validUntil.toISOString(),
-        });
-
-        // Продление (499₽ / 99₽): сбрасываем 28-дневный счётчик последнего плана,
-        // чтобы /api/plan перестал отдавать expired=true, и снимаем win-back тег,
-        // чтобы скидочный оффер можно было предложить заново в следующем цикле.
-        if (isRenewalProduct(payment.productCode)) {
-          const latestPlan = await tx.plan28.findFirst({
-            where: { userId: payment.userId },
-            orderBy: { createdAt: 'desc' },
-            select: { id: true },
-          });
-          if (latestPlan) {
-            await tx.plan28.update({
-              where: { id: latestPlan.id },
-              data: { createdAt: new Date() },
-            });
-          }
-          const userTags = await tx.user.findUnique({
-            where: { id: payment.userId },
-            select: { tags: true },
-          });
-          if (userTags?.tags?.includes(WINBACK_OFFER_TAG)) {
-            await tx.user.update({
-              where: { id: payment.userId },
-              data: { tags: { set: userTags.tags.filter((t) => t !== WINBACK_OFFER_TAG) } },
-            });
-          }
-          logger.info('Renewal processed: plan counter reset, win-back tag cleared', {
-            userId: payment.userId,
-            paymentId: payment.id,
-            productCode: payment.productCode,
-          });
-        }
-      }
-
-      return true;
-    });
+    const transitioned = await prisma.$transaction((tx) =>
+      applyPaymentStatusTransition(tx, {
+        payment,
+        newStatus,
+        providerPayload: body as Prisma.InputJsonValue,
+      }),
+    );
 
     // Параллельный вебхук уже всё обработал — не дублируем уведомление.
     if (!transitioned) {
@@ -459,22 +313,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, processed: false, reason: 'already_succeeded' });
     }
 
-    // Продление сбросило plan28.createdAt — выкидываем закэшированный план с
-    // устаревшим флагом expired, иначе /api/plan вернёт stale expired=true.
-    if (newStatus === 'succeeded' && isRenewalProduct(payment.productCode)) {
-      await invalidateAllUserCache(payment.userId).catch((e) => {
-        logger.warn('Failed to invalidate plan cache after renewal (non-critical)', {
-          userId: payment.userId,
-          error: e,
-        });
-      });
-    }
-
-    // Страховка: у оплатившего юзера обязан существовать plan28. Если клиентская
-    // генерация упала (кейс Галимат/Динары) — догенерируем здесь, до уведомления
-    // «Откройте план». Ошибка внутри не валит вебхук (см. ensurePlanExists).
     if (newStatus === 'succeeded') {
-      await ensurePlanExists(payment.userId);
+      await afterSuccessfulPayment(payment);
     }
 
     // Уведомление в Telegram: оплата прошла — открой приложение и посмотри план
@@ -522,4 +362,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

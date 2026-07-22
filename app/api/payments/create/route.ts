@@ -8,17 +8,14 @@ import { ApiResponse } from '@/lib/api-response';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { rateLimit } from '@/lib/rate-limit';
+import { PAYMENT_PRODUCT_LABELS, PAYMENT_PRODUCTS } from '@/lib/payment-products';
+import { validatePromoCodeForPayment, type AppliedPromoCode } from '@/lib/promo-codes';
+import { afterSuccessfulPayment, applyPaymentStatusTransition } from '@/lib/payment-finalization';
+import { entitlementCodeForProduct, WINBACK_OFFER_TAG } from '@/lib/payment-helpers';
+import { isExplicitNonProd } from '@/lib/deployment-env';
+import { getPlanAccessState } from '@/lib/plan-access';
 
 const YOOKASSA_API = 'https://api.yookassa.ru/v3/payments';
-
-/** Названия товаров для чека (54-ФЗ) */
-const PRODUCT_LABELS: Record<string, string> = {
-  plan_access: 'Доступ к плану ухода',
-  retake_topic: 'Перепрохождение темы',
-  retake_full: 'Полное перепрохождение анкеты',
-  subscription_month: 'Продление доступа к плану',
-  plan_renewal_discount: 'Продление доступа к плану (скидка)',
-};
 
 /** Формирует объект receipt для ЮKassa по 54-ФЗ. Нужен email или phone покупателя. */
 function buildYooKassaReceipt(params: {
@@ -46,7 +43,7 @@ function buildYooKassaReceipt(params: {
     customer,
     items: [
       {
-        description: PRODUCT_LABELS[productCode] || productCode,
+        description: PAYMENT_PRODUCT_LABELS[productCode] || productCode,
         quantity: '1.00',
         amount: { value, currency },
         vat_code: 1, // без НДС
@@ -116,35 +113,6 @@ async function createYooKassaPayment(params: {
   }
 }
 
-// Конфигурация продуктов
-const PRODUCTS: Record<string, { amount: number; currency: string }> = {
-  plan_access: {
-    amount: 19900, // 199 рублей в копейках
-    currency: 'RUB',
-  },
-  retake_topic: {
-    amount: 4900, // 49 рублей в копейках (ИСПРАВЛЕНО: цена за перепрохождение одной темы)
-    currency: 'RUB',
-  },
-  retake_full: {
-    amount: 9900, // 99 рублей в копейках (цена за полное перепрохождение анкеты)
-    currency: 'RUB',
-  },
-  subscription_month: {
-    amount: 49900, // 499 рублей в копейках — стандартное продление доступа к плану
-    currency: 'RUB',
-  },
-  plan_renewal_discount: {
-    amount: 9900, // 99 рублей в копейках — win-back продление со скидкой (только по офферу из бота)
-    currency: 'RUB',
-  },
-};
-
-// ИСПРАВЛЕНО: Используем единую функцию из shared модуля
-import { entitlementCodeForProduct, WINBACK_OFFER_TAG } from '@/lib/payment-helpers';
-import { isExplicitNonProd } from '@/lib/deployment-env';
-import { getPlanAccessState } from '@/lib/plan-access';
-
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   const method = 'POST';
@@ -190,6 +158,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { productCode, idempotencyKey } = body;
+    const promoCodeInput = typeof body?.promoCode === 'string' ? body.promoCode : '';
 
     if (!productCode) {
       const duration = Date.now() - startTime;
@@ -197,7 +166,7 @@ export async function POST(request: NextRequest) {
       return ApiResponse.error('productCode is required', 400);
     }
 
-    const product = PRODUCTS[productCode];
+    const product = PAYMENT_PRODUCTS[productCode];
     if (!product) {
       const duration = Date.now() - startTime;
       logApiRequest(method, path, 400, duration, userId);
@@ -278,10 +247,20 @@ export async function POST(request: NextRequest) {
     // Генерируем idempotencyKey если не передан
     const finalIdempotencyKey = idempotencyKey || Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join('');
 
-    // Проверяем, не создан ли уже платеж с таким ключом
+    // Проверяем, не создан ли уже платеж с таким ключом. Это важно делать ДО
+    // резервации промокода, чтобы повтор того же запроса не упёрся в свой же pending.
     const existingPayment = await prisma.payment.findUnique({
       where: { idempotencyKey: finalIdempotencyKey },
-      select: { id: true, status: true, providerPaymentId: true, providerPayload: true },
+      select: {
+        id: true,
+        status: true,
+        amount: true,
+        originalAmount: true,
+        discountAmount: true,
+        promoCode: true,
+        providerPaymentId: true,
+        providerPayload: true,
+      },
     });
 
     if (existingPayment) {
@@ -305,6 +284,10 @@ export async function POST(request: NextRequest) {
           paymentId: existingPayment.id,
           status: 'succeeded',
           hasAccess: entitlement?.active || false,
+          amount: existingPayment.amount,
+          originalAmount: existingPayment.originalAmount,
+          discountAmount: existingPayment.discountAmount,
+          promoCode: existingPayment.promoCode,
         });
       }
 
@@ -319,7 +302,32 @@ export async function POST(request: NextRequest) {
         paymentId: existingPayment.id,
         status: existingPayment.status,
         paymentUrl: existingPaymentUrl,
+        amount: existingPayment.amount,
+        originalAmount: existingPayment.originalAmount,
+        discountAmount: existingPayment.discountAmount,
+        promoCode: existingPayment.promoCode,
       });
+    }
+
+    let finalAmount = product.amount;
+    let appliedPromo: AppliedPromoCode | null = null;
+
+    if (promoCodeInput.trim()) {
+      const promoResult = await validatePromoCodeForPayment(prisma, {
+        userId,
+        productCode,
+        amount: product.amount,
+        code: promoCodeInput,
+      });
+
+      if (!promoResult.ok) {
+        const duration = Date.now() - startTime;
+        logApiRequest(method, path, promoResult.status, duration, userId);
+        return ApiResponse.error(promoResult.error, promoResult.status);
+      }
+
+      appliedPromo = promoResult.promo;
+      finalAmount = promoResult.promo.amount;
     }
 
     // Создаем запись Payment со статусом pending
@@ -327,17 +335,23 @@ export async function POST(request: NextRequest) {
       data: {
         userId,
         productCode,
-        amount: product.amount,
+        amount: finalAmount,
+        originalAmount: appliedPromo ? product.amount : null,
+        discountAmount: appliedPromo?.discountAmount ?? 0,
+        promoCode: appliedPromo?.code ?? null,
+        promoCodeId: appliedPromo?.id ?? null,
         currency: product.currency,
-        provider: 'yookassa',
+        provider: finalAmount === 0 ? 'promo' : 'yookassa',
         status: 'pending',
         idempotencyKey: finalIdempotencyKey,
       },
       select: {
         id: true,
+        userId: true,
         amount: true,
         currency: true,
         productCode: true,
+        promoCodeId: true,
         status: true,
       },
     });
@@ -348,13 +362,72 @@ export async function POST(request: NextRequest) {
     let paymentUrl: string | null;
     let providerPayload: Record<string, unknown>;
 
+    if (finalAmount === 0) {
+      providerPaymentId = crypto.randomUUID();
+      paymentUrl = null;
+      providerPayload = {
+        id: providerPaymentId,
+        provider: 'promo',
+        status: 'succeeded',
+        amount: { value: '0.00', currency: product.currency },
+        created_at: new Date().toISOString(),
+        description: `Промокод ${appliedPromo?.code ?? ''}: ${productCode}`,
+        metadata: {
+          paymentId: payment.id,
+          userId: userId ?? '',
+          promoCode: appliedPromo?.code ?? '',
+        },
+      };
+
+      await prisma.payment.update({
+        where: { id: payment.id },
+        data: { providerPaymentId },
+        select: { id: true },
+      });
+
+      const transitioned = await prisma.$transaction((tx) =>
+        applyPaymentStatusTransition(tx, {
+          payment,
+          newStatus: 'succeeded',
+          providerPayload: providerPayload as unknown as Prisma.InputJsonValue,
+        }),
+      );
+
+      if (transitioned) {
+        await afterSuccessfulPayment(payment);
+      }
+
+      logger.info('Payment completed by promo code', {
+        userId,
+        paymentId: payment.id,
+        productCode,
+        promoCode: appliedPromo?.code ?? null,
+      });
+
+      const duration = Date.now() - startTime;
+      logApiRequest(method, path, 200, duration, userId);
+
+      return ApiResponse.success({
+        paymentId: payment.id,
+        providerPaymentId,
+        paymentUrl,
+        status: 'succeeded',
+        hasAccess: true,
+        amount: finalAmount,
+        originalAmount: product.amount,
+        discountAmount: appliedPromo?.discountAmount ?? product.amount,
+        promoCode: appliedPromo?.code ?? null,
+        message: 'Промокод применён',
+      });
+    }
+
     if (useRealYooKassa) {
       const userForReceipt = await prisma.user.findUnique({
         where: { id: userId },
         select: { phoneNumber: true },
       });
       const receipt = buildYooKassaReceipt({
-        amountKopecks: product.amount,
+        amountKopecks: finalAmount,
         currency: product.currency,
         productCode,
         customerEmail: null,
@@ -363,12 +436,12 @@ export async function POST(request: NextRequest) {
       const yoo = await createYooKassaPayment({
         shopId,
         secretKey,
-        amountKopecks: product.amount,
+        amountKopecks: finalAmount,
         currency: product.currency,
         description: `Оплата ${productCode}`,
         idempotencyKey: finalIdempotencyKey,
         returnUrl,
-        metadata: { paymentId: payment.id, userId: userId ?? '' },
+        metadata: { paymentId: payment.id, userId: userId ?? '', promoCode: appliedPromo?.code ?? '' },
         receipt,
       });
 
@@ -388,11 +461,11 @@ export async function POST(request: NextRequest) {
       providerPayload = {
         id: providerPaymentId,
         status: 'pending',
-        amount: { value: (product.amount / 100).toFixed(2), currency: product.currency },
+        amount: { value: (finalAmount / 100).toFixed(2), currency: product.currency },
         confirmation: { type: 'redirect', confirmation_url: paymentUrl },
         created_at: new Date().toISOString(),
         description: `Оплата ${productCode}`,
-        metadata: { paymentId: payment.id, userId: userId ?? '' },
+        metadata: { paymentId: payment.id, userId: userId ?? '', promoCode: appliedPromo?.code ?? '' },
       };
     }
 
@@ -409,6 +482,8 @@ export async function POST(request: NextRequest) {
       userId,
       paymentId: payment.id,
       productCode,
+      promoCode: appliedPromo?.code ?? null,
+      amount: finalAmount,
       provider: 'yookassa',
       useRealYooKassa,
     });
@@ -421,6 +496,10 @@ export async function POST(request: NextRequest) {
       providerPaymentId: providerPaymentId ?? undefined,
       paymentUrl,
       status: 'pending',
+      amount: finalAmount,
+      originalAmount: appliedPromo ? product.amount : null,
+      discountAmount: appliedPromo?.discountAmount ?? 0,
+      promoCode: appliedPromo?.code ?? null,
     });
   } catch (error: unknown) {
     const duration = Date.now() - startTime;
