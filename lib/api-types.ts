@@ -169,6 +169,11 @@ export interface GeneratedPlan {
   warnings?: string[];
   plan28?: Plan28;
   formatVersion: "legacy" | "v2"; // ИСПРАВЛЕНО (P0): Обязательное поле версии формата
+  /** true, если пользователю когда-либо выдавался paid_access. */
+  hasPaidBefore?: boolean;
+  /** true, если paid_access активен прямо сейчас. */
+  hasActivePaidAccess?: boolean;
+  paidAccessValidUntil?: string | null;
   // ИСПРАВЛЕНО (P2): Статус рендеринга плана
   planStatus?: PlanProgressStatus;
 }
@@ -225,6 +230,11 @@ export interface PlanResponse {
   warnings?: string[];
   expired?: boolean; // Флаг истечения плана (28+ дней)
   daysSinceCreation?: number; // Количество дней с момента создания плана
+  /** true, если пользователю когда-либо выдавался paid_access. */
+  hasPaidBefore?: boolean;
+  /** true, если paid_access активен прямо сейчас. */
+  hasActivePaidAccess?: boolean;
+  paidAccessValidUntil?: string | null;
   formatVersion: 'legacy' | 'v2'; // ИСПРАВЛЕНО (P0): Обязательное поле версии формата
   // ИСПРАВЛЕНО (P2): Статус рендеринга плана
   isPlanRenderable?: boolean; // Можно ли рендерить план
@@ -352,16 +362,16 @@ export interface SubmitAnswersResponse {
 }
 
 export interface RecommendationsResponse {
-  profile_summary: {
+  profile_summary?: {
     skinType: string;
     sensitivityLevel: string | null;
     acneLevel: number | null;
     notes: string | null;
   };
-  rule: {
+  rule?: {
     name: string;
   };
-  steps: Record<string, Array<{
+  steps?: Record<string, Array<{
     id: number;
     name: string;
     brand: string;
@@ -373,6 +383,12 @@ export interface RecommendationsResponse {
     imageUrl: string | null;
     frequencyLabel?: string;
   }>>;
+  expired?: boolean;
+  daysSinceCreation?: number;
+  message?: string;
+  hasPaidBefore?: boolean;
+  hasActivePaidAccess?: boolean;
+  paidAccessValidUntil?: string | null;
 }
 
 /**

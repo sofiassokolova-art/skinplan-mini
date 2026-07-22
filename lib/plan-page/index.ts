@@ -21,8 +21,10 @@ export type { PlanPageContext } from './types';
 export type { ProfileCard, ProductCard, PhaseUI, ExpertNote, SkinScoreInfo } from './types';
 
 interface BuildOpts {
-  /** Просрочен ли план (>28 дней) — приходит снаружи, чтобы не дублировать логику */
+  /** Просрочен ли план (>28 дней). Если не передать, вычисляется по plan28.createdAt. */
   planExpired?: boolean;
+  /** Был ли когда-либо выдан paid_access. Отдельно от возраста плана. */
+  hasPaidBefore?: boolean;
 }
 
 /**
@@ -47,10 +49,14 @@ export async function buildPlanPageContext(
   const plan28Record = await prisma.plan28.findFirst({
     where: { userId, profileVersion: profile.version },
     orderBy: { createdAt: 'desc' },
-    select: { planData: true },
+    select: { planData: true, createdAt: true },
   });
-  const plan = plan28Record?.planData as Plan28 | null;
+  if (!plan28Record) return null;
+  const plan = plan28Record.planData as Plan28 | null;
   if (!plan || !Array.isArray(plan.days) || plan.days.length === 0) return null;
+  const daysSinceCreation = Math.floor(
+    (Date.now() - plan28Record.createdAt.getTime()) / (1000 * 60 * 60 * 24),
+  );
 
   // 3+4. PlanProgress + Cart + Wishlist + ProductReplacement — все зависят только
   // от userId и независимы друг от друга, поэтому одним Promise.all (на один
@@ -142,7 +148,8 @@ export async function buildPlanPageContext(
     mainGoals,
     products: productCards,
     expertNotes,
-    planExpired: opts.planExpired ?? false,
+    planExpired: opts.planExpired ?? daysSinceCreation >= 28,
+    hasPaidBefore: opts.hasPaidBefore ?? false,
   };
 }
 
