@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db';
 import { ApiResponse } from '@/lib/api-response';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
+import { getPlanAccessState } from '@/lib/plan-access';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -18,36 +19,41 @@ export async function GET(request: NextRequest) {
     if (!auth.ok) return auth.response;
     userId = auth.ctx.userId;
 
+    const now = new Date();
+
     // Получаем активные entitlements пользователя
-    const entitlements = await prisma.entitlement.findMany({
-      where: {
-        userId,
-        active: true,
-        OR: [
-          { validUntil: null },
-          { validUntil: { gt: new Date() } },
-        ],
-      },
-      select: {
-        code: true,
-        active: true,
-        validUntil: true,
-        lastPaymentId: true,
-      },
-      orderBy: { updatedAt: 'desc' },
-    });
+    const [entitlements, planAccessState] = await Promise.all([
+      prisma.entitlement.findMany({
+        where: {
+          userId,
+          active: true,
+          OR: [
+            { validUntil: null },
+            { validUntil: { gt: now } },
+          ],
+        },
+        select: {
+          code: true,
+          active: true,
+          validUntil: true,
+          lastPaymentId: true,
+        },
+        orderBy: { updatedAt: 'desc' },
+      }),
+      getPlanAccessState(userId, now),
+    ]);
 
     // Проверяем наличие доступа к плану
-    const paidAccess = entitlements.find((e) => e.code === 'paid_access');
-    const paid = paidAccess?.active === true && 
-                 (!paidAccess.validUntil || paidAccess.validUntil > new Date());
+    const paid = planAccessState.hasActivePaidAccess;
 
     const duration = Date.now() - startTime;
     logApiRequest(method, path, 200, duration, userId);
 
     const payload = {
       paid,
-      validUntil: paidAccess?.validUntil?.toISOString() || null,
+      hasPaidBefore: planAccessState.hasPaidBefore,
+      hasActivePaidAccess: planAccessState.hasActivePaidAccess,
+      validUntil: planAccessState.paidAccessValidUntil,
       entitlements: entitlements.map((e) => ({
         code: e.code,
         active: e.active,
@@ -62,7 +68,6 @@ export async function GET(request: NextRequest) {
     return ApiResponse.internalError(error, { userId, method, path, duration });
   }
 }
-
 
 
 

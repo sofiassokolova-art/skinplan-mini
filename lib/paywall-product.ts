@@ -15,18 +15,22 @@ export interface PlanPaywallVariant {
 
 /**
  * Какой продукт показать в paywall плана:
- *  - первая покупка (план не истёк): plan_access — 199₽
- *  - продление (план истёк, 29-й день+): subscription_month — 499₽
- *  - win-back (истёк + пришёл оффер из бота, ?offer=winback): plan_renewal_discount — 99₽
+ *  - первая покупка (paid_access ещё никогда не выдавался): plan_access — 199₽
+ *  - продление (paid_access уже был): subscription_month — 499₽
+ *  - win-back (paid_access уже был + ?offer=winback): plan_renewal_discount — 99₽
  *
- * winbackOffer берётся из URL и фактически honored только при истёкшем плане;
+ * winbackOffer берётся из URL и фактически honored только при истории оплаты;
  * серверный guard (тег WINBACK_OFFER_TAG) не даёт оплатить скидку без оффера.
  */
 export function resolvePlanPaywall(opts: {
-  expired: boolean;
+  /** @deprecated Use hasPaidBefore for price selection. Kept as fallback for old call sites. */
+  expired?: boolean;
+  hasPaidBefore?: boolean;
   winbackOffer: boolean;
 }): PlanPaywallVariant {
-  if (opts.expired) {
+  const hasPaidBefore = opts.hasPaidBefore ?? opts.expired ?? false;
+
+  if (hasPaidBefore) {
     if (opts.winbackOffer) {
       return { productCode: 'plan_renewal_discount', price: 99, originalPrice: 499 };
     }
@@ -41,9 +45,6 @@ export function resolvePlanPaywall(opts: {
  *    неуместен → `restart=1`, бесплатный полный рестарт анкеты с нуля.
  *  - платил (активный план — «Что-то изменилось?»; или истёкший план на пейволле продления):
  *    → `retakeFromHome=1`, экран выбора тем: точечная правка темы или полный ретейк за 99₽.
- *
- * На пейволле плана признак «платил» совпадает с `expired` — тем же, по которому
- * resolvePlanPaywall выбирает продукт: первая покупка возможна только у неплативших.
  */
 export function resolvePlanRetakeHref(hasPaidBefore: boolean): string {
   return hasPaidBefore ? '/quiz?retakeFromHome=1' : '/quiz?restart=1';

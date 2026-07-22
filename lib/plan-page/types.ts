@@ -115,4 +115,6 @@ export interface PlanPageContext {
   expertNotes: ExpertNote[];        // 2 шт
   /** План просрочен (>28 дней) */
   planExpired: boolean;
+  /** Пользователю когда-либо выдавался paid_access. Используется для цены продления. */
+  hasPaidBefore: boolean;
 }
