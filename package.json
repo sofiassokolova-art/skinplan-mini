@@ -134,8 +134,10 @@
     "webpack-retry-chunk-load-plugin": "^3.1.1"
   },
   "overrides": {
+    "dompurify": "3.4.12",
     "esbuild": "^0.28.1",
-    "postcss": "^8.5.10"
+    "postcss": "^8.5.10",
+    "sharp": "0.35.3"
   },
   "description": "This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.",
   "main": "eslint.config.js",
