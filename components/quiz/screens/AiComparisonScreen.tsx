@@ -41,7 +41,7 @@ const TITLE_FONT =
 // Формулировка про выгоду и от лица бренда (skiniq, не «AI»), опирается на то, что
 // движок реально делает — отбор по совместимости составов и противопоказаниям, —
 // без непроверяемых чисел вроде «40+ параметров».
-const AUTHORITY_TEXT = 'skiniq проверяет каждое средство на совместимость с вашей кожей';
+const AUTHORITY_TEXT = 'skiniq тщательно проверяет каждое средство на совместимость с вашей кожей';
 
 function AiComparisonScreenComponent({
   screen,
@@ -108,11 +108,15 @@ function AiComparisonScreenComponent({
           fill
           priority
           quality={92}
-          sizes="100vw"
+          // Лёгкое увеличение (scale 1.15 от верхнего края) опускает зеркало примерно
+          // на середину между заголовком и нижней карточкой. Зум держим маленьким: при
+          // 1.15 запрос ~1294px на DPR 3 против исходника 1228 — апскейл незаметен и
+          // плоский фон остаётся без JPEG-блоков (в отличие от прежнего scale 1.5).
+          sizes="120vw"
           style={{
             objectPosition: 'center',
             pointerEvents: 'none',
-            transform: 'scale(1.5)',
+            transform: 'scale(1.15)',
             transformOrigin: 'center top',
           }}
         />
