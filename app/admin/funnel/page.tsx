@@ -12,12 +12,43 @@ import { AdminPageSkeleton } from '@/components/ui/SkeletonLoader';
 
 const COLORS = ['#8B5CF6', '#EC4899', '#10B981', '#F59E0B'];
 
+interface QuestionnaireStage {
+  id: string;
+  title: string;
+  questionCodes: string[];
+  questionCount: number;
+  reachedCount: number;
+  completedCount: number;
+  conversionFromStarted: number;
+  conversionFromPrev: number;
+  completionRate: number;
+  dropOffFromPrev: number;
+}
+
+interface QuestionnaireOverview {
+  id: number;
+  name: string;
+  version: number;
+  totalGroups: number;
+  totalQuestions: number;
+  started: number;
+  completed: number;
+  inProgress: number;
+  averageAnsweredQuestions: number;
+  completionRate: number;
+}
+
 export default function FunnelAdmin() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [funnelData, setFunnelData] = useState<any>(null);
   const [periodData, setPeriodData] = useState<any[]>([]);
   const [screenConversions, setScreenConversions] = useState<any[]>([]);
+  const [screenSource, setScreenSource] = useState<'telemetry' | 'reconstructed'>('reconstructed');
+  const [screenStarted, setScreenStarted] = useState<number>(0);
+  const [screenWindowDays, setScreenWindowDays] = useState<number>(7);
+  const [questionnaireStages, setQuestionnaireStages] = useState<QuestionnaireStage[]>([]);
+  const [questionnaireOverview, setQuestionnaireOverview] = useState<QuestionnaireOverview | null>(null);
 
   useEffect(() => {
     loadFunnelData();
@@ -48,6 +79,11 @@ export default function FunnelAdmin() {
       setFunnelData(data.funnel);
       setPeriodData(data.periodData || []);
       setScreenConversions(data.screenConversions || []);
+      setScreenSource(data.screenConversionsSource === 'telemetry' ? 'telemetry' : 'reconstructed');
+      setScreenStarted(data.screenConversionsStarted || 0);
+      setScreenWindowDays(data.screenConversionsWindowDays || 7);
+      setQuestionnaireStages(data.questionnaireStages || []);
+      setQuestionnaireOverview(data.questionnaireOverview || null);
     } catch (error: any) {
       console.error('Error loading funnel data:', error);
     } finally {
@@ -71,28 +107,27 @@ export default function FunnelAdmin() {
   const funnelChartData = [
     { name: 'Открыли приложение', value: funnelData.totalUsers, conversion: 100 },
     { name: 'Начали анкету', value: funnelData.startedQuiz, conversion: funnelData.conversionToStarted },
+    ...questionnaireStages.map((stage) => ({
+      name: stage.title,
+      value: stage.reachedCount,
+      conversion: stage.conversionFromPrev,
+    })),
     { name: 'Завершили анкету', value: funnelData.completedQuiz, conversion: funnelData.conversionToCompleted },
     { name: 'Получили план', value: funnelData.hasPlan, conversion: funnelData.conversionToPlan },
   ];
-
-  // Данные для графика конверсий по периодам
-  const conversionChartData = periodData.map(p => ({
-    period: p.period,
-    'Конверсия в начало': p.conversionToStarted.toFixed(1),
-    'Конверсия в завершение': p.conversionToCompleted.toFixed(1),
-    'Конверсия в план': p.conversionToPlan.toFixed(1),
-    'Общая конверсия': p.overallConversion.toFixed(1),
-  }));
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-4xl font-bold text-gray-900 mb-2">Аналитика воронки</h1>
-        <p className="text-gray-600">Конверсия пользователей от открытия приложения до получения плана</p>
+        <p className="text-gray-600">
+          Конверсия пользователей по новой анкете
+          {questionnaireOverview ? ` · ${questionnaireOverview.name}, версия ${questionnaireOverview.version}` : ''}
+        </p>
       </div>
 
       {/* Основные метрики */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
           <div className="flex items-center gap-3 mb-2">
             <Users className="text-blue-500" size={24} />
@@ -100,6 +135,19 @@ export default function FunnelAdmin() {
           </div>
           <div className="text-3xl font-bold text-gray-900">{funnelData.totalUsers}</div>
           <div className="text-xs text-gray-500 mt-1">100%</div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <TrendingUp className="text-indigo-500" size={24} />
+            <div className="text-sm text-gray-600">Сейчас в анкете</div>
+          </div>
+          <div className="text-3xl font-bold text-gray-900">
+            {questionnaireOverview?.inProgress ?? Math.max(0, funnelData.startedQuiz - funnelData.completedQuiz)}
+          </div>
+          <div className="text-xs text-gray-500 mt-1">
+            средняя глубина: {questionnaireOverview?.averageAnsweredQuestions ?? 0} ответов
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
@@ -138,12 +186,12 @@ export default function FunnelAdmin() {
 
       {/* График воронки */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-6">Воронка конверсии</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-6">Воронка по блокам анкеты</h2>
         <ResponsiveContainer width="100%" height={400}>
           <BarChart data={funnelChartData} layout="vertical">
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis type="number" stroke="#6b7280" />
-            <YAxis dataKey="name" type="category" stroke="#6b7280" width={150} />
+            <YAxis dataKey="name" type="category" stroke="#6b7280" width={190} />
             <Tooltip
               contentStyle={{
                 backgroundColor: 'rgba(0,0,0,0.8)',
@@ -166,6 +214,58 @@ export default function FunnelAdmin() {
           </BarChart>
         </ResponsiveContainer>
       </div>
+
+      {questionnaireStages.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+          <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between mb-6">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Drop-off по блокам новой анкеты</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Блок считается завершенным, когда пользователь дошел до следующего блока или финала анкеты
+              </p>
+            </div>
+            {questionnaireOverview && (
+              <div className="text-sm text-gray-500">
+                {questionnaireOverview.totalQuestions} вопросов · {questionnaireOverview.totalGroups} блоков
+              </div>
+            )}
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Блок</th>
+                  <th className="text-right py-3 px-4 font-semibold text-gray-700">Вопросов</th>
+                  <th className="text-right py-3 px-4 font-semibold text-gray-700">Дошли</th>
+                  <th className="text-right py-3 px-4 font-semibold text-gray-700">Завершили</th>
+                  <th className="text-right py-3 px-4 font-semibold text-gray-700">От старта</th>
+                  <th className="text-right py-3 px-4 font-semibold text-gray-700">От пред. блока</th>
+                  <th className="text-right py-3 px-4 font-semibold text-gray-700">Drop-off</th>
+                </tr>
+              </thead>
+              <tbody>
+                {questionnaireStages.map((stage) => (
+                  <tr key={stage.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-3 px-4 text-gray-900 font-medium">{stage.title}</td>
+                    <td className="py-3 px-4 text-right text-gray-700">{stage.questionCount}</td>
+                    <td className="py-3 px-4 text-right text-gray-700">{stage.reachedCount}</td>
+                    <td className="py-3 px-4 text-right text-gray-700">{stage.completedCount}</td>
+                    <td className="py-3 px-4 text-right text-blue-600 font-medium">
+                      {stage.conversionFromStarted.toFixed(1)}%
+                    </td>
+                    <td className="py-3 px-4 text-right text-emerald-600 font-medium">
+                      {stage.conversionFromPrev.toFixed(1)}%
+                    </td>
+                    <td className="py-3 px-4 text-right text-gray-700">{stage.dropOffFromPrev}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
 
       {/* График конверсий по периодам */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
@@ -241,12 +341,29 @@ export default function FunnelAdmin() {
       {/* Конверсия по экранам анкеты */}
       {screenConversions.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">
-            Конверсия по экранам анкеты ({screenConversions.length} экранов)
-          </h2>
+          <div className="flex flex-col gap-1 mb-6">
+            <h2 className="text-xl font-bold text-gray-900">
+              Конверсия по экранам анкеты ({screenConversions.length} экранов)
+            </h2>
+            {screenSource === 'telemetry' ? (
+              <p className="text-sm text-gray-600">
+                Источник: телеметрия показов экранов за последние {screenWindowDays} дн. —
+                фактический показ каждого экрана, включая инфо-экраны. Окно скользящее:
+                логи старше {screenWindowDays} дн. удаляются.
+              </p>
+            ) : (
+              <p className="text-sm text-amber-600">
+                Источник: реконструкция по прогрессу и ответам (телеметрии показов за
+                последние {screenWindowDays} дн. пока нет). Инфо-экраны здесь оцениваются
+                приближённо.
+              </p>
+            )}
+          </div>
           <div className="overflow-x-auto">
             <div className="mb-4 text-sm text-gray-600">
-              Всего начали анкету: {funnelData.startedQuiz} пользователей
+              {screenSource === 'telemetry'
+                ? `Дошли хотя бы до одного экрана: ${screenStarted} чел. (за ${screenWindowDays} дн.)`
+                : `Всего начали анкету: ${screenStarted || funnelData.startedQuiz} пользователей`}
             </div>
             <ResponsiveContainer width="100%" height={600}>
               <BarChart data={screenConversions} layout="vertical" margin={{ top: 20, right: 30, left: 200, bottom: 20 }}>
