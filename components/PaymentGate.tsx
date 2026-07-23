@@ -262,7 +262,6 @@ export function PaymentGate({
   const [externalPaymentUrl, setExternalPaymentUrl] = useState<string | null>(null);
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<PromoPreview | null>(null);
-  const [promoMessage, setPromoMessage] = useState<string | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
   const [isCheckingPromo, setIsCheckingPromo] = useState(false);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -292,7 +291,6 @@ export function PaymentGate({
   useEffect(() => {
     setPromoCodeInput('');
     setAppliedPromo(null);
-    setPromoMessage(null);
     setPromoError(null);
   }, [productCode]);
 
@@ -512,7 +510,6 @@ export function PaymentGate({
     const code = promoCodeInput.trim();
     if (!code) {
       setAppliedPromo(null);
-      setPromoMessage(null);
       setPromoError('Введите промокод');
       return;
     }
@@ -525,7 +522,6 @@ export function PaymentGate({
 
     setIsCheckingPromo(true);
     setPromoError(null);
-    setPromoMessage(null);
 
     try {
       const response = await fetch('/api/payments/promo/validate', {
@@ -570,11 +566,6 @@ export function PaymentGate({
 
       setPromoCodeInput(promo.code);
       setAppliedPromo(promo);
-      setPromoMessage(
-        promo.amount === 0
-          ? 'Промокод применён: доступ откроется бесплатно'
-          : `Промокод применён: скидка ${formatKopecksAsRubles(promo.discountAmount)} ₽`,
-      );
     } catch (error) {
       console.warn('Promo validation failed:', error);
       setAppliedPromo(null);
@@ -785,6 +776,11 @@ export function PaymentGate({
   const isRenewal = productCode === 'subscription_month' || productCode === 'plan_renewal_discount';
   const priceCaption = isRenewal ? 'Продление на 28 дней' : 'Доступ на 28 дней';
 
+  // Зачёркнутую цену показываем только когда есть реальная старая цена:
+  // при применённом промокоде (originalAmount) или на первичном пейволе с
+  // маркетинговой ×2. На продлении фейковую ×2 (998₽ для 499₽) не показываем.
+  const showStrikePrice = appliedPromo != null || !isRenewal;
+
   const paywallTitle =
     productCode === 'retake_topic'
       ? 'Перепройдите тему'
@@ -811,7 +807,7 @@ export function PaymentGate({
               ? 'Персональные рекомендации на основе новых данных'
               : 'Персональный уход на 28 дней, подобранный под вашу кожу';
 
-  const benefits = [
+  const firstTimeBenefits = [
     {
       icon: (
         <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="#000" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
@@ -853,6 +849,58 @@ export function PaymentGate({
       desc: 'Первые изменения уже через 2–3 недели',
     },
   ];
+
+  const renewalBenefits = [
+    {
+      icon: (
+        <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="#000" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="3" width="12" height="11" rx="2"/>
+          <path d="M5 3V2M11 3V2"/>
+          <path d="M2 7h12"/>
+          <path d="M6 10l1.5 1.5L11 8"/>
+        </svg>
+      ),
+      title: 'Ещё 28 дней ухода',
+      desc: 'Продолжите план без перерыва',
+    },
+    {
+      icon: (
+        <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="#000" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="2,9 6,13 14,4"/>
+        </svg>
+      ),
+      title: 'Полный доступ снова открыт',
+      desc: 'Все шаги и подобранные средства',
+    },
+    {
+      icon: (
+        <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="#000" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M8 1.5L9.8 5.2L14 5.8L11 8.7L11.7 13L8 11L4.3 13L5 8.7L2 5.8L6.2 5.2L8 1.5Z"/>
+        </svg>
+      ),
+      title: 'Закрепите результат',
+      desc: 'Регулярный уход даёт стойкий эффект',
+    },
+    {
+      icon: (
+        <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="#000" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="8" cy="6" r="3"/>
+          <path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/>
+        </svg>
+      ),
+      title: 'Всё так же под вашу кожу',
+      desc: 'Рекомендации, подобранные лично для вас',
+    },
+  ];
+
+  const benefits = isRenewal ? renewalBenefits : firstTimeBenefits;
+
+  // Бейдж-чип над заголовком: для продления «Ваш план готов» не подходит.
+  const badgeText = isRenewal
+    ? productCode === 'plan_renewal_discount'
+      ? 'Специально для вас'
+      : 'С возвращением'
+    : 'Ваш план готов';
 
   const glassStyle: React.CSSProperties = {
     background: 'rgba(var(--canvas-white-rgb),0.52)',
@@ -900,7 +948,7 @@ export function PaymentGate({
           <svg width="12" height="12" viewBox="0 0 13 13" fill="none">
             <path d="M6.5 1L8.09 4.29L11.72 4.84L9.11 7.38L9.74 11L6.5 9.29L3.26 11L3.89 7.38L1.28 4.84L4.91 4.29L6.5 1Z" fill="#000" stroke="#000" strokeWidth="0.8" strokeLinejoin="round"/>
           </svg>
-          Ваш план готов
+          {badgeText}
         </div>
 
         {/* Заголовок */}
@@ -982,15 +1030,17 @@ export function PaymentGate({
           marginBottom: '20px',
         }}>
           <div>
-            <div style={{
-              fontFamily: "var(--font-inter), 'Inter', sans-serif",
-              fontSize: 'clamp(11px, 2.6vw, 12px)',
-              color: '#999',
-              textDecoration: 'line-through',
-              marginBottom: '2px',
-            }}>
-              {strikePriceText} ₽
-            </div>
+            {showStrikePrice && (
+              <div style={{
+                fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                fontSize: 'clamp(11px, 2.6vw, 12px)',
+                color: '#999',
+                textDecoration: 'line-through',
+                marginBottom: '2px',
+              }}>
+                {strikePriceText} ₽
+              </div>
+            )}
             <div style={{
               fontFamily: "var(--font-inter), 'Inter', sans-serif",
               fontSize: 'clamp(12px, 3vw, 14px)',
@@ -1011,89 +1061,173 @@ export function PaymentGate({
         </div>
 
         {/* Промокод */}
-        <div style={{ ...glassStyle, padding: '12px', marginBottom: '16px' }}>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <input
-              value={promoCodeInput}
-              onChange={(event) => {
-                const nextValue = event.target.value.toUpperCase();
-                setPromoCodeInput(nextValue);
-                if (appliedPromo && nextValue.trim() !== appliedPromo.code) {
-                  setAppliedPromo(null);
-                  setPromoMessage(null);
-                }
-                if (promoError) setPromoError(null);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  void handleApplyPromo();
-                }
-              }}
-              placeholder="Промокод"
-              disabled={isProcessing || !!paymentId}
-              inputMode="text"
-              autoCapitalize="characters"
+        <div style={{ marginBottom: '16px' }}>
+          {appliedPromo ? (
+            <div
               style={{
-                minWidth: 0,
-                flex: 1,
-                height: '42px',
-                border: '1px solid rgba(10,10,10,0.14)',
-                borderRadius: '999px',
-                background: 'rgba(255,255,255,0.64)',
-                padding: '0 14px',
-                color: '#111',
-                fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                fontSize: '14px',
-                fontWeight: 650,
-                letterSpacing: 0,
-                outline: 'none',
-                textTransform: 'uppercase',
-              }}
-            />
-            <button
-              type="button"
-              onClick={handleApplyPromo}
-              disabled={isCheckingPromo || isProcessing || !!paymentId || !promoCodeInput.trim()}
-              style={{
-                width: '112px',
-                height: '42px',
-                border: 'none',
-                borderRadius: '999px',
-                background:
-                  !isCheckingPromo && !isProcessing && !paymentId && promoCodeInput.trim()
-                    ? '#0A0A0A'
-                    : 'rgba(10,10,10,0.08)',
-                color:
-                  !isCheckingPromo && !isProcessing && !paymentId && promoCodeInput.trim()
-                    ? '#FFFFFF'
-                    : '#9CA3AF',
-                cursor:
-                  !isCheckingPromo && !isProcessing && !paymentId && promoCodeInput.trim()
-                    ? 'pointer'
-                    : 'not-allowed',
-                fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                fontSize: '13px',
-                fontWeight: 800,
-                letterSpacing: 0,
-                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                height: '48px',
+                padding: '0 8px 0 16px',
+                borderRadius: '14px',
+                border: '1px solid rgba(20,108,67,0.28)',
+                background: 'rgba(20,108,67,0.07)',
               }}
             >
-              {isCheckingPromo ? 'Проверка' : 'Применить'}
-            </button>
-          </div>
-          {(promoMessage || promoError) && (
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#146C43" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <circle cx="10" cy="10" r="8" />
+                <path d="M6.5 10.5l2.2 2.2L13.8 7.5" />
+              </svg>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{
+                  fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  color: '#0F5132',
+                  letterSpacing: '0.3px',
+                  textTransform: 'uppercase',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}>
+                  {appliedPromo.code}
+                </div>
+                <div style={{
+                  fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                  fontSize: '11px',
+                  color: '#146C43',
+                  lineHeight: 1.3,
+                }}>
+                  {appliedPromo.amount === 0
+                    ? 'Доступ откроется бесплатно'
+                    : `Скидка ${formatKopecksAsRubles(appliedPromo.discountAmount)} ₽`}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setAppliedPromo(null);
+                  setPromoCodeInput('');
+                  setPromoError(null);
+                }}
+                disabled={isProcessing || !!paymentId}
+                aria-label="Убрать промокод"
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  flexShrink: 0,
+                  border: 'none',
+                  borderRadius: '999px',
+                  background: 'transparent',
+                  color: '#146C43',
+                  cursor: isProcessing || !!paymentId ? 'not-allowed' : 'pointer',
+                  display: 'grid',
+                  placeItems: 'center',
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <path d="M3 3l8 8M11 3l-8 8" />
+                </svg>
+              </button>
+            </div>
+          ) : (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                height: '48px',
+                padding: '5px 5px 5px 14px',
+                borderRadius: '14px',
+                border: promoError ? '1px solid rgba(180,35,24,0.5)' : '1px solid rgba(10,10,10,0.12)',
+                background: 'rgba(var(--canvas-white-rgb),0.55)',
+                transition: 'border-color .14s ease',
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#9AA0A6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M3 8.2a1.5 1.5 0 0 0 0 3v2.3A1.5 1.5 0 0 0 4.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-2.3a1.5 1.5 0 0 1 0-3V6a1.5 1.5 0 0 0-1.5-1.5h-11A1.5 1.5 0 0 0 3 6z" />
+                <path d="M12 4.5v11" strokeDasharray="1.5 1.8" />
+              </svg>
+              <input
+                value={promoCodeInput}
+                onChange={(event) => {
+                  const nextValue = event.target.value.toUpperCase();
+                  setPromoCodeInput(nextValue);
+                  if (promoError) setPromoError(null);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    void handleApplyPromo();
+                  }
+                }}
+                placeholder="Промокод"
+                disabled={isProcessing || !!paymentId}
+                inputMode="text"
+                autoCapitalize="characters"
+                style={{
+                  minWidth: 0,
+                  flex: 1,
+                  height: '100%',
+                  border: 'none',
+                  background: 'transparent',
+                  padding: 0,
+                  color: '#111',
+                  fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                  fontSize: '14px',
+                  fontWeight: 650,
+                  letterSpacing: promoCodeInput ? '0.5px' : 0,
+                  outline: 'none',
+                  textTransform: 'uppercase',
+                }}
+              />
+              <button
+                type="button"
+                onClick={handleApplyPromo}
+                disabled={isCheckingPromo || isProcessing || !!paymentId || !promoCodeInput.trim()}
+                style={{
+                  minWidth: '96px',
+                  height: '38px',
+                  padding: '0 16px',
+                  border: 'none',
+                  borderRadius: '10px',
+                  background:
+                    !isCheckingPromo && !isProcessing && !paymentId && promoCodeInput.trim()
+                      ? '#0A0A0A'
+                      : 'rgba(10,10,10,0.06)',
+                  color:
+                    !isCheckingPromo && !isProcessing && !paymentId && promoCodeInput.trim()
+                      ? '#FFFFFF'
+                      : '#B0B4BA',
+                  cursor:
+                    !isCheckingPromo && !isProcessing && !paymentId && promoCodeInput.trim()
+                      ? 'pointer'
+                      : 'not-allowed',
+                  fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                  fontSize: '13px',
+                  fontWeight: 800,
+                  letterSpacing: 0,
+                  flexShrink: 0,
+                  transition: 'background .14s ease, color .14s ease',
+                }}
+              >
+                {isCheckingPromo ? 'Проверка…' : 'Применить'}
+              </button>
+            </div>
+          )}
+          {promoError && (
             <p
               role="status"
               style={{
                 margin: '8px 4px 0',
-                color: promoError ? '#B42318' : '#146C43',
+                color: '#B42318',
                 fontFamily: "var(--font-inter), 'Inter', sans-serif",
                 fontSize: '12px',
                 lineHeight: 1.35,
               }}
             >
-              {promoError || promoMessage}
+              {promoError}
             </p>
           )}
         </div>

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { calculateDiscountedAmount, normalizePromoCode } from '@/lib/promo-codes';
+import {
+  calculateDiscountedAmount,
+  normalizePromoCode,
+  parsePromoCodeInput,
+} from '@/lib/promo-codes';
+
+const PRODUCTS = ['plan_access', 'subscription_month'];
 
 describe('promo codes', () => {
   it('normalizes user-entered codes', () => {
@@ -21,6 +27,54 @@ describe('promo codes', () => {
   it('supports override final prices', () => {
     expect(calculateDiscountedAmount(49900, { discountType: 'override_price', discountValue: 9900 })).toBe(9900);
     expect(calculateDiscountedAmount(19900, { discountType: 'override_price', discountValue: 0 })).toBe(0);
+  });
+});
+
+describe('parsePromoCodeInput', () => {
+  it('accepts a valid percent promo and normalizes the code', () => {
+    const result = parsePromoCodeInput(
+      { code: ' skin 50 ', discountType: 'percent', discountValue: '50', appliesToProductCodes: ['plan_access'] },
+      PRODUCTS,
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.code).toBe('SKIN50');
+      expect(result.data.discountValue).toBe(50);
+      expect(result.data.appliesToProductCodes).toEqual(['plan_access']);
+      expect(result.data.maxRedemptionsPerUser).toBe(1);
+    }
+  });
+
+  it('rejects a percent value out of range', () => {
+    const result = parsePromoCodeInput({ code: 'X', discountType: 'percent', discountValue: 150 }, PRODUCTS);
+    expect(result.ok).toBe(false);
+  });
+
+  it('rejects unknown products', () => {
+    const result = parsePromoCodeInput(
+      { code: 'X', discountType: 'fixed', discountValue: 100, appliesToProductCodes: ['nope'] },
+      PRODUCTS,
+    );
+    expect(result).toEqual({ ok: false, error: 'Неизвестный продукт: nope' });
+  });
+
+  it('rejects an end date before the start date', () => {
+    const result = parsePromoCodeInput(
+      {
+        code: 'X',
+        discountType: 'override_price',
+        discountValue: 0,
+        startsAt: '2026-09-01T00:00',
+        expiresAt: '2026-08-01T00:00',
+      },
+      PRODUCTS,
+    );
+    expect(result.ok).toBe(false);
+  });
+
+  it('missing code fails', () => {
+    const result = parsePromoCodeInput({ discountType: 'percent', discountValue: 10 }, PRODUCTS);
+    expect(result).toEqual({ ok: false, error: 'Укажите код промокода' });
   });
 });
 
