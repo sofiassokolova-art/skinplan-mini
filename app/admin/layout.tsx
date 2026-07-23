@@ -18,7 +18,8 @@ import {
   Menu,
   X,
   TrendingUp,
-  ShoppingBag
+  ShoppingBag,
+  Tag
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdminPageSkeleton } from '@/components/ui/SkeletonLoader';
@@ -168,6 +169,7 @@ export default function AdminLayout({
     { href: '/admin/users', label: 'Пользователи', icon: Users },
     { href: '/admin/products', label: 'Продукты', icon: Package },
     { href: '/admin/brands', label: 'Бренды', icon: Package },
+    { href: '/admin/promo-codes', label: 'Промокоды', icon: Tag },
     { href: '/admin/rules', label: 'Правила', icon: FileText },
     { href: '/admin/feedback', label: 'Отзывы', icon: Star },
     { href: '/admin/support', label: 'Поддержка', icon: MessageSquare },
