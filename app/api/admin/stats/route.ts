@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db';
 import { getMetricsStats } from '@/lib/admin-stats';
 import { verifyAdminBoolean } from '@/lib/admin-auth';
 import { adminCache } from '@/lib/admin-cache';
+import { getAdminQuestionnaireAnalytics } from '@/lib/admin-questionnaire-analytics';
 
 // Тяжёлый агрегирующий роут (много последовательных запросов + getMetricsStats).
 // Поднимаем лимит времени, иначе функция убивается дефолтом Vercel и фронт
@@ -117,6 +118,11 @@ export async function GET(request: NextRequest) {
     // Получаем расширенные метрики
     const metrics = await getMetricsStats().catch(err => {
       console.error('❌ Error fetching metrics:', err);
+      return null;
+    });
+
+    const questionnaireAnalytics = await getAdminQuestionnaireAnalytics().catch(err => {
+      console.error('❌ Error fetching questionnaire analytics:', err);
       return null;
     });
 
@@ -313,6 +319,11 @@ export async function GET(request: NextRequest) {
       },
       userGrowth: userGrowthData,
       topProducts: metrics?.topProducts || [],
+      questionnaire: questionnaireAnalytics ? {
+        overview: questionnaireAnalytics.overview,
+        answerBreakdowns: questionnaireAnalytics.answerBreakdowns,
+        stages: questionnaireAnalytics.stages,
+      } : null,
       recentFeedback: (() => {
         // ИСПРАВЛЕНО (P1): Логируем количество отфильтрованных записей
         const totalCount = recentFeedback.length;
@@ -361,10 +372,10 @@ export async function GET(request: NextRequest) {
         userGrowth: [],
         topProducts: [],
         recentFeedback: [],
+        questionnaire: null,
         error: error instanceof Error ? error.message : 'Internal server error',
       },
       { status: 500 }
     );
   }
 }
-
