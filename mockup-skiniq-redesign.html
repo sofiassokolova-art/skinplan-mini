@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SkinIQ — Экспертный подбор ухода</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg1: #FDF7F6;
+    --bg2: #F6E8E5;
+    --ink: #1C1C1C;
+    --ink-2: #0A0A0A;
+    --muted: #6F6F6F;
+    --muted-2: #8E8E8E;
+    --line: rgba(28, 28, 28, 0.08);
+    --lime: #D5FE61;
+    --card: rgba(255, 255, 255, 0.55);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+
+  html, body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+    background: #1a1a1a;
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+  }
+
+  /* ===== Mobile frame 390x844 ===== */
+  .phone {
+    width: 390px;
+    height: 844px;
+    border-radius: 48px;
+    background: var(--bg1);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.45), 0 0 0 10px #0a0a0a, 0 0 0 12px #2a2a2a;
+  }
+
+  .phone::before {
+    content: "";
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 110px;
+    height: 32px;
+    background: #0a0a0a;
+    border-radius: 20px;
+    z-index: 50;
+  }
+
+  /* ===== Branded cream background image (SkinIQ info screens) ===== */
+  .bg-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+    user-select: none;
+    pointer-events: none;
+  }
+  /* Subtle veil so the white cards читаются поверх живой картинки */
+  .bg-veil {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background:
+      linear-gradient(180deg, rgba(253,247,246,0.0) 0%, rgba(253,247,246,0.25) 60%, rgba(253,247,246,0.55) 100%);
+    pointer-events: none;
+  }
+
+  /* ===== Content — strict 1 screen, no scroll ===== */
+  .content {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    padding: 60px 22px 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Top bar */
+  .topbar {
+    height: 44px;
+    display: flex;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .back {
+    width: 40px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    color: var(--ink);
+  }
+  .back svg { width: 18px; height: 18px; }
+
+  /* Hero — компактно */
+  .hero { margin-bottom: 28px; }
+  h1 {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 32px;
+    line-height: 1.04;
+    font-weight: 700;
+    letter-spacing: -0.8px;
+    color: var(--ink);
+  }
+  h1 .accent {
+    background: linear-gradient(180deg, transparent 62%, var(--lime) 62%);
+    padding: 0 4px;
+  }
+
+  /* Steps card */
+  .card {
+    background: var(--card);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.7);
+    border-radius: 24px;
+    padding: 20px 18px 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    margin-bottom: 18px;
+  }
+
+  .card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding: 0 2px;
+  }
+  .card-title {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.1px;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--lime);
+    color: var(--ink);
+    padding: 4px 9px;
+    border-radius: 100px;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+  }
+  .badge .pulse {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--ink);
+  }
+
+  .step {
+    display: grid;
+    grid-template-columns: 30px 1fr;
+    gap: 12px;
+    padding: 16px 2px;
+    position: relative;
+  }
+  .step + .step { border-top: 1px solid var(--line); }
+
+  .step-num {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: var(--ink-2);
+    color: var(--lime);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    flex-shrink: 0;
+  }
+  .step-body h3 {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 2px;
+    letter-spacing: -0.1px;
+    line-height: 1.2;
+  }
+  .step-body p {
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--muted);
+  }
+
+  /* Result — компактная плашка */
+  .result {
+    background: var(--ink-2);
+    border-radius: 24px;
+    padding: 20px 20px;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 18px;
+  }
+  .result::before {
+    content: "";
+    position: absolute;
+    top: -30px; right: -30px;
+    width: 110px; height: 110px;
+    background: radial-gradient(circle, rgba(213,254,97,0.18), transparent 70%);
+  }
+  .result-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    position: relative;
+    z-index: 1;
+  }
+  .result-icon {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--lime);
+    color: var(--ink);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .result-icon svg { width: 16px; height: 16px; }
+  .result-text .label {
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--lime);
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+  .result-text h2 {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 15px;
+    line-height: 1.15;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+    margin-bottom: 4px;
+  }
+  .result-text p {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    line-height: 1.4;
+    color: rgba(255,255,255,0.65);
+  }
+
+  /* CTA — проектный стиль: прямоугольник, radius 0, uppercase, height 52 */
+  .cta-wrap {
+    margin-top: auto;
+    padding-bottom: 38px;
+  }
+  .cta {
+    width: 100%;
+    height: 52px;
+    background: var(--lime);
+    border: none;
+    border-radius: 0;
+    padding: 0 20px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--ink);
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .cta:active { transform: scale(0.98); }
+
+  /* Home indicator */
+  .home-indicator {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 134px;
+    height: 5px;
+    background: var(--ink);
+    border-radius: 100px;
+    z-index: 50;
+    opacity: 0.4;
+  }
+
+  /* ===== Side caption ===== */
+  .caption {
+    color: #888;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    max-width: 240px;
+    line-height: 1.55;
+    margin-left: 28px;
+  }
+  .caption b { color: #fff; }
+  .caption .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  @media (max-width: 760px) {
+    .caption { display: none; }
+    body { padding: 20px 0; }
+  }
+</style>
+</head>
+<body>
+  <div class="phone">
+    <img class="bg-image" src="public/image 1576994977.png" alt="" />
+    <div class="bg-veil"></div>
+
+    <div class="content">
+      <!-- Back -->
+      <div class="topbar">
+        <div class="back" aria-label="Назад">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Hero -->
+      <div class="hero">
+        <h1>Уход,<br/>который вам <span class="accent">подходит</span></h1>
+      </div>
+
+      <!-- Steps -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">Принцип подбора</div>
+          <div class="badge"><span class="pulse"></span>SkinIQ</div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">01</div>
+          <div class="step-body">
+            <h3>Понимаем вашу кожу</h3>
+            <p>Что у вас за тип, чего она хочет и чего избегает.</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">02</div>
+          <div class="step-body">
+            <h3>Убираем лишнее</h3>
+            <p>Несовместимые активы, аллергены и то, что вам не подойдёт.</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">03</div>
+          <div class="step-body">
+            <h3>Выстраиваем ритуал</h3>
+            <p>Утренние и вечерние шаги в правильном порядке.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Result — компактный -->
+      <div class="result">
+        <div class="result-row">
+          <div class="result-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
+          <div class="result-text">
+            <div class="label">Результат</div>
+            <h2>Уход без сомнений</h2>
+            <p>Каждое средство на своём месте. Работает в комплекте, а не по отдельности.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- CTA -->
+      <div class="cta-wrap">
+        <button class="cta">Продолжить</button>
+      </div>
+    </div>
+
+    <div class="home-indicator"></div>
+  </div>
+
+  <div class="caption">
+    <b>Изменения:</b><br/><br/>
+    • Фон — реальная картинка с инфо-экранов SkinIQ (<code>image 1576994977.png</code>)<br/><br/>
+    • Lede убран — заголовок дышит, шаги говорят сами за себя<br/><br/>
+    • H1 крупнее (32px), акцент «подходит» в лайме<br/><br/>
+    • CTA — «ПРОДОЛЖИТЬ»<br/><br/>
+    • Шаги: «Понимаем / Убираем / Выстраиваем» — настоящее время, мы работаем сейчас<br/><br/>
+    • Результат: «Уход без сомнений» — эмоциональная выгода
+  </div>
+</body>
+</html>
