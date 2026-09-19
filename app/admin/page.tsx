@@ -25,6 +25,22 @@ interface Stats {
   activeUsersLast30Days?: number;
 }
 
+interface QuestionnaireOverview {
+  id: number;
+  name: string;
+  version: number;
+  totalGroups: number;
+  totalQuestions: number;
+  requiredQuestions: number;
+  totalInfoScreens: number;
+  started: number;
+  completed: number;
+  inProgress: number;
+  averageAnsweredQuestions: number;
+  completionRate: number;
+  lastAnswerAt: string | null;
+}
+
 interface Feedback {
   id: string;
   user: {
@@ -50,6 +66,7 @@ export default function AdminDashboard() {
     revenue: 0,
   });
   const [recentFeedback, setRecentFeedback] = useState<Feedback[]>([]);
+  const [questionnaire, setQuestionnaire] = useState<QuestionnaireOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userGrowth, setUserGrowth] = useState<{ date: string; users: number }[]>([]);
@@ -98,6 +115,7 @@ export default function AdminDashboard() {
           activeUsersLast7Days: data.stats?.activeUsersLast7Days ?? 0,
           activeUsersLast30Days: data.stats?.activeUsersLast30Days ?? 0,
         });
+        setQuestionnaire(data.questionnaire?.overview || null);
         setRecentFeedback(data.recentFeedback || []);
       } else {
         const errorData = await response.json().catch(() => ({}));
@@ -196,10 +214,22 @@ export default function AdminDashboard() {
       color: 'from-pink-600 to-rose-400'
     },
     { 
-      label: 'Перепрошли анкету', 
-      value: stats.retakingUsers || 0, 
+      label: 'Начали новую анкету',
+      value: questionnaire?.started || 0,
       change: null,
       color: 'from-indigo-600 to-blue-400'
+    },
+    {
+      label: 'Завершили анкету',
+      value: questionnaire?.completed || 0,
+      change: null,
+      color: 'from-violet-600 to-fuchsia-400'
+    },
+    {
+      label: 'Конверсия анкеты',
+      value: questionnaire ? `${questionnaire.completionRate.toFixed(1)}%` : '0%',
+      change: null,
+      color: 'from-lime-600 to-emerald-400'
     },
     { 
       label: 'Продуктов в базе', 
@@ -273,6 +303,47 @@ export default function AdminDashboard() {
           </div>
         ))}
       </div>
+
+      {questionnaire && (
+        <div className="admin-card p-6 mb-8">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Активная анкета</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                {questionnaire.name} · версия {questionnaire.version}
+              </p>
+            </div>
+            <div className="text-sm text-gray-500">
+              {questionnaire.lastAnswerAt
+                ? `Последний ответ: ${new Date(questionnaire.lastAnswerAt).toLocaleString('ru-RU')}`
+                : 'Ответов пока нет'}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+            <div className="rounded-xl bg-white/60 border border-gray-200/70 p-4">
+              <div className="text-xs text-gray-500 mb-1">Вопросов</div>
+              <div className="text-2xl font-bold text-gray-900">{questionnaire.totalQuestions}</div>
+              <div className="text-xs text-gray-500 mt-1">{questionnaire.totalGroups} блоков</div>
+            </div>
+            <div className="rounded-xl bg-white/60 border border-gray-200/70 p-4">
+              <div className="text-xs text-gray-500 mb-1">Инфо-экранов</div>
+              <div className="text-2xl font-bold text-gray-900">{questionnaire.totalInfoScreens}</div>
+              <div className="text-xs text-gray-500 mt-1">между вопросами</div>
+            </div>
+            <div className="rounded-xl bg-white/60 border border-gray-200/70 p-4">
+              <div className="text-xs text-gray-500 mb-1">В процессе</div>
+              <div className="text-2xl font-bold text-gray-900">{questionnaire.inProgress}</div>
+              <div className="text-xs text-gray-500 mt-1">начали, но не завершили</div>
+            </div>
+            <div className="rounded-xl bg-white/60 border border-gray-200/70 p-4">
+              <div className="text-xs text-gray-500 mb-1">Средняя глубина</div>
+              <div className="text-2xl font-bold text-gray-900">{questionnaire.averageAnsweredQuestions}</div>
+              <div className="text-xs text-gray-500 mt-1">ответов на начавшего</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Блок графика */}
       <div className="admin-card p-6 mb-8">
